@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { auth } from "@/lib/supabase/auth";
 
 interface LoginPageProps {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 interface LoginFormData {
@@ -19,8 +19,11 @@ interface LoginFormData {
 }
 
 export default function LoginPage({ searchParams }: LoginPageProps) {
-  // Use searchParams to avoid unused variable warning
-  console.log('Login page search params:', searchParams);
+  useEffect(() => {
+    // Use searchParams to avoid unused variable warning
+    // eslint-disable-next-line no-console
+    searchParams.then(params => console.log('Login page search params:', params));
+  }, [searchParams]);
 
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
