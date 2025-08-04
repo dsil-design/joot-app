@@ -1,200 +1,86 @@
-"use client";
+import { login, signup } from './actions'
+import Link from 'next/link'
 
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { auth } from "@/lib/supabase/auth";
-
-interface LoginPageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-interface LoginFormData {
-  email: string;
-  password: string;
-}
-
-export default function LoginPage({ searchParams }: LoginPageProps) {
-  useEffect(() => {
-    // Handle search params without logging
-    searchParams.then(() => {
-      // Search params handled
-    });
-  }, [searchParams]);
-
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
-    password: ''
-  });
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-
-  // Fix: Replace 'any' with proper types
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear errors when user starts typing
-    if (error) setError(null);
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const { data, error: loginError } = await auth.signIn(
-        formData.email,
-        formData.password
-      );
-
-      if (loginError) {
-        setError(loginError.message);
-        return;
-      }
-
-      if (data.user) {
-        // Redirect to dashboard on successful login
-        router.push('/dashboard');
-      }
-    } catch {
-      // Handle login error without console logging
-      setError('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+export default function LoginPage() {
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-background">
-      {/* Left Side - Login Form */}
-      <div className="flex-1 flex items-center justify-center px-spacing-4 py-spacing-8 md:px-spacing-16">
-        <div className="w-full max-w-sm space-y-spacing-6">
-          {/* Logo */}
-          <div className="space-y-spacing-2">
-            <div className="h-10 w-24">
-              {/* Joot Logo - Using text for now, can be replaced with actual logo */}
-              <div className="bg-zinc-900 text-white px-spacing-3 py-spacing-1 rounded text-sm font-bold inline-block">
-                JOOT
-              </div>
-            </div>
-          </div>
-
-          {/* Separator */}
-          <Separator />
-
-          {/* Header */}
-          <div className="space-y-spacing-1">
-            <h1 className="text-xl/bold text-foreground">
-              Login
-            </h1>
-            <p className="text-sm/normal text-muted-foreground">
-              Enter your details below to login
+    <div className="min-h-screen flex">
+      {/* Left Panel - Login Form */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-foreground">
+              Welcome to Joot
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Sign in to your account to continue
             </p>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+          <form className="mt-8 space-y-6">
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="email" className="text-sm font-medium text-foreground">
+                  Email address
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1"
+                  placeholder="Enter your email"
+                />
+              </div>
 
-          {/* Form */}
-          <form className="space-y-spacing-4" onSubmit={handleSubmit}>
-            {/* Email Field */}
-            <div className="space-y-spacing-1">
-              <Label htmlFor="email" className="text-sm/medium text-foreground">
-                Email
-              </Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="hello@dsil.design"
-                disabled={isLoading}
-                className="h-10"
-              />
+              <div>
+                <label htmlFor="password" className="text-sm font-medium text-foreground">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1"
+                  placeholder="Enter your password"
+                />
+              </div>
             </div>
 
-            {/* Password Field */}
-            <div className="space-y-spacing-1">
-              <Label htmlFor="password" className="text-sm/medium text-foreground">
-                Password
-              </Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="•••••••••"
-                disabled={isLoading}
-                className="h-10"
-              />
-            </div>
-
-            {/* Login Button */}
-            <Button 
-              type="submit" 
-              className="w-full h-9 bg-[#155dfc] hover:bg-[#155dfc]/90" 
-              disabled={isLoading}
-            >
-              {isLoading ? 'Logging in...' : 'Log in'}
-            </Button>
-
-            {/* Secondary Actions */}
-            <div className="pt-spacing-6 space-y-spacing-4">
-              <Link 
-                href="/signup" 
-                className="block text-center text-sm text-[#155dfc] hover:text-[#155dfc]/80 font-medium"
+            <div className="flex gap-2">
+              <button
+                formAction={login}
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full"
               >
-                Sign up
-              </Link>
-              <Link 
-                href="/forgot-password" 
-                className="block text-center text-sm text-[#155dfc] hover:text-[#155dfc]/80 font-medium"
+                Sign In
+              </button>
+              <Link
+                href="/signup"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full"
               >
-                Forgot password
+                Create Account
               </Link>
             </div>
           </form>
-
-          {/* Bottom Separator */}
-          <Separator />
-
-          {/* Copyright */}
-          <div className="text-center">
-            <p className="text-sm/normal text-muted-foreground">
-              © 2025 DSIL Design
-            </p>
-          </div>
         </div>
       </div>
 
-      {/* Right Side - Billboard */}
-      <div className="hidden md:flex flex-1 p-spacing-4">
-        <div 
-          className="w-full rounded-xl border border-zinc-200 bg-gradient-to-br from-blue-400 via-blue-500 to-orange-400"
-          style={{
-            background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #fb923c 100%)'
-          }}
-        >
-          {/* Gradient background - matches Figma design */}
+      {/* Right Panel - Background Image */}
+      <div className="hidden lg:block lg:flex-1 relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800">
+          <div className="absolute inset-0 bg-black/20" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center text-white">
+              <h3 className="text-4xl font-bold mb-4">
+                Track Your Transactions
+              </h3>
+              <p className="text-xl opacity-90">
+                USD/THB Currency Conversion Made Simple
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
