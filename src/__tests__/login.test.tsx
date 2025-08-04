@@ -11,7 +11,7 @@ Object.defineProperty(window, 'location', {
 
 describe('LoginPage', () => {
   it('renders login form elements', () => {
-    render(<LoginPage />)
+    render(<LoginPage searchParams={{}} />)
     
     // Check that key elements are present
     const heading = screen.getByRole('heading', { name: /login/i })
@@ -30,7 +30,7 @@ describe('LoginPage', () => {
   })
 
   it('has correct input types', () => {
-    render(<LoginPage />)
+    render(<LoginPage searchParams={{}} />)
     
     const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement
     const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement
@@ -40,7 +40,7 @@ describe('LoginPage', () => {
   })
 
   it('displays logo and copyright', () => {
-    render(<LoginPage />)
+    render(<LoginPage searchParams={{}} />)
     
     const logo = screen.getByAltText('MynaUI Logo')
     const copyright = screen.getByText('© 2025 MynaUI')
@@ -50,7 +50,7 @@ describe('LoginPage', () => {
   })
 
   it('has navigation links', () => {
-    render(<LoginPage />)
+    render(<LoginPage searchParams={{}} />)
     
     const signUpText = screen.getByText("Don't have an account?")
     const forgotPasswordLink = screen.getByText('Forgot your password?')
