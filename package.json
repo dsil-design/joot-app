@@ -19,7 +19,8 @@
     "test:e2e:headed": "playwright test --headed",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:accessibility && npm run test:performance",
     "test:supabase": "node scripts/test-supabase-connection.js",
-    "test:ci": "npm run test:coverage && npm run test:e2e"
+    "test:ci": "npm run test:coverage && npm run test:e2e",
+    "validate:env": "node scripts/validate-env.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
