@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/supabase/auth";
@@ -74,27 +75,47 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="max-w-md w-full space-y-spacing-8 p-spacing-6">
-        <div className="text-center">
-          <h1 className="text-3xl/bold text-foreground">
-            Sign in to your account
-          </h1>
-          <p className="text-base/normal text-muted-foreground mt-spacing-2">
-            Welcome back to Joot
-          </p>
-        </div>
-        
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        
-        <form className="space-y-spacing-6" onSubmit={handleSubmit}>
-          <div className="space-y-spacing-4">
-            <div>
-              <Label htmlFor="email">Email address</Label>
+    <div className="min-h-screen flex flex-col md:flex-row bg-background">
+      {/* Left Side - Login Form */}
+      <div className="flex-1 flex items-center justify-center px-spacing-4 py-spacing-8 md:px-spacing-16">
+        <div className="w-full max-w-sm space-y-spacing-6">
+          {/* Logo */}
+          <div className="space-y-spacing-2">
+            <div className="h-10 w-24">
+              {/* Joot Logo - Using text for now, can be replaced with actual logo */}
+              <div className="bg-zinc-900 text-white px-spacing-3 py-spacing-1 rounded text-sm font-bold inline-block">
+                JOOT
+              </div>
+            </div>
+          </div>
+
+          {/* Separator */}
+          <Separator />
+
+          {/* Header */}
+          <div className="space-y-spacing-1">
+            <h1 className="text-xl/bold text-foreground">
+              Login
+            </h1>
+            <p className="text-sm/normal text-muted-foreground">
+              Enter your details below to login
+            </p>
+          </div>
+
+          {/* Error Alert */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Form */}
+          <form className="space-y-spacing-4" onSubmit={handleSubmit}>
+            {/* Email Field */}
+            <div className="space-y-spacing-1">
+              <Label htmlFor="email" className="text-sm/medium text-foreground">
+                Email
+              </Label>
               <Input
                 id="email"
                 name="email"
@@ -102,13 +123,17 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
                 required
                 value={formData.email}
                 onChange={handleInputChange}
-                placeholder="Enter your email"
+                placeholder="hello@dsil.design"
                 disabled={isLoading}
+                className="h-10"
               />
             </div>
-            
-            <div>
-              <Label htmlFor="password">Password</Label>
+
+            {/* Password Field */}
+            <div className="space-y-spacing-1">
+              <Label htmlFor="password" className="text-sm/medium text-foreground">
+                Password
+              </Label>
               <Input
                 id="password"
                 name="password"
@@ -116,31 +141,59 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
                 required
                 value={formData.password}
                 onChange={handleInputChange}
-                placeholder="Enter your password"
+                placeholder="•••••••••"
                 disabled={isLoading}
+                className="h-10"
               />
             </div>
-          </div>
 
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={isLoading}
-          >
-            {isLoading ? 'Signing in...' : 'Sign in'}
-          </Button>
-        </form>
-
-        <div className="text-center">
-          <p className="text-sm/normal text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link 
-              href="/signup" 
-              className="text-primary hover:text-primary/80 font-medium"
+            {/* Login Button */}
+            <Button 
+              type="submit" 
+              className="w-full h-9 bg-[#155dfc] hover:bg-[#155dfc]/90" 
+              disabled={isLoading}
             >
-              Sign up
-            </Link>
-          </p>
+              {isLoading ? 'Logging in...' : 'Log in'}
+            </Button>
+
+            {/* Secondary Actions */}
+            <div className="pt-spacing-6 space-y-spacing-4">
+              <Link 
+                href="/signup" 
+                className="block text-center text-sm text-[#155dfc] hover:text-[#155dfc]/80 font-medium"
+              >
+                Sign up
+              </Link>
+              <Link 
+                href="/forgot-password" 
+                className="block text-center text-sm text-[#155dfc] hover:text-[#155dfc]/80 font-medium"
+              >
+                Forgot password
+              </Link>
+            </div>
+          </form>
+
+          {/* Bottom Separator */}
+          <Separator />
+
+          {/* Copyright */}
+          <div className="text-center">
+            <p className="text-sm/normal text-muted-foreground">
+              © 2025 DSIL Design
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Billboard */}
+      <div className="hidden md:flex flex-1 p-spacing-4">
+        <div 
+          className="w-full rounded-xl border border-zinc-200 bg-gradient-to-br from-blue-400 via-blue-500 to-orange-400"
+          style={{
+            background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #fb923c 100%)'
+          }}
+        >
+          {/* Gradient background - matches Figma design */}
         </div>
       </div>
     </div>
