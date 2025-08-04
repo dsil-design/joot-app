@@ -1,22 +1,24 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// Middleware automatically runs on Edge Runtime in Next.js 15
-
 export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({
+    request,
+  })
+
+  // Check if environment variables are available
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Redirect to error page if environment variables are missing
+    const url = request.nextUrl.clone()
+    url.pathname = '/error'
+    url.searchParams.set('message', 'Configuration error: Missing Supabase environment variables')
+    return NextResponse.redirect(url)
+  }
+
   try {
-    // Check if required environment variables are available
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      // Missing Supabase environment variables - allow request to continue
-      return NextResponse.next()
-    }
-
-    let supabaseResponse = NextResponse.next({
-      request,
-    })
 
     const supabase = createServerClient(
       supabaseUrl,
@@ -53,6 +55,7 @@ export async function middleware(request: NextRequest) {
       '/signup',
       '/auth',
       '/api',
+      '/error',
     ]
 
     // Check if current path is public
@@ -85,9 +88,9 @@ export async function middleware(request: NextRequest) {
     }
 
     return supabaseResponse
-  } catch {
-    // In case of any error, allow the request to continue
-    // This prevents the app from completely breaking
+  } catch (error) {
+    console.error('Middleware auth error:', error)
+    // Allow request to continue even if auth check fails
     return NextResponse.next()
   }
 }
