@@ -1,5 +1,6 @@
 import { createClient } from './client'
 import type { User } from './types'
+import type { Session, PostgrestError } from '@supabase/supabase-js'
 
 // Client-side auth functions ONLY
 // Do not import server utilities here to avoid Next.js client/server conflicts
@@ -49,13 +50,13 @@ export const auth = {
   },
 
   // Listen to auth changes
-  onAuthStateChange: (callback: (event: string, session: any) => void) => {
+  onAuthStateChange: (callback: (event: string, session: Session | null) => void) => {
     const supabase = createClient()
     return supabase.auth.onAuthStateChange(callback)
   },
 
   // Get user profile from our users table (client-side)
-  getUserProfile: async (userId: string): Promise<{ user: User | null; error: any }> => {
+  getUserProfile: async (userId: string): Promise<{ user: User | null; error: PostgrestError | null }> => {
     const supabase = createClient()
     const { data: profile, error } = await supabase
       .from('users')

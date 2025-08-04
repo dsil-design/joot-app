@@ -22,9 +22,10 @@ interface SignupFormData {
 
 export default function SignupPage({ searchParams }: SignupPageProps) {
   useEffect(() => {
-    // Use searchParams to avoid unused variable warning
-    // eslint-disable-next-line no-console
-    searchParams.then(params => console.log('Signup page search params:', params));
+    // Handle search params without logging
+    searchParams.then(() => {
+      // Search params handled
+    });
   }, [searchParams]);
 
   const router = useRouter();
@@ -114,8 +115,8 @@ export default function SignupPage({ searchParams }: SignupPageProps) {
           router.push('/login?message=Please check your email to verify your account');
         }, 3000);
       }
-    } catch (error) {
-      console.error('Signup error:', error);
+    } catch {
+      // Handle signup error without console logging
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);

@@ -1,15 +1,17 @@
 // Server-side database functions ONLY
 // This file should only be imported in server components, API routes, or middleware
 import { createClient as createServerClient } from './server'
+import type { PostgrestError } from '@supabase/supabase-js'
 import type { 
   TransactionWithCategory,
   TransactionCategory,
+  UserUpdate,
 } from './types'
 
 export const serverDb = {
   // Server-side transaction operations
   transactions: {
-    getAll: async (userId: string): Promise<{ data: TransactionWithCategory[] | null; error: any }> => {
+    getAll: async (userId: string): Promise<{ data: TransactionWithCategory[] | null; error: PostgrestError | null }> => {
       const supabase = await createServerClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -23,7 +25,7 @@ export const serverDb = {
       return { data, error }
     },
 
-    getById: async (id: string, userId: string): Promise<{ data: TransactionWithCategory | null; error: any }> => {
+    getById: async (id: string, userId: string): Promise<{ data: TransactionWithCategory | null; error: PostgrestError | null }> => {
       const supabase = await createServerClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -38,7 +40,7 @@ export const serverDb = {
       return { data, error }
     },
 
-    getByDateRange: async (userId: string, startDate: string, endDate: string): Promise<{ data: TransactionWithCategory[] | null; error: any }> => {
+    getByDateRange: async (userId: string, startDate: string, endDate: string): Promise<{ data: TransactionWithCategory[] | null; error: PostgrestError | null }> => {
       const supabase = await createServerClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -57,7 +59,7 @@ export const serverDb = {
   
   // Server-side category operations
   categories: {
-    getAll: async (userId: string): Promise<{ data: TransactionCategory[] | null; error: any }> => {
+    getAll: async (userId: string): Promise<{ data: TransactionCategory[] | null; error: PostgrestError | null }> => {
       const supabase = await createServerClient()
       const { data, error } = await supabase
         .from('transaction_categories')
@@ -68,7 +70,7 @@ export const serverDb = {
       return { data, error }
     },
 
-    getById: async (id: string, userId: string): Promise<{ data: TransactionCategory | null; error: any }> => {
+    getById: async (id: string, userId: string): Promise<{ data: TransactionCategory | null; error: PostgrestError | null }> => {
       const supabase = await createServerClient()
       const { data, error } = await supabase
         .from('transaction_categories')
@@ -94,7 +96,7 @@ export const serverDb = {
       return { data, error }
     },
 
-    updateProfile: async (userId: string, updates: any) => {
+    updateProfile: async (userId: string, updates: UserUpdate) => {
       const supabase = await createServerClient()
       const { data, error } = await supabase
         .from('users')

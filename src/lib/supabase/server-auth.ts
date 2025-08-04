@@ -1,11 +1,12 @@
 // Server-side auth functions ONLY
 // This file should only be imported in server components, API routes, or middleware
 import { createClient as createServerClient } from './server'
+import type { AuthError, PostgrestError } from '@supabase/supabase-js'
 import type { User } from './types'
 
 export const serverAuth = {
   // Get current user (server-side)
-  getUser: async (): Promise<{ user: User | null; error: any }> => {
+  getUser: async (): Promise<{ user: User | null; error: AuthError | PostgrestError | null }> => {
     const supabase = await createServerClient()
     const { data, error } = await supabase.auth.getUser()
     

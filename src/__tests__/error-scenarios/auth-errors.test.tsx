@@ -9,6 +9,7 @@ import * as authLib from '@/lib/auth'
 // Mock modules
 jest.mock('@/lib/supabase/auth')
 jest.mock('@/lib/auth')
+jest.mock('next/navigation')
 
 const mockAuth = auth as jest.Mocked<typeof auth>
 const mockAuthLib = authLib as jest.Mocked<typeof authLib>
@@ -19,7 +20,8 @@ describe('Authentication Error Scenarios', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.mocked(require('next/navigation').useRouter).mockReturnValue({
+    const { useRouter } = jest.requireActual('next/navigation')
+    jest.mocked(useRouter).mockReturnValue({
       push: mockPush,
       replace: jest.fn(),
       prefetch: jest.fn(),

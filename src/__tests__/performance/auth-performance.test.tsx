@@ -7,6 +7,9 @@ import { auth } from '@/lib/supabase/auth'
 
 // Mock modules
 jest.mock('@/lib/supabase/auth')
+jest.mock('next/navigation')
+jest.mock('@/lib/auth')
+
 const mockAuth = auth as jest.Mocked<typeof auth>
 
 describe('Authentication Performance Tests', () => {
@@ -14,7 +17,8 @@ describe('Authentication Performance Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.mocked(require('next/navigation').useRouter).mockReturnValue({
+    const { useRouter } = jest.requireActual('next/navigation')
+    jest.mocked(useRouter).mockReturnValue({
       push: jest.fn(),
       replace: jest.fn(),
       prefetch: jest.fn(),
@@ -44,7 +48,8 @@ describe('Authentication Performance Tests', () => {
     })
 
     it('should render protected route quickly when authenticated', () => {
-      jest.mocked(require('@/lib/auth').getAuthState).mockReturnValue({
+      const { getAuthState } = jest.requireActual('@/lib/auth')
+      jest.mocked(getAuthState).mockReturnValue({
         isAuthenticated: true,
         user: { id: '123', email: 'user@example.com' }
       })

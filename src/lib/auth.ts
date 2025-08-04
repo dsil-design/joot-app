@@ -27,8 +27,8 @@ export function getAuthState(): AuthState {
         user: parsed.user
       }
     }
-  } catch (error) {
-    console.error('Error reading auth state:', error)
+  } catch {
+    // Handle auth state read error silently
   }
 
   return { isAuthenticated: false, user: null }
@@ -42,8 +42,8 @@ export function setAuthState(user: User): void {
       user,
       timestamp: Date.now()
     }))
-  } catch (error) {
-    console.error('Error saving auth state:', error)
+  } catch {
+    // Handle auth state save error silently
   }
 }
 
@@ -52,8 +52,8 @@ export function clearAuthState(): void {
 
   try {
     localStorage.removeItem(AUTH_STORAGE_KEY)
-  } catch (error) {
-    console.error('Error clearing auth state:', error)
+  } catch {
+    // Handle auth state clear error silently
   }
 }
 

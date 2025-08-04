@@ -1,4 +1,5 @@
 import { createClient } from './client'
+import type { PostgrestError } from '@supabase/supabase-js'
 import type { 
   Transaction, 
   TransactionInsert, 
@@ -16,7 +17,7 @@ export const db = {
   // Transaction operations
   transactions: {
     // Get all transactions for current user
-    getAll: async (): Promise<{ data: TransactionWithCategory[] | null; error: any }> => {
+    getAll: async (): Promise<{ data: TransactionWithCategory[] | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -30,7 +31,7 @@ export const db = {
     },
 
     // Get transaction by ID
-    getById: async (id: string): Promise<{ data: TransactionWithCategory | null; error: any }> => {
+    getById: async (id: string): Promise<{ data: TransactionWithCategory | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -45,7 +46,7 @@ export const db = {
     },
 
     // Create new transaction
-    create: async (transaction: TransactionInsert): Promise<{ data: Transaction | null; error: any }> => {
+    create: async (transaction: TransactionInsert): Promise<{ data: Transaction | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -57,7 +58,7 @@ export const db = {
     },
 
     // Update transaction
-    update: async (id: string, updates: TransactionUpdate): Promise<{ data: Transaction | null; error: any }> => {
+    update: async (id: string, updates: TransactionUpdate): Promise<{ data: Transaction | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -70,7 +71,7 @@ export const db = {
     },
 
     // Delete transaction
-    delete: async (id: string): Promise<{ error: any }> => {
+    delete: async (id: string): Promise<{ error: PostgrestError | null }> => {
       const supabase = createClient()
       const { error } = await supabase
         .from('transactions')
@@ -81,7 +82,7 @@ export const db = {
     },
 
     // Get transactions by date range
-    getByDateRange: async (startDate: string, endDate: string): Promise<{ data: TransactionWithCategory[] | null; error: any }> => {
+    getByDateRange: async (startDate: string, endDate: string): Promise<{ data: TransactionWithCategory[] | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -97,7 +98,7 @@ export const db = {
     },
 
     // Get transactions by category
-    getByCategory: async (categoryId: string): Promise<{ data: TransactionWithCategory[] | null; error: any }> => {
+    getByCategory: async (categoryId: string): Promise<{ data: TransactionWithCategory[] | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -115,7 +116,7 @@ export const db = {
   // Category operations
   categories: {
     // Get all categories for current user
-    getAll: async (): Promise<{ data: TransactionCategory[] | null; error: any }> => {
+    getAll: async (): Promise<{ data: TransactionCategory[] | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transaction_categories')
@@ -126,7 +127,7 @@ export const db = {
     },
 
     // Create new category
-    create: async (category: TransactionCategoryInsert): Promise<{ data: TransactionCategory | null; error: any }> => {
+    create: async (category: TransactionCategoryInsert): Promise<{ data: TransactionCategory | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transaction_categories')
@@ -138,7 +139,7 @@ export const db = {
     },
 
     // Update category
-    update: async (id: string, updates: TransactionCategoryUpdate): Promise<{ data: TransactionCategory | null; error: any }> => {
+    update: async (id: string, updates: TransactionCategoryUpdate): Promise<{ data: TransactionCategory | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transaction_categories')
@@ -151,7 +152,7 @@ export const db = {
     },
 
     // Delete category
-    delete: async (id: string): Promise<{ error: any }> => {
+    delete: async (id: string): Promise<{ error: PostgrestError | null }> => {
       const supabase = createClient()
       const { error } = await supabase
         .from('transaction_categories')
@@ -165,7 +166,7 @@ export const db = {
   // Exchange rate operations
   exchangeRates: {
     // Get latest exchange rate
-    getLatest: async (fromCurrency: CurrencyType, toCurrency: CurrencyType): Promise<{ data: ExchangeRate | null; error: any }> => {
+    getLatest: async (fromCurrency: CurrencyType, toCurrency: CurrencyType): Promise<{ data: ExchangeRate | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('exchange_rates')
@@ -180,7 +181,7 @@ export const db = {
     },
 
     // Get exchange rate for specific date
-    getByDate: async (fromCurrency: CurrencyType, toCurrency: CurrencyType, date: string): Promise<{ data: ExchangeRate | null; error: any }> => {
+    getByDate: async (fromCurrency: CurrencyType, toCurrency: CurrencyType, date: string): Promise<{ data: ExchangeRate | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('exchange_rates')

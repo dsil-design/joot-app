@@ -21,9 +21,10 @@ interface LoginFormData {
 
 export default function LoginPage({ searchParams }: LoginPageProps) {
   useEffect(() => {
-    // Use searchParams to avoid unused variable warning
-    // eslint-disable-next-line no-console
-    searchParams.then(params => console.log('Login page search params:', params));
+    // Handle search params without logging
+    searchParams.then(() => {
+      // Search params handled
+    });
   }, [searchParams]);
 
   const [formData, setFormData] = useState<LoginFormData>({
@@ -66,8 +67,8 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
         // Redirect to dashboard on successful login
         router.push('/dashboard');
       }
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch {
+      // Handle login error without console logging
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
