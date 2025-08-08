@@ -60,32 +60,80 @@ trigger: always_on
 
 ------
 
+## 🎨 Figma Design Fidelity Standards
+
+### Absolute Design Compliance Rule
+
+**CRITICAL REQUIREMENT**: When implementing any component or page from Figma designs, developers must achieve **100% visual fidelity** with zero unauthorized additions.
+
+### Mandatory Design Constraints
+
+1. **No Extra Elements**: Never add UI elements, components, or features not explicitly shown in the Figma design
+2. **Exact Layout Match**: Spacing, positioning, and alignment must match the Figma design precisely
+3. **Component Inventory**: Only use components that have direct 1:1 correspondence in the Figma design
+4. **Content Fidelity**: Use exact text, labels, and copy as specified in Figma
+5. **Interactive Elements**: Only make elements interactive if they are designed as interactive in Figma
+
+### Prohibited Implementation Actions
+
+- **Adding "helpful" elements**: No extra buttons, links, icons, or navigation not in design
+- **Layout modifications**: No reorganizing based on development preferences
+- **Placeholder content**: No content additions not specified in design
+- **Unauthorized functionality**: No features not indicated in the Figma design
+- **Spacing adjustments**: No extra margins, padding beyond design specifications
+- **UX improvements**: No loading states, error messages, or enhancements unless explicitly designed
+
+### Required Verification Process
+
+1. **Visual Comparison**: Side-by-side comparison with Figma design at all breakpoints
+2. **Element Audit**: Verify every element in the code exists in the Figma design
+3. **Component Matching**: Confirm each shadCN component maps to a Figma design system component
+4. **Interaction Matching**: Ensure only designed interactive elements are functional
+5. **Content Verification**: Confirm all text, images, and data match Figma specifications
+
+### Exception Handling Protocol
+
+If a Figma design requires functionality not technically possible:
+
+1. **Document the Issue**: Create detailed note explaining the technical limitation
+2. **Propose Minimal Solution**: Suggest the smallest possible change to make it functional
+3. **Request Design Clarification**: Flag for design team review before implementation
+4. **Never Assume**: Do not add elements based on assumptions about user needs
+
+### Implementation Standards
+
+```typescript
+// Required comment block for all Figma-based components
+/**
+ * FIGMA DESIGN IMPLEMENTATION
+ * Design URL: [Figma link] | Node: [node ID]
+ * Fidelity: 100% - No unauthorized additions
+ */
+```
+
+Every Figma component must map 1:1 with coded component. If missing: document, halt implementation, no substitutions without approval.
+
+**Mobile-First Requirements**: Start mobile → tablet → desktop exactly as designed. No assumptions for missing breakpoints.
+
+### Quality Gates
+
+**Pre-Implementation**: [ ] Figma URL/node documented [ ] Components exist [ ] Design tokens mapped [ ] Interactivity identified
+
+**Verification**: [ ] Pixel-perfect match [ ] No unauthorized elements [ ] Component mapping correct [ ] Only designed elements interactive
+
+------
+
 ## 🧪 Automated Quality Assurance
 
 ### Built-in QA Testing Requirements
 
-All new features must include automated QA testing that covers:
+All new features must include automated QA testing:
 
-#### Functional Testing
+#### Testing Coverage
 
-- **Component Rendering**: Verify all components render without errors
-- **User Interactions**: Test clicks, form submissions, navigation
-- **Data Flow**: Validate data processing and state management
-- **Currency Conversion**: Ensure accurate USD/THB calculations
-
-#### Visual Testing
-
-- **Responsive Behavior**: Test across mobile, tablet, desktop viewports
-- **Component States**: Verify loading, error, and success states
-- **Accessibility**: Check color contrast, keyboard navigation, screen reader compatibility
-
-#### Performance Testing
-
-- **Load Times**: Measure component mount and render times
-- **Bundle Size**: Monitor JavaScript bundle impact
-- **Memory Usage**: Check for memory leaks in components
-
-### QA Implementation Strategy
+- **Functional**: Component rendering, user interactions, data flow, currency conversion
+- **Visual**: Responsive behavior, component states, accessibility compliance
+- **Performance**: Load times, bundle size, memory usage
 
 ```typescript
 // Every new feature should include:
@@ -201,9 +249,9 @@ All new features must include automated QA testing that covers:
 
 ### Core Web Vitals Targets
 
-- **LCP (Largest Contentful Paint)**: < 2.5 seconds
-- **FID (First Input Delay)**: < 100 milliseconds
-- **CLS (Cumulative Layout Shift)**: < 0.1
+- **LCP**: < 2.5 seconds
+- **FID**: < 100 milliseconds
+- **CLS**: < 0.1
 
 ### Optimization Strategies
 
