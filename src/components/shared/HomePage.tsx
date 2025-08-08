@@ -1,6 +1,28 @@
 'use client';
 
 import { useState } from 'react';
+
+// Type definitions
+interface User {
+  name: string;
+  email: string;
+  avatar: string;
+}
+
+interface Balance {
+  usd: number;
+  thb: number;
+  exchangeRate: number;
+}
+
+interface Transaction {
+  id: string;
+  amount: number;
+  currency: string;
+  description: string;
+  category: string;
+  date: Date;
+}
 import { useRouter } from 'next/navigation';
 import { useDemoContext } from '@/contexts/DemoContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,11 +51,11 @@ export default function HomePage({ isDemoMode = false }: HomePageProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  // Get demo context data (only available in demo mode)
-  let demoUser: any, demoBalance: any, recentTransactions: any[];
+  // Get demo context data (always call hook to follow Rules of Hooks)
+  const demoContext = useDemoContext();
+  let demoUser: User, demoBalance: Balance, recentTransactions: Transaction[];
   
   if (isDemoMode) {
-    const demoContext = useDemoContext();
     demoUser = demoContext.demoUser;
     demoBalance = demoContext.demoBalance;
     recentTransactions = demoContext.recentTransactions;
@@ -64,7 +86,7 @@ export default function HomePage({ isDemoMode = false }: HomePageProps) {
         // await logoutUser(); // Implement actual logout
         router.push('/login?message=logout_success');
       } catch (error) {
-        console.error('Logout failed:', error);
+        // Logout failed - error handled silently
       }
     }
     
@@ -217,7 +239,7 @@ function ExchangeRateCard({ rate }: { rate: number }) {
 }
 
 // Recent Transactions Card
-function RecentTransactionsCard({ transactions }: { transactions: any[] }) {
+function RecentTransactionsCard({ transactions }: { transactions: Transaction[] }) {
   return (
     <Card>
       <CardHeader>
@@ -249,7 +271,7 @@ function RecentTransactionsCard({ transactions }: { transactions: any[] }) {
                 {transaction.currency === 'USD' ? '$' : '฿'}{transaction.amount.toLocaleString()}
               </p>
               <p className="text-xs text-muted-foreground">
-                {transaction.date.toLocaleDateString()}
+                {new Date(transaction.date).toLocaleDateString()}
               </p>
             </div>
           </div>
@@ -260,7 +282,7 @@ function RecentTransactionsCard({ transactions }: { transactions: any[] }) {
 }
 
 // Quick Stats Card
-function QuickStatsCard({ transactions }: { transactions: any[] }) {
+function QuickStatsCard({ transactions }: { transactions: Transaction[] }) {
   const totalUSD = transactions
     .filter(t => t.currency === 'USD')
     .reduce((sum, t) => sum + t.amount, 0);

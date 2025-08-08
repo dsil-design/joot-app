@@ -1,16 +1,14 @@
 "use client";
 
-import { login, signup } from './actions'
+import { login } from './actions'
 import Link from 'next/link'
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { CheckCircle2, User, Info } from 'lucide-react';
+import { CheckCircle2, Info } from 'lucide-react';
+import Image from 'next/image';
 
 // Image assets from Figma
-const imgPhoto16980440482342E7F6C4E6Aca = "http://localhost:3845/assets/12e5fb50abf63d0dc0bc372fb5830e8ee292640b.png";
 const imgUserIcon = "http://localhost:3845/assets/7e353056b8650208a0e14c8a5a3242cc14b01c48.svg";
 const imgUserIcon2 = "http://localhost:3845/assets/b82983d6c7dc554e7369dbbfb4417b70f6aad3c8.svg";
 
@@ -18,7 +16,6 @@ const imgUserIcon2 = "http://localhost:3845/assets/b82983d6c7dc554e7369dbbfb4417
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [alert, setAlert] = useState<{show: boolean, type: 'success' | 'info', message: string}>({
     show: false, 
@@ -175,19 +172,21 @@ export default function LoginPage() {
           >
             <div className="relative w-5 h-5">
               <div className="absolute inset-[56.25%_18.75%_14.58%_18.75%]">
-                <img
+                <Image
                   alt=""
                   className="block max-w-none w-full h-full"
-                  loading="lazy"
                   src={imgUserIcon}
+                  width={20}
+                  height={20}
                 />
               </div>
               <div className="absolute inset-[20.83%_37.5%_54.17%_37.5%]">
-                <img
+                <Image
                   alt=""
                   className="block max-w-none w-full h-full"
-                  loading="lazy"
                   src={imgUserIcon2}
+                  width={20}
+                  height={20}
                 />
               </div>
             </div>

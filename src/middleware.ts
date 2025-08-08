@@ -91,7 +91,7 @@ export async function middleware(request: NextRequest) {
 
     return supabaseResponse
   } catch (error) {
-    console.error('Middleware auth error:', error)
+    // Middleware auth error - handled silently
     // Allow request to continue even if auth check fails
     return NextResponse.next()
   }

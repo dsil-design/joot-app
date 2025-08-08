@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { redirect } from 'next/navigation'
 
 export async function GET(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
 
     const { error } = await supabase.auth.verifyOtp({
-      type: type as any,
+      type: type as 'email' | 'sms' | 'phone_change' | 'recovery',
       token_hash,
     })
 
