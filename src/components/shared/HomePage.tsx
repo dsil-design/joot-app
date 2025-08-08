@@ -256,9 +256,9 @@ function RecentTransactionsCard({ transactions }: { transactions: Transaction[] 
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                 {transaction.currency === 'USD' ? (
-                  <ArrowUpRight className="h-4 w-4 text-red-500" />
+                  <ArrowUpRight className="h-4 w-4 text-destructive" />
                 ) : (
-                  <ArrowDownRight className="h-4 w-4 text-green-500" />
+                  <ArrowDownRight className="h-4 w-4 text-green-600" />
                 )}
               </div>
               <div>

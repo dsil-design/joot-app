@@ -76,23 +76,23 @@ function LoginPageContent() {
         <div className="flex flex-col gap-6 w-full sm:max-w-96">
           {alert.show && (
             <Alert className={alert.type === 'success' 
-              ? "border-green-500 bg-green-50" 
-              : "border-blue-500 bg-blue-50"
+              ? "border-green-600 bg-green-50" 
+              : "border-border bg-muted"
             }>
               {alert.type === 'success' ? (
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
               ) : (
-                <Info className="h-4 w-4 text-blue-600" />
+                <Info className="h-4 w-4 text-muted-foreground" />
               )}
               <AlertTitle className={alert.type === 'success' 
                 ? "text-green-800" 
-                : "text-blue-800"
+                : "text-foreground"
               }>
                 {alert.type === 'success' ? 'Success' : 'Information'}
               </AlertTitle>
               <AlertDescription className={alert.type === 'success' 
                 ? "text-green-700" 
-                : "text-blue-700"
+                : "text-muted-foreground"
               }>
                 {alert.message}
               </AlertDescription>
@@ -101,10 +101,10 @@ function LoginPageContent() {
           
           {/* Welcome Container */}
           <div className="flex flex-col gap-2.5 items-center text-center w-full">
-            <h1 className="text-[30px] font-bold leading-[36px] text-zinc-950">
+            <h1 className="text-[30px] font-bold leading-[36px] text-foreground">
               Welcome to Joot
             </h1>
-            <p className="text-[16px] font-normal leading-[24px] text-[#71717b]">
+            <p className="text-[16px] font-normal leading-[24px] text-muted-foreground">
               Log in to your account to continue
             </p>
           </div>
@@ -113,7 +113,7 @@ function LoginPageContent() {
           <form ref={formRef} className="flex flex-col gap-4 w-full">
             {/* Email Field */}
             <div className="flex flex-col gap-1 w-full">
-              <label htmlFor="email" className="text-[14px] font-medium leading-[20px] text-zinc-950">
+              <label htmlFor="email" className="text-[14px] font-medium leading-[20px] text-foreground">
                 Email
               </label>
               <div className="relative">
@@ -124,14 +124,14 @@ function LoginPageContent() {
                   autoComplete="email"
                   required
                   placeholder="Enter your email"
-                  className="bg-white h-10 w-full rounded-md border border-zinc-200 px-3 py-2 text-[14px] font-normal leading-[20px] text-[#71717b] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="bg-background h-10 w-full rounded-md border border-border px-3 py-2 text-[14px] font-normal leading-[20px] text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                 />
               </div>
             </div>
 
             {/* Password Field */}
             <div className="flex flex-col gap-1 w-full">
-              <label htmlFor="password" className="text-[14px] font-medium leading-[20px] text-zinc-950">
+              <label htmlFor="password" className="text-[14px] font-medium leading-[20px] text-foreground">
                 Password
               </label>
               <div className="relative">
@@ -142,7 +142,7 @@ function LoginPageContent() {
                   autoComplete="current-password"
                   required
                   placeholder="Enter your password"
-                  className="bg-white h-10 w-full rounded-md border border-zinc-200 px-3 py-2 text-[14px] font-normal leading-[20px] text-[#71717b] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="bg-background h-10 w-full rounded-md border border-border px-3 py-2 text-[14px] font-normal leading-[20px] text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                 />
               </div>
             </div>
@@ -151,13 +151,13 @@ function LoginPageContent() {
             <div className="flex gap-4 w-full">
               <button
                 formAction={login}
-                className="bg-[#155dfc] flex-1 h-9 flex items-center justify-center rounded-lg px-4 py-2 text-[14px] font-medium leading-[20px] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                className="bg-primary flex-1 h-9 flex items-center justify-center rounded-lg px-4 py-2 text-[14px] font-medium leading-[20px] text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors hover:bg-primary/90"
               >
                 Log In
               </button>
               <Link
                 href="/signup"
-                className="bg-white flex-1 h-9 flex items-center justify-center rounded-lg px-4 py-2 border border-zinc-200 text-[14px] font-medium leading-[20px] text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+                className="bg-background flex-1 h-9 flex items-center justify-center rounded-lg px-4 py-2 border border-border text-[14px] font-medium leading-[20px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-accent"
               >
                 Create account
               </Link>
@@ -166,18 +166,18 @@ function LoginPageContent() {
 
           {/* Separators */}
           <div className="flex items-center gap-6 w-full">
-            <div className="bg-zinc-200 h-px flex-1"></div>
-            <span className="text-[14px] font-medium leading-[20px] text-[#71717b]">
+            <div className="bg-border h-px flex-1"></div>
+            <span className="text-[14px] font-medium leading-[20px] text-muted-foreground">
               OR
             </span>
-            <div className="bg-zinc-200 h-px flex-1"></div>
+            <div className="bg-border h-px flex-1"></div>
           </div>
 
           {/* Demo Login Button */}
           <button
             type="button"
             onClick={handleDemoLogin}
-            className="bg-white h-9 w-full flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 border border-zinc-200 text-[14px] font-medium leading-[20px] text-zinc-900 hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] transition-colors"
+            className="bg-background h-9 w-full flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 border border-border text-[14px] font-medium leading-[20px] text-foreground hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] transition-colors"
           >
             <div className="relative w-5 h-5">
               <div className="absolute inset-[56.25%_18.75%_14.58%_18.75%]">
@@ -206,7 +206,7 @@ function LoginPageContent() {
 
       {/* Right Panel - Background Image */}
       <div className="hidden lg:flex flex-col items-start justify-center p-4 flex-1">
-        <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-orange-400 w-full h-full rounded-xl border border-zinc-200 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-orange-400 w-full h-full rounded-xl border border-border relative overflow-hidden">
           {/* Gradient overlay to match Figma design */}
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/80 via-purple-500/60 to-orange-500/80"></div>
         </div>
