@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 export default function ErrorPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -9,12 +11,15 @@ export default function ErrorPage() {
           <p className="text-sm text-muted-foreground">
             Sorry, we couldn't authenticate you. Please try again.
           </p>
-          <a
-            href="/login"
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full"
+          <Button
+            asChild
+            variant="default"
+            className="w-full"
           >
-            Try Again
-          </a>
+            <a href="/login">
+              Try Again
+            </a>
+          </Button>
         </div>
       </div>
     </div>

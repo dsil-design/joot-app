@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { signOut } from './actions'
+import { Button } from '@/components/ui/button'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -36,12 +37,12 @@ export default async function HomePage() {
 
         {/* Sign out button */}
         <form action={signOut}>
-          <button
+          <Button
             type="submit"
-            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-medium py-2 px-6 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            variant="destructive"
           >
             Sign Out
-          </button>
+          </Button>
         </form>
       </div>
     </div>
