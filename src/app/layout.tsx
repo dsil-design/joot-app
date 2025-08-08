@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Toaster } from "@/components/ui/sonner";
+import { GlobalActionWrapper } from "@/components/providers/GlobalActionWrapper";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} font-geist-sans antialiased`} suppressHydrationWarning>
       <body suppressHydrationWarning>
-        {children}
+        <GlobalActionWrapper>
+          {children}
+        </GlobalActionWrapper>
         <Toaster />
       </body>
     </html>

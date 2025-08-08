@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CheckCircle2, Info } from 'lucide-react';
 import Image from 'next/image';
+import { useGlobalAction } from '@/contexts/GlobalActionContext';
 
 // Image assets from Figma
 const imgUserIcon = "http://localhost:3845/assets/7e353056b8650208a0e14c8a5a3242cc14b01c48.svg";
@@ -19,6 +20,7 @@ const imgUserIcon2 = "http://localhost:3845/assets/b82983d6c7dc554e7369dbbfb4417
 function LoginPageContent() {
   const searchParams = useSearchParams();
   const formRef = useRef<HTMLFormElement>(null);
+  const { withGlobalAction } = useGlobalAction();
   const [alert, setAlert] = useState<{show: boolean, type: 'success' | 'info', message: string}>({
     show: false, 
     type: 'success', 
@@ -53,22 +55,27 @@ function LoginPageContent() {
     }
   }, [searchParams]);
 
-  const handleDemoLogin = () => {
-    if (formRef.current) {
-      const emailInput = formRef.current.querySelector('input[name="email"]') as HTMLInputElement;
-      const passwordInput = formRef.current.querySelector('input[name="password"]') as HTMLInputElement;
-      
-      if (emailInput && passwordInput) {
-        emailInput.value = 'hello@dsil.design';
-        passwordInput.value = 'R9bKtzm6RGJe';
+  const handleDemoLogin = async () => {
+    await withGlobalAction('demo-login', async () => {
+      if (formRef.current) {
+        const emailInput = formRef.current.querySelector('input[name="email"]') as HTMLInputElement;
+        const passwordInput = formRef.current.querySelector('input[name="password"]') as HTMLInputElement;
         
-        // Trigger form submission
-        const submitButton = formRef.current.querySelector('button[formAction]') as HTMLButtonElement;
-        if (submitButton) {
-          submitButton.click();
+        if (emailInput && passwordInput) {
+          emailInput.value = 'hello@dsil.design';
+          passwordInput.value = 'R9bKtzm6RGJe';
+          
+          // Add a small delay to show the global disabled state
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Trigger form submission
+          const submitButton = formRef.current.querySelector('button[formAction]') as HTMLButtonElement;
+          if (submitButton) {
+            submitButton.click();
+          }
         }
       }
-    }
+    });
   };
 
   return (
@@ -146,7 +153,13 @@ function LoginPageContent() {
             {/* Actions */}
             <div className="flex gap-4 w-full">
               <Button
-                formAction={login}
+                type="button"
+                onClick={async () => {
+                  const formData = new FormData(document.querySelector('form') as HTMLFormElement);
+                  await withGlobalAction('login-form', async () => {
+                    await login(formData);
+                  });
+                }}
                 variant="default"
                 className="flex-1"
               >

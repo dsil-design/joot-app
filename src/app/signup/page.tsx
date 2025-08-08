@@ -1,8 +1,12 @@
+"use client";
+
 import { signup } from '../login/actions'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { useGlobalAction } from '@/contexts/GlobalActionContext'
 
 export default function SignupPage() {
+  const { withGlobalAction } = useGlobalAction();
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Signup Form */}
@@ -52,7 +56,13 @@ export default function SignupPage() {
 
             <div>
               <Button
-                formAction={signup}
+                type="button"
+                onClick={async () => {
+                  const formData = new FormData(document.querySelector('form') as HTMLFormElement);
+                  await withGlobalAction('signup-form', async () => {
+                    await signup(formData);
+                  });
+                }}
                 variant="default"
                 className="w-full"
               >

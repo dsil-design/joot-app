@@ -20,6 +20,9 @@ export async function login(formData: FormData) {
     redirect('/error')
   }
 
+  // Add small delay to allow global action state to be visible
+  await new Promise(resolve => setTimeout(resolve, 1000))
+
   revalidatePath('/', 'layout')
   redirect('/home')
 }
@@ -39,6 +42,9 @@ export async function signup(formData: FormData) {
   if (error) {
     redirect('/error')
   }
+
+  // Add small delay to allow global action state to be visible
+  await new Promise(resolve => setTimeout(resolve, 1000))
 
   revalidatePath('/', 'layout')
   redirect('/home')
