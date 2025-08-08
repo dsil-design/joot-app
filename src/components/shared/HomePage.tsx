@@ -85,7 +85,7 @@ export default function HomePage({ isDemoMode = false }: HomePageProps) {
       try {
         // await logoutUser(); // Implement actual logout
         router.push('/login?message=logout_success');
-      } catch (error) {
+      } catch {
         // Logout failed - error handled silently
       }
     }

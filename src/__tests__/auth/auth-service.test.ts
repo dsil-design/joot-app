@@ -1,12 +1,26 @@
 import { auth } from '@/lib/supabase/auth'
 import { createClient } from '@/lib/supabase/client'
 
-// Type the mock properly
-const mockSupabase = createClient() as jest.Mocked<ReturnType<typeof createClient>>
+// Mock the client module
+jest.mock('@/lib/supabase/client')
+
+const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>
+const mockSupabase = {
+  auth: {
+    signUp: jest.fn(),
+    signInWithPassword: jest.fn(),
+    signOut: jest.fn(),
+    getUser: jest.fn(),
+    getSession: jest.fn(),
+  }
+}
+
+mockCreateClient.mockReturnValue(mockSupabase as ReturnType<typeof createClient>)
 
 describe('Auth Service', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockCreateClient.mockReturnValue(mockSupabase as ReturnType<typeof createClient>)
   })
 
   describe('signUp', () => {

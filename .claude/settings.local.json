@@ -6,7 +6,16 @@
       "Bash(npm run build:*)",
       "Bash(cd:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run validate:env:*)"
+      "Bash(npm run validate:env:*)",
+      "Bash(find:*)",
+      "Bash(npm run test:coverage:*)",
+      "Bash(npm run test:unit:*)",
+      "Bash(npm test:*)",
+      "Bash(npx depcheck:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm install:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm outdated)"
     ],
     "deny": []
   }

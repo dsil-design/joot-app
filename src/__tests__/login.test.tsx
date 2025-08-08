@@ -10,19 +10,24 @@ jest.mock('@/lib/supabase/auth', () => ({
   }
 }))
 
-// Mock useRouter
+// Mock useRouter and useSearchParams
 const mockPush = jest.fn()
+const mockSearchParams = {
+  get: jest.fn().mockReturnValue(null),
+  getAll: jest.fn().mockReturnValue([]),
+  has: jest.fn().mockReturnValue(false),
+  toString: jest.fn().mockReturnValue(''),
+}
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush
-  })
+  }),
+  useSearchParams: () => mockSearchParams
 }))
 
 const mockAuth = auth as jest.Mocked<typeof auth>
 
 describe('LoginPage', () => {
-  const mockSearchParams = Promise.resolve({})
-
   beforeEach(() => {
     jest.clearAllMocks()
     mockPush.mockClear()

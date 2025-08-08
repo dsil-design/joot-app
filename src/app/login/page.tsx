@@ -3,7 +3,7 @@
 import { login } from './actions'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, Info } from 'lucide-react';
 import Image from 'next/image';
@@ -14,7 +14,7 @@ const imgUserIcon2 = "http://localhost:3845/assets/b82983d6c7dc554e7369dbbfb4417
 
 
 
-export default function LoginPage() {
+function LoginPageContent() {
   const searchParams = useSearchParams();
   const formRef = useRef<HTMLFormElement>(null);
   const [alert, setAlert] = useState<{show: boolean, type: 'success' | 'info', message: string}>({
@@ -203,5 +203,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
