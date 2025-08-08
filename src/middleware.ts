@@ -90,10 +90,16 @@ export async function middleware(request: NextRequest) {
     }
 
     return supabaseResponse
-  } catch {
-    // Middleware auth error - handled silently
-    // Allow request to continue even if auth check fails
-    return NextResponse.next()
+  } catch (error) {
+    // Middleware auth error - redirect to login for security
+    // Log auth error for debugging (remove in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Middleware auth error:', error)
+    }
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.searchParams.set('error', 'auth_failed')
+    return NextResponse.redirect(url)
   }
 }
 

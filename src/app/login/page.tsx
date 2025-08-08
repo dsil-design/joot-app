@@ -25,6 +25,7 @@ function LoginPageContent() {
 
   useEffect(() => {
     const message = searchParams.get('message');
+    const error = searchParams.get('error');
     
     if (message === 'logout_success') {
       setAlert({
@@ -34,7 +35,15 @@ function LoginPageContent() {
       });
     }
 
-    if (message) {
+    if (error === 'auth_failed') {
+      setAlert({
+        show: true,
+        type: 'info',
+        message: 'Please log in to access that page.'
+      });
+    }
+
+    if (message || error) {
       const timer = setTimeout(() => {
         setAlert(prev => ({ ...prev, show: false }));
       }, 5000);
@@ -61,10 +70,10 @@ function LoginPageContent() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Panel - Login Form */}
-      <div className="flex items-center justify-center px-[186px] py-[202px] flex-1">
-        <div className="flex flex-col gap-6 max-w-96 w-full">
+      <div className="flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-16 xl:px-24 py-8 sm:py-12 md:py-16 lg:py-24 flex-1">
+        <div className="flex flex-col gap-6 w-full sm:max-w-96">
           {alert.show && (
             <Alert className={alert.type === 'success' 
               ? "border-green-500 bg-green-50" 
@@ -114,8 +123,8 @@ function LoginPageContent() {
                   type="email"
                   autoComplete="email"
                   required
+                  placeholder="Enter your email"
                   className="bg-white h-10 w-full rounded-md border border-zinc-200 px-3 py-2 text-[14px] font-normal leading-[20px] text-[#71717b] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  defaultValue="hello@dsil.design"
                 />
               </div>
             </div>
@@ -132,8 +141,8 @@ function LoginPageContent() {
                   type="password"
                   autoComplete="current-password"
                   required
+                  placeholder="Enter your password"
                   className="bg-white h-10 w-full rounded-md border border-zinc-200 px-3 py-2 text-[14px] font-normal leading-[20px] text-[#71717b] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  defaultValue="•••••••••"
                 />
               </div>
             </div>
@@ -196,8 +205,8 @@ function LoginPageContent() {
       </div>
 
       {/* Right Panel - Background Image */}
-      <div className="flex flex-col items-start justify-center p-4 flex-1">
-        <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-orange-400 w-full max-w-[756px] h-full rounded-xl border border-zinc-200 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col items-start justify-center p-4 flex-1">
+        <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-orange-400 w-full h-full rounded-xl border border-zinc-200 relative overflow-hidden">
           {/* Gradient overlay to match Figma design */}
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/80 via-purple-500/60 to-orange-500/80"></div>
         </div>
