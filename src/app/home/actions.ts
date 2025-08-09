@@ -9,7 +9,6 @@ export async function signOut() {
   const { error } = await supabase.auth.signOut()
   
   if (error) {
-    console.error('Error signing out:', error)
     redirect('/login?error=signout_failed')
   } else {
     redirect('/login?message=logout_success')

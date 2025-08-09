@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import Link from 'next/link'
 import { useGlobalAction } from '@/contexts/GlobalActionContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -260,16 +261,16 @@ export default function TestGlobalActionsPage() {
           </p>
           <div className="flex justify-center gap-spacing-4">
             <Button variant="outline" asChild>
-              <a href="/">Home</a>
+              <Link href="/">Home</Link>
             </Button>
             <Button variant="outline" asChild>
-              <a href="/login">Login</a>
+              <Link href="/login">Login</Link>
             </Button>
             <Button variant="outline" asChild>
-              <a href="/test-page">Test Page</a>
+              <Link href="/test-page">Test Page</Link>
             </Button>
             <Button variant="outline" asChild>
-              <a href="/docs">Documentation</a>
+              <Link href="/docs">Documentation</Link>
             </Button>
           </div>
         </div>
