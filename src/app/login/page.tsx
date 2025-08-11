@@ -62,17 +62,29 @@ function LoginPageContent() {
         const passwordInput = formRef.current.querySelector('input[name="password"]') as HTMLInputElement;
         
         if (emailInput && passwordInput) {
+          // Set the values
           emailInput.value = 'hello@dsil.design';
           passwordInput.value = 'R9bKtzm6RGJe';
           
-          // Add a small delay to show the global disabled state
+          // Trigger input events to ensure React state is updated
+          emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+          passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+          
+          // Add a small delay to show the populated fields and global disabled state
           await new Promise(resolve => setTimeout(resolve, 500));
           
-          // Trigger form submission
-          const submitButton = formRef.current.querySelector('button[formAction]') as HTMLButtonElement;
-          if (submitButton) {
-            submitButton.click();
-          }
+          // Create FormData manually to ensure we have the correct values
+          const formData = new FormData();
+          formData.append('email', 'hello@dsil.design');
+          formData.append('password', 'R9bKtzm6RGJe');
+          
+          // Debug: Log the form data to verify
+          console.log('Demo login FormData:', {
+            email: formData.get('email'),
+            password: formData.get('password')
+          });
+          
+          await login(formData);
         }
       }
     });
