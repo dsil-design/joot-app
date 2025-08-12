@@ -1,6 +1,9 @@
 import { DocsNav } from "@/components/docs/docs-nav"
 import { ThemeToggle } from "@/components/docs/theme-toggle"
 import { DocsSearch } from "@/components/docs/docs-search"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
 
 export default function DocsLayout({
   children,
@@ -12,6 +15,12 @@ export default function DocsLayout({
       <div className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center px-4">
           <div className="flex items-center space-x-4">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/login">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to App
+              </Link>
+            </Button>
             <h1 className="text-xl font-semibold">Joot Design System</h1>
           </div>
           <div className="ml-auto flex items-center space-x-4">
