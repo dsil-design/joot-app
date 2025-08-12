@@ -58,6 +58,7 @@ export async function middleware(request: NextRequest) {
       '/error',
       '/demo',
       '/home',
+      '/docs',
     ]
 
     // Check if current path is public

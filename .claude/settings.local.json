@@ -18,7 +18,12 @@
       "Bash(npm outdated)",
       "Bash(npm run dev:*)",
       "Bash(grep:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:mynaui.com)",
+      "Bash(mkdir:*)",
+      "Bash(cd:*)",
+      "Bash(cd:*)",
+      "Bash(cd:*)"
     ],
     "deny": []
   }

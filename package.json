@@ -18,6 +18,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:accessibility && npm run test:performance",
+    "test:docs": "jest --testPathPatterns=docs --coverage --collectCoverageFrom='src/app/docs/**/*.{ts,tsx}' --collectCoverageFrom='src/components/docs/**/*.{ts,tsx}'",
     "test:supabase": "node scripts/test-supabase-connection.js",
     "test:ci": "npm run test:coverage && npm run test:e2e",
     "validate:env": "node scripts/validate-env.js"

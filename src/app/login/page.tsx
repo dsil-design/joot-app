@@ -227,6 +227,16 @@ function LoginPageContent() {
             </div>
             Log in to Demo Account
           </Button>
+
+          {/* Documentation Link */}
+          <div className="text-center">
+            <Link 
+              href="/docs" 
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              View Design System Documentation
+            </Link>
+          </div>
         </div>
       </div>
 
