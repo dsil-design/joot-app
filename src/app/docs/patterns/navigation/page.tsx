@@ -5,7 +5,7 @@ import { CodeBlock } from "@/components/docs/code-block"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   Breadcrumb,
   BreadcrumbEllipsis,
@@ -23,7 +23,6 @@ import {
   Search,
   Menu,
   X,
-  ChevronDown,
   ChevronRight,
   Folder,
   FileText,
@@ -32,8 +31,6 @@ import {
   Calendar,
   Users,
   BarChart3,
-  CreditCard,
-  HelpCircle,
   LogOut
 } from "lucide-react"
 import { useState } from "react"

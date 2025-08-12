@@ -21,6 +21,7 @@ export function CodeBlock({ code, language = "tsx", title, showLineNumbers = fal
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Failed to copy text: ", err)
     }
   }

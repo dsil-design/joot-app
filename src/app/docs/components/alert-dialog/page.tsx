@@ -3,7 +3,8 @@
 import { ComponentDemo } from "@/components/docs/component-demo"
 import { CodeBlock } from "@/components/docs/code-block"
 import { PropsTable } from "@/components/docs/props-table"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -108,7 +109,7 @@ export default function AlertDialogPage() {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction variant="destructive">
+                    <AlertDialogAction className={cn(buttonVariants({ variant: "destructive" }))}>
                       Delete
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -138,7 +139,7 @@ export default function AlertDialogPage() {
     </AlertDialogHeader>
     <AlertDialogFooter>
       <AlertDialogCancel>Cancel</AlertDialogCancel>
-      <AlertDialogAction variant="destructive">
+      <AlertDialogAction className={cn(buttonVariants({ variant: "destructive" }))}>
         Delete
       </AlertDialogAction>
     </AlertDialogFooter>
@@ -212,7 +213,7 @@ export default function AlertDialogPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction variant="destructive">
+                      <AlertDialogAction className={cn(buttonVariants({ variant: "destructive" }))}>
                         Reset System
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -242,7 +243,7 @@ export default function AlertDialogPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction variant="destructive">
+                      <AlertDialogAction className={cn(buttonVariants({ variant: "destructive" }))}>
                         Remove Access
                       </AlertDialogAction>
                     </AlertDialogFooter>

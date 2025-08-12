@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Palette, Type, Ruler, Sparkles, Blocks, Layout } from "lucide-react"
+import { Palette, Type, Sparkles, Blocks, Layout } from "lucide-react"
 
 const sections = [
   {

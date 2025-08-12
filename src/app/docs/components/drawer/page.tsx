@@ -16,8 +16,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer"
-import { Minus, Plus, Settings } from "lucide-react"
-import { useState } from "react"
+import { Settings } from "lucide-react"
 
 export default function DrawerPage() {
   return (

@@ -31,8 +31,6 @@ import {
   Bell, 
   Moon, 
   Sun, 
-  Globe, 
-  Shield,
   HelpCircle,
   LogOut
 } from "lucide-react"

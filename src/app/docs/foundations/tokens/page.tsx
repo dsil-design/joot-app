@@ -157,7 +157,15 @@ const otherTokens = [
   }
 ]
 
-function TokenDisplay({ token, showValue = false }: { token: any, showValue?: boolean }) {
+interface Token {
+  name: string
+  description?: string
+  value?: string
+  lightValue?: string
+  darkValue?: string
+}
+
+function TokenDisplay({ token, showValue = false }: { token: Token, showValue?: boolean }) {
   const [copied, setCopied] = useState(false)
 
   const copyToClipboard = async (text: string) => {
@@ -166,6 +174,7 @@ function TokenDisplay({ token, showValue = false }: { token: any, showValue?: bo
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Failed to copy text: ", err)
     }
   }

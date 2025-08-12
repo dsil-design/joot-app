@@ -3,8 +3,6 @@ import { CodeBlock } from "@/components/docs/code-block"
 import { PropsTable } from "@/components/docs/props-table"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Avatar } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
 
 export default function SkeletonPage() {
   return (

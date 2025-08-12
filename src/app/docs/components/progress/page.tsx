@@ -458,7 +458,7 @@ export function Example() {
 }
 
 function ProgressWithLabelsExample() {
-  const [progress, setProgress] = useState(45)
+  const progress = 45
 
   return (
     <div className="space-y-4 w-full max-w-md">

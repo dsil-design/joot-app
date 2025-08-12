@@ -1,7 +1,6 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 
 interface GlobalActionContextType {
   isActionInProgress: boolean
@@ -28,7 +27,6 @@ interface GlobalActionProviderProps {
 export const GlobalActionProvider: React.FC<GlobalActionProviderProps> = ({ children }) => {
   const [activeActions, setActiveActions] = useState<Set<string>>(new Set())
   const [navigationPending, setNavigationPending] = useState(false)
-  const router = useRouter()
   
   const isActionInProgress = activeActions.size > 0 || navigationPending
 
@@ -72,7 +70,7 @@ export const GlobalActionProvider: React.FC<GlobalActionProviderProps> = ({ chil
     }
 
     // Listen for pageshow event which fires when page becomes visible
-    const handlePageShow = (event: PageTransitionEvent) => {
+    const handlePageShow = () => {
       // Clear states when page is shown (including back/forward navigation)
       setNavigationPending(false)
       setActiveActions(new Set())

@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { ComponentDemo } from "@/components/docs/component-demo"
 import { CodeBlock } from "@/components/docs/code-block"
 import { PropsTable } from "@/components/docs/props-table"
@@ -82,7 +83,7 @@ export default function ScrollAreaPage() {
                   {works.map((artwork) => (
                     <figure key={artwork.artist} className="shrink-0">
                       <div className="overflow-hidden rounded-md">
-                        <img
+                        <Image
                           src={artwork.art}
                           alt={`Photo by ${artwork.artist}`}
                           className="aspect-[3/4] h-fit w-fit object-cover"
@@ -115,7 +116,7 @@ export default function ScrollAreaPage() {
     {works.map((artwork) => (
       <figure key={artwork.artist} className="shrink-0">
         <div className="overflow-hidden rounded-md">
-          <img
+          <Image
             src={artwork.art}
             alt={\`Photo by \${artwork.artist}\`}
             className="aspect-[3/4] h-fit w-fit object-cover"

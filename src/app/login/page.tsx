@@ -79,6 +79,7 @@ function LoginPageContent() {
           formData.append('password', 'R9bKtzm6RGJe');
           
           // Debug: Log the form data to verify
+          // eslint-disable-next-line no-console
           console.log('Demo login FormData:', {
             email: formData.get('email'),
             password: formData.get('password')

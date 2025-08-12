@@ -21,8 +21,7 @@ import {
   Folder, 
   FolderOpen, 
   FileText, 
-  ChevronDown,
-  MoreHorizontal
+  ChevronDown
 } from "lucide-react"
 
 export default function BreadcrumbDocumentation() {

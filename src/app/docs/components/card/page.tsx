@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Settings, Star, Heart, Share, MoreHorizontal } from "lucide-react"
+import { Settings, Heart, Share, MoreHorizontal } from "lucide-react"
 
 export default function CardPage() {
   return (

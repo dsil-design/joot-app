@@ -17,13 +17,9 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
-  User, 
   Mail, 
   Phone, 
-  MapPin, 
-  CreditCard, 
   Lock,
   Eye,
   EyeOff,
@@ -97,6 +93,7 @@ export default function FormsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (validateForm()) {
+      // eslint-disable-next-line no-console
       console.log("Form submitted:", formData)
       // Handle successful submission
     }

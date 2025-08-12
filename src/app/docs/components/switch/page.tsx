@@ -13,13 +13,9 @@ import {
   Mail, 
   MessageSquare, 
   Shield, 
-  Eye, 
   Moon, 
   Sun, 
-  Wifi,
-  Bluetooth,
-  Globe,
-  Lock
+  Wifi
 } from "lucide-react"
 import { useState } from "react"
 

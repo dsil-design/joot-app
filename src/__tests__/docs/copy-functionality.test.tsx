@@ -59,7 +59,9 @@ describe('Copy Functionality', () => {
 
     it('handles copy failure gracefully', async () => {
       const testCode = 'const example = "test code";'
-      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {
+        // Intentionally empty - we're mocking console.error to suppress expected error output
+      })
       mockWriteText.mockRejectedValue(new Error('Copy failed'))
       
       render(<CodeBlock code={testCode} />)

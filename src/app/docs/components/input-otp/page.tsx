@@ -90,7 +90,7 @@ export default function InputOTPDocumentation() {
             <ComponentDemo>
               <InputOTP
                 maxLength={6}
-                pattern={/^[0-9]+$/}
+                pattern="^[0-9]+$"
               >
                 <InputOTPGroup>
                   <InputOTPSlot index={0} />
@@ -104,7 +104,7 @@ export default function InputOTPDocumentation() {
             </ComponentDemo>
             <CodeBlock code={`<InputOTP
   maxLength={6}
-  pattern={/^[0-9]+$/}
+  pattern="^[0-9]+$"
 >
   <InputOTPGroup>
     <InputOTPSlot index={0} />

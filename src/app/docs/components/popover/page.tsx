@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CalendarIcon, Settings, User } from "lucide-react"
+import { CalendarIcon, User } from "lucide-react"
 import { useState } from "react"
 import { format } from "date-fns"
 

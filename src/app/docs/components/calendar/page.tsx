@@ -5,10 +5,11 @@ import { CodeBlock } from "@/components/docs/code-block"
 import { PropsTable } from "@/components/docs/props-table"
 import { Calendar } from "@/components/ui/calendar"
 import { useState } from "react"
+import { DateRange } from "react-day-picker"
 
 export default function CalendarDocumentation() {
   const [date, setDate] = useState<Date | undefined>(new Date())
-  const [dateRange, setDateRange] = useState<any>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
     to: undefined
   })
