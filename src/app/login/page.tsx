@@ -7,13 +7,8 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, Info } from 'lucide-react';
-import Image from 'next/image';
+import { CheckCircle2, Info, User } from 'lucide-react';
 import { useGlobalAction } from '@/contexts/GlobalActionContext';
-
-// Image assets from Figma
-const imgUserIcon = "http://localhost:3845/assets/7e353056b8650208a0e14c8a5a3242cc14b01c48.svg";
-const imgUserIcon2 = "http://localhost:3845/assets/b82983d6c7dc554e7369dbbfb4417b70f6aad3c8.svg";
 
 
 
@@ -204,28 +199,9 @@ function LoginPageContent() {
             type="button"
             onClick={handleDemoLogin}
             variant="outline"
-            className="w-full gap-1.5"
+            className="w-full"
           >
-            <div className="relative w-5 h-5">
-              <div className="absolute inset-[56.25%_18.75%_14.58%_18.75%]">
-                <Image
-                  alt=""
-                  className="block max-w-none w-full h-full"
-                  src={imgUserIcon}
-                  width={20}
-                  height={20}
-                />
-              </div>
-              <div className="absolute inset-[20.83%_37.5%_54.17%_37.5%]">
-                <Image
-                  alt=""
-                  className="block max-w-none w-full h-full"
-                  src={imgUserIcon2}
-                  width={20}
-                  height={20}
-                />
-              </div>
-            </div>
+            <User className="h-4 w-4" />
             Log in to Demo Account
           </Button>
 
