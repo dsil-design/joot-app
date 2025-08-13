@@ -7,7 +7,7 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, Info, User } from 'lucide-react';
+import { Info, Eye, EyeOff, User } from 'lucide-react';
 import { useGlobalAction } from '@/contexts/GlobalActionContext';
 
 
@@ -30,7 +30,7 @@ function LoginPageContent() {
       setAlert({
         show: true,
         type: 'success',
-        message: 'Log Out - Logout Out Successful'
+        message: 'You are logged out!'
       });
     }
 
@@ -92,25 +92,12 @@ function LoginPageContent() {
       <div className="flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-16 xl:px-24 py-8 sm:py-12 md:py-16 lg:py-24 flex-1">
         <div className="flex flex-col gap-6 w-full sm:max-w-96">
           {alert.show && (
-            <Alert className={alert.type === 'success' 
-              ? "border-green-600 bg-green-50" 
-              : "border-border bg-muted"
-            }>
-              {alert.type === 'success' ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              ) : (
-                <Info className="h-4 w-4 text-muted-foreground" />
-              )}
-              <AlertTitle className={alert.type === 'success' 
-                ? "text-green-800" 
-                : "text-foreground"
-              }>
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>
                 {alert.type === 'success' ? 'Success' : 'Information'}
               </AlertTitle>
-              <AlertDescription className={alert.type === 'success' 
-                ? "text-green-700" 
-                : "text-muted-foreground"
-              }>
+              <AlertDescription>
                 {alert.message}
               </AlertDescription>
             </Alert>
