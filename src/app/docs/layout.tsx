@@ -1,6 +1,4 @@
 import { DocsNav } from "@/components/docs/docs-nav"
-import { ThemeToggle } from "@/components/docs/theme-toggle"
-import { DocsSearch } from "@/components/docs/docs-search"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
@@ -22,10 +20,6 @@ export default function DocsLayout({
               </Link>
             </Button>
             <h1 className="text-xl font-semibold">Joot Design System</h1>
-          </div>
-          <div className="ml-auto flex items-center space-x-4">
-            <DocsSearch />
-            <ThemeToggle />
           </div>
         </div>
       </div>
