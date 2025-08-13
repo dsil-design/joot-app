@@ -141,7 +141,8 @@ export type Database = {
         Row: {
           id: string
           email: string
-          full_name: string | null
+          first_name: string | null
+          last_name: string | null
           avatar_url: string | null
           preferred_currency: Database["public"]["Enums"]["currency_type"]
           created_at: string
@@ -150,7 +151,8 @@ export type Database = {
         Insert: {
           id: string
           email: string
-          full_name?: string | null
+          first_name?: string | null
+          last_name?: string | null
           avatar_url?: string | null
           preferred_currency?: Database["public"]["Enums"]["currency_type"]
           created_at?: string
@@ -159,7 +161,8 @@ export type Database = {
         Update: {
           id?: string
           email?: string
-          full_name?: string | null
+          first_name?: string | null
+          last_name?: string | null
           avatar_url?: string | null
           preferred_currency?: Database["public"]["Enums"]["currency_type"]
           created_at?: string
@@ -219,5 +222,5 @@ export type TransactionWithCategory = Transaction & {
 
 export type TransactionWithDetails = Transaction & {
   transaction_categories: TransactionCategory | null
-  users: Pick<User, 'id' | 'email' | 'full_name'>
+  users: Pick<User, 'id' | 'email' | 'first_name' | 'last_name'>
 }

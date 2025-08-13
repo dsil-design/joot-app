@@ -18,6 +18,34 @@ export default async function HomePage() {
     redirect('/login')
   }
 
+  // Fetch user profile data
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('first_name, last_name')
+    .eq('id', user.id)
+    .single()
+
+  // Create full name from first and last name
+  const fullName = userProfile?.first_name && userProfile?.last_name
+    ? `${userProfile.first_name} ${userProfile.last_name}`
+    : userProfile?.first_name || userProfile?.last_name || user.email || "User"
+
+  // Generate initials from first and last name
+  const getInitials = (firstName?: string | null, lastName?: string | null): string => {
+    if (firstName && lastName) {
+      return `${firstName.charAt(0).toUpperCase()}${lastName.charAt(0).toUpperCase()}`
+    }
+    if (firstName) {
+      return firstName.charAt(0).toUpperCase()
+    }
+    if (lastName) {
+      return lastName.charAt(0).toUpperCase()
+    }
+    return "U" // Default fallback
+  }
+
+  const userInitials = getInitials(userProfile?.first_name, userProfile?.last_name)
+
   return (
     <div className="min-h-screen bg-background">
       {/* Main scrollable content */}
@@ -27,10 +55,10 @@ export default async function HomePage() {
           <h1 className="text-4xl font-medium text-foreground leading-10">
             Home
           </h1>
-          <UserMenu userName={user.email || "User"}>
+          <UserMenu userName={fullName}>
             <Avatar className="size-10 cursor-pointer hover:opacity-80 transition-opacity">
               <AvatarFallback className="bg-secondary text-secondary-foreground text-sm font-semibold">
-                DS
+                {userInitials}
               </AvatarFallback>
             </Avatar>
           </UserMenu>

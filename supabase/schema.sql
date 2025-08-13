@@ -1,15 +1,25 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create custom types
-CREATE TYPE currency_type AS ENUM ('USD', 'THB');
-CREATE TYPE transaction_type AS ENUM ('income', 'expense');
+-- Create custom types (only if they don't exist)
+DO $$ BEGIN
+    CREATE TYPE currency_type AS ENUM ('USD', 'THB');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE transaction_type AS ENUM ('income', 'expense');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Users table (extends Supabase auth.users)
 CREATE TABLE public.users (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email TEXT NOT NULL,
-  full_name TEXT,
+  first_name TEXT,
+  last_name TEXT,
   avatar_url TEXT,
   preferred_currency currency_type DEFAULT 'USD',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -141,11 +151,12 @@ CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON public.transactio
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.users (id, email, full_name, avatar_url)
+  INSERT INTO public.users (id, email, first_name, last_name, avatar_url)
   VALUES (
     NEW.id,
     NEW.email,
-    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'first_name',
+    NEW.raw_user_meta_data->>'last_name',
     NEW.raw_user_meta_data->>'avatar_url'
   );
   

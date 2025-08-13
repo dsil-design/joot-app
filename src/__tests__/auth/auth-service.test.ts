@@ -32,13 +32,13 @@ describe('Auth Service', () => {
       
       mockSupabase.auth.signUp.mockResolvedValue(mockResponse)
       
-      const result = await auth.signUp('test@example.com', 'password123', { full_name: 'Test User' })
+      const result = await auth.signUp('test@example.com', 'password123', { first_name: 'Test', last_name: 'User' })
       
       expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
         email: 'test@example.com',
         password: 'password123',
         options: {
-          data: { full_name: 'Test User' }
+          data: { first_name: 'Test', last_name: 'User' }
         }
       })
       

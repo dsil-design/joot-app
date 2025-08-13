@@ -18,7 +18,7 @@ interface UserMenuProps {
   userName?: string
 }
 
-export function UserMenu({ children, userName = "Johnny Appleseed" }: UserMenuProps) {
+export function UserMenu({ children, userName = "User" }: UserMenuProps) {
   const [isPending, startTransition] = useTransition()
 
   const handleLogout = () => {
