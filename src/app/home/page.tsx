@@ -19,9 +19,9 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background">
       {/* Main scrollable content */}
-      <div className="flex-1 flex flex-col gap-6 pb-12 pt-16 px-10">
+      <div className="flex flex-col gap-6 pb-32 pt-16 px-10">
         {/* Header */}
         <div className="flex items-center justify-between w-full">
           <h1 className="text-4xl font-medium text-foreground leading-10">
@@ -107,8 +107,8 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Sticky Footer */}
-      <div className="bg-card border-t border-border flex flex-col gap-2.5 pb-12 pt-6 px-10">
+      {/* Fixed Sticky Footer - Always visible at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex flex-col gap-2.5 pb-12 pt-6 px-10">
         <Button className="w-full gap-1.5 px-4 py-2">
           <Plus className="size-5" />
           <span className="text-sm font-medium text-primary-foreground leading-5">

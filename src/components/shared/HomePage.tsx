@@ -94,75 +94,78 @@ export default function HomePage({ isDemoMode = false }: HomePageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Header Section */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {demoUser.avatar}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h1 className="font-semibold text-lg">Welcome back, {demoUser.name.split(' ')[0]}</h1>
-                <p className="text-sm text-muted-foreground">
-                  {isDemoMode ? 'Demo Account' : 'Personal Account'}
-                </p>
+    <div className="min-h-screen bg-background">
+      {/* Content Area with Safe Bottom Padding */}
+      <div className="pb-20">
+        {/* Header Section */}
+        <header className="border-b bg-card">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {demoUser.avatar}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h1 className="font-semibold text-lg">Welcome back, {demoUser.name.split(' ')[0]}</h1>
+                  <p className="text-sm text-muted-foreground">
+                    {isDemoMode ? 'Demo Account' : 'Personal Account'}
+                  </p>
+                </div>
               </div>
+              <Button variant="ghost" size="sm">
+                <Bell className="h-5 w-5" />
+              </Button>
             </div>
-            <Button variant="ghost" size="sm">
-              <Bell className="h-5 w-5" />
-            </Button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 space-y-6">
-        {/* Balance Cards */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <BalanceCard
-            title="USD Balance"
-            amount={demoBalance.usd}
-            currency="USD"
-            subtitle={`≈ ${(demoBalance.usd * demoBalance.exchangeRate).toLocaleString()} THB`}
+        {/* Main Content */}
+        <main className="container mx-auto px-4 py-4 space-y-4">
+          {/* Balance Cards */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <BalanceCard
+              title="USD Balance"
+              amount={demoBalance.usd}
+              currency="USD"
+              subtitle={`≈ ${(demoBalance.usd * demoBalance.exchangeRate).toLocaleString()} THB`}
+            />
+            <BalanceCard
+              title="THB Balance" 
+              amount={demoBalance.thb}
+              currency="THB"
+              subtitle={`≈ ${(demoBalance.thb / demoBalance.exchangeRate).toLocaleString()} USD`}
+            />
+          </div>
+
+          {/* Exchange Rate Card */}
+          <ExchangeRateCard rate={demoBalance.exchangeRate} />
+
+          {/* Recent Transactions */}
+          <RecentTransactionsCard transactions={recentTransactions} />
+
+          {/* Quick Stats */}
+          <QuickStatsCard transactions={recentTransactions} />
+
+          {/* Account Actions */}
+          <AccountActionsCard 
+            isDemoMode={isDemoMode} 
+            onLogout={handleLogout}
+            isLoggingOut={isLoggingOut}
           />
-          <BalanceCard
-            title="THB Balance" 
-            amount={demoBalance.thb}
-            currency="THB"
-            subtitle={`≈ ${(demoBalance.thb / demoBalance.exchangeRate).toLocaleString()} USD`}
-          />
-        </div>
+        </main>
+      </div>
 
-        {/* Exchange Rate Card */}
-        <ExchangeRateCard rate={demoBalance.exchangeRate} />
-
-        {/* Recent Transactions */}
-        <RecentTransactionsCard transactions={recentTransactions} />
-
-        {/* Quick Stats */}
-        <QuickStatsCard transactions={recentTransactions} />
-
-        {/* Account Actions */}
-        <AccountActionsCard 
-          isDemoMode={isDemoMode} 
-          onLogout={handleLogout}
-          isLoggingOut={isLoggingOut}
-        />
-      </main>
-
-      {/* Sticky Footer CTA */}
-      <div className="fixed bottom-0 left-0 right-0 w-full p-4 bg-background/95 border-t backdrop-blur-sm z-50">
-        <div className="container mx-auto">
+      {/* Sticky Footer CTA - Always Visible Overlay */}
+      <footer className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto p-4">
           <Button size="lg" className="w-full h-12 text-base font-medium">
             <Plus className="mr-2 h-5 w-5" />
             Add New Transaction
           </Button>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
