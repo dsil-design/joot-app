@@ -155,7 +155,7 @@ export default function HomePage({ isDemoMode = false }: HomePageProps) {
       </main>
 
       {/* Sticky Footer CTA */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 border-t backdrop-blur-sm">
+      <div className="fixed bottom-0 left-0 right-0 w-full p-4 bg-background/95 border-t backdrop-blur-sm z-50">
         <div className="container mx-auto">
           <Button size="lg" className="w-full h-12 text-base font-medium">
             <Plus className="mr-2 h-5 w-5" />

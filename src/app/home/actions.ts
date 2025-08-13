@@ -11,6 +11,6 @@ export async function signOut() {
   if (error) {
     redirect('/login?error=signout_failed')
   } else {
-    redirect('/login?message=logout_success')
+    redirect('/login?success=logout_successful')
   }
 }

@@ -23,14 +23,14 @@ function LoginPageContent() {
   });
 
   useEffect(() => {
-    const message = searchParams.get('message');
+    const success = searchParams.get('success');
     const error = searchParams.get('error');
     
-    if (message === 'logout_success') {
+    if (success === 'logout_successful') {
       setAlert({
         show: true,
         type: 'success',
-        message: 'You have been successfully logged out.'
+        message: 'Log Out - Logout Out Successful'
       });
     }
 
@@ -42,7 +42,7 @@ function LoginPageContent() {
       });
     }
 
-    if (message || error) {
+    if (success || error) {
       const timer = setTimeout(() => {
         setAlert(prev => ({ ...prev, show: false }));
       }, 5000);

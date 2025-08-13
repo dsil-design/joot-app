@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { UserMenu } from '@/components/page-specific/user-menu'
 import { ArrowRight, Plus } from 'lucide-react'
 
 export default async function HomePage() {
@@ -26,11 +27,13 @@ export default async function HomePage() {
           <h1 className="text-4xl font-medium text-foreground leading-10">
             Home
           </h1>
-          <Avatar className="size-10">
-            <AvatarFallback className="bg-secondary text-secondary-foreground text-sm font-semibold">
-              DS
-            </AvatarFallback>
-          </Avatar>
+          <UserMenu userName={user.email || "User"}>
+            <Avatar className="size-10 cursor-pointer hover:opacity-80 transition-opacity">
+              <AvatarFallback className="bg-secondary text-secondary-foreground text-sm font-semibold">
+                DS
+              </AvatarFallback>
+            </Avatar>
+          </UserMenu>
         </div>
 
         {/* Main Content */}
