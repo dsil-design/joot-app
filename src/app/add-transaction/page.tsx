@@ -75,7 +75,7 @@ export default function AddTransactionPage() {
       
       const transactionData = {
         description: description.trim() || undefined,
-        vendor: vendor || undefined,
+        vendorId: vendor || undefined,
         paymentMethod: paymentMethod || undefined,
         amount: parseFloat(amount),
         originalCurrency: currency,

@@ -5,13 +5,14 @@ import { createClient } from "@/lib/supabase/client"
 import type { 
   Transaction, 
   TransactionInsert, 
+  TransactionWithVendor,
   CurrencyType,
   TransactionType 
 } from "@/lib/supabase/types"
 
 export interface CreateTransactionData {
   description?: string
-  vendor?: string
+  vendorId?: string
   paymentMethod?: string
   amount: number
   originalCurrency: CurrencyType
@@ -20,7 +21,7 @@ export interface CreateTransactionData {
 }
 
 export function useTransactions() {
-  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [transactions, setTransactions] = useState<TransactionWithVendor[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
@@ -39,7 +40,13 @@ export function useTransactions() {
 
       let query = supabase
         .from("transactions")
-        .select("*")
+        .select(`
+          *,
+          vendors (
+            id,
+            name
+          )
+        `)
         .eq("user_id", user.id)
         .order("transaction_date", { ascending: false })
 
@@ -84,7 +91,7 @@ export function useTransactions() {
       const insertData: TransactionInsert = {
         user_id: user.id,
         description: transactionData.description || null,
-        vendor: transactionData.vendor || null,
+        vendor_id: transactionData.vendorId || null,
         payment_method: transactionData.paymentMethod || null,
         amount_usd: Math.round(amountUSD * 100) / 100,
         amount_thb: Math.round(amountTHB * 100) / 100,
@@ -180,7 +187,7 @@ export function useTransactions() {
   const getTransactionsByDateRange = async (
     startDate: string, 
     endDate: string
-  ): Promise<Transaction[]> => {
+  ): Promise<TransactionWithVendor[]> => {
     try {
       setError(null)
 
@@ -192,7 +199,13 @@ export function useTransactions() {
 
       const { data, error: fetchError } = await supabase
         .from("transactions")
-        .select("*")
+        .select(`
+          *,
+          vendors (
+            id,
+            name
+          )
+        `)
         .eq("user_id", user.id)
         .gte("transaction_date", startDate)
         .lte("transaction_date", endDate)

@@ -1,25 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useVendors } from "./use-vendors"
 
 export interface VendorPaymentOption {
   value: string
   label: string
   disabled?: boolean
 }
-
-// Default vendor options
-const defaultVendorOptions: VendorPaymentOption[] = [
-  { value: "7-eleven", label: "7-Eleven" },
-  { value: "grab", label: "Grab" },
-  { value: "apple", label: "Apple" },
-  { value: "netflix", label: "Netflix" },
-  { value: "shell", label: "Shell" },
-  { value: "grocery-store", label: "Grocery Store" },
-  { value: "gas-station", label: "Gas Station" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "pharmacy", label: "Pharmacy" },
-]
 
 // Default payment method options
 const defaultPaymentOptions: VendorPaymentOption[] = [
@@ -83,9 +71,27 @@ export function useVendorPaymentOptions(type: "vendor" | "payment") {
   }
 }
 
-// Convenience hooks
+// Updated vendor options hook that uses database vendors
 export function useVendorOptions() {
-  return useVendorPaymentOptions("vendor")
+  const { vendors, loading, error, createVendor } = useVendors()
+  
+  const options: VendorPaymentOption[] = vendors.map(vendor => ({
+    value: vendor.id,
+    label: vendor.name,
+    disabled: false
+  }))
+
+  const addCustomOption = async (vendorName: string) => {
+    const newVendor = await createVendor(vendorName)
+    return newVendor ? newVendor.id : null
+  }
+
+  return {
+    options,
+    addCustomOption,
+    loading,
+    error
+  }
 }
 
 export function usePaymentMethodOptions() {

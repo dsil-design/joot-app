@@ -5,16 +5,16 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
-import type { Transaction } from "@/lib/supabase/types"
+import type { TransactionWithVendor } from "@/lib/supabase/types"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
 
 interface TransactionCardProps {
-  transaction: Transaction
+  transaction: TransactionWithVendor
 }
 
 function TransactionCard({ transaction }: TransactionCardProps) {
   // Format amount based on original currency
-  const formatAmount = (transaction: Transaction) => {
+  const formatAmount = (transaction: TransactionWithVendor) => {
     const amount = transaction.original_currency === 'USD' 
       ? transaction.amount_usd 
       : transaction.amount_thb
@@ -22,7 +22,7 @@ function TransactionCard({ transaction }: TransactionCardProps) {
     return `${symbol}${amount.toFixed(2)}`
   }
 
-  const vendorName = transaction.vendor || 'Unknown Vendor'
+  const vendorName = transaction.vendors?.name || 'Unknown Vendor'
   const paymentMethod = transaction.payment_method || 'Unknown Payment'
   
   return (
@@ -49,7 +49,7 @@ function TransactionCard({ transaction }: TransactionCardProps) {
 
 interface TransactionGroupProps {
   date: string
-  transactions: Transaction[]
+  transactions: TransactionWithVendor[]
 }
 
 function TransactionGroup({ date, transactions }: TransactionGroupProps) {
@@ -80,7 +80,7 @@ export default function AllTransactionsPage() {
 
   // Group transactions by date
   const groupedTransactions = React.useMemo(() => {
-    const groups: Record<string, Transaction[]> = {}
+    const groups: Record<string, TransactionWithVendor[]> = {}
     
     transactions.forEach((transaction) => {
       const date = transaction.transaction_date
