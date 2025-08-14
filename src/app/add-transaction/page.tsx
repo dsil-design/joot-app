@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ComboBox } from "@/components/ui/combobox"
 import { DatePicker } from "@/components/ui/date-picker"
 // Removed Card imports - not needed for pixel-perfect Figma design"
-import { useVendors, usePaymentMethods, useExchangeRates, useTransactions } from "@/hooks"
+import { useVendorOptions, usePaymentMethodOptions, useExchangeRates, useTransactions } from "@/hooks"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import { CreditCard, DollarSign } from "lucide-react"
@@ -18,36 +18,40 @@ export default function AddTransactionPage() {
   const router = useRouter()
   const [currency, setCurrency] = React.useState<"THB" | "USD">("THB")
   const [transactionType, setTransactionType] = React.useState<"income" | "expense">("expense")
-  const [vendorId, setVendorId] = React.useState("")
-  const [paymentMethodId, setPaymentMethodId] = React.useState("")
+  const [vendor, setVendor] = React.useState("")
+  const [paymentMethod, setPaymentMethod] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [amount, setAmount] = React.useState("")
   const [transactionDate, setTransactionDate] = React.useState<Date>(new Date())
   const [saving, setSaving] = React.useState(false)
 
   // Custom hooks
-  const { options: vendorOptions, addCategory: addVendor, loading: vendorsLoading } = useVendors()
-  const { options: paymentOptions, addCategory: addPaymentMethod, loading: paymentsLoading } = usePaymentMethods() 
-  const { getTHBRate, getUSDRate, convertAmount } = useExchangeRates()
+  const { options: vendorOptions, addCustomOption: addVendor, loading: vendorsLoading } = useVendorOptions()
+  const { options: paymentOptions, addCustomOption: addPaymentMethod, loading: paymentsLoading } = usePaymentMethodOptions()
+  const { getTHBRate, getUSDRate } = useExchangeRates()
   const { createTransaction } = useTransactions()
 
   const handleAddVendor = async (vendorName: string) => {
-    const newVendor = await addVendor(vendorName)
+    const newVendor = addVendor(vendorName)
     if (newVendor) {
-      setVendorId(newVendor.id)
+      setVendor(newVendor)
       toast.success(`Added vendor: ${vendorName}`)
+      return newVendor
     } else {
       toast.error("Failed to add vendor")
+      return null
     }
   }
 
   const handleAddPaymentMethod = async (methodName: string) => {
-    const newMethod = await addPaymentMethod(methodName)
+    const newMethod = addPaymentMethod(methodName)
     if (newMethod) {
-      setPaymentMethodId(newMethod.id)
+      setPaymentMethod(newMethod)
       toast.success(`Added payment method: ${methodName}`)
+      return newMethod
     } else {
       toast.error("Failed to add payment method")
+      return null
     }
   }
 
@@ -71,12 +75,16 @@ export default function AddTransactionPage() {
       
       const transactionData = {
         description: description.trim() || undefined,
+        vendor: vendor || undefined,
+        paymentMethod: paymentMethod || undefined,
         amount: parseFloat(amount),
         originalCurrency: currency,
         transactionType,
         transactionDate: format(transactionDate, "yyyy-MM-dd")
       }
 
+      console.log("Transaction data:", transactionData)
+      console.log("Exchange rate:", exchangeRate)
       
       const result = await createTransaction(transactionData, exchangeRate)
       
@@ -87,8 +95,9 @@ export default function AddTransactionPage() {
       } else {
         toast.error("Failed to save transaction")
       }
-    } catch {
-      toast.error("An error occurred while saving")
+    } catch (error) {
+      console.error("Transaction save error:", error)
+      toast.error(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setSaving(false)
     }
@@ -180,8 +189,8 @@ export default function AddTransactionPage() {
               <ComboBox
                 id="vendor"
                 options={vendorOptions}
-                value={vendorId}
-                onValueChange={setVendorId}
+                value={vendor}
+                onValueChange={setVendor}
                 onAddNew={handleAddVendor}
                 allowAdd={true}
                 placeholder="Select option"
@@ -201,8 +210,8 @@ export default function AddTransactionPage() {
               <ComboBox
                 id="payment-method"
                 options={paymentOptions}
-                value={paymentMethodId}
-                onValueChange={setPaymentMethodId}
+                value={paymentMethod}
+                onValueChange={setPaymentMethod}
                 onAddNew={handleAddPaymentMethod}
                 allowAdd={true}
                 placeholder="Select option"

@@ -4,10 +4,6 @@ import type {
   Transaction, 
   TransactionInsert, 
   TransactionUpdate,
-  TransactionWithCategory,
-  TransactionCategory,
-  TransactionCategoryInsert,
-  TransactionCategoryUpdate,
   ExchangeRate,
   CurrencyType 
 } from './types'
@@ -17,7 +13,7 @@ export const db = {
   // Transaction operations
   transactions: {
     // Get all transactions for current user
-    getAll: async (): Promise<{ data: TransactionWithCategory[] | null; error: PostgrestError | null }> => {
+    getAll: async (): Promise<{ data: Transaction[] | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -28,7 +24,7 @@ export const db = {
     },
 
     // Get transaction by ID
-    getById: async (id: string): Promise<{ data: TransactionWithCategory | null; error: PostgrestError | null }> => {
+    getById: async (id: string): Promise<{ data: Transaction | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -76,7 +72,7 @@ export const db = {
     },
 
     // Get transactions by date range
-    getByDateRange: async (startDate: string, endDate: string): Promise<{ data: TransactionWithCategory[] | null; error: PostgrestError | null }> => {
+    getByDateRange: async (startDate: string, endDate: string): Promise<{ data: Transaction[] | null; error: PostgrestError | null }> => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
@@ -88,56 +84,6 @@ export const db = {
       return { data, error }
     },
 
-  },
-
-  // Category operations
-  categories: {
-    // Get all categories for current user
-    getAll: async (): Promise<{ data: TransactionCategory[] | null; error: PostgrestError | null }> => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('transaction_categories')
-        .select('*')
-        .order('name')
-      
-      return { data, error }
-    },
-
-    // Create new category
-    create: async (category: TransactionCategoryInsert): Promise<{ data: TransactionCategory | null; error: PostgrestError | null }> => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('transaction_categories')
-        .insert(category)
-        .select()
-        .single()
-      
-      return { data, error }
-    },
-
-    // Update category
-    update: async (id: string, updates: TransactionCategoryUpdate): Promise<{ data: TransactionCategory | null; error: PostgrestError | null }> => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('transaction_categories')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single()
-      
-      return { data, error }
-    },
-
-    // Delete category
-    delete: async (id: string): Promise<{ error: PostgrestError | null }> => {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('transaction_categories')
-        .delete()
-        .eq('id', id)
-      
-      return { error }
-    },
   },
 
   // Exchange rate operations

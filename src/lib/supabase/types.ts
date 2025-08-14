@@ -36,49 +36,13 @@ export type Database = {
         }
         Relationships: []
       }
-      transaction_categories: {
-        Row: {
-          id: string
-          name: string
-          color: string
-          icon: string
-          user_id: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          color?: string
-          icon?: string
-          user_id: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          color?: string
-          icon?: string
-          user_id?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transaction_categories_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       transactions: {
         Row: {
           id: string
           user_id: string
           description: string | null
+          vendor: string | null
+          payment_method: string | null
           amount_usd: number
           amount_thb: number
           exchange_rate: number
@@ -92,6 +56,8 @@ export type Database = {
           id?: string
           user_id: string
           description?: string | null
+          vendor?: string | null
+          payment_method?: string | null
           amount_usd: number
           amount_thb: number
           exchange_rate: number
@@ -105,6 +71,8 @@ export type Database = {
           id?: string
           user_id?: string
           description?: string | null
+          vendor?: string | null
+          payment_method?: string | null
           amount_usd?: number
           amount_thb?: number
           exchange_rate?: number
@@ -191,9 +159,6 @@ export type Transaction = Database["public"]["Tables"]["transactions"]["Row"]
 export type TransactionInsert = Database["public"]["Tables"]["transactions"]["Insert"]
 export type TransactionUpdate = Database["public"]["Tables"]["transactions"]["Update"]
 
-export type TransactionCategory = Database["public"]["Tables"]["transaction_categories"]["Row"]
-export type TransactionCategoryInsert = Database["public"]["Tables"]["transaction_categories"]["Insert"]
-export type TransactionCategoryUpdate = Database["public"]["Tables"]["transaction_categories"]["Update"]
 
 export type ExchangeRate = Database["public"]["Tables"]["exchange_rates"]["Row"]
 export type ExchangeRateInsert = Database["public"]["Tables"]["exchange_rates"]["Insert"]
@@ -203,9 +168,6 @@ export type CurrencyType = Database["public"]["Enums"]["currency_type"]
 export type TransactionType = Database["public"]["Enums"]["transaction_type"]
 
 // Extended types with relationships
-export type TransactionWithCategory = Transaction
-
 export type TransactionWithDetails = Transaction & {
-  transaction_categories: TransactionCategory | null
   users: Pick<User, 'id' | 'email' | 'first_name' | 'last_name'>
 }

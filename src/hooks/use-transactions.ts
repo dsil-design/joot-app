@@ -5,13 +5,14 @@ import { createClient } from "@/lib/supabase/client"
 import type { 
   Transaction, 
   TransactionInsert, 
-  TransactionWithCategory,
   CurrencyType,
   TransactionType 
 } from "@/lib/supabase/types"
 
 export interface CreateTransactionData {
   description?: string
+  vendor?: string
+  paymentMethod?: string
   amount: number
   originalCurrency: CurrencyType
   transactionType: TransactionType
@@ -19,7 +20,7 @@ export interface CreateTransactionData {
 }
 
 export function useTransactions() {
-  const [transactions, setTransactions] = useState<TransactionWithCategory[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
@@ -83,6 +84,8 @@ export function useTransactions() {
       const insertData: TransactionInsert = {
         user_id: user.id,
         description: transactionData.description || null,
+        vendor: transactionData.vendor || null,
+        payment_method: transactionData.paymentMethod || null,
         amount_usd: Math.round(amountUSD * 100) / 100,
         amount_thb: Math.round(amountTHB * 100) / 100,
         exchange_rate: exchangeRate,
@@ -91,11 +94,15 @@ export function useTransactions() {
         transaction_date: transactionData.transactionDate || new Date().toISOString().split('T')[0]
       }
 
+      console.log("Inserting transaction data:", insertData)
+
       const { data, error: insertError } = await supabase
         .from("transactions")
         .insert(insertData)
         .select()
         .single()
+        
+      console.log("Insert result:", { data, insertError })
 
       if (insertError) {
         throw insertError
@@ -173,7 +180,7 @@ export function useTransactions() {
   const getTransactionsByDateRange = async (
     startDate: string, 
     endDate: string
-  ): Promise<TransactionWithCategory[]> => {
+  ): Promise<Transaction[]> => {
     try {
       setError(null)
 

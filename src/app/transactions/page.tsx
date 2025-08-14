@@ -5,16 +5,16 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
-import type { TransactionWithCategory } from "@/lib/supabase/types"
+import type { Transaction } from "@/lib/supabase/types"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
 
 interface TransactionCardProps {
-  transaction: TransactionWithCategory
+  transaction: Transaction
 }
 
 function TransactionCard({ transaction }: TransactionCardProps) {
   // Format amount based on original currency
-  const formatAmount = (transaction: TransactionWithCategory) => {
+  const formatAmount = (transaction: Transaction) => {
     const amount = transaction.original_currency === 'USD' 
       ? transaction.amount_usd 
       : transaction.amount_thb
@@ -22,19 +22,8 @@ function TransactionCard({ transaction }: TransactionCardProps) {
     return `${symbol}${amount.toFixed(2)}`
   }
 
-  const vendorName = '7-Eleven' // Using hardcoded vendor since categories are removed
-  
-  // Generate payment method based on amount for demo purposes
-  const getPaymentMethod = (transaction: TransactionWithCategory) => {
-    const amount = transaction.original_currency === 'USD' 
-      ? transaction.amount_usd 
-      : transaction.amount_thb
-    if (amount > 100) return 'Credit Card'
-    if (amount > 50) return 'Debit Card'
-    return 'Cash'
-  }
-  
-  const paymentMethod = getPaymentMethod(transaction)
+  const vendorName = transaction.vendor || 'Unknown Vendor'
+  const paymentMethod = transaction.payment_method || 'Unknown Payment'
   
   return (
     <div className="bg-white border border-zinc-200 rounded-lg shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] inline-block">
@@ -60,7 +49,7 @@ function TransactionCard({ transaction }: TransactionCardProps) {
 
 interface TransactionGroupProps {
   date: string
-  transactions: TransactionWithCategory[]
+  transactions: Transaction[]
 }
 
 function TransactionGroup({ date, transactions }: TransactionGroupProps) {
@@ -91,7 +80,7 @@ export default function AllTransactionsPage() {
 
   // Group transactions by date
   const groupedTransactions = React.useMemo(() => {
-    const groups: Record<string, TransactionWithCategory[]> = {}
+    const groups: Record<string, Transaction[]> = {}
     
     transactions.forEach((transaction) => {
       const date = transaction.transaction_date

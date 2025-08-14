@@ -2,13 +2,9 @@
 export { useTransactions } from "./use-transactions"
 export type { CreateTransactionData } from "./use-transactions"
 
-// Transaction categories hooks (vendors and payment methods)
-export { 
-  useTransactionCategories, 
-  useVendors, 
-  usePaymentMethods 
-} from "./use-transaction-categories"
-export type { TransactionCategoryOption } from "./use-transaction-categories"
+// Vendor and payment method options
+export { useVendorOptions, usePaymentMethodOptions } from "./use-vendor-payment-options"
+export type { VendorPaymentOption } from "./use-vendor-payment-options"
 
 // Exchange rate hooks
 export { useExchangeRates } from "./use-exchange-rates"
