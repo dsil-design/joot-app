@@ -21,10 +21,7 @@ export const db = {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
-        .select(`
-          *,
-          transaction_categories (*)
-        `)
+        .select('*')
         .order('transaction_date', { ascending: false })
       
       return { data, error }
@@ -35,10 +32,7 @@ export const db = {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
-        .select(`
-          *,
-          transaction_categories (*)
-        `)
+        .select('*')
         .eq('id', id)
         .single()
       
@@ -86,10 +80,7 @@ export const db = {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('transactions')
-        .select(`
-          *,
-          transaction_categories (*)
-        `)
+        .select('*')
         .gte('transaction_date', startDate)
         .lte('transaction_date', endDate)
         .order('transaction_date', { ascending: false })
@@ -97,20 +88,6 @@ export const db = {
       return { data, error }
     },
 
-    // Get transactions by category
-    getByCategory: async (categoryId: string): Promise<{ data: TransactionWithCategory[] | null; error: PostgrestError | null }> => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('transactions')
-        .select(`
-          *,
-          transaction_categories (*)
-        `)
-        .eq('category_id', categoryId)
-        .order('transaction_date', { ascending: false })
-      
-      return { data, error }
-    },
   },
 
   // Category operations

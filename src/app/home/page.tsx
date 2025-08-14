@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { UserMenu } from '@/components/page-specific/user-menu'
-import { ArrowRight, Plus } from 'lucide-react'
+import { ViewAllTransactionsButton } from '@/components/page-specific/view-all-transactions-button'
+import { Plus } from 'lucide-react'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -126,23 +128,20 @@ export default async function HomePage() {
           </div>
 
           {/* View all transactions button */}
-          <Button variant="secondary" className="w-full h-9 gap-1.5 px-4 py-2">
-            <span className="text-sm font-medium text-secondary-foreground leading-5">
-              View all transactions
-            </span>
-            <ArrowRight className="size-5" />
-          </Button>
+          <ViewAllTransactionsButton />
         </div>
       </div>
 
       {/* Fixed Sticky Footer - Always visible at bottom */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex flex-col gap-2.5 pb-12 pt-6 px-10">
-        <Button className="w-full gap-1.5 px-4 py-2">
-          <Plus className="size-5" />
-          <span className="text-sm font-medium text-primary-foreground leading-5">
-            Add transaction
-          </span>
-        </Button>
+        <Link href="/add-transaction" className="w-full">
+          <Button className="w-full gap-1.5 px-4 py-2 transition-all duration-200 hover:scale-[0.98] hover:bg-primary/90 active:scale-[0.96]">
+            <Plus className="size-5 transition-transform duration-200 group-hover:rotate-90" />
+            <span className="text-sm font-medium text-primary-foreground leading-5">
+              Add transaction
+            </span>
+          </Button>
+        </Link>
       </div>
     </div>
   )

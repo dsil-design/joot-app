@@ -24,8 +24,16 @@
       "Bash(cd:*)",
       "Bash(cd:*)",
       "Bash(cd:*)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:docs.anthropic.com)",
+      "mcp__figma-dev-mode-mcp-server__get_image",
+      "Bash(rm:*)",
+      "WebFetch(domain:ui.shadcn.com)",
+      "WebFetch(domain:github.com)",
+      "mcp__figma-dev-mode-mcp-server__get_code",
+      "mcp__figma-dev-mode-mcp-server__get_variable_defs"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }

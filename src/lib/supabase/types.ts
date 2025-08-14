@@ -78,8 +78,6 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          category_id: string | null
-          title: string
           description: string | null
           amount_usd: number
           amount_thb: number
@@ -93,8 +91,6 @@ export type Database = {
         Insert: {
           id?: string
           user_id: string
-          category_id?: string | null
-          title: string
           description?: string | null
           amount_usd: number
           amount_thb: number
@@ -108,8 +104,6 @@ export type Database = {
         Update: {
           id?: string
           user_id?: string
-          category_id?: string | null
-          title?: string
           description?: string | null
           amount_usd?: number
           amount_thb?: number
@@ -121,13 +115,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "transactions_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "transaction_categories"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "transactions_user_id_fkey"
             columns: ["user_id"]
@@ -216,9 +203,7 @@ export type CurrencyType = Database["public"]["Enums"]["currency_type"]
 export type TransactionType = Database["public"]["Enums"]["transaction_type"]
 
 // Extended types with relationships
-export type TransactionWithCategory = Transaction & {
-  transaction_categories: TransactionCategory | null
-}
+export type TransactionWithCategory = Transaction
 
 export type TransactionWithDetails = Transaction & {
   transaction_categories: TransactionCategory | null

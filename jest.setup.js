@@ -44,6 +44,19 @@ global.performance = {
   now: jest.fn(() => Date.now()),
 }
 
+// Mock ResizeObserver for cmdk component tests
+global.ResizeObserver = class ResizeObserver {
+  constructor(callback) {
+    this.callback = callback
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+// Mock scrollIntoView for cmdk component tests
+Element.prototype.scrollIntoView = jest.fn()
+
 // Mock Supabase modules globally to avoid ESM import issues
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
