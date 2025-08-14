@@ -76,8 +76,7 @@ export function useTransactions() {
     try {
       setError(null)
 
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      
+      const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
         throw new Error("User not authenticated")
@@ -90,6 +89,7 @@ export function useTransactions() {
 
       const insertData: TransactionInsert = {
         user_id: user.id,
+        title: transactionData.description || 'Transaction',
         description: transactionData.description || null,
         vendor_id: transactionData.vendorId || null,
         payment_method: transactionData.paymentMethod || null,
@@ -101,15 +101,11 @@ export function useTransactions() {
         transaction_date: transactionData.transactionDate || new Date().toISOString().split('T')[0]
       }
 
-      console.log("Inserting transaction data:", insertData)
-
       const { data, error: insertError } = await supabase
         .from("transactions")
         .insert(insertData)
         .select()
         .single()
-        
-      console.log("Insert result:", { data, insertError })
 
       if (insertError) {
         throw insertError
@@ -224,7 +220,7 @@ export function useTransactions() {
 
   useEffect(() => {
     fetchTransactions()
-  }, [])
+  }, [fetchTransactions])
 
   return {
     transactions,

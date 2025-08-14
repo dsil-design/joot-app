@@ -250,7 +250,9 @@ function Example() {
                     id="disabled-combo"
                     options={frameworkOptions}
                     value="react"
-                    onValueChange={() => {}}
+                    onValueChange={() => {
+                      // Disabled state - no action needed
+                    }}
                     placeholder="Select framework..."
                     disabled={true}
                     label="Disabled combobox"

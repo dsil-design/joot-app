@@ -32,7 +32,7 @@ export default function AddTransactionPage() {
   const { createTransaction } = useTransactions()
 
   const handleAddVendor = async (vendorName: string) => {
-    const newVendor = addVendor(vendorName)
+    const newVendor = await addVendor(vendorName)
     if (newVendor) {
       setVendor(newVendor)
       toast.success(`Added vendor: ${vendorName}`)
@@ -44,7 +44,7 @@ export default function AddTransactionPage() {
   }
 
   const handleAddPaymentMethod = async (methodName: string) => {
-    const newMethod = addPaymentMethod(methodName)
+    const newMethod = await addPaymentMethod(methodName)
     if (newMethod) {
       setPaymentMethod(newMethod)
       toast.success(`Added payment method: ${methodName}`)
@@ -83,8 +83,6 @@ export default function AddTransactionPage() {
         transactionDate: format(transactionDate, "yyyy-MM-dd")
       }
 
-      console.log("Transaction data:", transactionData)
-      console.log("Exchange rate:", exchangeRate)
       
       const result = await createTransaction(transactionData, exchangeRate)
       
@@ -96,7 +94,6 @@ export default function AddTransactionPage() {
         toast.error("Failed to save transaction")
       }
     } catch (error) {
-      console.error("Transaction save error:", error)
       toast.error(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setSaving(false)

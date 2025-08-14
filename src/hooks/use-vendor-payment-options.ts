@@ -53,7 +53,7 @@ export function useVendorPaymentOptions(type: "vendor" | "payment") {
 
   // Get all options (defaults + custom)
   const getOptions = (): VendorPaymentOption[] => {
-    const defaults = type === "vendor" ? defaultVendorOptions : defaultPaymentOptions
+    const defaults = type === "vendor" ? [] : defaultPaymentOptions
     const customOptionsList = customOptions.map(option => ({
       value: option,
       label: option,

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SignupPage from '@/app/signup/page'
 import { auth } from '@/lib/supabase/auth'
@@ -18,10 +18,7 @@ jest.mock('next/navigation', () => ({
   })
 }))
 
-const mockAuth = auth as jest.Mocked<typeof auth>
-
 describe('SignupPage', () => {
-  const mockSearchParams = Promise.resolve({})
 
   beforeEach(() => {
     jest.clearAllMocks()

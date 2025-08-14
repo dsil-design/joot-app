@@ -161,7 +161,7 @@ export function useExchangeRates() {
 
   useEffect(() => {
     fetchExchangeRates()
-  }, [])
+  }, [fetchExchangeRates])
 
   return {
     rates,

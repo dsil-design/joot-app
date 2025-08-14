@@ -134,7 +134,7 @@ export function useVendors() {
 
   useEffect(() => {
     fetchVendors()
-  }, [])
+  }, [fetchVendors])
 
   return {
     vendors,

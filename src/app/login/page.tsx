@@ -7,7 +7,7 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Info, Eye, EyeOff, User } from 'lucide-react';
+import { Info, User } from 'lucide-react';
 import { useGlobalAction } from '@/contexts/GlobalActionContext';
 
 
