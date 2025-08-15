@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS public.vendors (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
@@ -90,7 +90,7 @@ $$ LANGUAGE plpgsql;
 
 -- Create trigger to add default vendors when a new user is created
 CREATE TRIGGER create_user_vendors
-    AFTER INSERT ON public.users
+    AFTER INSERT ON auth.users
     FOR EACH ROW
     EXECUTE FUNCTION public.create_default_vendors();
 
@@ -99,7 +99,7 @@ DO $$
 DECLARE
     user_record RECORD;
 BEGIN
-    FOR user_record IN SELECT id FROM public.users LOOP
+    FOR user_record IN SELECT id FROM auth.users LOOP
         INSERT INTO public.vendors (name, user_id) VALUES
             -- Food & Dining
             ('McDonald''s', user_record.id),

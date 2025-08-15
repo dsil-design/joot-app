@@ -38,7 +38,10 @@
       "Bash(cat:*)",
       "Bash(npx supabase migration:*)",
       "Bash(npx supabase:*)",
-      "Bash(npx supabase:*)"
+      "Bash(npx supabase:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(mv:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

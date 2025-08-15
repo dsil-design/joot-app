@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS public.payment_methods (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
@@ -58,7 +58,7 @@ DO $$
 DECLARE
     user_record RECORD;
 BEGIN
-    FOR user_record IN SELECT id FROM public.users LOOP
+    FOR user_record IN SELECT id FROM auth.users LOOP
         INSERT INTO public.payment_methods (name, user_id) VALUES
             ('Cash', user_record.id),
             ('Credit Card', user_record.id),
@@ -83,6 +83,6 @@ $$ LANGUAGE plpgsql;
 
 -- Create trigger to add default payment methods when a new user is created
 CREATE TRIGGER create_user_payment_methods
-    AFTER INSERT ON public.users
+    AFTER INSERT ON auth.users
     FOR EACH ROW
     EXECUTE FUNCTION public.create_default_payment_methods();
