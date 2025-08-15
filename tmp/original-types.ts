@@ -44,7 +44,6 @@ export type Database = {
           title: string
           description: string | null
           payment_method: string | null
-          payment_method_id: string | null
           amount_usd: number
           amount_thb: number
           exchange_rate: number
@@ -61,7 +60,6 @@ export type Database = {
           title: string
           description?: string | null
           payment_method?: string | null
-          payment_method_id?: string | null
           amount_usd: number
           amount_thb: number
           exchange_rate: number
@@ -78,7 +76,6 @@ export type Database = {
           title?: string
           description?: string | null
           payment_method?: string | null
-          payment_method_id?: string | null
           amount_usd?: number
           amount_thb?: number
           exchange_rate?: number
@@ -101,13 +98,6 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_payment_method_id_fkey"
-            columns: ["payment_method_id"]
-            isOneToOne: false
-            referencedRelation: "payment_methods"
             referencedColumns: ["id"]
           }
         ]
@@ -262,14 +252,8 @@ export type TransactionType = Database["public"]["Enums"]["transaction_type"]
 export type TransactionWithDetails = Transaction & {
   users: Pick<User, 'id' | 'email' | 'first_name' | 'last_name'>
   vendors: Pick<Vendor, 'id' | 'name'> | null
-  payment_methods: Pick<PaymentMethod, 'id' | 'name'> | null
 }
 
 export type TransactionWithVendor = Transaction & {
   vendors?: { id: string; name: string } | null
-}
-
-export type TransactionWithVendorAndPayment = Transaction & {
-  vendors?: { id: string; name: string } | null
-  payment_methods?: { id: string; name: string } | null
 }

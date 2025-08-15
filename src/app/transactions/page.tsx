@@ -5,16 +5,16 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
-import type { TransactionWithVendor } from "@/lib/supabase/types"
+import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
 
 interface TransactionCardProps {
-  transaction: TransactionWithVendor
+  transaction: TransactionWithVendorAndPayment
 }
 
 function TransactionCard({ transaction }: TransactionCardProps) {
   // Format amount based on original currency
-  const formatAmount = (transaction: TransactionWithVendor) => {
+  const formatAmount = (transaction: TransactionWithVendorAndPayment) => {
     const amount = transaction.original_currency === 'USD' 
       ? transaction.amount_usd 
       : transaction.amount_thb
@@ -23,7 +23,7 @@ function TransactionCard({ transaction }: TransactionCardProps) {
   }
 
   const vendorName = transaction.vendors?.name || 'Unknown Vendor'
-  const paymentMethod = transaction.payment_method || 'Unknown Payment'
+  const paymentMethodName = transaction.payment_methods?.name || transaction.payment_method || 'Unknown Payment'
   
   return (
     <div className="bg-white border border-zinc-200 rounded-lg shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] inline-block">
@@ -35,7 +35,7 @@ function TransactionCard({ transaction }: TransactionCardProps) {
           </div>
           {/* Payment Method - text-sm/normal, muted-foreground */}
           <div className="text-sm font-normal text-muted-foreground leading-5">
-            {paymentMethod}
+            {paymentMethodName}
           </div>
           {/* Vendor - text-sm/medium, foreground */}
           <div className="text-sm font-medium text-foreground leading-5">
@@ -49,7 +49,7 @@ function TransactionCard({ transaction }: TransactionCardProps) {
 
 interface TransactionGroupProps {
   date: string
-  transactions: TransactionWithVendor[]
+  transactions: TransactionWithVendorAndPayment[]
 }
 
 function TransactionGroup({ date, transactions }: TransactionGroupProps) {
@@ -80,7 +80,7 @@ export default function AllTransactionsPage() {
 
   // Group transactions by date
   const groupedTransactions = React.useMemo(() => {
-    const groups: Record<string, TransactionWithVendor[]> = {}
+    const groups: Record<string, TransactionWithVendorAndPayment[]> = {}
     
     transactions.forEach((transaction) => {
       const date = transaction.transaction_date

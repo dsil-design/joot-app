@@ -111,11 +111,18 @@ The app uses Supabase Auth with a comprehensive middleware system:
 Supabase PostgreSQL with RLS-enabled tables:
 
 - **users**: Extended user profiles linked to Supabase auth.users
-- **transactions**: Core transaction data with dual currency support
-- **transaction_categories**: User-specific categorization system
+- **transactions**: Core transaction data with dual currency support and FK relationships
+- **vendors**: User-specific vendor list for transaction categorization
+- **payment_methods**: User-specific payment method list for transaction tracking
 - **exchange_rates**: Historical rate data for USD/THB conversion
 
 All tables implement Row Level Security ensuring user data isolation.
+
+**Foreign Key Relationships:**
+- `transactions.vendor_id` → `vendors.id` (nullable)
+- `transactions.payment_method_id` → `payment_methods.id` (nullable)
+- `vendors.user_id` → `users.id` (ensures vendor isolation)
+- `payment_methods.user_id` → `users.id` (ensures payment method isolation)
 
 ### Component System
 Built on shadcn/ui with "new-york" style:
@@ -128,7 +135,7 @@ Built on shadcn/ui with "new-york" style:
 ### State Management
 - **Global Actions**: Context-based system via `GlobalActionWrapper`
 - **Demo Context**: Separate context for demo/test scenarios
-- **Custom Hooks**: Specialized hooks for transactions, vendors, exchange rates
+- **Custom Hooks**: Specialized hooks for transactions, vendors, payment methods, and exchange rates
 - **Supabase Real-time**: Real-time subscriptions for live data updates
 
 ## Environment Configuration
