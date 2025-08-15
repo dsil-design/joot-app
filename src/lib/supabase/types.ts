@@ -134,6 +134,38 @@ export type Database = {
           }
         ]
       }
+      payment_methods: {
+        Row: {
+          id: string
+          name: string
+          user_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          user_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          user_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_methods_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       users: {
         Row: {
           id: string
@@ -204,6 +236,10 @@ export type TransactionUpdate = Database["public"]["Tables"]["transactions"]["Up
 export type Vendor = Database["public"]["Tables"]["vendors"]["Row"]
 export type VendorInsert = Database["public"]["Tables"]["vendors"]["Insert"]
 export type VendorUpdate = Database["public"]["Tables"]["vendors"]["Update"]
+
+export type PaymentMethod = Database["public"]["Tables"]["payment_methods"]["Row"]
+export type PaymentMethodInsert = Database["public"]["Tables"]["payment_methods"]["Insert"]
+export type PaymentMethodUpdate = Database["public"]["Tables"]["payment_methods"]["Update"]
 
 export type ExchangeRate = Database["public"]["Tables"]["exchange_rates"]["Row"]
 export type ExchangeRateInsert = Database["public"]["Tables"]["exchange_rates"]["Insert"]
