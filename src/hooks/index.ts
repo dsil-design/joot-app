@@ -2,6 +2,12 @@
 export { useTransactions } from "./use-transactions"
 export type { CreateTransactionData } from "./use-transactions"
 
+// Vendor hooks
+export { useVendors } from "./use-vendors"
+
+// Payment method hooks
+export { usePaymentMethods } from "./use-payment-methods"
+
 // Vendor and payment method options
 export { useVendorOptions, usePaymentMethodOptions } from "./use-vendor-payment-options"
 export type { VendorPaymentOption } from "./use-vendor-payment-options"

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import type { 
   Transaction, 
   TransactionInsert, 
-  TransactionWithVendor,
+  TransactionWithVendorAndPayment,
   CurrencyType,
   TransactionType 
 } from "@/lib/supabase/types"
@@ -13,7 +13,7 @@ import type {
 export interface CreateTransactionData {
   description?: string
   vendorId?: string
-  paymentMethod?: string
+  paymentMethodId?: string
   amount: number
   originalCurrency: CurrencyType
   transactionType: TransactionType
@@ -21,7 +21,7 @@ export interface CreateTransactionData {
 }
 
 export function useTransactions() {
-  const [transactions, setTransactions] = useState<TransactionWithVendor[]>([])
+  const [transactions, setTransactions] = useState<TransactionWithVendorAndPayment[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
@@ -43,6 +43,10 @@ export function useTransactions() {
         .select(`
           *,
           vendors (
+            id,
+            name
+          ),
+          payment_methods (
             id,
             name
           )
@@ -92,7 +96,7 @@ export function useTransactions() {
         title: transactionData.description || 'Transaction',
         description: transactionData.description || null,
         vendor_id: transactionData.vendorId || null,
-        payment_method: transactionData.paymentMethod || null,
+        payment_method_id: transactionData.paymentMethodId || null,
         amount_usd: Math.round(amountUSD * 100) / 100,
         amount_thb: Math.round(amountTHB * 100) / 100,
         exchange_rate: exchangeRate,
@@ -183,7 +187,7 @@ export function useTransactions() {
   const getTransactionsByDateRange = async (
     startDate: string, 
     endDate: string
-  ): Promise<TransactionWithVendor[]> => {
+  ): Promise<TransactionWithVendorAndPayment[]> => {
     try {
       setError(null)
 
@@ -198,6 +202,10 @@ export function useTransactions() {
         .select(`
           *,
           vendors (
+            id,
+            name
+          ),
+          payment_methods (
             id,
             name
           )

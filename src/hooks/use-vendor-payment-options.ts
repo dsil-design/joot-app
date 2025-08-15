@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useVendors } from "./use-vendors"
+import { usePaymentMethods } from "./use-payment-methods"
 
 export interface VendorPaymentOption {
   value: string
@@ -9,7 +10,8 @@ export interface VendorPaymentOption {
   disabled?: boolean
 }
 
-// Default payment method options
+// Legacy localStorage-based payment options (kept as fallback)
+// NOTE: This is deprecated in favor of database-backed payment methods
 const defaultPaymentOptions: VendorPaymentOption[] = [
   { value: "cash", label: "Cash" },
   { value: "credit-card", label: "Credit Card" },
@@ -18,9 +20,9 @@ const defaultPaymentOptions: VendorPaymentOption[] = [
   { value: "bank-transfer", label: "Bank Transfer" },
 ]
 
-// Simple hook that just provides static options for now
-// In the future, this could be enhanced to store user's custom options in localStorage
-export function useVendorPaymentOptions(type: "vendor" | "payment") {
+// DEPRECATED: Legacy localStorage-based hook 
+// Kept for backward compatibility but should not be used for new features
+export function useVendorPaymentOptionsLegacy(type: "vendor" | "payment") {
   const [customOptions, setCustomOptions] = useState<string[]>([])
   
   // Load custom options from localStorage on mount
@@ -94,6 +96,25 @@ export function useVendorOptions() {
   }
 }
 
+// Updated payment method options hook that uses database payment_methods
 export function usePaymentMethodOptions() {
-  return useVendorPaymentOptions("payment")
+  const { paymentMethods, loading, error, createPaymentMethod } = usePaymentMethods()
+  
+  const options: VendorPaymentOption[] = paymentMethods.map(paymentMethod => ({
+    value: paymentMethod.id,
+    label: paymentMethod.name,
+    disabled: false
+  }))
+
+  const addCustomOption = async (paymentMethodName: string) => {
+    const newPaymentMethod = await createPaymentMethod(paymentMethodName)
+    return newPaymentMethod ? newPaymentMethod.id : null
+  }
+
+  return {
+    options,
+    addCustomOption,
+    loading,
+    error
+  }
 }
