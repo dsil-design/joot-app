@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { Vendor, VendorInsert } from "@/lib/supabase/types"
 
@@ -11,7 +11,7 @@ export function useVendors() {
   
   const supabase = createClient()
 
-  const fetchVendors = async () => {
+  const fetchVendors = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -39,7 +39,7 @@ export function useVendors() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
 
   const createVendor = async (name: string): Promise<Vendor | null> => {
     try {

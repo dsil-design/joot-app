@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { PaymentMethod, PaymentMethodInsert } from "@/lib/supabase/types"
 
@@ -11,7 +11,7 @@ export function usePaymentMethods() {
   
   const supabase = createClient()
 
-  const fetchPaymentMethods = async () => {
+  const fetchPaymentMethods = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -39,7 +39,7 @@ export function usePaymentMethods() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
 
   const createPaymentMethod = async (name: string): Promise<PaymentMethod | null> => {
     try {
@@ -134,7 +134,7 @@ export function usePaymentMethods() {
 
   useEffect(() => {
     fetchPaymentMethods()
-  }, [])
+  }, [fetchPaymentMethods])
 
   return {
     paymentMethods,
