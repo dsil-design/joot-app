@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
+import { TransactionCard } from "@/components/ui/transaction-card"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
 
@@ -12,7 +13,7 @@ interface TransactionCardProps {
   transaction: TransactionWithVendorAndPayment
 }
 
-function TransactionCard({ transaction }: TransactionCardProps) {
+function TransactionCardComponent({ transaction }: TransactionCardProps) {
   // Format amount based on original currency
   const formatAmount = (transaction: TransactionWithVendorAndPayment) => {
     const amount = transaction.original_currency === 'USD' 
@@ -26,24 +27,11 @@ function TransactionCard({ transaction }: TransactionCardProps) {
   const paymentMethodName = transaction.payment_methods?.name || transaction.payment_method || 'Unknown Payment'
   
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] inline-block">
-      <div className="p-6 flex flex-col gap-2">
-        <div className="flex flex-col gap-1">
-          {/* Amount - text-xl/medium, black */}
-          <div className="text-xl font-medium text-black leading-7">
-            {formatAmount(transaction)}
-          </div>
-          {/* Payment Method - text-sm/normal, muted-foreground */}
-          <div className="text-sm font-normal text-muted-foreground leading-5">
-            {paymentMethodName}
-          </div>
-          {/* Vendor - text-sm/medium, foreground */}
-          <div className="text-sm font-medium text-foreground leading-5">
-            {vendorName}
-          </div>
-        </div>
-      </div>
-    </div>
+    <TransactionCard
+      amount={formatAmount(transaction)}
+      vendor={paymentMethodName}
+      description={vendorName}
+    />
   )
 }
 
@@ -65,9 +53,9 @@ function TransactionGroup({ date, transactions }: TransactionGroupProps) {
       <h2 className="text-xl font-medium text-black">
         {formatDateHeader(date)}
       </h2>
-      <div className="flex flex-col gap-4 items-start w-full">
+      <div className="flex flex-col gap-3 items-start w-full">
         {transactions.map((transaction) => (
-          <TransactionCard key={transaction.id} transaction={transaction} />
+          <TransactionCardComponent key={transaction.id} transaction={transaction} />
         ))}
       </div>
     </div>

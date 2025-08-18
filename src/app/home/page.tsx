@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { UserMenu } from '@/components/page-specific/user-menu'
-import { ViewAllTransactionsButton } from '@/components/page-specific/view-all-transactions-button'
+import { TransactionCard } from '@/components/ui/transaction-card'
 import { Plus } from 'lucide-react'
+import { format, isToday, isYesterday, parseISO } from 'date-fns'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -48,6 +49,33 @@ export default async function HomePage() {
 
   const userInitials = getInitials(userProfile?.first_name, userProfile?.last_name)
 
+  // Fetch recent transactions (limit to 5 for home page)
+  const { data: transactions } = await supabase
+    .from('transactions')
+    .select(`
+      *,
+      vendors (
+        id,
+        name
+      ),
+      payment_methods (
+        id,
+        name
+      )
+    `)
+    .eq('user_id', user.id)
+    .order('transaction_date', { ascending: false })
+    .limit(5)
+
+  // Format amount helper function
+  const formatAmount = (transaction: any) => {
+    const amount = transaction.original_currency === 'USD' 
+      ? transaction.amount_usd 
+      : transaction.amount_thb
+    const symbol = transaction.original_currency === 'USD' ? '$' : '฿'
+    return `${symbol}${amount.toFixed(2)}`
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Main scrollable content */}
@@ -66,69 +94,78 @@ export default async function HomePage() {
           </UserMenu>
         </div>
 
-        {/* Main Content */}
-        <div className="flex flex-col gap-12 pb-12">
-          {/* Stats Cards */}
-          <div className="flex flex-col gap-6">
-            {/* Total spent card */}
-            <Card className="bg-card border-border rounded-lg shadow-xs p-0">
-              <div className="p-6 pb-0">
-                <h2 className="text-xl font-semibold text-foreground leading-7">
-                  Total spent
-                </h2>
-              </div>
-              <div className="px-6 pb-6 pt-1">
-                <p className="text-sm text-muted-foreground leading-5">
-                  $1,234.56
-                </p>
-              </div>
-            </Card>
+        {/* Main Content - Figma Design Implementation */}
+        <div className="flex flex-col gap-4 w-full">
+          {/* Row 1: KPI Cards */}
+          <div className="flex flex-row gap-7 items-center justify-start w-full">
+            {/* USD Exchange Rate Card */}
+            <div className="flex-1">
+              <Card className="bg-card border-border rounded-lg shadow-xs p-0">
+                <div className="p-6">
+                  <div className="flex flex-col gap-1 items-start justify-start">
+                    <div className="font-medium text-xl text-foreground leading-7">
+                      ฿32.24
+                    </div>
+                    <div className="font-normal text-sm text-muted-foreground leading-5">
+                      1 USD
+                    </div>
+                    <div className="font-medium text-sm text-foreground leading-5">
+                      as of 2:12pm
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
 
-            {/* This month card */}
-            <Card className="bg-card border-border rounded-lg shadow-xs p-0">
-              <div className="p-6 pb-0">
-                <h2 className="text-xl font-semibold text-foreground leading-7">
-                  This month
-                </h2>
-              </div>
-              <div className="px-6 pb-6 pt-1">
-                <p className="text-sm text-muted-foreground leading-5">
-                  $789.01
-                </p>
-              </div>
-            </Card>
-
-            {/* Average cost card */}
-            <Card className="bg-card border-border rounded-lg shadow-xs p-0">
-              <div className="p-6 pb-0">
-                <h2 className="text-xl font-semibold text-foreground leading-7">
-                  Average cost
-                </h2>
-              </div>
-              <div className="px-6 pb-6 pt-1">
-                <p className="text-sm text-muted-foreground leading-5">
-                  $18.23
-                </p>
-              </div>
-            </Card>
-
-            {/* Top method card */}
-            <Card className="bg-card border-border rounded-lg shadow-xs p-0">
-              <div className="p-6 pb-0">
-                <h2 className="text-xl font-semibold text-foreground leading-7">
-                  Top method
-                </h2>
-              </div>
-              <div className="px-6 pb-6 pt-1">
-                <p className="text-sm text-muted-foreground leading-5">
-                  Credit Card
-                </p>
-              </div>
-            </Card>
+            {/* This Month Card */}
+            <div className="flex-1">
+              <Card className="bg-card border-border rounded-lg shadow-xs p-0">
+                <div className="p-6">
+                  <div className="flex flex-col gap-1 items-start justify-start">
+                    <div className="font-medium text-xl text-foreground leading-7">
+                      $2,760
+                    </div>
+                    <div className="font-normal text-sm text-muted-foreground leading-5">
+                      1 USD
+                    </div>
+                    <div className="font-medium text-sm text-foreground leading-5">
+                      Aug '25
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
 
-          {/* View all transactions button */}
-          <ViewAllTransactionsButton />
+          {/* Section Header */}
+          <div className="flex flex-row gap-4 items-center justify-start w-full">
+            <div className="flex-1 font-medium text-xs text-muted-foreground leading-4">
+              Recent Transactions
+            </div>
+            <Button variant="link" size="default" className="text-primary" asChild>
+              <Link href="/transactions">
+                View all
+              </Link>
+            </Button>
+          </div>
+
+          {/* Transaction Cards */}
+          <div className="flex flex-col gap-3 w-full">
+            {transactions && transactions.length > 0 ? (
+              transactions.map((transaction) => (
+                <TransactionCard
+                  key={transaction.id}
+                  amount={formatAmount(transaction)}
+                  vendor={transaction.vendors?.name || 'Unknown Vendor'}
+                  description={transaction.description || 'No description'}
+                />
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No transactions yet. Add your first transaction!
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

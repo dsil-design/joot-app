@@ -38,12 +38,13 @@ CREATE TABLE public.transaction_categories (
   UNIQUE(name, user_id) -- Prevent duplicate category names per user
 );
 
--- Transactions table
+-- Transactions table (without foreign keys initially)
 CREATE TABLE public.transactions (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
   category_id UUID REFERENCES public.transaction_categories(id) ON DELETE SET NULL,
-  title TEXT NOT NULL,
+  vendor_id UUID,
+  payment_method_id UUID,
   description TEXT,
   amount_usd DECIMAL(12, 2) NOT NULL, -- Always store USD amount
   amount_thb DECIMAL(12, 2) NOT NULL, -- Always store THB amount
@@ -98,6 +99,8 @@ CREATE TABLE public.exchange_rates (
 CREATE INDEX idx_transactions_user_id ON public.transactions(user_id);
 CREATE INDEX idx_transactions_date ON public.transactions(transaction_date DESC);
 CREATE INDEX idx_transactions_category ON public.transactions(category_id);
+CREATE INDEX idx_transactions_vendor_id ON public.transactions(vendor_id);
+CREATE INDEX idx_transactions_payment_method_id ON public.transactions(payment_method_id);
 CREATE INDEX idx_transaction_categories_user_id ON public.transaction_categories(user_id);
 CREATE INDEX idx_payment_methods_user_id ON public.payment_methods(user_id);
 CREATE INDEX idx_payment_methods_name ON public.payment_methods(name);
@@ -255,6 +258,15 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Add foreign key constraints after all tables are created
+ALTER TABLE public.transactions 
+ADD CONSTRAINT transactions_vendor_id_fkey 
+FOREIGN KEY (vendor_id) REFERENCES public.vendors(id) ON DELETE SET NULL;
+
+ALTER TABLE public.transactions 
+ADD CONSTRAINT transactions_payment_method_id_fkey 
+FOREIGN KEY (payment_method_id) REFERENCES public.payment_methods(id) ON DELETE SET NULL;
 
 -- Insert some sample exchange rates
 INSERT INTO public.exchange_rates (from_currency, to_currency, rate, date) VALUES

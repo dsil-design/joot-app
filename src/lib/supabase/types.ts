@@ -7,88 +7,194 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       exchange_rates: {
         Row: {
-          id: string
-          from_currency: Database["public"]["Enums"]["currency_type"]
-          to_currency: Database["public"]["Enums"]["currency_type"]
-          rate: number
+          created_at: string | null
           date: string
-          created_at: string
+          from_currency: Database["public"]["Enums"]["currency_type"]
+          id: string
+          rate: number
+          to_currency: Database["public"]["Enums"]["currency_type"]
         }
         Insert: {
-          id?: string
-          from_currency: Database["public"]["Enums"]["currency_type"]
-          to_currency: Database["public"]["Enums"]["currency_type"]
-          rate: number
+          created_at?: string | null
           date?: string
-          created_at?: string
+          from_currency: Database["public"]["Enums"]["currency_type"]
+          id?: string
+          rate: number
+          to_currency: Database["public"]["Enums"]["currency_type"]
         }
         Update: {
-          id?: string
-          from_currency?: Database["public"]["Enums"]["currency_type"]
-          to_currency?: Database["public"]["Enums"]["currency_type"]
-          rate?: number
+          created_at?: string | null
           date?: string
-          created_at?: string
+          from_currency?: Database["public"]["Enums"]["currency_type"]
+          id?: string
+          rate?: number
+          to_currency?: Database["public"]["Enums"]["currency_type"]
         }
         Relationships: []
       }
-      transactions: {
+      payment_methods: {
         Row: {
+          created_at: string | null
           id: string
+          name: string
+          updated_at: string | null
           user_id: string
-          vendor_id: string | null
-          title: string
-          description: string | null
-          payment_method: string | null
-          payment_method_id: string | null
-          amount_usd: number
-          amount_thb: number
-          exchange_rate: number
-          original_currency: Database["public"]["Enums"]["currency_type"]
-          transaction_type: Database["public"]["Enums"]["transaction_type"]
-          transaction_date: string
-          created_at: string
-          updated_at: string
         }
         Insert: {
+          created_at?: string | null
           id?: string
+          name: string
+          updated_at?: string | null
           user_id: string
-          vendor_id?: string | null
-          title: string
-          description?: string | null
-          payment_method?: string | null
-          payment_method_id?: string | null
-          amount_usd: number
-          amount_thb: number
-          exchange_rate: number
-          original_currency: Database["public"]["Enums"]["currency_type"]
-          transaction_type: Database["public"]["Enums"]["transaction_type"]
-          transaction_date?: string
-          created_at?: string
-          updated_at?: string
         }
         Update: {
+          created_at?: string | null
           id?: string
+          name?: string
+          updated_at?: string | null
           user_id?: string
-          vendor_id?: string | null
-          title?: string
-          description?: string | null
-          payment_method?: string | null
-          payment_method_id?: string | null
-          amount_usd?: number
-          amount_thb?: number
-          exchange_rate?: number
-          original_currency?: Database["public"]["Enums"]["currency_type"]
-          transaction_type?: Database["public"]["Enums"]["transaction_type"]
-          transaction_date?: string
-          created_at?: string
-          updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_methods_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_categories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount_thb: number
+          amount_usd: number
+          category_id: string | null
+          created_at: string | null
+          description: string | null
+          exchange_rate: number
+          id: string
+          original_currency: Database["public"]["Enums"]["currency_type"]
+          payment_method_id: string | null
+          transaction_date: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string | null
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          amount_thb: number
+          amount_usd: number
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          exchange_rate: number
+          id?: string
+          original_currency: Database["public"]["Enums"]["currency_type"]
+          payment_method_id?: string | null
+          transaction_date?: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          amount_thb?: number
+          amount_usd?: number
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          exchange_rate?: number
+          id?: string
+          original_currency?: Database["public"]["Enums"]["currency_type"]
+          payment_method_id?: string | null
+          transaction_date?: string
+          transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_user_id_fkey"
             columns: ["user_id"]
@@ -103,36 +209,68 @@ export type Database = {
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "transactions_payment_method_id_fkey"
-            columns: ["payment_method_id"]
-            isOneToOne: false
-            referencedRelation: "payment_methods"
-            referencedColumns: ["id"]
-          }
         ]
+      }
+      users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          preferred_currency:
+            | Database["public"]["Enums"]["currency_type"]
+            | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          preferred_currency?:
+            | Database["public"]["Enums"]["currency_type"]
+            | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          preferred_currency?:
+            | Database["public"]["Enums"]["currency_type"]
+            | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       vendors: {
         Row: {
+          created_at: string | null
           id: string
           name: string
+          updated_at: string | null
           user_id: string
-          created_at: string
-          updated_at: string
         }
         Insert: {
+          created_at?: string | null
           id?: string
           name: string
+          updated_at?: string | null
           user_id: string
-          created_at?: string
-          updated_at?: string
         }
         Update: {
+          created_at?: string | null
           id?: string
           name?: string
+          updated_at?: string | null
           user_id?: string
-          created_at?: string
-          updated_at?: string
         }
         Relationships: [
           {
@@ -141,80 +279,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
-          }
-        ]
-      }
-      payment_methods: {
-        Row: {
-          id: string
-          name: string
-          user_id: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          user_id: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          user_id?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payment_methods_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      users: {
-        Row: {
-          id: string
-          email: string
-          first_name: string | null
-          last_name: string | null
-          avatar_url: string | null
-          preferred_currency: Database["public"]["Enums"]["currency_type"]
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id: string
-          email: string
-          first_name?: string | null
-          last_name?: string | null
-          avatar_url?: string | null
-          preferred_currency?: Database["public"]["Enums"]["currency_type"]
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          email?: string
-          first_name?: string | null
-          last_name?: string | null
-          avatar_url?: string | null
-          preferred_currency?: Database["public"]["Enums"]["currency_type"]
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "users_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
+          },
         ]
       }
     }
@@ -234,42 +299,132 @@ export type Database = {
   }
 }
 
-// Convenience types for easier usage
-export type User = Database["public"]["Tables"]["users"]["Row"]
-export type UserInsert = Database["public"]["Tables"]["users"]["Insert"]
-export type UserUpdate = Database["public"]["Tables"]["users"]["Update"]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-export type Transaction = Database["public"]["Tables"]["transactions"]["Row"]
-export type TransactionInsert = Database["public"]["Tables"]["transactions"]["Insert"]
-export type TransactionUpdate = Database["public"]["Tables"]["transactions"]["Update"]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-export type Vendor = Database["public"]["Tables"]["vendors"]["Row"]
-export type VendorInsert = Database["public"]["Tables"]["vendors"]["Insert"]
-export type VendorUpdate = Database["public"]["Tables"]["vendors"]["Update"]
-
-export type PaymentMethod = Database["public"]["Tables"]["payment_methods"]["Row"]
-export type PaymentMethodInsert = Database["public"]["Tables"]["payment_methods"]["Insert"]
-export type PaymentMethodUpdate = Database["public"]["Tables"]["payment_methods"]["Update"]
-
-export type ExchangeRate = Database["public"]["Tables"]["exchange_rates"]["Row"]
-export type ExchangeRateInsert = Database["public"]["Tables"]["exchange_rates"]["Insert"]
-export type ExchangeRateUpdate = Database["public"]["Tables"]["exchange_rates"]["Update"]
-
-export type CurrencyType = Database["public"]["Enums"]["currency_type"]
-export type TransactionType = Database["public"]["Enums"]["transaction_type"]
-
-// Extended types with relationships
-export type TransactionWithDetails = Transaction & {
-  users: Pick<User, 'id' | 'email' | 'first_name' | 'last_name'>
-  vendors: Pick<Vendor, 'id' | 'name'> | null
-  payment_methods: Pick<PaymentMethod, 'id' | 'name'> | null
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-export type TransactionWithVendor = Transaction & {
-  vendors?: { id: string; name: string } | null
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-export type TransactionWithVendorAndPayment = Transaction & {
-  vendors?: { id: string; name: string } | null
-  payment_methods?: { id: string; name: string } | null
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {
+      currency_type: ["USD", "THB"],
+      transaction_type: ["income", "expense"],
+    },
+  },
+} as const
+
