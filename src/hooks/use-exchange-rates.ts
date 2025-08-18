@@ -14,14 +14,13 @@ export function useExchangeRates() {
   const [rates, setRates] = useState<ExchangeRate[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
-  const supabase = createClient()
 
-  const fetchExchangeRates = async () => {
+  const fetchExchangeRates = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-
+      
+      const supabase = createClient()
       const { data, error: fetchError } = await supabase
         .from("exchange_rates")
         .select("*")
@@ -39,7 +38,7 @@ export function useExchangeRates() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const getLatestRate = useCallback((fromCurrency: CurrencyType, toCurrency: CurrencyType): ExchangeRateData | null => {
     if (fromCurrency === toCurrency) {
@@ -140,6 +139,7 @@ export function useExchangeRates() {
         }
       ]
 
+      const supabase = createClient()
       const { error: insertError } = await supabase
         .from("exchange_rates")
         .upsert(mockRates, {

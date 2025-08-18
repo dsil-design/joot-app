@@ -64,7 +64,7 @@ export function useTransactions() {
         throw fetchError
       }
 
-      setTransactions(data || [])
+      setTransactions((data as TransactionWithVendorAndPayment[]) || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch transactions")
       setTransactions([])
@@ -93,7 +93,6 @@ export function useTransactions() {
 
       const insertData: TransactionInsert = {
         user_id: user.id,
-        title: transactionData.description || 'Transaction',
         description: transactionData.description || null,
         vendor_id: transactionData.vendorId || null,
         payment_method_id: transactionData.paymentMethodId || null,
@@ -219,7 +218,7 @@ export function useTransactions() {
         throw fetchError
       }
 
-      return data || []
+      return (data as TransactionWithVendorAndPayment[]) || []
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch transactions by date range")
       return []

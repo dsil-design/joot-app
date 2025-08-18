@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { UserMenu } from '@/components/page-specific/user-menu'
 import { TransactionCard } from '@/components/ui/transaction-card'
 import { Plus } from 'lucide-react'
-import { format, isToday, isYesterday, parseISO } from 'date-fns'
+import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -68,7 +68,7 @@ export default async function HomePage() {
     .limit(5)
 
   // Format amount helper function
-  const formatAmount = (transaction: any) => {
+  const formatAmount = (transaction: TransactionWithVendorAndPayment) => {
     const amount = transaction.original_currency === 'USD' 
       ? transaction.amount_usd 
       : transaction.amount_thb
@@ -155,7 +155,7 @@ export default async function HomePage() {
               transactions.map((transaction) => (
                 <TransactionCard
                   key={transaction.id}
-                  amount={formatAmount(transaction)}
+                  amount={formatAmount(transaction as TransactionWithVendorAndPayment)}
                   vendor={transaction.vendors?.name || 'Unknown Vendor'}
                   description={transaction.description || 'No description'}
                 />

@@ -428,3 +428,24 @@ export const Constants = {
   },
 } as const
 
+// Type aliases for commonly used types
+export type ExchangeRate = Tables<"exchange_rates">
+export type CurrencyType = Database["public"]["Enums"]["currency_type"]
+export type TransactionType = Database["public"]["Enums"]["transaction_type"]
+export type Transaction = Tables<"transactions">
+export type TransactionInsert = TablesInsert<"transactions">
+export type TransactionUpdate = TablesUpdate<"transactions">
+export type PaymentMethod = Tables<"payment_methods">
+export type PaymentMethodInsert = TablesInsert<"payment_methods">
+export type Vendor = Tables<"vendors">
+export type VendorInsert = TablesInsert<"vendors">
+export type User = Tables<"users">
+export type UserUpdate = TablesUpdate<"users">
+
+// Type for transactions with vendor and payment method data
+export type TransactionWithVendorAndPayment = Tables<"transactions"> & {
+  vendors?: Tables<"vendors"> | null
+  payment_methods?: Tables<"payment_methods"> | null
+  payment_method?: string
+}
+
