@@ -19,6 +19,7 @@ const parseXML = (xmlString: string): Document => {
     return new DOMParser().parseFromString(xmlString, 'text/xml');
   } else {
     // Node.js environment fallback
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { JSDOM } = require('jsdom');
     return new JSDOM(xmlString, { contentType: 'text/xml' }).window.document;
   }
@@ -198,7 +199,7 @@ export class ECBFetcher {
       if (error instanceof ECBError) {
         throw error;
       }
-      throw new ECBError(ECBErrorType.PARSE_ERROR, `XML parsing error: ${error.message}`, error as Error);
+      throw new ECBError(ECBErrorType.PARSE_ERROR, `XML parsing error: ${error instanceof Error ? error.message : String(error)}`, error as Error);
     }
   }
 

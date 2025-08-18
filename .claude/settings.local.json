@@ -43,6 +43,7 @@
       "Bash(git pull:*)",
       "Bash(mv:*)",
       "Bash(chmod:*)",
+      "Bash(cd:*)",
       "Bash(cd:*)"
     ],
     "deny": [],

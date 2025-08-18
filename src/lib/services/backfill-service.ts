@@ -15,9 +15,9 @@ import { ExchangeRateInsert, CurrencyType } from '../supabase/types';
 export interface BackfillOptions {
   startDate: string;        // '2015-01-01'
   endDate?: string;         // Default: today
-  batchSize: number;        // Default: 500 records per batch
-  skipExisting: boolean;    // Default: true
-  dryRun: boolean;         // Default: false
+  batchSize?: number;       // Default: 500 records per batch
+  skipExisting?: boolean;   // Default: true
+  dryRun?: boolean;         // Default: false
 }
 
 export interface BackfillResult {
@@ -156,10 +156,11 @@ export class BackfillService {
       console.log(`📅 Filtered to ${filteredData.length} records in date range`);
 
       // Phase 3: Process in chunks
-      const chunks = this.createChunks(filteredData, config.batchSize);
+      const batchSize = config.batchSize || 500;
+      const chunks = this.createChunks(filteredData, batchSize);
       const totalBatches = chunks.length;
 
-      console.log(`📦 Processing ${totalBatches} batches of ${config.batchSize} records each`);
+      console.log(`📦 Processing ${totalBatches} batches of ${batchSize} records each`);
 
       this.updateProgress({
         phase: 'inserting',
@@ -508,7 +509,8 @@ export class BackfillService {
       throw new Error(`Start date must be before end date`);
     }
     
-    if (options.batchSize <= 0 || options.batchSize > 2000) {
+    const batchSize = options.batchSize || 500;
+    if (batchSize <= 0 || batchSize > 2000) {
       throw new Error(`Batch size must be between 1 and 2000`);
     }
     
