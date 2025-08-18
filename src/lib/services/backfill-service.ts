@@ -334,22 +334,28 @@ export class BackfillService {
     
     // Insert to database (unless dry run)
     if (!config.dryRun && processedRates.length > 0) {
-      const exchangeRateInserts: ExchangeRateInsert[] = processedRates.map(rate => ({
-        from_currency: rate.from_currency,
-        to_currency: rate.to_currency,
-        rate: rate.rate,
-        date: rate.date,
-        source: rate.source,
-        is_interpolated: rate.is_interpolated
-      }));
+      // Deduplicate rates before insertion to avoid conflicts
+      const uniqueRatesMap = new Map<string, ExchangeRateInsert>();
       
-      // Use upsert if not skipping existing records
-      let insertResult;
-      if (config.skipExisting) {
-        insertResult = await db.exchangeRates.bulkInsert(exchangeRateInserts);
-      } else {
-        insertResult = await db.exchangeRates.bulkUpsert(exchangeRateInserts);
-      }
+      processedRates.forEach(rate => {
+        const key = `${rate.from_currency}-${rate.to_currency}-${rate.date}`;
+        if (!uniqueRatesMap.has(key)) {
+          uniqueRatesMap.set(key, {
+            from_currency: rate.from_currency,
+            to_currency: rate.to_currency,
+            rate: rate.rate,
+            date: rate.date,
+            source: rate.source,
+            is_interpolated: rate.is_interpolated
+          });
+        }
+      });
+      
+      const exchangeRateInserts = Array.from(uniqueRatesMap.values());
+      console.log(`📋 Deduplicated ${processedRates.length} rates to ${exchangeRateInserts.length} unique rates`);
+      
+      // Always use upsert to handle duplicates gracefully
+      const insertResult = await db.exchangeRates.bulkUpsert(exchangeRateInserts);
       
       if (insertResult.error) {
         throw new Error(`Database operation failed: ${insertResult.error.message}`);

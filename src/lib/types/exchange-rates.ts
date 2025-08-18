@@ -13,8 +13,9 @@ export interface ProcessedRate {
   to_currency: CurrencyType;
   rate: number;
   date: string;
-  source: 'ECB';
-  is_interpolated: false;
+  source: 'ECB' | 'COINGECKO';
+  is_interpolated: boolean;
+  interpolated_from_date?: string;
 }
 
 // Service response wrapper

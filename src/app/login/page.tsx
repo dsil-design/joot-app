@@ -23,8 +23,8 @@ function LoginPageContent() {
   });
 
   useEffect(() => {
-    const success = searchParams.get('success');
-    const error = searchParams.get('error');
+    const success = searchParams?.get('success');
+    const error = searchParams?.get('error');
     
     if (success === 'logout_successful') {
       setAlert({

@@ -264,7 +264,7 @@ export class GapFillingService {
     // Bulk insert interpolated rates
     if (ratesToInsert.length > 0) {
       try {
-        const { data, error } = await db.exchangeRates.bulkInsert(ratesToInsert);
+        const { data, error } = await db.exchangeRates.bulkUpsert(ratesToInsert);
         
         if (error) {
           throw new Error(`Failed to insert interpolated rates: ${error.message}`);
@@ -370,7 +370,7 @@ export class GapFillingService {
     // Bulk insert weekend rates
     if (ratesToInsert.length > 0) {
       try {
-        const { data, error } = await db.exchangeRates.bulkInsert(ratesToInsert);
+        const { data, error } = await db.exchangeRates.bulkUpsert(ratesToInsert);
         
         if (error) {
           throw new Error(`Failed to insert weekend rates: ${error.message}`);

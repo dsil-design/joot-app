@@ -33,6 +33,10 @@ export default async function HomePage() {
     ? `${userProfile.first_name} ${userProfile.last_name}`
     : userProfile?.first_name || userProfile?.last_name || user.email || "User"
 
+  // For now, make admin interface available to all authenticated users
+  // In production, this would check a roles table or user metadata
+  const isAdmin = true; // All users can access admin interface for testing
+
   // Generate initials from first and last name
   const getInitials = (firstName?: string | null, lastName?: string | null): string => {
     if (firstName && lastName) {
@@ -85,7 +89,7 @@ export default async function HomePage() {
           <h1 className="text-4xl font-medium text-foreground leading-10">
             Home
           </h1>
-          <UserMenu userName={fullName}>
+          <UserMenu userName={fullName} isAdmin={isAdmin}>
             <Avatar className="size-10 cursor-pointer hover:opacity-80 transition-opacity">
               <AvatarFallback className="bg-secondary text-secondary-foreground text-sm font-semibold">
                 {userInitials}

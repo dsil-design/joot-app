@@ -1,6 +1,7 @@
 import { ECBFetcher, ecbFetcher } from './ecb-fetcher';
 import { RateCalculator, rateCalculator } from './rate-calculator';
 import { GapFillingService, gapFillingService } from './gap-filling-service';
+import { createCryptoRateService, CryptoSyncResult } from './crypto-rate-service';
 import { db } from '../supabase/database';
 import { dateHelpers, COMMON_HOLIDAYS } from '../utils/date-helpers';
 import { 
@@ -17,6 +18,7 @@ export interface SyncOptions {
   forceUpdate: boolean;     // Default: false
   fillGaps: boolean;        // Default: true
   maxGapDays: number;       // Default: 7
+  includeCrypto?: boolean;  // Default: false (for backward compatibility)
 }
 
 export interface SyncResult {
@@ -28,6 +30,7 @@ export interface SyncResult {
   duration: number;
   nextSyncDate: string;
   skippedReason?: string;
+  cryptoResult?: CryptoSyncResult;  // Add crypto sync results
 }
 
 export enum SyncErrorType {
@@ -35,7 +38,8 @@ export enum SyncErrorType {
   PARSE_ERROR = 'PARSE_ERROR',
   DATABASE_ERROR = 'DATABASE_ERROR',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
-  PARTIAL_SUCCESS = 'PARTIAL_SUCCESS'
+  PARTIAL_SUCCESS = 'PARTIAL_SUCCESS',
+  CRYPTO_ERROR = 'CRYPTO_ERROR'
 }
 
 export interface SyncError {
@@ -192,9 +196,11 @@ export class DailySyncService {
       
       // Add EUR direct rates
       const eurRates = this.addEurDirectRates(targetDateRates, config.targetDate!);
-      const allRates = [...processedRates, ...eurRates];
+      
+      // Deduplicate rates to avoid "ON CONFLICT DO UPDATE command cannot affect row a second time" error
+      const allRates = this.deduplicateRates([...processedRates, ...eurRates]);
 
-      console.log(`💱 Generated ${allRates.length} processed rates`);
+      console.log(`💱 Generated ${allRates.length} processed rates (after deduplication)`);
 
       // Step 7: Insert rates to database
       if (allRates.length > 0) {
@@ -204,7 +210,12 @@ export class DailySyncService {
         console.log(`💾 Inserted ${result.ratesInserted} rates for ${config.targetDate}`);
       }
 
-      // Step 8: Fill gaps if requested
+      // Step 8: Sync crypto rates if requested
+      if (config.includeCrypto) {
+        await this.performCryptoSync(config, result);
+      }
+
+      // Step 9: Fill gaps if requested
       if (config.fillGaps) {
         await this.performGapFilling(config, result);
       }
@@ -212,7 +223,7 @@ export class DailySyncService {
       result.duration = Date.now() - startTime;
       
       console.log(`🎉 Daily sync completed successfully for ${config.targetDate}`);
-      console.log(`📊 Inserted: ${result.ratesInserted} rates, Filled gaps: ${result.gapsFilled}`);
+      console.log(`📊 Fiat: ${result.ratesInserted} rates, Crypto: ${result.cryptoResult?.ratesInserted || 0} rates, Gaps: ${result.gapsFilled}`);
       console.log(`⏱️  Duration: ${Math.round(result.duration / 1000)}s`);
 
       return result;
@@ -341,6 +352,79 @@ export class DailySyncService {
   }
 
   /**
+   * Perform crypto sync (Bitcoin rates)
+   */
+  private async performCryptoSync(config: SyncOptions, result: SyncResult): Promise<void> {
+    console.log(`₿ Syncing Bitcoin rates for ${config.targetDate}`);
+    
+    try {
+      const cryptoService = createCryptoRateService();
+      const cryptoResult = await cryptoService.syncBitcoinRates(config.targetDate);
+      
+      result.cryptoResult = cryptoResult;
+      
+      if (cryptoResult.success) {
+        console.log(`₿ Bitcoin sync completed: $${cryptoResult.btcPrice?.toLocaleString()}, ${cryptoResult.ratesInserted} rates inserted`);
+      } else {
+        console.error(`₿ Bitcoin sync failed: ${cryptoResult.errors.join(', ')}`);
+        
+        result.errors.push({
+          type: SyncErrorType.CRYPTO_ERROR,
+          message: `Bitcoin sync failed: ${cryptoResult.errors.join(', ')}`,
+          date: config.targetDate,
+          retryable: true,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+    } catch (error) {
+      result.errors.push({
+        type: SyncErrorType.CRYPTO_ERROR,
+        message: `Bitcoin sync crashed: ${error instanceof Error ? error.message : String(error)}`,
+        date: config.targetDate,
+        retryable: true,
+        timestamp: new Date().toISOString()
+      });
+      
+      console.error(`₿ Bitcoin sync crashed:`, error);
+    }
+  }
+
+  /**
+   * Sync only fiat currencies (ECB rates)
+   */
+  async syncFiatCurrencies(targetDate?: string): Promise<SyncResult> {
+    return this.executeDailySync({
+      targetDate,
+      forceUpdate: false,
+      fillGaps: true,
+      maxGapDays: 7,
+      includeCrypto: false
+    });
+  }
+
+  /**
+   * Sync only crypto currencies (Bitcoin)
+   */
+  async syncCryptocurrencies(targetDate?: string): Promise<CryptoSyncResult> {
+    const cryptoService = createCryptoRateService();
+    return cryptoService.syncBitcoinRates(targetDate);
+  }
+
+  /**
+   * Sync both fiat and crypto currencies
+   */
+  async syncBothCurrencies(targetDate?: string): Promise<SyncResult> {
+    return this.executeDailySync({
+      targetDate,
+      forceUpdate: false,
+      fillGaps: true,
+      maxGapDays: 7,
+      includeCrypto: true
+    });
+  }
+
+  /**
    * Perform gap filling after main sync
    */
   private async performGapFilling(config: SyncOptions, result: SyncResult): Promise<void> {
@@ -426,6 +510,37 @@ export class DailySyncService {
   }
 
   /**
+   * Deduplicate rates to avoid database conflicts
+   * Uses currency pair + date as unique key
+   */
+  private deduplicateRates(rates: ProcessedRate[]): ProcessedRate[] {
+    const uniqueRates = new Map<string, ProcessedRate>();
+    
+    for (const rate of rates) {
+      const key = `${rate.from_currency}-${rate.to_currency}-${rate.date}`;
+      
+      // If we already have this rate, keep the one with higher precision or prefer ECB source
+      if (uniqueRates.has(key)) {
+        const existing = uniqueRates.get(key)!;
+        
+        // Prefer non-interpolated over interpolated
+        if (existing.is_interpolated && !rate.is_interpolated) {
+          uniqueRates.set(key, rate);
+        }
+        // If both have same interpolation status, prefer ECB source
+        else if (existing.is_interpolated === rate.is_interpolated && rate.source === 'ECB') {
+          uniqueRates.set(key, rate);
+        }
+        // Otherwise keep the existing one
+      } else {
+        uniqueRates.set(key, rate);
+      }
+    }
+    
+    return Array.from(uniqueRates.values());
+  }
+
+  /**
    * Insert rates with conflict handling
    */
   private async insertRatesWithConflictHandling(
@@ -449,8 +564,8 @@ export class DailySyncService {
       }
       return data?.length || 0;
     } else {
-      // Use bulk insert (will skip duplicates)
-      const { data, error } = await db.exchangeRates.bulkInsert(exchangeRateInserts);
+      // Use bulk upsert to handle duplicates gracefully
+      const { data, error } = await db.exchangeRates.bulkUpsert(exchangeRateInserts);
       if (error) {
         throw new Error(`Database insert failed: ${error.message}`);
       }
