@@ -41,7 +41,9 @@
       "Bash(npx supabase:*)",
       "Bash(git push:*)",
       "Bash(git pull:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(chmod:*)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

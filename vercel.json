@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-exchange-rates",
+      "schedule": "0 18 * * 1-5"
+    }
+  ],
+  "functions": {
+    "src/app/api/cron/sync-exchange-rates/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/admin/backfill-rates/route.ts": {
+      "maxDuration": 900
+    }
+  }
+}

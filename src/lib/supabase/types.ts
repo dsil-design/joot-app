@@ -42,6 +42,9 @@ export type Database = {
           id: string
           rate: number
           to_currency: Database["public"]["Enums"]["currency_type"]
+          source: string
+          is_interpolated: boolean
+          interpolated_from_date: string | null
         }
         Insert: {
           created_at?: string | null
@@ -50,6 +53,9 @@ export type Database = {
           id?: string
           rate: number
           to_currency: Database["public"]["Enums"]["currency_type"]
+          source?: string
+          is_interpolated?: boolean
+          interpolated_from_date?: string | null
         }
         Update: {
           created_at?: string | null
@@ -58,6 +64,9 @@ export type Database = {
           id?: string
           rate?: number
           to_currency?: Database["public"]["Enums"]["currency_type"]
+          source?: string
+          is_interpolated?: boolean
+          interpolated_from_date?: string | null
         }
         Relationships: []
       }
@@ -290,7 +299,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      currency_type: "USD" | "THB"
+      currency_type: "USD" | "THB" | "EUR" | "GBP" | "SGD" | "VND" | "MYR" | "BTC"
       transaction_type: "income" | "expense"
     }
     CompositeTypes: {
@@ -422,7 +431,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      currency_type: ["USD", "THB"],
+      currency_type: ["USD", "THB", "EUR", "GBP", "SGD", "VND", "MYR", "BTC"],
       transaction_type: ["income", "expense"],
     },
   },
@@ -430,6 +439,7 @@ export const Constants = {
 
 // Type aliases for commonly used types
 export type ExchangeRate = Tables<"exchange_rates">
+export type ExchangeRateInsert = TablesInsert<"exchange_rates">
 export type CurrencyType = Database["public"]["Enums"]["currency_type"]
 export type TransactionType = Database["public"]["Enums"]["transaction_type"]
 export type Transaction = Tables<"transactions">

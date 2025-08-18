@@ -5,6 +5,7 @@ import type {
   TransactionInsert, 
   TransactionUpdate,
   ExchangeRate,
+  ExchangeRateInsert,
   CurrencyType 
 } from './types'
 
@@ -113,6 +114,169 @@ export const db = {
         .eq('to_currency', toCurrency)
         .eq('date', date)
         .single()
+      
+      return { data, error }
+    },
+
+    // Get exchange rate with automatic fallback to interpolated data
+    getWithFallback: async (
+      fromCurrency: CurrencyType, 
+      toCurrency: CurrencyType, 
+      date: string
+    ): Promise<{ data: ExchangeRate | null; error: PostgrestError | null }> => {
+      const supabase = createClient()
+      
+      // First try exact date
+      let { data, error } = await supabase
+        .from('exchange_rates')
+        .select('*')
+        .eq('from_currency', fromCurrency)
+        .eq('to_currency', toCurrency)
+        .eq('date', date)
+        .order('is_interpolated', { ascending: true }) // Prefer actual rates over interpolated
+        .limit(1)
+        .single()
+      
+      // If no exact match, try fallback within 7 days
+      if (error?.code === 'PGRST116') { // No rows returned
+        const fallbackResult = await supabase
+          .from('exchange_rates')
+          .select('*')
+          .eq('from_currency', fromCurrency)
+          .eq('to_currency', toCurrency)
+          .gte('date', new Date(Date.parse(date) - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+          .lte('date', date)
+          .order('date', { ascending: false })
+          .order('is_interpolated', { ascending: true })
+          .limit(1)
+          .single()
+        
+        data = fallbackResult.data
+        error = fallbackResult.error
+      }
+      
+      return { data, error }
+    },
+
+    // Store interpolated rate
+    storeInterpolated: async (
+      fromCurrency: CurrencyType,
+      toCurrency: CurrencyType,
+      date: string,
+      rate: number,
+      sourceDate: string
+    ): Promise<{ data: ExchangeRate | null; error: PostgrestError | null }> => {
+      const supabase = createClient()
+      const interpolatedRate: ExchangeRateInsert = {
+        from_currency: fromCurrency,
+        to_currency: toCurrency,
+        date,
+        rate,
+        source: 'ECB',
+        is_interpolated: true,
+        interpolated_from_date: sourceDate
+      }
+      
+      const { data, error } = await supabase
+        .from('exchange_rates')
+        .insert(interpolatedRate)
+        .select()
+        .single()
+      
+      return { data, error }
+    },
+
+    // Bulk insert rates for performance
+    bulkInsert: async (rates: ExchangeRateInsert[]): Promise<{ data: ExchangeRate[] | null; error: PostgrestError | null }> => {
+      const supabase = createClient()
+      const batchSize = 500
+      let allData: ExchangeRate[] = []
+      let lastError: PostgrestError | null = null
+      
+      // Process in batches to avoid overwhelming the database
+      for (let i = 0; i < rates.length; i += batchSize) {
+        const batch = rates.slice(i, i + batchSize)
+        
+        const { data, error } = await supabase
+          .from('exchange_rates')
+          .insert(batch)
+          .select()
+        
+        if (error) {
+          lastError = error
+          break
+        }
+        
+        if (data) {
+          allData = allData.concat(data)
+        }
+      }
+      
+      return { data: lastError ? null : allData, error: lastError }
+    },
+
+    // Upsert rates (insert or update if conflict)
+    upsert: async (rates: ExchangeRateInsert[]): Promise<{ data: ExchangeRate[] | null; error: PostgrestError | null }> => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('exchange_rates')
+        .upsert(rates, {
+          onConflict: 'from_currency,to_currency,date',
+          ignoreDuplicates: false
+        })
+        .select()
+      
+      return { data, error }
+    },
+
+    // Bulk upsert rates for performance
+    bulkUpsert: async (rates: ExchangeRateInsert[]): Promise<{ data: ExchangeRate[] | null; error: PostgrestError | null }> => {
+      const supabase = createClient()
+      const batchSize = 500
+      let allData: ExchangeRate[] = []
+      let lastError: PostgrestError | null = null
+      
+      // Process in batches to avoid overwhelming the database
+      for (let i = 0; i < rates.length; i += batchSize) {
+        const batch = rates.slice(i, i + batchSize)
+        
+        const { data, error } = await supabase
+          .from('exchange_rates')
+          .upsert(batch, {
+            onConflict: 'from_currency,to_currency,date',
+            ignoreDuplicates: false
+          })
+          .select()
+        
+        if (error) {
+          lastError = error
+          break
+        }
+        
+        if (data) {
+          allData = allData.concat(data)
+        }
+      }
+      
+      return { data: lastError ? null : allData, error: lastError }
+    },
+
+    // Get all rates for a specific date range
+    getByDateRange: async (
+      fromCurrency: CurrencyType,
+      toCurrency: CurrencyType,
+      startDate: string,
+      endDate: string
+    ): Promise<{ data: ExchangeRate[] | null; error: PostgrestError | null }> => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('exchange_rates')
+        .select('*')
+        .eq('from_currency', fromCurrency)
+        .eq('to_currency', toCurrency)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: false })
       
       return { data, error }
     },
