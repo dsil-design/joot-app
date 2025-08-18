@@ -8,9 +8,7 @@ import {
   Users, 
   FileText, 
   Home,
-  Settings,
-  Activity,
-  Database
+  Activity
 } from 'lucide-react';
 
 interface AdminLayoutProps {

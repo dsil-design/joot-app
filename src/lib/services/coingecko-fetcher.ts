@@ -132,7 +132,7 @@ export class CoinGeckoFetcher {
       
       return response.json();
     } catch (error) {
-      if (error.message.includes('fetch')) {
+      if (error instanceof Error && error.message.includes('fetch')) {
         throw new Error('NETWORK_ERROR');
       }
       throw error;

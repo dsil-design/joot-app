@@ -149,13 +149,13 @@ export class MonitoringService {
       const syncs = new Map<string, SyncHistoryEntry>();
       
       data?.forEach((record, index) => {
-        const date = record.created_at.split('T')[0];
+        const date = record.created_at?.split('T')[0] || 'unknown';
         const key = `${date}-${record.source}`;
         
         if (!syncs.has(key)) {
           syncs.set(key, {
             id: `sync-${index}`,
-            timestamp: record.created_at,
+            timestamp: record.created_at || new Date().toISOString(),
             type: record.source === 'COINGECKO' ? 'crypto' : 'fiat',
             status: 'success', // We only have successful records in the DB
             ratesProcessed: 1,
@@ -264,7 +264,7 @@ export class MonitoringService {
       const { data, error } = await supabase
         .from('exchange_rates')
         .select('source')
-        .neq('source', null);
+        .not('source', 'is', null);
 
       if (error) throw error;
 
@@ -357,8 +357,8 @@ export class MonitoringService {
       const { data, error } = await supabase
         .from('exchange_rates')
         .select('from_currency, to_currency')
-        .neq('from_currency', null)
-        .neq('to_currency', null);
+        .not('from_currency', 'is', null)
+        .not('to_currency', 'is', null);
 
       if (error) throw error;
 

@@ -209,7 +209,7 @@ export function DataQualityDashboard() {
                 <span className="text-green-600">Complete</span>
               ) : (
                 <span className="text-orange-600">
-                  {metrics.missingDates.length} gaps
+                  {metrics?.missingDates?.length || 0} gaps
                 </span>
               )}
             </div>
@@ -220,14 +220,14 @@ export function DataQualityDashboard() {
                   Missing business day data
                 </p>
                 <div className="flex flex-wrap gap-spacing-1 max-h-24 overflow-y-auto">
-                  {metrics.missingDates.slice(0, 8).map(date => (
+                  {metrics?.missingDates?.slice(0, 8)?.map(date => (
                     <Badge key={date} variant="outline" className="text-xs">
                       {date}
                     </Badge>
                   ))}
-                  {metrics.missingDates.length > 8 && (
+                  {(metrics?.missingDates?.length || 0) > 8 && (
                     <Badge variant="secondary" className="text-xs">
-                      +{metrics.missingDates.length - 8} more
+                      +{(metrics?.missingDates?.length || 0) - 8} more
                     </Badge>
                   )}
                 </div>

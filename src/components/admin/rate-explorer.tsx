@@ -18,7 +18,6 @@ import {
   Clock,
   Info,
   TrendingUp,
-  Eye
 } from 'lucide-react';
 
 const CURRENCIES: CurrencyType[] = ['USD', 'THB', 'EUR', 'GBP', 'SGD', 'VND', 'MYR', 'BTC'];

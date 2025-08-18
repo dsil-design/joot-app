@@ -264,7 +264,11 @@ export class CryptoRateService {
       
       if (error) throw error;
       
-      return data || [];
+      return (data || []).map(item => ({
+        ...item,
+        source: item.source as 'ECB' | 'COINGECKO',
+        interpolated_from_date: item.interpolated_from_date || undefined
+      }));
     } catch (error) {
       console.error(`Error fetching fiat rates for ${date}:`, error);
       return [];

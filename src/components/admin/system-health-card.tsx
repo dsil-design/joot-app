@@ -10,8 +10,7 @@ import {
   CheckCircle, 
   AlertTriangle, 
   XCircle, 
-  Info,
-  Loader2
+  Info
 } from 'lucide-react';
 
 export function SystemHealthCard() {

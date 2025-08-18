@@ -48,7 +48,8 @@
       "Bash(lsof:*)",
       "Bash(pkill:*)",
       "Bash(cd:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

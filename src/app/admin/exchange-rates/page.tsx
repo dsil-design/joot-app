@@ -8,8 +8,6 @@ import { SyncControls } from '@/components/admin/sync-controls';
 import { RateExplorer } from '@/components/admin/rate-explorer';
 import { SyncHistoryTable } from '@/components/admin/sync-history-table';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default async function AdminExchangeRatesPage() {
   const supabase = await createClient();
@@ -24,7 +22,6 @@ export default async function AdminExchangeRatesPage() {
     
     // For now, allow all authenticated users to access admin interface
     // In production, this would check a roles table or user metadata
-    const isAdmin = true; // All users can access admin interface for testing
 
     return (
       <AdminLayout>
