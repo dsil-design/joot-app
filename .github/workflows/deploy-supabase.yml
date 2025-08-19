@@ -28,8 +28,12 @@ jobs:
 
       - name: Install Supabase CLI
         run: |
-          curl -fsSL https://supabase.com/install.sh | sh
-          echo "/home/runner/.local/bin" >> $GITHUB_PATH
+          # Install Supabase CLI using GitHub releases
+          SUPABASE_VERSION="1.200.3"
+          curl -Lo supabase.tar.gz "https://github.com/supabase/cli/releases/download/v${SUPABASE_VERSION}/supabase_linux_amd64.tar.gz"
+          tar -xzf supabase.tar.gz
+          sudo mv supabase /usr/local/bin/
+          rm supabase.tar.gz
 
       - name: Verify Supabase CLI installation
         run: supabase --version
