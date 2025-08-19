@@ -42,6 +42,9 @@ jobs:
 
       - name: Link to Supabase project
         run: |
+          pwd
+          ls -la
+          ls -la supabase/
           supabase login --token "$SUPABASE_ACCESS_TOKEN"
           supabase link --project-ref $SUPABASE_PROJECT_REF
         env:
