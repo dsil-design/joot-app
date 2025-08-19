@@ -1,0 +1,417 @@
+name: CI/CD - Deploy Database & Application
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'supabase/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'next.config.ts'
+      - 'tsconfig.json'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      skip_backup:
+        description: 'Skip database backup (dangerous!)'
+        required: false
+        default: false
+        type: boolean
+      skip_tests:
+        description: 'Skip test suite'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  SUPABASE_DB_HOST: db.${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
+  SUPABASE_DB_PORT: 5432
+  SUPABASE_DB_USER: postgres
+  SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }}
+  S3_BACKUP_BUCKET: joot-supabase-backups
+
+jobs:
+  # Pre-flight checks
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      deployment_id: ${{ steps.generate_id.outputs.deployment_id }}
+      git_sha_short: ${{ steps.generate_id.outputs.git_sha_short }}
+      should_deploy_db: ${{ steps.check_changes.outputs.should_deploy_db }}
+      should_deploy_app: ${{ steps.check_changes.outputs.should_deploy_app }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Generate deployment identifiers
+        id: generate_id
+        run: |
+          DEPLOYMENT_ID="deploy-$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA::8}"
+          echo "deployment_id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+          echo "git_sha_short=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+      - name: Check for changes requiring deployment
+        id: check_changes
+        run: |
+          # Check if database changes exist
+          if git diff --name-only HEAD~1 HEAD | grep -E '^supabase/' || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_deploy_db=true" >> $GITHUB_OUTPUT
+            echo "📊 Database changes detected"
+          else
+            echo "should_deploy_db=false" >> $GITHUB_OUTPUT
+            echo "📊 No database changes detected"
+          fi
+          
+          # Check if app changes exist
+          if git diff --name-only HEAD~1 HEAD | grep -E '^(src/|package\.json|next\.config|tsconfig)' || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_deploy_app=true" >> $GITHUB_OUTPUT
+            echo "📊 Application changes detected"
+          else
+            echo "should_deploy_app=false" >> $GITHUB_OUTPUT
+            echo "📊 No application changes detected"
+          fi
+
+  # Database backup
+  backup:
+    runs-on: ubuntu-latest
+    needs: preflight
+    if: ${{ needs.preflight.outputs.should_deploy_db == 'true' && !inputs.skip_backup }}
+    outputs:
+      backup_file: ${{ steps.backup.outputs.BACKUP_FILE }}
+      backup_s3_key: ${{ steps.backup.outputs.S3_BACKUP_KEY }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-15
+
+      - name: Configure AWS CLI
+        if: ${{ env.AWS_ACCESS_KEY_ID != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      - name: Create database backup
+        id: backup
+        run: |
+          chmod +x scripts/backup-db.sh
+          scripts/backup-db.sh "${{ needs.preflight.outputs.deployment_id }}"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup-${{ needs.preflight.outputs.git_sha_short }}
+          path: |
+            backups/
+          retention-days: 30
+
+  # Migration verification and application
+  migrate:
+    runs-on: ubuntu-latest
+    needs: [preflight, backup]
+    if: ${{ needs.preflight.outputs.should_deploy_db == 'true' && (success() || inputs.skip_backup) }}
+    outputs:
+      migration_applied: ${{ steps.apply.outputs.migration_applied }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Supabase CLI
+        run: npm install -g @supabase/cli
+
+      - name: Setup PostgreSQL authentication
+        run: |
+          chmod +x scripts/setup-pgpass.sh
+          scripts/setup-pgpass.sh
+
+      - name: Authenticate with Supabase
+        run: |
+          echo "${{ secrets.SUPABASE_ACCESS_TOKEN }}" | supabase auth login --token
+          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      - name: Verify migration synchronization
+        run: |
+          chmod +x scripts/verify-migration-sync.sh
+          scripts/verify-migration-sync.sh
+
+      - name: Apply migrations
+        id: apply
+        run: |
+          echo "🔄 Applying migrations to remote database..."
+          if supabase db push; then
+            echo "✅ Migrations applied successfully"
+            echo "migration_applied=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Migration failed"
+            echo "migration_applied=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+  # Database verification
+  verify:
+    runs-on: ubuntu-latest
+    needs: [preflight, migrate]
+    if: ${{ needs.migrate.outputs.migration_applied == 'true' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Supabase CLI
+        run: npm install -g @supabase/cli
+
+      - name: Setup PostgreSQL authentication
+        run: |
+          chmod +x scripts/setup-pgpass.sh
+          scripts/setup-pgpass.sh
+
+      - name: Authenticate with Supabase
+        run: |
+          echo "${{ secrets.SUPABASE_ACCESS_TOKEN }}" | supabase auth login --token
+          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      - name: Verify database schema
+        run: |
+          echo "🔄 Verifying database state after migration..."
+          
+          # Check migration list
+          supabase migration list --linked
+          
+          # Verify key tables exist
+          export PGPASSWORD="${{ secrets.SUPABASE_DB_PASSWORD }}"
+          psql "postgresql://postgres@db.${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co:5432/postgres" \
+            -c "SELECT 
+                  schemaname, 
+                  tablename, 
+                  hasindexes, 
+                  hasrules, 
+                  hastriggers
+                FROM pg_tables 
+                WHERE schemaname = 'public' 
+                ORDER BY tablename;" \
+            -c "SELECT COUNT(*) as user_count FROM auth.users;" \
+            -c "SELECT COUNT(*) as transaction_count FROM transactions;"
+          
+          echo "✅ Database verification completed"
+
+  # Test Suite
+  test:
+    runs-on: ubuntu-latest
+    needs: preflight
+    if: ${{ needs.preflight.outputs.should_deploy_app == 'true' && !inputs.skip_tests }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type checking
+        run: npm run build --dry-run || npx tsc --noEmit
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm run test:ci
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+  # Application deployment
+  deploy_app:
+    runs-on: ubuntu-latest
+    needs: [preflight, migrate, verify, test]
+    if: ${{ needs.preflight.outputs.should_deploy_app == 'true' && (success() || !needs.preflight.outputs.should_deploy_db) }}
+    outputs:
+      deployment_url: ${{ steps.deploy.outputs.deployment_url }}
+      vercel_deployment_id: ${{ steps.deploy.outputs.vercel_deployment_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Deploy to Vercel
+        id: deploy
+        run: |
+          npm install -g vercel@latest
+          
+          # Deploy to production
+          if [[ "${{ inputs.environment || 'production' }}" == "production" ]]; then
+            DEPLOYMENT_URL=$(vercel deploy --prod --token="${{ secrets.VERCEL_TOKEN }}" --confirm)
+          else
+            DEPLOYMENT_URL=$(vercel deploy --token="${{ secrets.VERCEL_TOKEN }}" --confirm)
+          fi
+          
+          echo "deployment_url=${DEPLOYMENT_URL}" >> $GITHUB_OUTPUT
+          echo "vercel_deployment_id=$(echo ${DEPLOYMENT_URL} | sed 's/https:\/\///' | sed 's/\.vercel\.app//')" >> $GITHUB_OUTPUT
+          
+          echo "✅ Application deployed successfully"
+          echo "🔗 Deployment URL: ${DEPLOYMENT_URL}"
+
+  # Notification and cleanup
+  notify:
+    runs-on: ubuntu-latest
+    needs: [preflight, backup, migrate, verify, test, deploy_app]
+    if: always()
+    continue-on-error: true
+
+    steps:
+      - name: Determine deployment status
+        id: status
+        run: |
+          if [[ "${{ needs.deploy_app.result }}" == "success" ]] && [[ "${{ needs.migrate.result }}" != "failure" ]] && [[ "${{ needs.verify.result }}" != "failure" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=🎉 Deployment completed successfully!" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.migrate.result }}" == "failure" ]] || [[ "${{ needs.verify.result }}" == "failure" ]]; then
+            echo "status=database_failure" >> $GITHUB_OUTPUT
+            echo "message=❌ Database deployment failed - application not deployed for safety" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.deploy_app.result }}" == "failure" ]]; then
+            echo "status=app_failure" >> $GITHUB_OUTPUT
+            echo "message=⚠️  Database deployed successfully but application deployment failed" >> $GITHUB_OUTPUT
+          else
+            echo "status=partial" >> $GITHUB_OUTPUT
+            echo "message=⚠️  Deployment completed with mixed results" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack notification
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+            "text": "${{ steps.status.outputs.message }}",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "${{ steps.status.outputs.message }}"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Repository:*\n${{ github.repository }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Branch:*\n${{ github.ref_name }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Commit:*\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ needs.preflight.outputs.git_sha_short }}>"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Environment:*\n${{ inputs.environment || 'production' }}"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Job Results:*\n• Backup: ${{ needs.backup.result || 'skipped' }}\n• Migration: ${{ needs.migrate.result || 'skipped' }}\n• Verification: ${{ needs.verify.result || 'skipped' }}\n• Tests: ${{ needs.test.result || 'skipped' }}\n• App Deploy: ${{ needs.deploy_app.result || 'skipped' }}"
+                }
+              }
+            ]
+          }' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Create GitHub Release
+        if: ${{ steps.status.outputs.status == 'success' && github.ref == 'refs/heads/main' }}
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: release-${{ needs.preflight.outputs.deployment_id }}
+          release_name: Release ${{ needs.preflight.outputs.deployment_id }}
+          body: |
+            ## Deployment Summary
+            
+            **Environment:** ${{ inputs.environment || 'production' }}
+            **Deployment ID:** ${{ needs.preflight.outputs.deployment_id }}
+            **Git SHA:** ${{ github.sha }}
+            
+            ### Changes Deployed
+            - Database migrations: ${{ needs.migrate.result == 'success' && 'Applied' || 'None' }}
+            - Application updates: ${{ needs.deploy_app.result == 'success' && 'Deployed' || 'None' }}
+            
+            ### URLs
+            - **Application:** ${{ needs.deploy_app.outputs.deployment_url }}
+            - **Database:** https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
+            
+            ### Backup Information
+            ${{ needs.backup.outputs.backup_s3_key && format('- **Backup S3 Key:** {0}', needs.backup.outputs.backup_s3_key) || '- No backup created' }}
+            
+            For rollback procedures, see the [deployment documentation](docs/deployment/ci-cd.md).
+          draft: false
+          prerelease: false
