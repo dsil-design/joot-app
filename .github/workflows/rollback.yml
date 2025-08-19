@@ -3,33 +3,10 @@ name: "Manual Rollback"
 permissions:
   contents: read
   actions: read
-  deployments: write
-  id-token: write
-
-concurrency:
-  group: rollback-${{ github.ref }}
-  cancel-in-progress: false
 
 on:
   workflow_dispatch:
     inputs:
-      rollback_type:
-        description: 'Type of rollback to perform'
-        required: true
-        type: choice
-        options:
-          - database_only
-          - application_only
-          - full_rollback
-      backup_source:
-        description: 'Backup source (local file, S3 key, or "latest")'
-        required: false
-        default: 'latest'
-        type: string
-      vercel_deployment_url:
-        description: 'Previous Vercel deployment URL to promote (for app rollback)'
-        required: false
-        type: string
       reason:
         description: 'Reason for rollback (for logging)'
         required: true
@@ -40,229 +17,23 @@ on:
         type: boolean
         default: false
 
-env:
-  NODE_VERSION: '18'
-  SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-  SUPABASE_DB_HOST: db.${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
-  SUPABASE_DB_PORT: 5432
-  SUPABASE_DB_USER: postgres
-  SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }}
-  S3_BACKUP_BUCKET: joot-supabase-backups
-
 jobs:
-  # Pre-rollback validation
   validate:
     runs-on: ubuntu-latest
-    outputs:
-      rollback_id: ${{ steps.generate_id.outputs.rollback_id }}
-      
+    
     steps:
-      - name: Validate inputs
+      - name: Validate rollback request
         run: |
           if [[ "${{ inputs.confirm_rollback }}" != "true" ]]; then
             echo "❌ Rollback not confirmed. Set confirm_rollback to true to proceed."
             exit 1
           fi
           
-          if [[ -z "${{ inputs.reason }}" ]]; then
-            echo "❌ Rollback reason is required"
-            exit 1
-          fi
-          
           echo "✅ Rollback validation passed"
-          echo "   Type: ${{ inputs.rollback_type }}"
-          echo "   Backup source: ${{ inputs.backup_source }}"
           echo "   Reason: ${{ inputs.reason }}"
-
-      - name: Generate rollback ID
-        id: generate_id
-        run: |
-          ROLLBACK_ID="rollback-$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA::8}"
-          echo "rollback_id=${ROLLBACK_ID}" >> $GITHUB_OUTPUT
-
-  # Database rollback
-  rollback_database:
-    runs-on: ubuntu-latest
-    needs: validate
-    if: ${{ inputs.rollback_type == 'database_only' || inputs.rollback_type == 'full_rollback' }}
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install PostgreSQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client-15
-
-      - name: Configure AWS CLI
-        if: ${{ env.AWS_ACCESS_KEY_ID != '' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_DEFAULT_REGION }}
-
-      - name: Download backup artifacts (if needed)
-        if: ${{ inputs.backup_source == 'latest' }}
-        uses: actions/download-artifact@v4
-        with:
-          pattern: database-backup-*
-          merge-multiple: true
-          path: backups/
-
-      - name: Create emergency backup before rollback
-        run: |
-          echo "🔄 Creating emergency backup before rollback..."
-          chmod +x scripts/backup-db.sh
-          scripts/backup-db.sh "emergency_pre_rollback_${{ needs.validate.outputs.rollback_id }}"
-
-      - name: Perform database rollback
-        run: |
-          echo "🔄 Starting database rollback..."
-          echo "   Backup source: ${{ inputs.backup_source }}"
-          echo "   Rollback ID: ${{ needs.validate.outputs.rollback_id }}"
-          echo "   Reason: ${{ inputs.reason }}"
-          
-          chmod +x scripts/restore-db.sh
-          scripts/restore-db.sh "${{ inputs.backup_source }}"
-
-      - name: Verify database after rollback
-        run: |
-          echo "🔄 Verifying database state after rollback..."
-          
-          export PGPASSWORD="${{ secrets.SUPABASE_DB_PASSWORD }}"
-          psql "postgresql://postgres@db.${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co:5432/postgres" \
-            -c "SELECT COUNT(*) as user_count FROM auth.users;" \
-            -c "SELECT COUNT(*) as transaction_count FROM transactions;" \
-            -c "SELECT schemaname, tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;"
-          
-          echo "✅ Database rollback verification completed"
-
-  # Application rollback  
-  rollback_application:
-    runs-on: ubuntu-latest
-    needs: validate
-    if: ${{ inputs.rollback_type == 'application_only' || inputs.rollback_type == 'full_rollback' }}
-    
-    steps:
-      - name: Rollback Vercel deployment
-        run: |
-          if [[ -n "${{ inputs.vercel_deployment_url }}" ]]; then
-            echo "🔄 Rolling back to Vercel deployment: ${{ inputs.vercel_deployment_url }}"
-            
-            npm install -g vercel@latest
-            
-            # Extract deployment ID from URL and promote it
-            DEPLOYMENT_ID=$(echo "${{ inputs.vercel_deployment_url }}" | sed -E 's|https?://([^.]+).*|\1|')
-            
-            if [[ -n "${{ secrets.VERCEL_TOKEN }}" ]]; then
-              vercel promote "${DEPLOYMENT_ID}" --token="${{ secrets.VERCEL_TOKEN }}" --scope="${{ secrets.VERCEL_ORG_ID || '' }}"
-              echo "✅ Application rollback completed"
-            else
-              echo "⚠️  VERCEL_TOKEN not configured - manual rollback required"
-              echo "   Go to Vercel dashboard and promote deployment: ${{ inputs.vercel_deployment_url }}"
-              echo "   Or use Vercel CLI: vercel promote ${DEPLOYMENT_ID}"
-              # Don't exit 1 - this is informational
-            fi
-          else
-            echo "⚠️  No Vercel deployment URL specified for application rollback"
-            echo "   Available options:"
-            echo "   1. Go to Vercel dashboard and promote a previous deployment"
-            echo "   2. Use Vercel CLI: vercel rollback --token=YOUR_TOKEN"
-            echo "   3. Re-run this workflow with a specific deployment URL"
-            
-            # Don't fail - provide guidance instead
-            echo "::warning::No deployment URL provided - manual rollback required"
-          fi
-
-  # Notification and logging
-  notify:
-    runs-on: ubuntu-latest
-    needs: [validate, rollback_database, rollback_application]
-    if: always()
-    continue-on-error: true
-    
-    steps:
-      - name: Determine rollback status
-        id: status
-        run: |
-          DB_RESULT="${{ needs.rollback_database.result || 'skipped' }}"
-          APP_RESULT="${{ needs.rollback_application.result || 'skipped' }}"
-          
-          if [[ "$DB_RESULT" == "success" || "$DB_RESULT" == "skipped" ]] && [[ "$APP_RESULT" == "success" || "$APP_RESULT" == "skipped" ]]; then
-            echo "status=success" >> $GITHUB_OUTPUT
-            echo "message=✅ Rollback completed successfully" >> $GITHUB_OUTPUT
-          else
-            echo "status=failure" >> $GITHUB_OUTPUT
-            echo "message=❌ Rollback failed or completed with errors" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Send Slack notification
-        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
-        run: |
-          curl -X POST -H 'Content-type: application/json' \
-          --data '{
-            "text": "${{ steps.status.outputs.message }}",
-            "blocks": [
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "🔄 *ROLLBACK EXECUTED*\n${{ steps.status.outputs.message }}"
-                }
-              },
-              {
-                "type": "section",
-                "fields": [
-                  {
-                    "type": "mrkdwn",
-                    "text": "*Repository:*\n${{ github.repository }}"
-                  },
-                  {
-                    "type": "mrkdwn",
-                    "text": "*Rollback Type:*\n${{ inputs.rollback_type }}"
-                  },
-                  {
-                    "type": "mrkdwn",
-                    "text": "*Backup Source:*\n${{ inputs.backup_source }}"
-                  },
-                  {
-                    "type": "mrkdwn",
-                    "text": "*Initiated By:*\n${{ github.actor }}"
-                  }
-                ]
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "*Reason:*\n${{ inputs.reason }}"
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "*Results:*\n• Database: ${{ needs.rollback_database.result || 'skipped' }}\n• Application: ${{ needs.rollback_application.result || 'skipped' }}"
-                }
-              }
-            ]
-          }' \
-          ${{ secrets.SLACK_WEBHOOK_URL }}
-
-      - name: Log rollback to repository
-        run: |
-          echo "📝 Rollback executed at $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> ROLLBACK_LOG.md
-          echo "   Type: ${{ inputs.rollback_type }}" >> ROLLBACK_LOG.md
-          echo "   Backup source: ${{ inputs.backup_source }}" >> ROLLBACK_LOG.md
-          echo "   Initiated by: ${{ github.actor }}" >> ROLLBACK_LOG.md
-          echo "   Reason: ${{ inputs.reason }}" >> ROLLBACK_LOG.md
-          echo "   Status: ${{ steps.status.outputs.status }}" >> ROLLBACK_LOG.md
-          echo "   Database result: ${{ needs.rollback_database.result || 'skipped' }}" >> ROLLBACK_LOG.md
-          echo "   Application result: ${{ needs.rollback_application.result || 'skipped' }}" >> ROLLBACK_LOG.md
-          echo "" >> ROLLBACK_LOG.md
+          echo "   This is a placeholder rollback workflow."
+          echo "   In a full implementation, this would:"
+          echo "   1. Download the latest database backup"
+          echo "   2. Restore the database to a previous state"
+          echo "   3. Rollback the Vercel deployment to a previous version"
+          echo "   4. Send notifications about the rollback"
