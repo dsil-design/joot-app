@@ -43,9 +43,6 @@ jobs:
 
       - name: Link to Supabase project
         run: |
-          pwd
-          ls -la
-          ls -la supabase/
           supabase login --token "$SUPABASE_ACCESS_TOKEN"
           echo "$SUPABASE_DB_PASSWORD" | supabase link --project-ref $SUPABASE_PROJECT_REF
         env:
@@ -59,4 +56,6 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
       - name: Verify deployment
-        run: supabase migration list
+        run: echo "$SUPABASE_DB_PASSWORD" | supabase migration list
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
