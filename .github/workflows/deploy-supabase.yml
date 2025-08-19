@@ -31,6 +31,8 @@ jobs:
           # Install Supabase CLI using GitHub releases
           SUPABASE_VERSION="1.200.3"
           curl -Lo supabase.tar.gz "https://github.com/supabase/cli/releases/download/v${SUPABASE_VERSION}/supabase_linux_amd64.tar.gz"
+          # Remove any existing supabase binary first
+          rm -f supabase
           tar -xzf supabase.tar.gz
           sudo mv supabase /usr/local/bin/
           rm supabase.tar.gz
