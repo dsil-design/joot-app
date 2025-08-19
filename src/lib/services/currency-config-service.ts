@@ -24,46 +24,31 @@ class CurrencyConfigService {
    * Get tracked currencies from database
    */
   async getTrackedCurrencies(): Promise<TrackedCurrency[]> {
+    // Temporarily use fallback config until currency_configuration migration is deployed
+    // This prevents TypeScript errors during build when the migration hasn't been applied yet
+    console.warn('Using fallback currency configuration until migration is deployed');
+    return this.getDefaultCurrencies();
+    
+    // TODO: Uncomment this after the migration is successfully deployed
+    /*
     try {
       const supabase = createClient();
       
-      // First check if the currency_configuration table exists by calling the RPC function
-      const { data: rpcData, error: rpcError } = await supabase
+      // First try to call the RPC function which is type-safe
+      let { data, error } = await supabase
         .rpc('get_tracked_currencies');
       
-      if (rpcError) {
-        console.warn('Currency configuration table not available, using fallback:', rpcError.message);
-        return this.getDefaultCurrencies();
-      }
-      
-      if (rpcData && rpcData.length > 0) {
-        return rpcData.map((row: any) => ({
-          currency_code: row.currency_code,
-          display_name: row.display_name,
-          currency_symbol: row.currency_symbol,
-          source: row.source,
-          is_crypto: row.is_crypto
-        }));
-      }
-      
-      // Fallback to direct table query if RPC doesn't return data
-      const { data, error } = await supabase
-        .from('currency_configuration')
-        .select('currency_code, display_name, currency_symbol, source, is_crypto')
-        .eq('is_tracked', true)
-        .order('is_crypto', { ascending: true })
-        .order('currency_code', { ascending: true });
-
       if (error) {
-        console.warn('Error fetching tracked currencies from table:', error.message);
+        console.warn('RPC function not available, using fallback:', error.message);
         return this.getDefaultCurrencies();
       }
-
+      
       return data || this.getDefaultCurrencies();
     } catch (error) {
       console.error('Failed to fetch tracked currencies:', error);
       return this.getDefaultCurrencies();
     }
+    */
   }
 
   /**
