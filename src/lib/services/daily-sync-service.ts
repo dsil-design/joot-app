@@ -7,10 +7,10 @@ import { dateHelpers, COMMON_HOLIDAYS } from '../utils/date-helpers';
 import { 
   ECBRate, 
   ProcessedRate, 
-  CURRENCY_PAIRS,
   ECBErrorType,
   ECBError
 } from '../types/exchange-rates';
+import { currencyConfigService } from './currency-config-service';
 import { ExchangeRateInsert, CurrencyType } from '../supabase/types';
 
 export interface SyncOptions {
@@ -280,9 +280,10 @@ export class DailySyncService {
     console.log(`📅 Handling weekend/holiday sync for ${config.targetDate}`);
     
     try {
+      const currencyPairs = await currencyConfigService.getCurrencyPairs();
       const gapResult = await this.gapFillingService.fillWeekendGaps(
         config.targetDate!,
-        CURRENCY_PAIRS
+        currencyPairs as [CurrencyType, CurrencyType][]
       );
       
       result.gapsFilled = gapResult.filledGaps;
@@ -319,8 +320,9 @@ export class DailySyncService {
     console.log(`🔄 Handling missing ECB data for ${config.targetDate}`);
     
     try {
+      const currencyPairs = await currencyConfigService.getCurrencyPairs();
       const gapResult = await this.gapFillingService.fillGapsForPairs(
-        CURRENCY_PAIRS,
+        currencyPairs as [CurrencyType, CurrencyType][],
         1 // Only look 1 day back for missing data
       );
       
@@ -431,8 +433,9 @@ export class DailySyncService {
     console.log(`🔧 Performing gap filling (max ${config.maxGapDays} days)`);
     
     try {
+      const currencyPairs = await currencyConfigService.getCurrencyPairs();
       const gapResult = await this.gapFillingService.fillGapsForPairs(
-        CURRENCY_PAIRS,
+        currencyPairs as [CurrencyType, CurrencyType][],
         config.maxGapDays
       );
       

@@ -3,6 +3,7 @@ import { RateCalculator } from './rate-calculator';
 import { ProcessedRate } from '@/lib/types/exchange-rates';
 import { createClient } from '@/lib/supabase/client';
 import { CurrencyType } from '@/lib/supabase/types';
+import { currencyConfigService } from './currency-config-service';
 
 export interface CryptoSyncResult {
   success: boolean;

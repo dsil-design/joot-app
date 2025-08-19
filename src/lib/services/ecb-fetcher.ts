@@ -5,13 +5,13 @@ import {
   ECBErrorType, 
   RetryConfig, 
   DEFAULT_RETRY_CONFIG, 
-  VALID_ECB_CURRENCIES, 
   ECB_ENDPOINTS,
   ValidationResult,
   ECBFetchMetrics,
   DateRange,
   ECBXMLData
 } from '../types/exchange-rates';
+import { currencyConfigService } from './currency-config-service';
 
 // XML parsing library - we'll use native DOMParser for browser compatibility
 const parseXML = (xmlString: string): Document => {
@@ -184,8 +184,11 @@ export class ECBFetcher {
         }
       }
 
+      // Filter rates based on tracked currencies
+      const filteredRates = await this.filterTrackedCurrencies(rates);
+
       // Validate the parsed data
-      const validation = this.validateECBData(rates);
+      const validation = await this.validateECBData(filteredRates);
       if (!validation.isValid) {
         throw new ECBError(
           ECBErrorType.VALIDATION_ERROR, 
@@ -193,7 +196,9 @@ export class ECBFetcher {
         );
       }
 
-      return rates;
+      console.log(`📊 Filtered ECB rates: ${filteredRates.length} tracked currencies from ${rates.length} total`);
+
+      return filteredRates;
 
     } catch (error) {
       if (error instanceof ECBError) {
@@ -204,9 +209,23 @@ export class ECBFetcher {
   }
 
   /**
+   * Filter rates to only include tracked currencies
+   */
+  private async filterTrackedCurrencies(rates: ECBRate[]): Promise<ECBRate[]> {
+    try {
+      const trackedECBCurrencies = await currencyConfigService.getECBCurrencies();
+      
+      return rates.filter(rate => trackedECBCurrencies.includes(rate.currency));
+    } catch (error) {
+      console.warn('Failed to get tracked currencies, using all rates:', error);
+      return rates;
+    }
+  }
+
+  /**
    * Validate fetched ECB data
    */
-  private validateECBData(rates: ECBRate[]): ValidationResult {
+  private async validateECBData(rates: ECBRate[]): Promise<ValidationResult> {
     const result: ValidationResult = {
       isValid: true,
       errors: [],
@@ -215,7 +234,7 @@ export class ECBFetcher {
 
     if (rates.length === 0) {
       result.isValid = false;
-      result.errors.push('No rates found in response');
+      result.errors.push('No rates found in response after filtering');
       return result;
     }
 
@@ -227,10 +246,19 @@ export class ECBFetcher {
     const latestRates = rates.filter(rate => rate.date === latestDate);
     const availableCurrencies = new Set(latestRates.map(rate => rate.currency));
     
-    for (const requiredCurrency of VALID_ECB_CURRENCIES) {
-      if (!availableCurrencies.has(requiredCurrency)) {
-        result.warnings.push(`Missing expected currency: ${requiredCurrency}`);
+    // Check that we have the currencies we expect to track
+    try {
+      const trackedECBCurrencies = await currencyConfigService.getECBCurrencies();
+      
+      for (const requiredCurrency of trackedECBCurrencies) {
+        if (!availableCurrencies.has(requiredCurrency)) {
+          // This is an error since ECB should provide these tracked currencies
+          result.errors.push(`Required tracked currency not found in ECB data: ${requiredCurrency}`);
+          result.isValid = false;
+        }
       }
+    } catch (error) {
+      result.warnings.push('Could not verify tracked currencies against ECB data');
     }
 
     // Validate rate values

@@ -7,6 +7,7 @@ import { DataQualityDashboard } from '@/components/admin/data-quality-dashboard'
 import { SyncControls } from '@/components/admin/sync-controls';
 import { RateExplorer } from '@/components/admin/rate-explorer';
 import { SyncHistoryTable } from '@/components/admin/sync-history-table';
+import { CurrencyManager } from '@/components/admin/currency-manager';
 import { Badge } from '@/components/ui/badge';
 
 export default async function AdminExchangeRatesPage() {
@@ -44,6 +45,12 @@ export default async function AdminExchangeRatesPage() {
           <section>
             <h2 className="text-xl font-semibold mb-spacing-4">System Health</h2>
             <SystemHealthCard />
+          </section>
+          
+          {/* Currency Configuration */}
+          <section>
+            <h2 className="text-xl font-semibold mb-spacing-4">Currency Configuration</h2>
+            <CurrencyManager />
           </section>
           
           {/* Data Quality Metrics */}

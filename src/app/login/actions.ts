@@ -17,7 +17,8 @@ export async function login(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
-    redirect('/error')
+    const errorMessage = encodeURIComponent(error.message || 'Invalid login credentials')
+    redirect(`/error?message=${errorMessage}`)
   }
 
   // Add small delay to allow global action state to be visible
@@ -30,28 +31,60 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = await createClient()
 
-  // type-casting here for convenience
-  // in practice, you should validate your inputs
+  // Validate inputs
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+  const firstName = formData.get('first_name') as string
+  const lastName = formData.get('last_name') as string
+
+  if (!email || !password) {
+    const errorMessage = encodeURIComponent('Email and password are required')
+    redirect(`/error?message=${errorMessage}`)
+  }
+
   const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
+    email,
+    password,
     options: {
       data: {
-        first_name: formData.get('first_name') as string,
-        last_name: formData.get('last_name') as string,
-      }
+        first_name: firstName,
+        last_name: lastName,
+      },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm`
     }
   }
 
-  const { error } = await supabase.auth.signUp(data)
+  const { data: signUpData, error } = await supabase.auth.signUp(data)
 
   if (error) {
-    redirect('/error')
+    const errorMessage = encodeURIComponent(error.message || 'Failed to create account')
+    redirect(`/error?message=${errorMessage}`)
+  }
+
+  // Check if email confirmation is required
+  if (signUpData?.user?.identities?.length === 0) {
+    // User exists but email not confirmed
+    const message = encodeURIComponent('An account with this email already exists. Please check your email for confirmation.')
+    redirect(`/signup/verify-email?message=${message}`)
+  }
+
+  // Check if we need email confirmation
+  const needsEmailConfirmation = signUpData?.user && !signUpData.session
+
+  if (needsEmailConfirmation) {
+    // Redirect to a page informing user to check their email
+    redirect('/signup/verify-email')
   }
 
   // Add small delay to allow global action state to be visible
   await new Promise(resolve => setTimeout(resolve, 1000))
 
-  revalidatePath('/', 'layout')
-  redirect('/home')
+  // If we have a session, user is logged in (email confirmation disabled)
+  if (signUpData?.session) {
+    revalidatePath('/', 'layout')
+    redirect('/home')
+  }
+
+  // Default to verify email page
+  redirect('/signup/verify-email')
 }

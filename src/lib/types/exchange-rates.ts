@@ -63,18 +63,18 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   backoffFactor: 2
 };
 
-// Currency pairs that we want to track
+// Currency pairs that we want to track (only those available from ECB)
 export const CURRENCY_PAIRS: [CurrencyType, CurrencyType][] = [
   // USD pairs
   ['USD', 'THB'], ['USD', 'EUR'], ['USD', 'GBP'],
-  ['USD', 'SGD'], ['USD', 'VND'], ['USD', 'MYR'],
+  ['USD', 'SGD'], ['USD', 'MYR'],
   // Reverse pairs
   ['THB', 'USD'], ['EUR', 'USD'], ['GBP', 'USD'],
-  ['SGD', 'USD'], ['VND', 'USD'], ['MYR', 'USD']
+  ['SGD', 'USD'], ['MYR', 'USD']
 ];
 
-// Valid currencies that we expect from ECB
-export const VALID_ECB_CURRENCIES = ['USD', 'THB', 'GBP', 'SGD', 'VND', 'MYR'] as const;
+// Valid currencies that we expect from ECB (only those actually provided by ECB)
+export const VALID_ECB_CURRENCIES = ['USD', 'THB', 'GBP', 'SGD', 'MYR'] as const;
 
 // ECB API endpoints
 export const ECB_ENDPOINTS = {
