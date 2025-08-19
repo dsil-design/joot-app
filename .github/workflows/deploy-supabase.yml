@@ -29,7 +29,7 @@ jobs:
       - name: Install Supabase CLI
         run: |
           # Install Supabase CLI using GitHub releases in temp directory to avoid conflicts
-          SUPABASE_VERSION="1.200.3"
+          SUPABASE_VERSION="2.34.3"
           mkdir -p /tmp/supabase-install
           cd /tmp/supabase-install
           curl -Lo supabase.tar.gz "https://github.com/supabase/cli/releases/download/v${SUPABASE_VERSION}/supabase_linux_amd64.tar.gz"
