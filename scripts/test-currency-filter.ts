@@ -40,6 +40,7 @@ async function testCurrencyFilter() {
       
       if (unexpectedCurrencies.length > 0) {
         console.error(`❌ Unexpected currencies found: ${unexpectedCurrencies.join(', ')}`);
+        process.exit(1);
       } else {
         console.log('✅ All currencies match expected whitelist!');
       }
@@ -48,6 +49,23 @@ async function testCurrencyFilter() {
       const missingCurrencies = VALID_ECB_CURRENCIES.filter(c => !uniqueCurrencies.has(c));
       if (missingCurrencies.length > 0) {
         console.warn(`⚠️  Expected currencies not in ECB data: ${missingCurrencies.join(', ')}`);
+      }
+      
+      // Assert expected filtering performance
+      if (uniqueCurrencies.size > 6) {
+        console.error(`❌ Too many currencies after filtering: ${uniqueCurrencies.size} (expected ≤6)`);
+        process.exit(1);
+      }
+      
+      if (uniqueCurrencies.size === 0) {
+        console.error('❌ No currencies after filtering - system may be broken');
+        process.exit(1);
+      }
+      
+      // Verify EUR is not in the filtered results (it should be base currency only)
+      if (uniqueCurrencies.has('EUR')) {
+        console.error('❌ EUR should not be in ECB filtered results (it is the base currency)');
+        process.exit(1);
       }
       
       // Show performance metrics
