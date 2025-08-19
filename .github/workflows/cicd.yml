@@ -314,8 +314,8 @@ jobs:
           # For preview deploys, it would be a generated URL
           
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            # Production deployment - replace with your actual production domain
-            DEPLOYMENT_URL="https://joot-app.vercel.app"  # TODO: Update with your actual Vercel domain
+            # Production deployment - your actual production domain
+            DEPLOYMENT_URL="https://dsil-joot.vercel.app"
           else
             # Preview deployment - would need Vercel API to get exact URL
             DEPLOYMENT_URL="https://joot-app-git-${{ github.ref_name }}.vercel.app"
