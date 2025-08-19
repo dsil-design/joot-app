@@ -47,10 +47,11 @@ jobs:
           ls -la
           ls -la supabase/
           supabase login --token "$SUPABASE_ACCESS_TOKEN"
-          supabase link --project-ref $SUPABASE_PROJECT_REF
+          echo "$SUPABASE_DB_PASSWORD" | supabase link --project-ref $SUPABASE_PROJECT_REF
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
       - name: Push migrations to Supabase
         run: supabase db push
