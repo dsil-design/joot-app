@@ -25,21 +25,41 @@ class CurrencyConfigService {
    */
   async getTrackedCurrencies(): Promise<TrackedCurrency[]> {
     try {
-      // TODO: Re-enable when currency_configuration table is added to types
-      // const supabase = createClient()
-      // const { data, error } = await supabase
-      //   .from('currency_configuration')
-      //   .select('currency_code, display_name, currency_symbol, source, is_crypto')
-      //   .eq('is_tracked', true)
-      //   .order('is_crypto', { ascending: true })
-      //   .order('currency_code', { ascending: true });
+      const supabase = createClient();
+      
+      // First check if the currency_configuration table exists by calling the RPC function
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('get_tracked_currencies');
+      
+      if (rpcError) {
+        console.warn('Currency configuration table not available, using fallback:', rpcError.message);
+        return this.getDefaultCurrencies();
+      }
+      
+      if (rpcData && rpcData.length > 0) {
+        return rpcData.map((row: any) => ({
+          currency_code: row.currency_code,
+          display_name: row.display_name,
+          currency_symbol: row.currency_symbol,
+          source: row.source,
+          is_crypto: row.is_crypto
+        }));
+      }
+      
+      // Fallback to direct table query if RPC doesn't return data
+      const { data, error } = await supabase
+        .from('currency_configuration')
+        .select('currency_code, display_name, currency_symbol, source, is_crypto')
+        .eq('is_tracked', true)
+        .order('is_crypto', { ascending: true })
+        .order('currency_code', { ascending: true });
 
-      // if (error) {
-      //   console.error('Error fetching tracked currencies:', error);
-      // }
+      if (error) {
+        console.warn('Error fetching tracked currencies from table:', error.message);
+        return this.getDefaultCurrencies();
+      }
 
-      // return data || [];
-      return this.getDefaultCurrencies();
+      return data || this.getDefaultCurrencies();
     } catch (error) {
       console.error('Failed to fetch tracked currencies:', error);
       return this.getDefaultCurrencies();
@@ -101,7 +121,7 @@ class CurrencyConfigService {
       
       // Return fallback config
       const fallbackConfig: CurrencyConfig = {
-        ecbCurrencies: ['USD', 'EUR', 'GBP', 'THB', 'SGD', 'MYR'],
+        ecbCurrencies: ['USD', 'GBP', 'THB', 'SGD', 'MYR'],
         cryptoCurrencies: ['BTC'],
         allTracked: ['USD', 'EUR', 'GBP', 'THB', 'SGD', 'MYR', 'BTC'],
         currencyPairs: [

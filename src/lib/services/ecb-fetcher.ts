@@ -251,6 +251,9 @@ export class ECBFetcher {
       const trackedECBCurrencies = await currencyConfigService.getECBCurrencies();
       
       for (const requiredCurrency of trackedECBCurrencies) {
+        // Skip EUR validation since it's the base currency in ECB data
+        if (requiredCurrency === 'EUR') continue;
+        
         if (!availableCurrencies.has(requiredCurrency)) {
           // This is an error since ECB should provide these tracked currencies
           result.errors.push(`Required tracked currency not found in ECB data: ${requiredCurrency}`);
