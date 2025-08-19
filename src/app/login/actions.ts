@@ -29,7 +29,14 @@ export async function login(formData: FormData) {
 }
 
 export async function signup(formData: FormData) {
-  const supabase = await createClient()
+  let supabase
+  try {
+    supabase = await createClient()
+  } catch (error) {
+    console.error('Failed to create Supabase client:', error)
+    const errorMessage = encodeURIComponent('Failed to initialize authentication service. Please check configuration.')
+    redirect(`/error?message=${errorMessage}`)
+  }
 
   // Validate inputs
   const email = formData.get('email') as string
@@ -37,8 +44,16 @@ export async function signup(formData: FormData) {
   const firstName = formData.get('first_name') as string
   const lastName = formData.get('last_name') as string
 
+  console.log('Signup attempt for email:', email)
+
   if (!email || !password) {
     const errorMessage = encodeURIComponent('Email and password are required')
+    redirect(`/error?message=${errorMessage}`)
+  }
+
+  // Validate password length (Supabase requires at least 6 characters)
+  if (password.length < 6) {
+    const errorMessage = encodeURIComponent('Password must be at least 6 characters long')
     redirect(`/error?message=${errorMessage}`)
   }
 
@@ -54,7 +69,9 @@ export async function signup(formData: FormData) {
     }
   }
 
+  console.log('Calling Supabase signUp with data:', { email, hasPassword: !!password, firstName, lastName })
   const { data: signUpData, error } = await supabase.auth.signUp(data)
+  console.log('Supabase signUp response:', { signUpData, error })
 
   if (error) {
     const errorMessage = encodeURIComponent(error.message || 'Failed to create account')

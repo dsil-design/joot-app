@@ -1,4 +1,16 @@
-name: CI/CD - Deploy Database & Application
+name: "CI/CD - Deploy Database and Application"
+
+permissions:
+  contents: read
+  actions: read
+  deployments: write
+  id-token: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 on:
   push:
@@ -430,7 +442,7 @@ jobs:
 
       - name: Create GitHub Release
         if: ${{ steps.status.outputs.status == 'success' && github.ref == 'refs/heads/main' }}
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

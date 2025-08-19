@@ -21,7 +21,7 @@ export default function SignupPage() {
             </p>
           </div>
 
-          <form className="mt-8 space-y-6">
+          <form className="mt-8 space-y-6" action={signup}>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -87,9 +87,8 @@ export default function SignupPage() {
 
             <div>
               <Button
-                type="button"
-                onClick={async () => {
-                  const formData = new FormData(document.querySelector('form') as HTMLFormElement);
+                type="submit"
+                formAction={async (formData) => {
                   await withGlobalAction('signup-form', async () => {
                     await signup(formData);
                   });

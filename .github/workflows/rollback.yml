@@ -1,4 +1,14 @@
-name: 🔄 Manual Rollback
+name: "Manual Rollback"
+
+permissions:
+  contents: read
+  actions: read
+  deployments: write
+  id-token: write
+
+concurrency:
+  group: rollback-${{ github.ref }}
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:

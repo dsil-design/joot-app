@@ -1,0 +1,17 @@
+name: "🚀 Trigger Joot Deployment"
+description: "Manually trigger the CI/CD deployment workflow via GitHub CLI"
+command: "gh workflow run cicd.yml --repo dsil-design/joot-app {{environment_flag}} {{skip_backup_flag}} {{skip_tests_flag}}"
+tags:
+  - deployment
+  - github
+  - ci-cd
+arguments:
+  - name: environment_flag
+    description: "Target environment for deployment"
+    default_value: "--field environment=production"
+  - name: skip_backup_flag  
+    description: "Skip database backup (dangerous!)"
+    default_value: ""
+  - name: skip_tests_flag
+    description: "Skip test suite"
+    default_value: ""

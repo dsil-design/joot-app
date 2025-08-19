@@ -1,0 +1,17 @@
+name: "🔄 Emergency Rollback"
+description: "Trigger emergency rollback of database and/or application"
+command: "gh workflow run rollback.yml --repo dsil-design/joot-app --field rollback_type={{rollback_type}} --field backup_source={{backup_source}} --field reason='{{reason}}' --field confirm_rollback=true"
+tags:
+  - rollback
+  - emergency
+  - database
+arguments:
+  - name: rollback_type
+    description: "Type of rollback to perform"
+    default_value: "full_rollback"
+  - name: backup_source
+    description: "Backup source (latest, or specific backup file/S3 key)"
+    default_value: "latest"
+  - name: reason
+    description: "Reason for rollback (required for audit trail)"
+    default_value: "Emergency rollback via Warp"
