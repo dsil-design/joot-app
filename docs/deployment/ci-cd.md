@@ -46,12 +46,13 @@ AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
 AWS_DEFAULT_REGION=us-east-1
 ```
 
-### Vercel Deployment
+### Vercel Integration (Optional - for rollbacks)
 ```
 VERCEL_TOKEN=your_vercel_token
-VERCEL_ORG_ID=your_vercel_org_id
-VERCEL_PROJECT_ID=your_vercel_project_id
+VERCEL_ORG_ID=your_vercel_org_id  
 ```
+
+> **Note**: The pipeline uses your existing Vercel→GitHub auto-deployment. Vercel credentials are only needed for rollback operations.
 
 ### Notifications (Optional)
 ```

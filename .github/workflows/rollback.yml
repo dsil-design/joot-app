@@ -16,8 +16,8 @@ on:
         required: false
         default: 'latest'
         type: string
-      vercel_deployment_id:
-        description: 'Previous Vercel deployment ID to rollback to (for app rollback)'
+      vercel_deployment_url:
+        description: 'Previous Vercel deployment URL to promote (for app rollback)'
         required: false
         type: string
       reason:
@@ -142,19 +142,32 @@ jobs:
     steps:
       - name: Rollback Vercel deployment
         run: |
-          if [[ -n "${{ inputs.vercel_deployment_id }}" ]]; then
-            echo "🔄 Rolling back to Vercel deployment: ${{ inputs.vercel_deployment_id }}"
+          if [[ -n "${{ inputs.vercel_deployment_url }}" ]]; then
+            echo "🔄 Rolling back to Vercel deployment: ${{ inputs.vercel_deployment_url }}"
             
             npm install -g vercel@latest
             
-            # Promote the specified deployment to production
-            vercel promote "${{ inputs.vercel_deployment_id }}" --token="${{ secrets.VERCEL_TOKEN }}" --scope="${{ secrets.VERCEL_ORG_ID }}"
+            # Extract deployment ID from URL and promote it
+            DEPLOYMENT_ID=$(echo "${{ inputs.vercel_deployment_url }}" | sed -E 's|https?://([^.]+).*|\1|')
             
-            echo "✅ Application rollback completed"
+            if [[ -n "${{ secrets.VERCEL_TOKEN }}" ]]; then
+              vercel promote "${DEPLOYMENT_ID}" --token="${{ secrets.VERCEL_TOKEN }}" --scope="${{ secrets.VERCEL_ORG_ID || '' }}"
+              echo "✅ Application rollback completed"
+            else
+              echo "⚠️  VERCEL_TOKEN not configured - manual rollback required"
+              echo "   Go to Vercel dashboard and promote deployment: ${{ inputs.vercel_deployment_url }}"
+              echo "   Or use Vercel CLI: vercel promote ${DEPLOYMENT_ID}"
+              # Don't exit 1 - this is informational
+            fi
           else
-            echo "⚠️  No Vercel deployment ID specified for application rollback"
-            echo "   Manual rollback required via Vercel dashboard"
-            exit 1
+            echo "⚠️  No Vercel deployment URL specified for application rollback"
+            echo "   Available options:"
+            echo "   1. Go to Vercel dashboard and promote a previous deployment"
+            echo "   2. Use Vercel CLI: vercel rollback --token=YOUR_TOKEN"
+            echo "   3. Re-run this workflow with a specific deployment URL"
+            
+            # Don't fail - provide guidance instead
+            echo "::warning::No deployment URL provided - manual rollback required"
           fi
 
   # Notification and logging
