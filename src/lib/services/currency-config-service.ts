@@ -24,31 +24,28 @@ class CurrencyConfigService {
    * Get tracked currencies from database
    */
   async getTrackedCurrencies(): Promise<TrackedCurrency[]> {
-    // Temporarily use fallback config until currency_configuration migration is deployed
-    // This prevents TypeScript errors during build when the migration hasn't been applied yet
-    console.warn('Using fallback currency configuration until migration is deployed');
-    return this.getDefaultCurrencies();
-    
-    // TODO: Uncomment this after the migration is successfully deployed
-    /*
     try {
       const supabase = createClient();
       
-      // First try to call the RPC function which is type-safe
-      let { data, error } = await supabase
-        .rpc('get_tracked_currencies');
+      // Query the currency_configuration table directly
+      // TODO: Use RPC function once types are regenerated after migration
+      const { data, error } = await supabase
+        .from('currency_configuration' as any)
+        .select('currency_code, display_name, currency_symbol, source, is_crypto')
+        .eq('is_tracked', true)
+        .order('is_crypto', { ascending: true })
+        .order('currency_code', { ascending: true });
       
       if (error) {
-        console.warn('RPC function not available, using fallback:', error.message);
+        console.warn('Currency configuration table not available, using fallback:', error.message);
         return this.getDefaultCurrencies();
       }
       
-      return data || this.getDefaultCurrencies();
+      return (data as unknown as TrackedCurrency[]) || this.getDefaultCurrencies();
     } catch (error) {
       console.error('Failed to fetch tracked currencies:', error);
       return this.getDefaultCurrencies();
     }
-    */
   }
 
   /**
