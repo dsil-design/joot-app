@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, isAdminAvailable } from '@/lib/supabase/admin';
+import { requireAdminAuth } from '@/lib/auth/admin-auth';
 // import { currencyConfigService } from '@/lib/services/currency-config-service';
 
 // GET: Fetch all currencies and their tracking status
 export async function GET(request: NextRequest) {
+  // Check admin authentication
+  const { user, response } = await requireAdminAuth(request);
+  if (response) return response;
+
   // Check if admin operations are available
   if (!isAdminAvailable()) {
     return NextResponse.json(
@@ -55,6 +60,10 @@ export async function GET(request: NextRequest) {
 
 // POST: Update tracked currencies
 export async function POST(request: NextRequest) {
+  // Check admin authentication
+  const { user, response } = await requireAdminAuth(request);
+  if (response) return response;
+
   // Check if admin operations are available
   if (!isAdminAvailable()) {
     return NextResponse.json(
@@ -109,6 +118,10 @@ export async function POST(request: NextRequest) {
 
 // DELETE: Remove all rates for specific currencies
 export async function DELETE(request: NextRequest) {
+  // Check admin authentication
+  const { user, response } = await requireAdminAuth(request);
+  if (response) return response;
+
   // Check if admin operations are available
   if (!isAdminAvailable()) {
     return NextResponse.json(

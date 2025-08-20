@@ -90,6 +90,27 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
+    // Check for admin routes that require admin role
+    if (path.startsWith('/admin')) {
+      try {
+        const { data: isAdminData, error } = await supabase.rpc('is_admin')
+        
+        if (error || !isAdminData) {
+          // Not an admin, redirect to unauthorized page or home
+          const url = request.nextUrl.clone()
+          url.pathname = '/'
+          url.searchParams.set('error', 'unauthorized')
+          return NextResponse.redirect(url)
+        }
+      } catch {
+        // Error checking admin status, redirect to home
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
+        url.searchParams.set('error', 'auth_error')
+        return NextResponse.redirect(url)
+      }
+    }
+
     return supabaseResponse
   } catch {
     // Middleware auth error - redirect to login for security

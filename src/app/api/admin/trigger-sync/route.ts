@@ -3,6 +3,7 @@ import { dailySyncService } from '@/lib/services/daily-sync-service';
 import { backfillService } from '@/lib/services/backfill-service';
 import { dateHelpers } from '@/lib/utils/date-helpers';
 import { createAdminClient, isAdminAvailable } from '@/lib/supabase/admin';
+import { requireAdminAuth } from '@/lib/auth/admin-auth';
 
 /**
  * Manual trigger endpoint for exchange rate synchronization
@@ -14,6 +15,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const startTime = Date.now();
   
   console.log(`🎯 Manual sync triggered at ${new Date().toISOString()}`);
+  
+  // Check admin authentication
+  const { user, response } = await requireAdminAuth(request);
+  if (response) return response;
   
   // Check if admin operations are available in this environment
   if (!isAdminAvailable()) {
@@ -188,6 +193,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
  * GET endpoint for information and testing
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Check admin authentication
+  const { user, response } = await requireAdminAuth(request);
+  if (response) return response;
+
   // Check if admin operations are available in this environment
   if (!isAdminAvailable()) {
     console.warn('⚠️ Admin operations not available - missing or dummy environment variables');

@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { monitoringService } from '@/lib/services/monitoring-service';
 import { createAdminClient, isAdminAvailable } from '@/lib/supabase/admin';
+import { requireAdminAuth } from '@/lib/auth/admin-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Check admin authentication
+  const { user, response } = await requireAdminAuth(request);
+  if (response) return response;
+
   // Check if admin operations are available in this environment
   if (!isAdminAvailable()) {
     console.warn('⚠️ Admin operations not available - missing or dummy environment variables');

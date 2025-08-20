@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { backfillService, BackfillOptions, BackfillProgress } from '@/lib/services/backfill-service';
 import { dateHelpers } from '@/lib/utils/date-helpers';
 import { createAdminClient, isAdminAvailable } from '@/lib/supabase/admin';
+import { requireAdminAuth } from '@/lib/auth/admin-auth';
 
 // In-memory lock to prevent concurrent backfill operations
 const BACKFILL_LOCKS = new Map<string, { timestamp: number; inProgress: boolean }>();
@@ -19,6 +20,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const lockKey = 'backfill-in-progress';
   
   console.log(`🚀 Backfill request received at ${new Date().toISOString()}`);
+  
+  // Check admin authentication
+  const { user, response } = await requireAdminAuth(request);
+  if (response) return response;
   
   // Check if admin operations are available in this environment
   if (!isAdminAvailable()) {
@@ -262,6 +267,10 @@ async function handleStreamingBackfill(
  * GET endpoint for backfill status and information
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Check admin authentication
+  const { user, response } = await requireAdminAuth(request);
+  if (response) return response;
+
   // Check if admin operations are available in this environment
   if (!isAdminAvailable()) {
     console.warn('⚠️ Admin operations not available - missing or dummy environment variables');
@@ -365,6 +374,10 @@ function calculateEstimatedRecords(startDate: string, endDate: string): number {
  * DELETE endpoint to force-release locks (admin emergency function)
  */
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
+  // Check admin authentication
+  const { user, response } = await requireAdminAuth(request);
+  if (response) return response;
+
   // Check if admin operations are available in this environment
   if (!isAdminAvailable()) {
     console.warn('⚠️ Admin operations not available - missing or dummy environment variables');

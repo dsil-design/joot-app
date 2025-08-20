@@ -205,6 +205,7 @@ export type Database = {
           preferred_currency:
             | Database["public"]["Enums"]["currency_type"]
             | null
+          role: Database["public"]["Enums"]["user_role"] | null
           updated_at: string | null
         }
         Insert: {
@@ -217,6 +218,7 @@ export type Database = {
           preferred_currency?:
             | Database["public"]["Enums"]["currency_type"]
             | null
+          role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string | null
         }
         Update: {
@@ -229,6 +231,7 @@ export type Database = {
           preferred_currency?:
             | Database["public"]["Enums"]["currency_type"]
             | null
+          role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string | null
         }
         Relationships: []
@@ -302,6 +305,10 @@ export type Database = {
           source: string
         }[]
       }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       update_tracked_currencies: {
         Args: { p_currencies: string[] }
         Returns: {
@@ -349,6 +356,7 @@ export type Database = {
         | "PHP"
         | "IDR"
       transaction_type: "income" | "expense"
+      user_role: "user" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -541,6 +549,7 @@ export type ExchangeRateUpdate = Database['public']['Tables']['exchange_rates'][
 
 export type CurrencyType = Database['public']['Enums']['currency_type']
 export type TransactionType = Database['public']['Enums']['transaction_type']
+export type UserRole = Database['public']['Enums']['user_role']
 
 // Extended types with relationships
 export type TransactionWithVendorAndPayment = Transaction & {

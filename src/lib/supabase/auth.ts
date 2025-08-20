@@ -70,6 +70,29 @@ export const auth = {
 
     return { user: profile, error: null }
   },
+
+  // Check if current user is admin
+  isAdmin: async (): Promise<{ isAdmin: boolean; error: PostgrestError | null }> => {
+    const supabase = createClient()
+    const { data, error } = await supabase.rpc('is_admin')
+    
+    if (error) {
+      return { isAdmin: false, error }
+    }
+
+    return { isAdmin: data === true, error: null }
+  },
+
+  // Get current user with role information
+  getCurrentUserWithRole: async (): Promise<{ user: User | null; error: PostgrestError | null }> => {
+    const { data: authUser, error: authError } = await auth.getUser()
+    
+    if (authError || !authUser.user) {
+      return { user: null, error: authError }
+    }
+
+    return await auth.getUserProfile(authUser.user.id)
+  },
 }
 
 // Auth guard hook for client components
