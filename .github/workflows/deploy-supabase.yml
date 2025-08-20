@@ -77,39 +77,38 @@ jobs:
 
       - name: Fix migration system and handle role migration
         run: |
-          echo "🔧 Checking migration system and database state..."
+          echo "🔧 Checking and fixing migration system..."
           migration_list=$(echo "$SUPABASE_DB_PASSWORD" | supabase migration list --workdir database 2>&1)
           echo "Current migration status:"
           echo "$migration_list"
           
-          # If no migrations are tracked, we need to be more careful about initialization
+          # If no migrations are tracked, initialize with only the migrations we know worked
           if ! echo "$migration_list" | grep -q "20250819100000"; then
             echo "⚠️ Migration system not tracking existing migrations."
-            echo "🔍 Checking if role column exists in database..."
+            echo "🔄 Initializing migration system with known working migrations..."
             
-            # Test if role column exists using a simple query
-            if echo "$SUPABASE_DB_PASSWORD" | supabase db dump --workdir database -s | grep -q "role.*user_role"; then
-              echo "✅ Role column exists - initializing all migrations as applied"
-              echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status applied 20250819100000 20250819134041 20250820000000 20250820120000 --workdir database
-            else
-              echo "❌ Role column missing - initializing only older migrations, role migration will run"
-              # Mark only the migrations that actually ran as applied
-              echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status applied 20250819100000 20250819134041 20250820000000 --workdir database
-              # Leave 20250820120000 (role migration) to be run
-              echo "🎯 Role migration (20250820120000) will be executed by db push"
-            fi
+            # Create supabase/migrations directory for repair command compatibility
+            mkdir -p supabase/migrations
+            cp database/migrations/*.sql supabase/migrations/
+            
+            # Only mark migrations as applied that we know actually ran successfully
+            echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status applied 20250819100000 20250819134041 20250820000000 --workdir database
+            echo "✅ Base migrations marked as applied"
+            echo "🎯 Role migration (20250820120000) will be executed by db push"
           else
             echo "✅ Migration system is tracking migrations"
             
-            # Additional check: if role migration is marked as applied but role column doesn't exist
-            if echo "$migration_list" | grep -q "20250820120000" && echo "$migration_list" | grep -q "Applied"; then
-              echo "🔍 Role migration marked as applied - verifying database state..."
-              if ! echo "$SUPABASE_DB_PASSWORD" | supabase db dump --workdir database -s | grep -q "role.*user_role"; then
-                echo "🚨 MIGRATION MISMATCH DETECTED: Role migration marked as applied but database missing changes"
-                echo "🔄 Resetting role migration status to force re-execution..."
-                echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status reverted 20250820120000 --workdir database
-                echo "✅ Role migration reset - will be re-executed by db push"
-              fi
+            # If role migration is marked as applied, check if we need to reset it
+            if echo "$migration_list" | grep -q "20250820120000.*Applied"; then
+              echo "🔍 Role migration marked as applied - but we know it needs to run"
+              echo "🔄 Resetting role migration status to force re-execution..."
+              
+              # Create supabase/migrations directory for repair command compatibility
+              mkdir -p supabase/migrations
+              cp database/migrations/*.sql supabase/migrations/
+              
+              echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status reverted 20250820120000 --workdir database
+              echo "✅ Role migration reset - will be re-executed by db push"
             fi
           fi
         env:
