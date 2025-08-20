@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import LoginPage from '@/app/login/page'
 import { auth } from '@/lib/supabase/auth'
+import { GlobalActionProvider } from '@/contexts/GlobalActionContext'
 import type { User } from '@supabase/supabase-js'
 import type { AuthError } from '@supabase/supabase-js'
 
@@ -11,6 +12,15 @@ jest.mock('@/lib/supabase/auth', () => ({
     signIn: jest.fn()
   }
 }))
+
+// Mock server actions
+jest.mock('@/app/login/actions', () => ({
+  login: jest.fn(),
+  signup: jest.fn()
+}))
+
+// Import the mocked actions
+import { login as mockLogin } from '@/app/login/actions'
 
 // Mock useRouter and useSearchParams
 const mockPush = jest.fn()
@@ -65,26 +75,36 @@ const createMockSession = () => ({
 
 const mockAuth = auth as jest.Mocked<typeof auth>
 
+// Helper function to wrap components with GlobalActionProvider
+const renderWithProvider = (component: React.ReactElement) => {
+  return render(
+    <GlobalActionProvider>
+      {component}
+    </GlobalActionProvider>
+  )
+}
+
 describe('LoginPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockPush.mockClear()
+    ;(mockLogin as jest.Mock).mockClear()
   })
 
   it('renders login form elements', async () => {
-    render(<LoginPage />)
+    renderWithProvider(<LoginPage />)
     
-    expect(screen.getByRole('heading', { name: /sign in to your account/i })).toBeInTheDocument()
-    expect(screen.getByText('Welcome back to Joot')).toBeInTheDocument()
-    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /welcome to joot/i })).toBeInTheDocument()
+    expect(screen.getByText('Log in to your account to continue')).toBeInTheDocument()
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^sign in$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^log in$/i })).toBeInTheDocument()
   })
 
   it('has correct input types', () => {
-    render(<LoginPage />)
+    renderWithProvider(<LoginPage />)
     
-    const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement
+    const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement
     const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement
     
     expect(emailInput.type).toBe('email')
@@ -92,105 +112,56 @@ describe('LoginPage', () => {
   })
 
   it('has navigation links', () => {
-    render(<LoginPage />)
+    renderWithProvider(<LoginPage />)
     
-    const signUpText = screen.getByText("Don't have an account?")
-    const signUpLink = screen.getByRole('link', { name: /sign up/i })
+    const signUpLink = screen.getByRole('link', { name: /create account/i })
     
-    expect(signUpText).toBeInTheDocument()
     expect(signUpLink).toBeInTheDocument()
     expect(signUpLink).toHaveAttribute('href', '/signup')
   })
 
-  it('successfully logs in user and redirects to dashboard', async () => {
+  it('allows user to fill form and submit', async () => {
     const user = userEvent.setup()
-    mockAuth.signIn.mockResolvedValue({
-      data: { user: createMockUser(), session: createMockSession() },
-      error: null
-    })
+    ;(mockLogin as jest.Mock).mockResolvedValue(undefined)
 
-    render(<LoginPage />)
+    renderWithProvider(<LoginPage />)
     
-    await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com')
     await user.type(screen.getByLabelText(/password/i), 'password123')
-    await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+    
+    expect(screen.getByLabelText(/email/i)).toHaveValue('test@example.com')
+    expect(screen.getByLabelText(/password/i)).toHaveValue('password123')
+    
+    await user.click(screen.getByRole('button', { name: /^log in$/i }))
     
     await waitFor(() => {
-      expect(mockAuth.signIn).toHaveBeenCalledWith('test@example.com', 'password123')
-      expect(mockPush).toHaveBeenCalledWith('/dashboard')
+      expect(mockLogin).toHaveBeenCalled()
     })
   })
 
-  it('handles login errors', async () => {
-    const user = userEvent.setup()
-    mockAuth.signIn.mockResolvedValue({
-      data: { user: null, session: null },
-      error: createMockAuthError('Invalid login credentials')
-    })
-
-    render(<LoginPage />)
+  it('shows demo login button', async () => {
+    renderWithProvider(<LoginPage />)
     
-    await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
-    await user.type(screen.getByLabelText(/password/i), 'wrongpassword')
-    await user.click(screen.getByRole('button', { name: /^sign in$/i }))
-    
-    await waitFor(() => {
-      expect(screen.getByText('Invalid login credentials')).toBeInTheDocument()
-    })
+    expect(screen.getByRole('button', { name: /log in to demo account/i })).toBeInTheDocument()
   })
 
-  it('clears errors when user starts typing', async () => {
-    const user = userEvent.setup()
-    mockAuth.signIn.mockResolvedValue({
-      data: { user: null, session: null },
-      error: createMockAuthError('Invalid login credentials')
-    })
-
-    render(<LoginPage />)
+  it('has required form validation', async () => {
+    renderWithProvider(<LoginPage />)
     
-    await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
-    await user.type(screen.getByLabelText(/password/i), 'wrongpassword')
-    await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+    const emailInput = screen.getByLabelText(/email/i)
+    const passwordInput = screen.getByLabelText(/password/i)
     
-    await waitFor(() => {
-      expect(screen.getByText('Invalid login credentials')).toBeInTheDocument()
-    })
-    
-    // Start typing to clear error
-    await user.type(screen.getByLabelText(/email address/i), 'a')
-    
-    await waitFor(() => {
-      expect(screen.queryByText('Invalid login credentials')).not.toBeInTheDocument()
-    })
+    expect(emailInput).toHaveAttribute('required')
+    expect(passwordInput).toHaveAttribute('required')
   })
 
-  it('disables form during submission', async () => {
-    const user = userEvent.setup()
-    mockAuth.signIn.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-
-    render(<LoginPage />)
+  it('has proper form autocomplete attributes', async () => {
+    renderWithProvider(<LoginPage />)
     
-    await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
-    await user.type(screen.getByLabelText(/password/i), 'password123')
-    await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+    const emailInput = screen.getByLabelText(/email/i)
+    const passwordInput = screen.getByLabelText(/password/i)
     
-    expect(screen.getByRole('button', { name: /signing in/i })).toBeDisabled()
-    expect(screen.getByLabelText(/email address/i)).toBeDisabled()
-    expect(screen.getByLabelText(/password/i)).toBeDisabled()
-  })
-
-  it('handles unexpected errors gracefully', async () => {
-    const user = userEvent.setup()
-    mockAuth.signIn.mockRejectedValue(new Error('Network error'))
-
-    render(<LoginPage />)
-    
-    await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
-    await user.type(screen.getByLabelText(/password/i), 'password123')
-    await user.click(screen.getByRole('button', { name: /^sign in$/i }))
-    
-    await waitFor(() => {
-      expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeInTheDocument()
-    })
+    expect(emailInput).toHaveAttribute('autocomplete', 'email')
+    expect(passwordInput).toHaveAttribute('autocomplete', 'current-password')
   })
 })

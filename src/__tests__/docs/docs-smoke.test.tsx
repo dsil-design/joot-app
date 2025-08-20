@@ -83,26 +83,27 @@ describe('Documentation Smoke Tests', () => {
       expect(screen.getByText('Test Child Content')).toBeInTheDocument()
     })
 
-    it('includes search functionality', () => {
+    it('includes back to app navigation', () => {
       render(
         <DocsLayout>
           <div>Content</div>
         </DocsLayout>
       )
       
-      const searchInput = screen.getByPlaceholderText('Search documentation...')
-      expect(searchInput).toBeInTheDocument()
+      const backLink = screen.getByRole('link', { name: /back to app/i })
+      expect(backLink).toBeInTheDocument()
+      expect(backLink).toHaveAttribute('href', '/login')
     })
 
-    it('includes theme toggle', () => {
+    it('includes navigation sidebar', () => {
       render(
         <DocsLayout>
           <div>Content</div>
         </DocsLayout>
       )
       
-      const themeToggle = screen.getByRole('button', { name: /toggle theme/i })
-      expect(themeToggle).toBeInTheDocument()
+      const sidebar = screen.getByRole('complementary') || document.querySelector('aside')
+      expect(sidebar).toBeInTheDocument()
     })
 
     it('has proper layout structure', () => {
@@ -114,7 +115,8 @@ describe('Documentation Smoke Tests', () => {
       
       // Check for main layout elements
       expect(screen.getByRole('main')).toBeInTheDocument()
-      expect(screen.getByRole('complementary') || document.querySelector('aside')).toBeInTheDocument()
+      expect(document.querySelector('aside')).toBeInTheDocument()
+      expect(screen.getByText('Joot Design System')).toBeInTheDocument()
     })
   })
 

@@ -39,20 +39,23 @@ describe('Component Documentation Pages', () => {
       expect(screen.getByText('Examples')).toBeInTheDocument()
       expect(screen.getByText('Variants')).toBeInTheDocument()
       
-      // Check for actual button variants
-      expect(screen.getByText('Default')).toBeInTheDocument()
-      expect(screen.getByText('Secondary')).toBeInTheDocument()
-      expect(screen.getByText('Outline')).toBeInTheDocument()
-      expect(screen.getByText('Ghost')).toBeInTheDocument()
-      expect(screen.getByText('Link')).toBeInTheDocument()
-      expect(screen.getByText('Destructive')).toBeInTheDocument()
+      // Check for actual button variants - use getAllByRole to handle multiple elements
+      const buttons = screen.getAllByRole('button')
+      expect(buttons.find(button => button.textContent === 'Default')).toBeInTheDocument()
+      expect(buttons.find(button => button.textContent === 'Secondary')).toBeInTheDocument()
+      expect(buttons.find(button => button.textContent === 'Outline')).toBeInTheDocument()
+      expect(buttons.find(button => button.textContent === 'Ghost')).toBeInTheDocument()
+      expect(buttons.find(button => button.textContent === 'Link')).toBeInTheDocument()
+      expect(buttons.find(button => button.textContent === 'Destructive')).toBeInTheDocument()
     })
 
     it('displays button sizes', () => {
       render(<ButtonPage />)
       expect(screen.getByText('Sizes')).toBeInTheDocument()
-      expect(screen.getByText('Small')).toBeInTheDocument()
-      expect(screen.getByText('Large')).toBeInTheDocument()
+      // Use getAllByRole to handle multiple button elements
+      const buttons = screen.getAllByRole('button')
+      expect(buttons.find(button => button.textContent === 'Small')).toBeInTheDocument()
+      expect(buttons.find(button => button.textContent === 'Large')).toBeInTheDocument()
     })
 
     it('includes installation and usage sections', () => {
@@ -80,13 +83,14 @@ describe('Component Documentation Pages', () => {
     it('renders card page without errors', () => {
       render(<CardPage />)
       expect(screen.getByRole('heading', { level: 1, name: 'Card' })).toBeInTheDocument()
-      expect(screen.getByText(/A flexible container component/)).toBeInTheDocument()
+      expect(screen.getByText(/Display content with related information in a flexible container/)).toBeInTheDocument()
     })
 
     it('displays card examples', () => {
       render(<CardPage />)
       expect(screen.getByText('Examples')).toBeInTheDocument()
-      expect(screen.getByText('Simple Card')).toBeInTheDocument()
+      // Check for the actual example sections that exist
+      expect(screen.getByText('With Actions')).toBeInTheDocument()
     })
 
     it('includes installation and API reference', () => {
@@ -100,18 +104,19 @@ describe('Component Documentation Pages', () => {
     it('renders input page without errors', () => {
       render(<InputPage />)
       expect(screen.getByRole('heading', { level: 1, name: 'Input' })).toBeInTheDocument()
-      expect(screen.getByText(/Text input component for forms/)).toBeInTheDocument()
+      expect(screen.getByText(/Display a form input field with various types and states/)).toBeInTheDocument()
     })
 
     it('displays input examples', () => {
       render(<InputPage />)
       expect(screen.getByText('Examples')).toBeInTheDocument()
-      expect(screen.getByText('Basic Input')).toBeInTheDocument()
+      // Check for heading text instead of conflicting 'Default'
+      expect(screen.getByRole('heading', { name: 'Default' })).toBeInTheDocument()
     })
 
     it('includes form field examples', () => {
       render(<InputPage />)
-      expect(screen.getByText('Form Field')).toBeInTheDocument()
+      expect(screen.getByText('Input Types')).toBeInTheDocument()
     })
 
     it('includes installation and API reference', () => {
@@ -125,13 +130,14 @@ describe('Component Documentation Pages', () => {
     it('renders alert page without errors', () => {
       render(<AlertPage />)
       expect(screen.getByRole('heading', { level: 1, name: 'Alert' })).toBeInTheDocument()
-      expect(screen.getByText(/Display important messages/)).toBeInTheDocument()
+      expect(screen.getByText(/Display an alert message to communicate important information/)).toBeInTheDocument()
     })
 
     it('displays alert examples with variants', () => {
       render(<AlertPage />)
       expect(screen.getByText('Examples')).toBeInTheDocument()
-      expect(screen.getByText('Default Alert')).toBeInTheDocument()
+      // Check for the actual sections that exist
+      expect(screen.getByText('Variants')).toBeInTheDocument()
     })
 
     it('includes installation and API reference', () => {

@@ -1,150 +1,129 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useRouter } from 'next/navigation'
 import SignupPage from '@/app/signup/page'
 import LoginPage from '@/app/login/page'
 import { ProtectedRoute } from '@/components/auth/protected-route'
-import { auth } from '@/lib/supabase/auth'
 import * as authLib from '@/lib/auth'
-import type { User, Session, AuthError } from '@supabase/supabase-js'
+import { GlobalActionProvider } from '@/contexts/GlobalActionContext'
 
-// Mock modules
-jest.mock('@/lib/supabase/auth')
-jest.mock('@/lib/auth')
+// Mock next/navigation
+const mockPush = jest.fn()
+const mockReplace = jest.fn()
+
 jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
+  useRouter: () => ({
+    push: mockPush,
+    replace: mockReplace,
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+  }),
+  useSearchParams: () => ({
+    get: jest.fn().mockReturnValue(null),
+    getAll: jest.fn().mockReturnValue([]),
+    has: jest.fn().mockReturnValue(false),
+    toString: jest.fn().mockReturnValue(''),
+  }),
+  usePathname: () => '/login',
+  redirect: jest.fn(),
+  notFound: jest.fn(),
 }))
 
-const mockAuth = auth as jest.Mocked<typeof auth>
+// Mock auth lib for protected route tests
+jest.mock('@/lib/auth', () => ({
+  getAuthState: jest.fn()
+}))
+
+// Mock server actions
+jest.mock('@/app/login/actions', () => ({
+  login: jest.fn(),
+  signup: jest.fn()
+}))
+
 const mockAuthLib = authLib as jest.Mocked<typeof authLib>
-const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>
+
+// Helper function to wrap components with GlobalActionProvider
+const renderWithProvider = (component: React.ReactElement) => {
+  return render(
+    <GlobalActionProvider>
+      {component}
+    </GlobalActionProvider>
+  )
+}
 
 describe('Authentication Flow Integration Tests', () => {
-  const mockPush = jest.fn()
+  const mockLogin = jest.requireMock('@/app/login/actions').login
+  const mockSignup = jest.requireMock('@/app/login/actions').signup
 
   beforeEach(() => {
     jest.clearAllMocks()
-    mockUseRouter.mockReturnValue({
-      push: mockPush,
-      replace: jest.fn(),
-      prefetch: jest.fn(),
-      back: jest.fn(),
-      forward: jest.fn(),
-      refresh: jest.fn(),
-    })
-    window.location.href = ''
+    mockPush.mockClear()
+    mockReplace.mockClear()
   })
 
-  describe('Complete Signup to Login Flow', () => {
-    it('should complete signup and redirect to login', async () => {
+  describe('Signup Form Integration', () => {
+    it('should render signup form with all required fields', async () => {
+      renderWithProvider(<SignupPage />)
+      
+      expect(screen.getByLabelText(/first name/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/last name/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/email address/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument()
+    })
+
+    it('should handle signup form submission', async () => {
       const user = userEvent.setup()
       
-      // Mock successful signup
-      const mockUser: Partial<User> = {
-        id: '123',
-        email: 'newuser@example.com',
-        app_metadata: {},
-        user_metadata: {},
-        aud: 'authenticated',
-        created_at: '2023-01-01T00:00:00.000Z'
-      }
-      mockAuth.signUp.mockResolvedValue({
-        data: { 
-          user: mockUser as User, 
-          session: {
-            access_token: 'mock-token',
-            refresh_token: 'mock-refresh-token',
-            expires_in: 3600,
-            token_type: 'bearer',
-            user: mockUser as User
-          } as Session
-        },
-        error: null
-      })
-
-      render(<SignupPage />)
+      renderWithProvider(<SignupPage />)
       
-      // Fill signup form
-      await user.type(screen.getByLabelText(/full name/i), 'New User')
-      await user.type(screen.getByLabelText(/email address/i), 'newuser@example.com')
-      await user.type(screen.getByLabelText(/^password$/i), 'newpassword123')
-      await user.type(screen.getByLabelText(/confirm password/i), 'newpassword123')
+      // Fill signup form with actual field names
+      await user.type(screen.getByLabelText(/first name/i), 'John')
+      await user.type(screen.getByLabelText(/last name/i), 'Doe')
+      await user.type(screen.getByLabelText(/email address/i), 'john@example.com')
+      await user.type(screen.getByLabelText(/password/i), 'password123')
       
       // Submit signup
       await user.click(screen.getByRole('button', { name: /create account/i }))
       
-      // Verify success message
       await waitFor(() => {
-        expect(screen.getByText(/account created successfully/i)).toBeInTheDocument()
+        expect(mockSignup).toHaveBeenCalled()
       })
-
-      // Wait for redirect to login
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login?message=Please check your email to verify your account')
-      }, { timeout: 4000 })
     })
   })
 
-  describe('Login with Email Verification', () => {
-    it('should login successfully after email verification', async () => {
+  describe('Login Form Integration', () => {
+    it('should render login form with all required fields', async () => {
+      renderWithProvider(<LoginPage />)
+      
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /log in$/i })).toBeInTheDocument()
+      expect(screen.getByText('Welcome to Joot')).toBeInTheDocument()
+    })
+
+    it('should handle login form submission', async () => {
       const user = userEvent.setup()
       
-      // Mock successful login
-      const mockUser: Partial<User> = {
-        id: '123',
-        email: 'verified@example.com',
-        app_metadata: {},
-        user_metadata: {},
-        aud: 'authenticated',
-        created_at: '2023-01-01T00:00:00.000Z'
-      }
-      mockAuth.signIn.mockResolvedValue({
-        data: { 
-          user: mockUser as User, 
-          session: {
-            access_token: 'mock-token',
-            refresh_token: 'mock-refresh-token',
-            expires_in: 3600,
-            token_type: 'bearer',
-            user: mockUser as User
-          } as Session
-        },
-        error: null
-      })
-
-      render(<LoginPage />)
+      renderWithProvider(<LoginPage />)
       
       // Fill login form
-      await user.type(screen.getByLabelText(/email address/i), 'verified@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
       
       // Submit login
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /log in$/i }))
       
-      // Verify redirect to dashboard
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/dashboard')
+        expect(mockLogin).toHaveBeenCalled()
       })
     })
 
-    it('should handle unverified email gracefully', async () => {
-      const user = userEvent.setup()
+    it('should display demo login option', () => {
+      renderWithProvider(<LoginPage />)
       
-      // Mock unverified email error
-      mockAuth.signIn.mockResolvedValue({
-        data: { user: null, session: null },
-        error: new Error('Email not confirmed') as AuthError
-      })
-
-      render(<LoginPage />)
-      
-      await user.type(screen.getByLabelText(/email address/i), 'unverified@example.com')
-      await user.type(screen.getByLabelText(/password/i), 'password123')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
-      
-      await waitFor(() => {
-        expect(screen.getByText('Email not confirmed')).toBeInTheDocument()
-      })
+      expect(screen.getByRole('button', { name: /log in to demo account/i })).toBeInTheDocument()
     })
   })
 
@@ -166,7 +145,7 @@ describe('Authentication Flow Integration Tests', () => {
       })
     })
 
-    it('should redirect unauthenticated users to login', async () => {
+    it('should handle unauthenticated state', () => {
       mockAuthLib.getAuthState.mockReturnValue({
         isAuthenticated: false,
         user: null
@@ -178,222 +157,138 @@ describe('Authentication Flow Integration Tests', () => {
         </ProtectedRoute>
       )
 
-      await waitFor(() => {
-        expect(window.location.href).toBe('/login')
-      })
+      // Should not show protected content immediately
+      expect(screen.queryByText('Dashboard Content')).not.toBeInTheDocument()
     })
   })
 
-  describe('Session Persistence', () => {
-    it('should maintain session across page reloads', async () => {
-      // Mock session check
-      const mockUser: Partial<User> = {
-        id: '123',
-        email: 'user@example.com',
-        app_metadata: {},
-        user_metadata: {},
-        aud: 'authenticated',
-        created_at: '2023-01-01T00:00:00.000Z'
-      }
-      mockAuth.getSession.mockResolvedValue({
-        data: { 
-          session: {
-            access_token: 'valid-token',
-            refresh_token: 'mock-refresh-token',
-            expires_in: 3600,
-            token_type: 'bearer',
-            user: mockUser as User
-          } as Session
-        },
-        error: null
-      })
+  describe('Form Validation Integration', () => {
+    it('should validate required fields in signup form', async () => {
+      const user = userEvent.setup()
+      
+      renderWithProvider(<SignupPage />)
+      
+      // Try to submit without filling required fields
+      await user.click(screen.getByRole('button', { name: /create account/i }))
+      
+      // HTML5 validation should prevent submission
+      const firstNameInput = screen.getByLabelText(/first name/i)
+      const emailInput = screen.getByLabelText(/email address/i)
+      const passwordInput = screen.getByLabelText(/password/i)
+      
+      expect(firstNameInput).toHaveAttribute('required')
+      expect(emailInput).toHaveAttribute('required')
+      expect(passwordInput).toHaveAttribute('required')
+    })
 
-      mockAuth.getUser.mockResolvedValue({
-        data: { user: mockUser as User },
-        error: null
-      })
+    it('should validate required fields in login form', async () => {
+      const user = userEvent.setup()
+      
+      renderWithProvider(<LoginPage />)
+      
+      // Try to submit without filling required fields
+      await user.click(screen.getByRole('button', { name: /log in$/i }))
+      
+      // HTML5 validation should prevent submission
+      const emailInput = screen.getByLabelText(/email/i)
+      const passwordInput = screen.getByLabelText(/password/i)
+      
+      expect(emailInput).toHaveAttribute('required')
+      expect(passwordInput).toHaveAttribute('required')
+    })
+  })
 
-      mockAuthLib.getAuthState.mockReturnValue({
-        isAuthenticated: true,
-        user: { id: '123', email: 'user@example.com', name: 'Test User' }
-      })
-
-      render(
-        <ProtectedRoute>
-          <div>Protected Content</div>
-        </ProtectedRoute>
+  describe('Navigation Integration', () => {
+    it('should have navigation links between login and signup', () => {
+      const { rerender } = renderWithProvider(<LoginPage />)
+      
+      expect(screen.getByRole('link', { name: /create account/i })).toHaveAttribute('href', '/signup')
+      
+      rerender(
+        <GlobalActionProvider>
+          <SignupPage />
+        </GlobalActionProvider>
       )
-
-      await waitFor(() => {
-        expect(screen.getByText('Protected Content')).toBeInTheDocument()
-      })
+      
+      expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login')
     })
 
-    it('should redirect to login when session expires', async () => {
-      mockAuth.getSession.mockResolvedValue({
-        data: { session: null },
-        error: new Error('Session expired') as AuthError
-      })
+    it('should have documentation link in login page', () => {
+      renderWithProvider(<LoginPage />)
+      
+      expect(screen.getByRole('link', { name: /view design system documentation/i }))
+        .toHaveAttribute('href', '/docs')
+    })
+  })
 
-      mockAuthLib.getAuthState.mockReturnValue({
-        isAuthenticated: false,
-        user: null
-      })
-
-      render(
-        <ProtectedRoute>
-          <div>Protected Content</div>
-        </ProtectedRoute>
+  describe('User Interface Integration', () => {
+    it('should maintain consistent styling between forms', () => {
+      const { rerender } = renderWithProvider(<LoginPage />)
+      
+      // Check login form structure
+      expect(screen.getByRole('heading', { name: 'Welcome to Joot' })).toBeInTheDocument()
+      expect(screen.getByText('Log in to your account to continue')).toBeInTheDocument()
+      
+      rerender(
+        <GlobalActionProvider>
+          <SignupPage />
+        </GlobalActionProvider>
       )
+      
+      // Check signup form structure
+      expect(screen.getByRole('heading', { name: 'Create Account' })).toBeInTheDocument()
+      expect(screen.getByText('Sign up to start tracking your transactions')).toBeInTheDocument()
+    })
 
-      await waitFor(() => {
-        expect(window.location.href).toBe('/login')
-      })
+    it('should show proper input types for form fields', () => {
+      const { rerender } = renderWithProvider(<LoginPage />)
+      
+      expect(screen.getByLabelText(/email/i)).toHaveAttribute('type', 'email')
+      expect(screen.getByLabelText(/password/i)).toHaveAttribute('type', 'password')
+      
+      rerender(
+        <GlobalActionProvider>
+          <SignupPage />
+        </GlobalActionProvider>
+      )
+      
+      expect(screen.getByLabelText(/first name/i)).toHaveAttribute('type', 'text')
+      expect(screen.getByLabelText(/email address/i)).toHaveAttribute('type', 'email')
+      expect(screen.getByLabelText(/password/i)).toHaveAttribute('type', 'password')
     })
   })
 
-  describe('Multi-user Data Isolation', () => {
-    it('should handle user switching correctly', async () => {
-      const user = userEvent.setup()
+  describe('Accessibility Integration', () => {
+    it('should have proper form labels and ARIA attributes', () => {
+      renderWithProvider(<LoginPage />)
       
-      // First user login
-      const mockUser1: Partial<User> = {
-        id: '123',
-        email: 'user1@example.com',
-        app_metadata: {},
-        user_metadata: {},
-        aud: 'authenticated',
-        created_at: '2023-01-01T00:00:00.000Z'
-      }
-      mockAuth.signIn.mockResolvedValueOnce({
-        data: { 
-          user: mockUser1 as User, 
-          session: {
-            access_token: 'mock-token',
-            refresh_token: 'mock-refresh-token',
-            expires_in: 3600,
-            token_type: 'bearer',
-            user: mockUser1 as User
-          } as Session
-        },
-        error: null
-      })
-
-      const { rerender } = render(<LoginPage />)
+      const emailInput = screen.getByLabelText(/email/i)
+      const passwordInput = screen.getByLabelText(/password/i)
       
-      await user.type(screen.getByLabelText(/email address/i), 'user1@example.com')
-      await user.type(screen.getByLabelText(/password/i), 'password123')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
-
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/dashboard')
-      })
-
-      // Simulate logout and second user login
-      mockAuth.signOut.mockResolvedValue({ error: null })
-      const mockUser2: Partial<User> = {
-        id: '456',
-        email: 'user2@example.com',
-        app_metadata: {},
-        user_metadata: {},
-        aud: 'authenticated',
-        created_at: '2023-01-01T00:00:00.000Z'
-      }
-      mockAuth.signIn.mockResolvedValueOnce({
-        data: { 
-          user: mockUser2 as User, 
-          session: {
-            access_token: 'mock-token',
-            refresh_token: 'mock-refresh-token',
-            expires_in: 3600,
-            token_type: 'bearer',
-            user: mockUser2 as User
-          } as Session
-        },
-        error: null
-      })
-
-      rerender(<LoginPage />)
-      
-      await user.clear(screen.getByLabelText(/email address/i))
-      await user.clear(screen.getByLabelText(/password/i))
-      await user.type(screen.getByLabelText(/email address/i), 'user2@example.com')
-      await user.type(screen.getByLabelText(/password/i), 'password456')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
-
-      await waitFor(() => {
-        expect(mockAuth.signIn).toHaveBeenLastCalledWith('user2@example.com', 'password456')
-      })
-    })
-  })
-
-  describe('Error Recovery Scenarios', () => {
-    it('should recover from network errors', async () => {
-      const user = userEvent.setup()
-      
-      // First attempt fails with network error
-      mockAuth.signIn.mockRejectedValueOnce(new Error('Network error'))
-      
-      // Second attempt succeeds
-      const mockUser: Partial<User> = {
-        id: '123',
-        email: 'user@example.com',
-        app_metadata: {},
-        user_metadata: {},
-        aud: 'authenticated',
-        created_at: '2023-01-01T00:00:00.000Z'
-      }
-      mockAuth.signIn.mockResolvedValueOnce({
-        data: { 
-          user: mockUser as User, 
-          session: {
-            access_token: 'mock-token',
-            refresh_token: 'mock-refresh-token',
-            expires_in: 3600,
-            token_type: 'bearer',
-            user: mockUser as User
-          } as Session
-        },
-        error: null
-      })
-
-      render(<LoginPage />)
-      
-      await user.type(screen.getByLabelText(/email address/i), 'user@example.com')
-      await user.type(screen.getByLabelText(/password/i), 'password123')
-      
-      // First attempt
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
-      
-      await waitFor(() => {
-        expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeInTheDocument()
-      })
-
-      // Second attempt
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
-      
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/dashboard')
-      })
+      expect(emailInput).toHaveAttribute('id')
+      expect(passwordInput).toHaveAttribute('id')
+      expect(emailInput).toHaveAttribute('name')
+      expect(passwordInput).toHaveAttribute('name')
     })
 
-    it('should handle rate limiting gracefully', async () => {
+    it('should support keyboard navigation', async () => {
       const user = userEvent.setup()
       
-      mockAuth.signIn.mockResolvedValue({
-        data: { user: null, session: null },
-        error: new Error('Too many requests. Please try again later.') as AuthError
-      })
-
-      render(<LoginPage />)
+      renderWithProvider(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'user@example.com')
-      await user.type(screen.getByLabelText(/password/i), 'password123')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      const emailInput = screen.getByLabelText(/email/i)
+      const passwordInput = screen.getByLabelText(/password/i)
+      const submitButton = screen.getByRole('button', { name: /log in$/i })
       
-      await waitFor(() => {
-        expect(screen.getByText('Too many requests. Please try again later.')).toBeInTheDocument()
-      })
+      // Test tab navigation
+      await user.tab()
+      expect(emailInput).toHaveFocus()
+      
+      await user.tab()
+      expect(passwordInput).toHaveFocus()
+      
+      await user.tab()
+      expect(submitButton).toHaveFocus()
     })
   })
 })

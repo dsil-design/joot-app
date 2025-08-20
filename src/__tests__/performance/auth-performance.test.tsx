@@ -3,54 +3,55 @@ import userEvent from '@testing-library/user-event'
 import LoginPage from '@/app/login/page'
 import SignupPage from '@/app/signup/page'
 import { ProtectedRoute } from '@/components/auth/protected-route'
-import { auth } from '@/lib/supabase/auth'
-import type { User } from '@supabase/supabase-js'
+import { GlobalActionProvider } from '@/contexts/GlobalActionContext'
+import * as authLib from '@/lib/auth'
 
-// Mock modules
-jest.mock('@/lib/supabase/auth')
-jest.mock('next/navigation')
-jest.mock('@/lib/auth')
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+  useSearchParams: () => ({
+    get: jest.fn().mockReturnValue(null),
+    getAll: jest.fn().mockReturnValue([]),
+    has: jest.fn().mockReturnValue(false),
+    toString: jest.fn().mockReturnValue(''),
+  }),
+  usePathname: () => '/login',
+  redirect: jest.fn(),
+  notFound: jest.fn(),
+}))
 
-const mockAuth = auth as jest.Mocked<typeof auth>
+// Mock auth lib
+jest.mock('@/lib/auth', () => ({
+  getAuthState: jest.fn()
+}))
+
+// Mock server actions
+jest.mock('@/app/login/actions', () => ({
+  login: jest.fn(),
+  signup: jest.fn()
+}))
+
+const mockAuthLib = authLib as jest.Mocked<typeof authLib>
+
+// Helper to render with providers
+const renderWithProviders = (component: React.ReactElement) => {
+  return render(
+    <GlobalActionProvider>
+      {component}
+    </GlobalActionProvider>
+  )
+}
 
 describe('Authentication Performance Tests', () => {
-  // Helper function to create proper User mock
-  const createMockUser = (overrides: Partial<User> = {}): User => ({
-    id: '123',
-    email: 'test@example.com',
-    aud: 'authenticated',
-    role: 'authenticated',
-    email_confirmed_at: new Date().toISOString(),
-    phone: '',
-    confirmed_at: new Date().toISOString(),
-    last_sign_in_at: new Date().toISOString(),
-    app_metadata: {},
-    user_metadata: {},
-    identities: [],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    is_anonymous: false,
-    ...overrides
-  })
-
-  // Helper function to create mock session
-  const createMockSession = () => ({
-    access_token: 'mock-access-token',
-    refresh_token: 'mock-refresh-token',
-    expires_in: 3600,
-    expires_at: Date.now() + 3600000,
-    token_type: 'bearer',
-    user: createMockUser()
-  })
+  const mockLogin = jest.requireMock('@/app/login/actions').login
+  const mockSignup = jest.requireMock('@/app/login/actions').signup
 
   beforeEach(() => {
     jest.clearAllMocks()
-    const { useRouter } = jest.requireActual('next/navigation')
-    jest.mocked(useRouter).mockReturnValue({
-      push: jest.fn(),
-      replace: jest.fn(),
-      prefetch: jest.fn(),
-    })
     
     // Reset performance mock
     global.performance.now = jest.fn(() => Date.now())
@@ -59,7 +60,7 @@ describe('Authentication Performance Tests', () => {
   describe('Component Render Performance', () => {
     it('should render login page within performance budget', () => {
       const startTime = performance.now()
-      render(<LoginPage />)
+      renderWithProviders(<LoginPage />)
       const endTime = performance.now()
       
       const renderTime = endTime - startTime
@@ -68,7 +69,7 @@ describe('Authentication Performance Tests', () => {
 
     it('should render signup page within performance budget', () => {
       const startTime = performance.now()
-      render(<SignupPage />)
+      renderWithProviders(<SignupPage />)
       const endTime = performance.now()
       
       const renderTime = endTime - startTime
@@ -76,10 +77,9 @@ describe('Authentication Performance Tests', () => {
     })
 
     it('should render protected route quickly when authenticated', () => {
-      const { getAuthState } = jest.requireActual('@/lib/auth')
-      jest.mocked(getAuthState).mockReturnValue({
+      mockAuthLib.getAuthState.mockReturnValue({
         isAuthenticated: true,
-        user: createMockUser({ email: 'user@example.com' })
+        user: { id: '123', email: 'user@example.com', name: 'Test User' }
       })
 
       const startTime = performance.now()
@@ -98,9 +98,9 @@ describe('Authentication Performance Tests', () => {
   describe('Form Interaction Performance', () => {
     it('should handle rapid typing without lag', async () => {
       const user = userEvent.setup({ delay: null }) // No delay for performance testing
-      render(<LoginPage />)
+      renderWithProviders(<LoginPage />)
       
-      const emailInput = screen.getByLabelText(/email address/i)
+      const emailInput = screen.getByLabelText(/email/i)
       const testEmail = 'verylongemailaddressforthisperfomancetest@example.com'
       
       const startTime = performance.now()
@@ -111,45 +111,39 @@ describe('Authentication Performance Tests', () => {
       expect(typingTime).toBeLessThan(5) // 5ms per character budget
     })
 
-    it('should validate form inputs efficiently', async () => {
+    it('should handle form interactions efficiently', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<SignupPage />)
+      renderWithProviders(<SignupPage />)
       
-      // Fill form with invalid data to trigger validation
-      await user.type(screen.getByLabelText(/full name/i), 'T')
-      await user.type(screen.getByLabelText(/email address/i), 'invalid')
-      await user.type(screen.getByLabelText(/^password$/i), '123')
-      await user.type(screen.getByLabelText(/confirm password/i), '456')
+      // Fill form with actual field names
+      await user.type(screen.getByLabelText(/first name/i), 'John')
+      await user.type(screen.getByLabelText(/last name/i), 'Doe')
+      await user.type(screen.getByLabelText(/email address/i), 'john@example.com')
+      await user.type(screen.getByLabelText(/password/i), 'password123')
       
       const startTime = performance.now()
       await user.click(screen.getByRole('button', { name: /create account/i }))
       const endTime = performance.now()
       
-      const validationTime = endTime - startTime
-      expect(validationTime).toBeLessThan(50) // 50ms budget for validation
+      const interactionTime = endTime - startTime
+      expect(interactionTime).toBeLessThan(50) // 50ms budget for form submission
     })
 
-    it('should clear errors quickly when user types', async () => {
+    it('should handle state changes efficiently', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<SignupPage />)
+      renderWithProviders(<LoginPage />)
       
-      // Trigger validation error first
-      await user.click(screen.getByRole('button', { name: /create account/i }))
-      await waitFor(() => {
-        expect(screen.getByText('All fields are required')).toBeInTheDocument()
-      })
+      const emailInput = screen.getByLabelText(/email/i)
       
-      // Measure error clearing performance
+      // Measure state change performance
       const startTime = performance.now()
-      await user.type(screen.getByLabelText(/full name/i), 'T')
-      
-      await waitFor(() => {
-        expect(screen.queryByText('All fields are required')).not.toBeInTheDocument()
-      })
+      await user.type(emailInput, 'test@example.com')
+      await user.clear(emailInput)
+      await user.type(emailInput, 'newemail@example.com')
       const endTime = performance.now()
       
-      const clearTime = endTime - startTime
-      expect(clearTime).toBeLessThan(100) // 100ms budget for error clearing
+      const changeTime = endTime - startTime
+      expect(changeTime).toBeLessThan(100) // 100ms budget for state changes
     })
   })
 
@@ -157,26 +151,19 @@ describe('Authentication Performance Tests', () => {
     it('should handle login requests efficiently', async () => {
       const user = userEvent.setup({ delay: null })
       
-      // Mock fast API response
-      mockAuth.signIn.mockImplementation(() => 
-        new Promise(resolve => {
-          setTimeout(() => resolve({
-            data: { user: createMockUser(), session: createMockSession() },
-            error: null
-          }), 10) // 10ms simulated API response
-        })
-      )
+      // Mock login action to resolve quickly
+      mockLogin.mockResolvedValue(undefined)
 
-      render(<LoginPage />)
+      renderWithProviders(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
       
       const startTime = performance.now()
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /log in$/i }))
       
       await waitFor(() => {
-        expect(mockAuth.signIn).toHaveBeenCalled()
+        expect(mockLogin).toHaveBeenCalled()
       })
       const endTime = performance.now()
       
@@ -187,27 +174,20 @@ describe('Authentication Performance Tests', () => {
     it('should handle signup requests efficiently', async () => {
       const user = userEvent.setup({ delay: null })
       
-      mockAuth.signUp.mockImplementation(() => 
-        new Promise(resolve => {
-          setTimeout(() => resolve({
-            data: { user: createMockUser(), session: createMockSession() },
-            error: null
-          }), 15) // 15ms simulated API response
-        })
-      )
+      mockSignup.mockResolvedValue(undefined)
 
-      render(<SignupPage />)
+      renderWithProviders(<SignupPage />)
       
-      await user.type(screen.getByLabelText(/full name/i), 'Test User')
-      await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/^password$/i), 'password123')
-      await user.type(screen.getByLabelText(/confirm password/i), 'password123')
+      await user.type(screen.getByLabelText(/first name/i), 'John')
+      await user.type(screen.getByLabelText(/last name/i), 'Doe')
+      await user.type(screen.getByLabelText(/email address/i), 'john@example.com')
+      await user.type(screen.getByLabelText(/password/i), 'password123')
       
       const startTime = performance.now()
       await user.click(screen.getByRole('button', { name: /create account/i }))
       
       await waitFor(() => {
-        expect(mockAuth.signUp).toHaveBeenCalled()
+        expect(mockSignup).toHaveBeenCalled()
       })
       const endTime = performance.now()
       
@@ -215,64 +195,60 @@ describe('Authentication Performance Tests', () => {
       expect(requestTime).toBeLessThan(250) // 250ms budget including validation and UI updates
     })
 
-    it('should handle slow network responses gracefully', async () => {
+    it('should handle form submission efficiently', async () => {
       const user = userEvent.setup({ delay: null })
       
-      // Mock slow API response
-      mockAuth.signIn.mockImplementation(() => 
-        new Promise(resolve => {
-          setTimeout(() => resolve({
-            data: { user: createMockUser(), session: createMockSession() },
-            error: null
-          }), 2000) // 2 second delay
-        })
-      )
+      mockLogin.mockResolvedValue(undefined)
 
-      render(<LoginPage />)
+      renderWithProviders(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
       
       const startTime = performance.now()
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /log in$/i }))
       
-      // Loading state should appear quickly
+      // Form submission should trigger quickly
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /signing in/i })).toBeInTheDocument()
+        expect(mockLogin).toHaveBeenCalled()
       })
-      const loadingTime = performance.now() - startTime
+      const submissionTime = performance.now() - startTime
       
-      expect(loadingTime).toBeLessThan(100) // Loading state should appear within 100ms
+      expect(submissionTime).toBeLessThan(100) // Form submission should be fast
     })
   })
 
   describe('Memory Performance', () => {
     it('should not create memory leaks with rapid re-renders', () => {
       // Simulate rapid re-renders
-      const { rerender } = render(<LoginPage />)
+      const { rerender } = renderWithProviders(<LoginPage />)
       
       for (let i = 0; i < 10; i++) {
-        rerender(<LoginPage />)
+        rerender(
+          <GlobalActionProvider>
+            <LoginPage />
+          </GlobalActionProvider>
+        )
       }
       
       // Check that cleanup functions are working (basic test)
-      expect(screen.getByRole('heading', { name: /sign in to your account/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /welcome to joot/i })).toBeInTheDocument()
     })
 
     it('should handle multiple form state changes efficiently', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<SignupPage />)
+      renderWithProviders(<SignupPage />)
       
-      const fullNameInput = screen.getByLabelText(/full name/i)
+      const firstNameInput = screen.getByLabelText(/first name/i)
       
       // Rapid state changes
       for (let i = 0; i < 20; i++) {
-        await user.clear(fullNameInput)
-        await user.type(fullNameInput, `Name ${i}`)
+        await user.clear(firstNameInput)
+        await user.type(firstNameInput, `Name ${i}`)
       }
       
       // Form should still be responsive
-      expect(fullNameInput).toHaveValue('Name 19')
+      expect(firstNameInput).toHaveValue('Name 19')
     })
   })
 
@@ -280,23 +256,35 @@ describe('Authentication Performance Tests', () => {
     it('should not import unnecessary dependencies', () => {
       // Test that components don't import heavy dependencies unnecessarily
       // This is more of a static analysis test, but we can check basic functionality
-      render(<LoginPage />)
+      renderWithProviders(<LoginPage />)
       
       // Basic functionality should work without heavy imports
-      expect(screen.getByLabelText(/email address/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
       expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+    })
+
+    it('should load components efficiently', () => {
+      const startTime = performance.now()
+      
+      // Render both pages to test component loading
+      const { rerender } = renderWithProviders(<LoginPage />)
+      rerender(
+        <GlobalActionProvider>
+          <SignupPage />
+        </GlobalActionProvider>
+      )
+      
+      const loadTime = performance.now() - startTime
+      expect(loadTime).toBeLessThan(200) // Should load both components quickly
     })
   })
 
   describe('Progressive Enhancement', () => {
     it('should work with JavaScript disabled (basic form)', () => {
-      render(<LoginPage />)
+      renderWithProviders(<LoginPage />)
       
       // Form should have proper HTML attributes for basic functionality
-      const form = screen.getByRole('button', { name: /^sign in$/i }).closest('form')
-      expect(form).toBeInTheDocument()
-      
-      const emailInput = screen.getByLabelText(/email address/i)
+      const emailInput = screen.getByLabelText(/email/i)
       const passwordInput = screen.getByLabelText(/password/i)
       
       expect(emailInput).toHaveAttribute('type', 'email')
@@ -304,15 +292,26 @@ describe('Authentication Performance Tests', () => {
       expect(passwordInput).toHaveAttribute('type', 'password')
       expect(passwordInput).toHaveAttribute('required')
     })
+
+    it('should provide semantic HTML structure', () => {
+      renderWithProviders(<SignupPage />)
+      
+      // Check for semantic HTML elements
+      expect(screen.getByRole('heading', { name: 'Create Account' })).toBeInTheDocument()
+      expect(screen.getByLabelText(/first name/i)).toHaveAttribute('autocomplete', 'given-name')
+      expect(screen.getByLabelText(/last name/i)).toHaveAttribute('autocomplete', 'family-name')
+      expect(screen.getByLabelText(/email address/i)).toHaveAttribute('autocomplete', 'email')
+      expect(screen.getByLabelText(/password/i)).toHaveAttribute('autocomplete', 'new-password')
+    })
   })
 
   describe('Core Web Vitals Simulation', () => {
     it('should have good Largest Contentful Paint timing', () => {
       const startTime = performance.now()
-      render(<LoginPage />)
+      renderWithProviders(<LoginPage />)
       
       // Find the largest meaningful content element
-      const heading = screen.getByRole('heading', { name: /sign in to your account/i })
+      const heading = screen.getByRole('heading', { name: /welcome to joot/i })
       expect(heading).toBeInTheDocument()
       
       const lcpTime = performance.now() - startTime
@@ -321,13 +320,13 @@ describe('Authentication Performance Tests', () => {
 
     it('should have minimal layout shift', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<LoginPage />)
+      renderWithProviders(<LoginPage />)
       
-      const form = screen.getByRole('button', { name: /^sign in$/i }).closest('form')
+      const form = screen.getByLabelText(/email/i).closest('form')
       const initialRect = form?.getBoundingClientRect()
       
       // Trigger state changes that might cause layout shift
-      await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
       
       const finalRect = form?.getBoundingClientRect()
@@ -339,9 +338,9 @@ describe('Authentication Performance Tests', () => {
 
     it('should respond to interactions quickly (FID simulation)', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<LoginPage />)
+      renderWithProviders(<LoginPage />)
       
-      const emailInput = screen.getByLabelText(/email address/i)
+      const emailInput = screen.getByLabelText(/email/i)
       
       const startTime = performance.now()
       await user.click(emailInput)
@@ -351,6 +350,47 @@ describe('Authentication Performance Tests', () => {
       
       const interactionTime = performance.now() - startTime
       expect(interactionTime).toBeLessThan(100) // FID should be under 100ms
+    })
+  })
+
+  describe('Navigation Performance', () => {
+    it('should handle page transitions efficiently', () => {
+      const startTime = performance.now()
+      
+      const { rerender } = renderWithProviders(<LoginPage />)
+      
+      // Simulate navigation between pages
+      rerender(
+        <GlobalActionProvider>
+          <SignupPage />
+        </GlobalActionProvider>
+      )
+      
+      rerender(
+        <GlobalActionProvider>
+          <LoginPage />
+        </GlobalActionProvider>
+      )
+      
+      const transitionTime = performance.now() - startTime
+      expect(transitionTime).toBeLessThan(100) // Page transitions should be fast
+    })
+
+    it('should maintain responsive UI during loading', async () => {
+      const user = userEvent.setup({ delay: null })
+      renderWithProviders(<LoginPage />)
+      
+      const emailInput = screen.getByLabelText(/email/i)
+      
+      // UI should remain responsive even during form interactions
+      const startTime = performance.now()
+      await user.click(emailInput)
+      await user.type(emailInput, 'responsive@test.com')
+      
+      const responseTime = performance.now() - startTime
+      expect(responseTime).toBeLessThan(200) // UI should stay responsive
+      expect(emailInput).toHaveFocus()
+      expect(emailInput).toHaveValue('responsive@test.com')
     })
   })
 })

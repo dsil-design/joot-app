@@ -1,12 +1,19 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SignupPage from '@/app/signup/page'
+import { GlobalActionProvider } from '@/contexts/GlobalActionContext'
 
 // Mock the auth module
 jest.mock('@/lib/supabase/auth', () => ({
   auth: {
     signUp: jest.fn()
   }
+}))
+
+// Mock server actions
+jest.mock('@/app/login/actions', () => ({
+  login: jest.fn(),
+  signup: jest.fn()
 }))
 
 // Mock useRouter
@@ -17,6 +24,15 @@ jest.mock('next/navigation', () => ({
   })
 }))
 
+// Helper to render with providers
+const renderWithProviders = (component: React.ReactElement) => {
+  return render(
+    <GlobalActionProvider>
+      {component}
+    </GlobalActionProvider>
+  )
+}
+
 describe('SignupPage', () => {
 
   beforeEach(() => {
@@ -25,7 +41,7 @@ describe('SignupPage', () => {
   })
 
   it('renders signup form elements', async () => {
-    render(<SignupPage />)
+    renderWithProviders(<SignupPage />)
     
     expect(screen.getByRole('heading', { name: /create account/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/first name/i)).toBeInTheDocument()
@@ -37,7 +53,7 @@ describe('SignupPage', () => {
 
   it('allows filling out the form fields', async () => {
     const user = userEvent.setup()
-    render(<SignupPage />)
+    renderWithProviders(<SignupPage />)
     
     await user.type(screen.getByLabelText(/first name/i), 'Test')
     await user.type(screen.getByLabelText(/last name/i), 'User')

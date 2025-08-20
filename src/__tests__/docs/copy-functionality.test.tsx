@@ -48,12 +48,12 @@ describe('Copy Functionality', () => {
       const copyButton = screen.getByRole('button')
       fireEvent.click(copyButton)
       
-      // Wait for the success icon to appear
+      // Wait for the success icon to appear (check icon should be visible)
       await waitFor(() => {
-        const checkIcon = screen.getByTestId('check-icon') || 
-                         copyButton.querySelector('[data-lucide="check"]') ||
-                         copyButton.querySelector('svg')
+        const checkIcon = copyButton.querySelector('svg.lucide-check') ||
+                         copyButton.querySelector('svg') // Fallback to any svg in the button
         expect(checkIcon).toBeInTheDocument()
+        expect(checkIcon).toHaveClass('lucide-check')
       }, { timeout: 1000 })
     })
 
