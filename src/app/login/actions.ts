@@ -24,8 +24,28 @@ export async function login(formData: FormData) {
   // Add small delay to allow global action state to be visible
   await new Promise(resolve => setTimeout(resolve, 1000))
 
-  revalidatePath('/', 'layout')
-  redirect('/home')
+  // Check if user is admin and redirect accordingly
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (user) {
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    revalidatePath('/', 'layout')
+    
+    // Redirect admin users to admin dashboard, regular users to home
+    if (userProfile?.role === 'admin') {
+      redirect('/admin/exchange-rates')
+    } else {
+      redirect('/home')
+    }
+  } else {
+    revalidatePath('/', 'layout')
+    redirect('/home')
+  }
 }
 
 export async function signup(formData: FormData) {
@@ -97,9 +117,22 @@ export async function signup(formData: FormData) {
   await new Promise(resolve => setTimeout(resolve, 1000))
 
   // If we have a session, user is logged in (email confirmation disabled)
-  if (signUpData?.session) {
+  if (signUpData?.session && signUpData?.user) {
+    // Check if new user is admin and redirect accordingly
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', signUpData.user.id)
+      .single()
+
     revalidatePath('/', 'layout')
-    redirect('/home')
+    
+    // Redirect admin users to admin dashboard, regular users to home
+    if (userProfile?.role === 'admin') {
+      redirect('/admin/exchange-rates')
+    } else {
+      redirect('/home')
+    }
   }
 
   // Default to verify email page

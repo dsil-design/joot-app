@@ -6,10 +6,15 @@ import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { UserMenu } from '@/components/page-specific/user-menu'
 import { TransactionCard } from '@/components/ui/transaction-card'
-import { Plus } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
 
-export default async function HomePage() {
+interface HomePageProps {
+  searchParams?: Promise<{ error?: string }>
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const resolvedSearchParams = await searchParams
   const supabase = await createClient()
 
   const {
@@ -21,10 +26,10 @@ export default async function HomePage() {
     redirect('/login')
   }
 
-  // Fetch user profile data
+  // Fetch user profile data with role information
   const { data: userProfile } = await supabase
     .from('users')
-    .select('first_name, last_name')
+    .select('first_name, last_name, role')
     .eq('id', user.id)
     .single()
 
@@ -33,9 +38,8 @@ export default async function HomePage() {
     ? `${userProfile.first_name} ${userProfile.last_name}`
     : userProfile?.first_name || userProfile?.last_name || user.email || "User"
 
-  // For now, make admin interface available to all authenticated users
-  // In production, this would check a roles table or user metadata
-  const isAdmin = true; // All users can access admin interface for testing
+  // Check if user has admin role
+  const isAdmin = userProfile?.role === 'admin'
 
   // Generate initials from first and last name
   const getInitials = (firstName?: string | null, lastName?: string | null): string => {
@@ -82,6 +86,22 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Error message for unauthorized access */}
+      {resolvedSearchParams?.error === 'unauthorized' && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+          <Card className="bg-destructive/10 border-destructive text-destructive p-4 shadow-lg max-w-md">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                Access denied. Admin privileges required.
+              </span>
+              <Button variant="ghost" size="sm" className="h-auto p-1 text-destructive hover:text-destructive/80">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Main scrollable content */}
       <div className="flex flex-col gap-6 pb-32 pt-16 px-10">
         {/* Header */}
