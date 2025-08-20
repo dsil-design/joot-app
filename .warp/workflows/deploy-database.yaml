@@ -1,11 +1,15 @@
 name: "🗄️ Deploy Database Changes"
-description: "Trigger deployment with database migrations only"
-command: "gh workflow run cicd.yml --repo dsil-design/joot-app --field environment={{environment}}"
+description: "Deploy database migrations with light validation"
+command: "gh workflow run warp-deploy-db.yml --repo dsil-design/joot-app --field environment={{environment}} --field skip_validation={{skip_validation}}"
 tags:
   - database
   - migration
-  - deployment
+  - supabase
+  - incremental
 arguments:
   - name: environment
     description: "Target environment"
     default_value: "production"
+  - name: skip_validation
+    description: "Skip pre-deployment validation (true/false)"
+    default_value: "false"

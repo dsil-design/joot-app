@@ -20,6 +20,18 @@ on:
         required: false
         default: false
         type: boolean
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: false
+        default: 'production'
+        type: string
+      skip_tests:
+        description: 'Skip test suite'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   test:

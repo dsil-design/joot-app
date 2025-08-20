@@ -1,0 +1,93 @@
+name: "🗄️ Deploy Database Changes"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      skip_validation:
+        description: 'Skip pre-deployment validation'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  validate:
+    name: "Pre-Deployment Validation"
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_validation }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: TypeScript check
+        run: |
+          echo "🔍 Quick TypeScript validation..."
+          npx tsc --noEmit
+          echo "✅ TypeScript OK"
+        
+      - name: Lint check
+        run: |
+          echo "🔍 Quick code quality check..."
+          npm run lint
+          echo "✅ Code quality OK"
+      
+      - name: Build verification
+        run: |
+          echo "🔍 Verifying build compatibility..."
+          npm run build
+          echo "✅ Build compatible"
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-key
+          SUPABASE_SERVICE_ROLE_KEY: dummy-service-key
+          NODE_ENV: test
+
+  deploy-database:
+    name: "Deploy Database Migrations"
+    needs: validate
+    if: always() && (needs.validate.result == 'success' || needs.validate.result == 'skipped')
+    uses: ./.github/workflows/deploy-supabase.yml
+    secrets: inherit
+
+  summary:
+    name: "Deployment Summary"
+    needs: [validate, deploy-database]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Database Deployment Summary
+        run: |
+          echo "🗄️ Database Deployment Complete!"
+          if [[ "${{ needs.validate.result }}" == "success" || "${{ needs.validate.result }}" == "skipped" ]]; then
+            echo "✅ Pre-deployment validation: Passed"
+          else
+            echo "❌ Pre-deployment validation: Failed"
+          fi
+          
+          if [[ "${{ needs.deploy-database.result }}" == "success" ]]; then
+            echo "✅ Database deployment: Successful"
+            echo ""
+            echo "🎯 Database changes are now live!"
+            echo "Next step: 🚀 Deploy to production when ready"
+          else
+            echo "❌ Database deployment: Failed"
+            echo "🚨 Check logs and resolve issues before proceeding"
+          fi

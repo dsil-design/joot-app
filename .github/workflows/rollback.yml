@@ -1,39 +1,170 @@
-name: "Manual Rollback"
+name: "🔄 Emergency Rollback"
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 on:
   workflow_dispatch:
     inputs:
+      rollback_type:
+        description: 'Type of rollback to perform'
+        required: true
+        type: choice
+        options:
+          - vercel_only
+          - database_only
+          - full_rollback
+        default: 'vercel_only'
+      backup_source:
+        description: 'Backup source (latest, or specific identifier)'
+        required: false
+        type: string
+        default: 'latest'
       reason:
-        description: 'Reason for rollback (for logging)'
+        description: 'Reason for rollback (required for audit trail)'
         required: true
         type: string
       confirm_rollback:
-        description: 'Confirm you understand this will replace current state'
+        description: 'I understand this will replace current production state'
         required: true
         type: boolean
         default: false
 
 jobs:
-  validate:
+  validate-emergency:
+    name: "Emergency Rollback Validation"
     runs-on: ubuntu-latest
     
     steps:
-      - name: Validate rollback request
+      - name: Validate emergency rollback request
         run: |
           if [[ "${{ inputs.confirm_rollback }}" != "true" ]]; then
-            echo "❌ Rollback not confirmed. Set confirm_rollback to true to proceed."
+            echo "🚨 ROLLBACK HALTED: Confirmation required"
+            echo "❌ Set confirm_rollback to true to proceed with emergency rollback"
             exit 1
           fi
           
-          echo "✅ Rollback validation passed"
-          echo "   Reason: ${{ inputs.reason }}"
-          echo "   This is a placeholder rollback workflow."
-          echo "   In a full implementation, this would:"
-          echo "   1. Download the latest database backup"
-          echo "   2. Restore the database to a previous state"
-          echo "   3. Rollback the Vercel deployment to a previous version"
-          echo "   4. Send notifications about the rollback"
+          echo "🚨 EMERGENCY ROLLBACK INITIATED"
+          echo "================================"
+          echo "Type: ${{ inputs.rollback_type }}"
+          echo "Backup Source: ${{ inputs.backup_source }}"
+          echo "Reason: ${{ inputs.reason }}"
+          echo "Timestamp: $(date -u)"
+          echo "User: ${{ github.actor }}"
+          echo "✅ Emergency rollback validation passed"
+
+  rollback-vercel:
+    name: "Rollback Vercel Deployment"
+    needs: validate-emergency
+    if: ${{ contains(inputs.rollback_type, 'vercel') || inputs.rollback_type == 'full_rollback' }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Find previous stable commit
+        id: find-commit
+        run: |
+          # Find the last commit before the current problematic deployment
+          # Look for commits with "Production Deploy" or "Deploy:" messages
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          echo "Current problematic commit: $CURRENT_COMMIT"
+          
+          # Find previous deploy commit (skip the current one)
+          PREVIOUS_DEPLOY=$(git log --oneline --grep="Production Deploy" --grep="Deploy:" -n 2 --format="%H" | tail -n 1)
+          
+          if [ -z "$PREVIOUS_DEPLOY" ]; then
+            # Fallback: get commit from 1 day ago
+            PREVIOUS_DEPLOY=$(git rev-list -n 1 --before="1 day ago" HEAD)
+          fi
+          
+          echo "Rolling back to commit: $PREVIOUS_DEPLOY"
+          echo "rollback_commit=$PREVIOUS_DEPLOY" >> $GITHUB_OUTPUT
+      
+      - name: Setup Git for rollback
+        run: |
+          git config --global user.name "GitHub Actions (Emergency Rollback)"
+          git config --global user.email "actions@github.com"
+      
+      - name: Perform Vercel rollback
+        run: |
+          echo "🔄 Performing emergency Vercel rollback..."
+          
+          # Create rollback commit
+          git checkout main
+          git reset --hard ${{ steps.find-commit.outputs.rollback_commit }}
+          
+          # Force push to trigger immediate Vercel redeployment
+          git commit --allow-empty -m "🚨 EMERGENCY ROLLBACK: ${{ inputs.reason }} (by ${{ github.actor }})"
+          git push --force-with-lease origin main
+          
+          echo "✅ Emergency Vercel rollback completed"
+          echo "🔄 Vercel will automatically redeploy the previous stable version"
+
+  rollback-database:
+    name: "Rollback Database"
+    needs: validate-emergency
+    if: ${{ contains(inputs.rollback_type, 'database') || inputs.rollback_type == 'full_rollback' }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Database rollback placeholder
+        run: |
+          echo "🗄️ Database rollback initiated..."
+          echo "⚠️  DATABASE ROLLBACK NOT FULLY IMPLEMENTED"
+          echo ""
+          echo "🚨 MANUAL ACTION REQUIRED:"
+          echo "1. Go to Supabase Dashboard: https://supabase.com/dashboard"
+          echo "2. Navigate to your project"
+          echo "3. Go to Database > Backups"
+          echo "4. Restore from backup: ${{ inputs.backup_source }}"
+          echo ""
+          echo "⚠️  This requires manual intervention for safety"
+          echo "📞 Contact your database administrator if unsure"
+
+  notify-rollback:
+    name: "Rollback Notification"
+    needs: [validate-emergency, rollback-vercel, rollback-database]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Rollback summary and notifications
+        run: |
+          echo "🚨 EMERGENCY ROLLBACK SUMMARY"
+          echo "============================="
+          echo "Initiated by: ${{ github.actor }}"
+          echo "Timestamp: $(date -u)"
+          echo "Reason: ${{ inputs.reason }}"
+          echo "Type: ${{ inputs.rollback_type }}"
+          echo ""
+          
+          if [[ "${{ needs.rollback-vercel.result }}" == "success" ]]; then
+            echo "✅ Vercel rollback: Completed"
+            echo "   🔄 Previous version is now live"
+          elif [[ "${{ contains(inputs.rollback_type, 'vercel') }}" == "true" ]]; then
+            echo "❌ Vercel rollback: Failed"
+          else
+            echo "⏭️ Vercel rollback: Skipped"
+          fi
+          
+          if [[ "${{ needs.rollback-database.result }}" == "success" ]]; then
+            echo "⚠️  Database rollback: Manual action required"
+            echo "   📋 Check Supabase dashboard to complete"
+          elif [[ "${{ contains(inputs.rollback_type, 'database') }}" == "true" ]]; then
+            echo "❌ Database rollback: Failed"
+          else
+            echo "⏭️ Database rollback: Skipped"
+          fi
+          
+          echo ""
+          echo "🎯 NEXT STEPS:"
+          echo "1. 👀 Monitor application for stability"
+          echo "2. 🔍 Investigate root cause of the issue"
+          echo "3. 🧪 Test fixes thoroughly before next deployment"
+          echo "4. 📝 Update incident documentation"

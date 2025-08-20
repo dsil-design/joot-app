@@ -188,10 +188,59 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ## Deployment
 
+### Design-to-Deployment Workflow Pipeline
+
+The project uses a 4-stage CI/CD pipeline optimized for UX designers working with AI agents:
+
+#### 🧪 Test & Validate (Stage 1)
+- **Workflow**: `warp-test-validate.yml`
+- **Purpose**: Validate AI-generated code without any deployment
+- **When to use**: After AI agents complete coding, before touching production
+- **What it does**: TypeScript compilation, linting, build verification, unit tests
+- **Perfect for**: Ensuring AI-generated code is production-ready
+- **Command**: `gh workflow run warp-test-validate.yml --field run_all_tests=false`
+
+#### 🗄️ Deploy Database Changes (Stage 2)
+- **Workflow**: `warp-deploy-db.yml`
+- **Purpose**: Database schema/migrations deployment with light validation
+- **When to use**: When you have database changes to deploy independently
+- **What it does**: Light testing (TypeScript + lint + build) + Supabase deployment
+- **Perfect for**: Iterative database changes during development
+- **Command**: `gh workflow run warp-deploy-db.yml --field environment=production`
+
+#### 🚀 Full Production Deployment (Stage 3)
+- **Workflow**: `warp-full-deploy.yml`
+- **Purpose**: Deploy application to production (assumes DB already updated)
+- **When to use**: Final step after testing and DB are confirmed working
+- **What it does**: Smoke tests + Vercel deployment + monitoring setup
+- **Perfect for**: Going live with confidence
+- **Command**: `gh workflow run warp-full-deploy.yml --field environment=production`
+
+#### 🔄 Emergency Rollback (Emergency Only)
+- **Workflow**: `rollback.yml`
+- **Purpose**: Emergency rollback of Vercel and/or database
+- **When to use**: When production has critical issues that need immediate rollback
+- **What it does**: 
+  - Vercel: Automatic rollback to previous stable commit
+  - Database: Guided manual rollback process via Supabase dashboard
+- **Perfect for**: Incident response and damage control
+- **Command**: `gh workflow run rollback.yml --field rollback_type=vercel_only`
+
+### Recommended Usage Flow for Designers + AI Agents
+
+1. **🎨 Design Phase**: Create designs in Figma
+2. **🤖 AI Development Phase**: Use MCP/AI agents to generate code
+3. **🧪 Validation Phase**: Run "Test & Validate" to ensure code quality
+4. **🗄️ Database Phase**: Deploy any schema changes separately  
+5. **🚀 Production Phase**: Deploy the validated application
+6. **👀 Monitor**: Watch for issues, ready to 🔄 rollback if needed
+
+This approach gives you **checkpoints** at each stage to catch issues before they reach production.
+
 ### Vercel Configuration
 - Environment variables must be set in Vercel dashboard
 - Critical fix documentation for common deployment issues
-- Automatic deployments from main branch
+- **Automatic deployments from main branch** (triggered by full deployment workflow)
 - Preview deployments for pull requests
 
 ### Production Checklist

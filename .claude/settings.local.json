@@ -55,7 +55,11 @@
       "Bash(cd:*)",
       "Bash(git commit:*)",
       "Bash(gh workflow run:*)",
-      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npm run build)"
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npm run build)",
+      "Bash(gh run list:*)",
+      "Bash(awk:*)",
+      "Bash(sed:*)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key npm run test:unit)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

@@ -1,30 +1,107 @@
 # Joot - Transaction Tracker
 
 [![CI/CD Pipeline](https://github.com/dsil-design/joot-app/actions/workflows/cicd.yml/badge.svg)](https://github.com/dsil-design/joot-app/actions/workflows/cicd.yml)
+[![Test Coverage](https://img.shields.io/badge/coverage-70%25+-brightgreen.svg)]()
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)]()
+[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)]()
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green.svg)]()
 
-A comprehensive Next.js 15 transaction tracking application with USD/THB currency conversion capabilities. Built with TypeScript, React 19, Supabase, and shadcn/ui components.
+A comprehensive Next.js 15 transaction tracking application with USD/THB currency conversion capabilities, comprehensive authentication, and extensive testing coverage.
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## 🚀 Tech Stack
 
-## Getting Started
+- **Framework**: Next.js 15 with App Router and Turbopack
+- **Authentication**: Supabase Auth with middleware-based route protection
+- **Database**: Supabase PostgreSQL with Row Level Security (RLS)
+- **UI**: shadcn/ui components ("new-york" style) with Radix UI primitives
+- **Styling**: Tailwind CSS with Geist font family
+- **Testing**: Jest + Playwright for comprehensive test coverage
+- **Language**: TypeScript 5 with strict configuration
 
-First, run the development server:
+## 🏗️ Project Structure
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+joot-app/
+├── src/                    # Application source code
+│   ├── app/               # Next.js App Router pages and API routes
+│   ├── components/        # React components
+│   │   ├── ui/           # shadcn/ui base components
+│   │   ├── auth/         # Authentication components
+│   │   └── providers/    # React context providers
+│   ├── hooks/            # Custom React hooks
+│   ├── lib/              # Utilities and configurations
+│   └── types/            # TypeScript type definitions
+├── database/             # Database schema and migrations
+│   ├── migrations/       # Supabase migration files
+│   ├── schema.sql        # Complete database schema
+│   └── config.toml       # Supabase configuration
+├── docs/                 # Project documentation
+│   ├── deployment/       # Deployment guides
+│   └── testing.md        # Testing documentation
+├── scripts/              # Utility scripts
+│   ├── db/              # Database-related scripts
+│   ├── env/             # Environment validation scripts
+│   └── test/            # Testing utilities
+├── e2e/                  # End-to-end tests
+└── __tests__/            # Unit and integration tests
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ⚡ Quick Start
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Clone and install dependencies:**
+   ```bash
+   git clone https://github.com/dsil-design/joot-app.git
+   cd joot-app
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Set up environment variables:**
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local with your Supabase credentials
+   ```
+
+3. **Start development server:**
+   ```bash
+   npm run dev
+   ```
+
+4. **Open your browser:**
+   Visit [http://localhost:3000](http://localhost:3000)
+
+## 🧪 Testing
+
+Comprehensive testing suite with multiple test types:
+
+```bash
+# Run all test suites
+npm run test:all
+
+# Individual test types
+npm run test:unit          # Unit tests
+npm run test:integration   # Integration tests
+npm run test:e2e          # End-to-end tests
+npm run test:accessibility # Accessibility tests
+npm run test:performance  # Performance tests
+
+# Coverage reports
+npm run test:coverage
+
+# CI pipeline
+npm run test:ci
+```
+
+**Coverage Requirements**: 70% minimum for branches, functions, lines, and statements.
+
+## 📖 Documentation
+
+Detailed documentation is available in the `/docs` directory:
+
+- **[Supabase Deployment Guide](docs/deployment/supabase.md)** - Database setup and migrations
+- **[Vercel Deployment Guide](docs/deployment/vercel.md)** - Application deployment
+- **[CI/CD Documentation](docs/deployment/ci.md)** - GitHub Actions workflows
+- **[Migration Guide](docs/deployment/migrations.md)** - Database migration procedures
+- **[Testing Documentation](docs/testing.md)** - Comprehensive testing guide
 
 ## Learn More
 
@@ -75,7 +152,7 @@ For the workflows to function properly, the following GitHub secrets must be con
 **Automatic Triggers:**
 The CI/CD pipeline automatically runs on pushes to the main branch when changes affect:
 - Source code (`src/**`)
-- Database schema (`supabase/**`)
+- Database schema (`database/**`)
 - Dependencies (`package.json`, `package-lock.json`)
 - Configuration files (`next.config.ts`, `tsconfig.json`)
 

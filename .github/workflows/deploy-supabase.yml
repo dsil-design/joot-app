@@ -4,10 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'supabase/migrations/**'
-      - 'supabase/schema.sql'
-      - 'supabase/seed.sql'
+      - 'database/migrations/**'
+      - 'database/schema.sql'
+      - 'database/seed.sql'
   workflow_dispatch: # Allow manual trigger
+  workflow_call: # Allow being called by other workflows
 
 jobs:
   deploy:

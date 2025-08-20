@@ -7,66 +7,85 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
+      currency_configuration: {
+        Row: {
+          created_at: string | null
+          currency_code: string
+          currency_symbol: string | null
+          decimal_places: number | null
+          display_name: string
+          id: string
+          is_crypto: boolean | null
+          is_tracked: boolean | null
+          source: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency_code: string
+          currency_symbol?: string | null
+          decimal_places?: number | null
+          display_name: string
+          id?: string
+          is_crypto?: boolean | null
+          is_tracked?: boolean | null
+          source?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency_code?: string
+          currency_symbol?: string | null
+          decimal_places?: number | null
+          display_name?: string
+          id?: string
+          is_crypto?: boolean | null
+          is_tracked?: boolean | null
+          source?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       exchange_rates: {
         Row: {
           created_at: string | null
           date: string
           from_currency: Database["public"]["Enums"]["currency_type"]
           id: string
-          rate: number
-          to_currency: Database["public"]["Enums"]["currency_type"]
-          source: string
-          is_interpolated: boolean
           interpolated_from_date: string | null
+          is_interpolated: boolean | null
+          rate: number
+          source: string | null
+          to_currency: Database["public"]["Enums"]["currency_type"]
         }
         Insert: {
           created_at?: string | null
           date?: string
           from_currency: Database["public"]["Enums"]["currency_type"]
           id?: string
-          rate: number
-          to_currency: Database["public"]["Enums"]["currency_type"]
-          source?: string
-          is_interpolated?: boolean
           interpolated_from_date?: string | null
+          is_interpolated?: boolean | null
+          rate: number
+          source?: string | null
+          to_currency: Database["public"]["Enums"]["currency_type"]
         }
         Update: {
           created_at?: string | null
           date?: string
           from_currency?: Database["public"]["Enums"]["currency_type"]
           id?: string
-          rate?: number
-          to_currency?: Database["public"]["Enums"]["currency_type"]
-          source?: string
-          is_interpolated?: boolean
           interpolated_from_date?: string | null
+          is_interpolated?: boolean | null
+          rate?: number
+          source?: string | null
+          to_currency?: Database["public"]["Enums"]["currency_type"]
         }
         Relationships: []
       }
@@ -102,55 +121,17 @@ export type Database = {
           },
         ]
       }
-      transaction_categories: {
-        Row: {
-          color: string | null
-          created_at: string | null
-          icon: string | null
-          id: string
-          name: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          color?: string | null
-          created_at?: string | null
-          icon?: string | null
-          id?: string
-          name: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          color?: string | null
-          created_at?: string | null
-          icon?: string | null
-          id?: string
-          name?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transaction_categories_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       transactions: {
         Row: {
           amount_thb: number
           amount_usd: number
-          category_id: string | null
           created_at: string | null
           description: string | null
           exchange_rate: number
           id: string
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id: string | null
+          title: string | null
           transaction_date: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string | null
@@ -160,13 +141,13 @@ export type Database = {
         Insert: {
           amount_thb: number
           amount_usd: number
-          category_id?: string | null
           created_at?: string | null
           description?: string | null
           exchange_rate: number
           id?: string
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
+          title?: string | null
           transaction_date?: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string | null
@@ -176,13 +157,13 @@ export type Database = {
         Update: {
           amount_thb?: number
           amount_usd?: number
-          category_id?: string | null
           created_at?: string | null
           description?: string | null
           exchange_rate?: number
           id?: string
           original_currency?: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
+          title?: string | null
           transaction_date?: string
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string | null
@@ -190,13 +171,6 @@ export type Database = {
           vendor_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "transactions_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "transaction_categories"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "transactions_payment_method_id_fkey"
             columns: ["payment_method_id"]
@@ -293,13 +267,87 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      available_currency_pairs: {
+        Row: {
+          from_currency: string | null
+          from_display_name: string | null
+          to_currency: string | null
+          to_display_name: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      get_exchange_rate_with_fallback: {
+        Args: {
+          p_date: string
+          p_from_currency: Database["public"]["Enums"]["currency_type"]
+          p_max_days_back?: number
+          p_to_currency: Database["public"]["Enums"]["currency_type"]
+        }
+        Returns: {
+          actual_date: string
+          is_interpolated: boolean
+          rate: number
+          source: string
+        }[]
+      }
+      get_tracked_currencies: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          currency_code: string
+          currency_symbol: string
+          display_name: string
+          is_crypto: boolean
+          source: string
+        }[]
+      }
+      update_tracked_currencies: {
+        Args: { p_currencies: string[] }
+        Returns: {
+          message: string
+          removed_rates: number
+          success: boolean
+        }[]
+      }
     }
     Enums: {
-      currency_type: "USD" | "THB" | "EUR" | "GBP" | "SGD" | "VND" | "MYR" | "BTC"
+      currency_type:
+        | "USD"
+        | "THB"
+        | "EUR"
+        | "GBP"
+        | "SGD"
+        | "VND"
+        | "MYR"
+        | "BTC"
+        | "JPY"
+        | "CHF"
+        | "CAD"
+        | "AUD"
+        | "NZD"
+        | "SEK"
+        | "NOK"
+        | "DKK"
+        | "PLN"
+        | "CZK"
+        | "HUF"
+        | "BGN"
+        | "RON"
+        | "ISK"
+        | "TRY"
+        | "RUB"
+        | "HRK"
+        | "CNY"
+        | "INR"
+        | "KRW"
+        | "BRL"
+        | "ZAR"
+        | "MXN"
+        | "ILS"
+        | "HKD"
+        | "PHP"
+        | "IDR"
       transaction_type: "income" | "expense"
     }
     CompositeTypes: {
@@ -426,35 +474,82 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
-      currency_type: ["USD", "THB", "EUR", "GBP", "SGD", "VND", "MYR", "BTC"],
+      currency_type: [
+        "USD",
+        "THB",
+        "EUR",
+        "GBP",
+        "SGD",
+        "VND",
+        "MYR",
+        "BTC",
+        "JPY",
+        "CHF",
+        "CAD",
+        "AUD",
+        "NZD",
+        "SEK",
+        "NOK",
+        "DKK",
+        "PLN",
+        "CZK",
+        "HUF",
+        "BGN",
+        "RON",
+        "ISK",
+        "TRY",
+        "RUB",
+        "HRK",
+        "CNY",
+        "INR",
+        "KRW",
+        "BRL",
+        "ZAR",
+        "MXN",
+        "ILS",
+        "HKD",
+        "PHP",
+        "IDR",
+      ],
       transaction_type: ["income", "expense"],
     },
   },
 } as const
 
-// Type aliases for commonly used types
-export type ExchangeRate = Tables<"exchange_rates">
-export type ExchangeRateInsert = TablesInsert<"exchange_rates">
-export type CurrencyType = Database["public"]["Enums"]["currency_type"]
-export type TransactionType = Database["public"]["Enums"]["transaction_type"]
-export type Transaction = Tables<"transactions">
-export type TransactionInsert = TablesInsert<"transactions">
-export type TransactionUpdate = TablesUpdate<"transactions">
-export type PaymentMethod = Tables<"payment_methods">
-export type PaymentMethodInsert = TablesInsert<"payment_methods">
-export type Vendor = Tables<"vendors">
-export type VendorInsert = TablesInsert<"vendors">
-export type User = Tables<"users">
-export type UserUpdate = TablesUpdate<"users">
+// Convenience type aliases
+export type User = Database['public']['Tables']['users']['Row']
+export type UserInsert = Database['public']['Tables']['users']['Insert']
+export type UserUpdate = Database['public']['Tables']['users']['Update']
 
-// Type for transactions with vendor and payment method data
-export type TransactionWithVendorAndPayment = Tables<"transactions"> & {
-  vendors?: Tables<"vendors"> | null
-  payment_methods?: Tables<"payment_methods"> | null
+export type Transaction = Database['public']['Tables']['transactions']['Row']
+export type TransactionInsert = Database['public']['Tables']['transactions']['Insert']
+export type TransactionUpdate = Database['public']['Tables']['transactions']['Update']
+
+export type Vendor = Database['public']['Tables']['vendors']['Row']
+export type VendorInsert = Database['public']['Tables']['vendors']['Insert']
+export type VendorUpdate = Database['public']['Tables']['vendors']['Update']
+
+export type PaymentMethod = Database['public']['Tables']['payment_methods']['Row']
+export type PaymentMethodInsert = Database['public']['Tables']['payment_methods']['Insert']
+export type PaymentMethodUpdate = Database['public']['Tables']['payment_methods']['Update']
+
+export type ExchangeRate = Database['public']['Tables']['exchange_rates']['Row']
+export type ExchangeRateInsert = Database['public']['Tables']['exchange_rates']['Insert']
+export type ExchangeRateUpdate = Database['public']['Tables']['exchange_rates']['Update']
+
+export type CurrencyType = Database['public']['Enums']['currency_type']
+export type TransactionType = Database['public']['Enums']['transaction_type']
+
+// Extended types with relationships
+export type TransactionWithVendorAndPayment = Transaction & {
+  vendors: {
+    id: string
+    name: string
+  } | null
+  payment_methods: {
+    id: string
+    name: string
+  } | null
 }
-

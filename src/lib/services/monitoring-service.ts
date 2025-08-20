@@ -270,7 +270,8 @@ export class MonitoringService {
 
       const breakdown: Record<string, number> = {};
       data?.forEach(record => {
-        breakdown[record.source] = (breakdown[record.source] || 0) + 1;
+        const source = record.source || 'unknown';
+        breakdown[source] = (breakdown[source] || 0) + 1;
       });
 
       return breakdown;

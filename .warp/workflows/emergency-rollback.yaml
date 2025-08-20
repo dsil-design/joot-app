@@ -1,17 +1,19 @@
 name: "🔄 Emergency Rollback"
-description: "Trigger emergency rollback of database and/or application"
+description: "Emergency rollback of Vercel and/or database"
 command: "gh workflow run rollback.yml --repo dsil-design/joot-app --field rollback_type={{rollback_type}} --field backup_source={{backup_source}} --field reason='{{reason}}' --field confirm_rollback=true"
 tags:
   - rollback
   - emergency
+  - vercel
   - database
+  - incident-response
 arguments:
   - name: rollback_type
-    description: "Type of rollback to perform"
-    default_value: "full_rollback"
+    description: "Type of rollback (vercel_only/database_only/full_rollback)"
+    default_value: "vercel_only"
   - name: backup_source
-    description: "Backup source (latest, or specific backup file/S3 key)"
+    description: "Backup source (latest, or specific identifier)"
     default_value: "latest"
   - name: reason
-    description: "Reason for rollback (required for audit trail)"
+    description: "Reason for emergency rollback (audit trail)"
     default_value: "Emergency rollback via Warp"

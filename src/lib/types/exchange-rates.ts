@@ -14,7 +14,7 @@ export interface ProcessedRate {
   rate: number;
   date: string;
   source: 'ECB' | 'COINGECKO';
-  is_interpolated: boolean;
+  is_interpolated: boolean | null;
   interpolated_from_date?: string;
 }
 

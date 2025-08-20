@@ -1,17 +1,18 @@
-name: "🚀 Trigger Joot Deployment"
-description: "Manually trigger the CI/CD deployment workflow via GitHub CLI"
-command: "gh workflow run cicd.yml --repo dsil-design/joot-app {{environment_flag}} {{skip_backup_flag}} {{skip_tests_flag}}"
+name: "🚀 Full Production Deployment"
+description: "Deploy to production with smoke tests"
+command: "gh workflow run warp-full-deploy.yml --repo dsil-design/joot-app --field environment={{environment}} --field skip_smoke_tests={{skip_smoke_tests}} --field force_deploy={{force_deploy}}"
 tags:
   - deployment
-  - github
-  - ci-cd
+  - production
+  - vercel
+  - final-stage
 arguments:
-  - name: environment_flag
-    description: "Target environment for deployment"
-    default_value: "--field environment=production"
-  - name: skip_backup_flag  
-    description: "Skip database backup (dangerous!)"
-    default_value: ""
-  - name: skip_tests_flag
-    description: "Skip test suite"
-    default_value: ""
+  - name: environment
+    description: "Target environment"
+    default_value: "production"
+  - name: skip_smoke_tests
+    description: "Skip pre-deployment smoke tests (true/false)"
+    default_value: "false"
+  - name: force_deploy
+    description: "Force deployment even if smoke tests fail (true/false)"
+    default_value: "false"
