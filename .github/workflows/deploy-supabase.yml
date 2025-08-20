@@ -60,6 +60,17 @@ jobs:
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
+      - name: Repair migration history if needed
+        run: |
+          # Check if we need to repair migration history due to directory restructure
+          if echo "$SUPABASE_DB_PASSWORD" | supabase migration list --workdir database | grep -q "20250819100000.*Remote"; then
+            echo "Found migration history mismatch. Repairing..."
+            echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status reverted 20250819100000 20250819134041 --workdir database
+            echo "Migration history repaired."
+          fi
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
       - name: Push migrations to Supabase
         run: supabase db push --workdir database
         env:
