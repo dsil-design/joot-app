@@ -89,7 +89,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Error message for unauthorized access */}
-      {resolvedSearchParams?.error === 'unauthorized' && (
+      {(resolvedSearchParams?.error === 'unauthorized' || resolvedSearchParams?.error === 'auth_error') && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
           <Card className="bg-destructive/10 border-destructive text-destructive p-4 shadow-lg max-w-md">
             <div className="flex items-center justify-between">
