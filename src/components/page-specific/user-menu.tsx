@@ -46,7 +46,7 @@ export function UserMenu({ children, userName = "User", isAdmin = false }: UserM
         
         {isAdmin && (
           <>
-            <Link href="/admin/exchange-rates">
+            <Link href="/admin/dashboard">
               <DropdownMenuItem className="px-spacing-2 py-spacing-1_5 text-sm/normal text-foreground cursor-pointer focus:bg-accent focus:text-accent-foreground">
                 <Settings className="mr-spacing-2 h-4 w-4" />
                 Admin Dashboard

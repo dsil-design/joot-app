@@ -10,7 +10,7 @@ import { SyncHistoryTable } from '@/components/admin/sync-history-table';
 import { CurrencyManager } from '@/components/admin/currency-manager';
 import { Badge } from '@/components/ui/badge';
 
-export default async function AdminExchangeRatesPage() {
+export default async function AdminDashboardPage() {
   const supabase = await createClient();
   
   try {
@@ -18,11 +18,8 @@ export default async function AdminExchangeRatesPage() {
     
     // Check if user is authenticated
     if (!user) {
-      redirect('/login?redirect=/admin/exchange-rates');
+      redirect('/login?redirect=/admin/dashboard');
     }
-    
-    // For now, allow all authenticated users to access admin interface
-    // In production, this would check a roles table or user metadata
 
     return (
       <AdminLayout>
@@ -30,7 +27,7 @@ export default async function AdminExchangeRatesPage() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Exchange Rate Management</h1>
+              <h1 className="text-3xl font-bold">Admin Dashboard</h1>
               <p className="text-muted-foreground mt-spacing-2">
                 Monitor system health, manage synchronization, and explore exchange rate data
               </p>
@@ -73,7 +70,7 @@ export default async function AdminExchangeRatesPage() {
           
           {/* Recent Sync History */}
           <section>
-            <h2 className="text-xl font-semibold mb-spacing-4">Sync History</h2>
+            <h2 className="text-xl font-semibold mb-spacing-4">Recent Sync History</h2>
             <SyncHistoryTable />
           </section>
           

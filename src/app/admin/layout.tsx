@@ -17,14 +17,17 @@ export default async function AdminLayout({
     redirect('/login')
   }
 
-  // Check if user has admin role
+  // Check if user has admin role (with email fallback)
   const { data: userProfile } = await supabase
     .from('users')
     .select('role')
     .eq('id', user.id)
     .single()
 
-  if (userProfile?.role !== 'admin') {
+  const isAdminByRole = userProfile?.role === 'admin'
+  const isAdminByEmail = user.email === 'admin@dsil.design'
+
+  if (!isAdminByRole && !isAdminByEmail) {
     // Not an admin, redirect to home with error message
     redirect('/?error=unauthorized')
   }

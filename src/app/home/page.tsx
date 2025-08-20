@@ -38,8 +38,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     ? `${userProfile.first_name} ${userProfile.last_name}`
     : userProfile?.first_name || userProfile?.last_name || user.email || "User"
 
-  // Check if user has admin role
-  const isAdmin = userProfile?.role === 'admin'
+  // Check if user has admin role (fallback to email check)
+  const isAdminByRole = userProfile?.role === 'admin'
+  const isAdminByEmail = user.email === 'admin@dsil.design'
+  const isAdmin = isAdminByRole || isAdminByEmail
 
   // Generate initials from first and last name
   const getInitials = (firstName?: string | null, lastName?: string | null): string => {

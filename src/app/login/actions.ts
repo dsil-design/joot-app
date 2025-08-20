@@ -28,18 +28,33 @@ export async function login(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   
   if (user) {
-    const { data: userProfile } = await supabase
+    // Try to get user profile - if it fails, user might not be in users table yet
+    const { data: userProfile, error: profileError } = await supabase
       .from('users')
-      .select('role')
+      .select('role, email')
       .eq('id', user.id)
       .single()
 
+    console.log('Login - User ID:', user.id)
+    console.log('Login - User Email:', user.email)
+    console.log('Login - Profile Data:', userProfile)
+    console.log('Login - Profile Error:', profileError)
+
     revalidatePath('/', 'layout')
     
+    // Check if user is admin by email as fallback if profile doesn't exist yet
+    const isAdminByEmail = user.email === 'admin@dsil.design'
+    const isAdminByRole = userProfile?.role === 'admin'
+    
+    console.log('Login - Is Admin by Email:', isAdminByEmail)
+    console.log('Login - Is Admin by Role:', isAdminByRole)
+    
     // Redirect admin users to admin dashboard, regular users to home
-    if (userProfile?.role === 'admin') {
-      redirect('/admin/exchange-rates')
+    if (isAdminByRole || isAdminByEmail) {
+      console.log('Login - Redirecting to admin dashboard')
+      redirect('/admin/dashboard')
     } else {
+      console.log('Login - Redirecting to home')
       redirect('/home')
     }
   } else {
@@ -127,9 +142,13 @@ export async function signup(formData: FormData) {
 
     revalidatePath('/', 'layout')
     
+    // Check if user is admin by email as fallback
+    const isAdminByEmail = signUpData.user.email === 'admin@dsil.design'
+    const isAdminByRole = userProfile?.role === 'admin'
+    
     // Redirect admin users to admin dashboard, regular users to home
-    if (userProfile?.role === 'admin') {
-      redirect('/admin/exchange-rates')
+    if (isAdminByRole || isAdminByEmail) {
+      redirect('/admin/dashboard')
     } else {
       redirect('/home')
     }
