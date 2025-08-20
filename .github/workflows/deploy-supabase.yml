@@ -51,6 +51,15 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
+      - name: Debug migration status
+        run: |
+          echo "Local migrations directory:"
+          ls -la database/migrations/
+          echo "Checking migration status:"
+          echo "$SUPABASE_DB_PASSWORD" | supabase migration list --workdir database || true
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
       - name: Push migrations to Supabase
         run: supabase db push --workdir database
         env:
