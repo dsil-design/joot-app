@@ -3,7 +3,6 @@ import { axe } from 'jest-axe'
 import userEvent from '@testing-library/user-event'
 import LoginPage from '@/app/login/page'
 import SignupPage from '@/app/signup/page'
-import { ProtectedRoute } from '@/components/auth/protected-route'
 import { GlobalActionProvider } from '@/contexts/GlobalActionContext'
 
 // Helper function to wrap components with GlobalActionProvider

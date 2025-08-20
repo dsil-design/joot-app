@@ -49,7 +49,8 @@ describe('Authentication Error Scenarios', () => {
     jest.clearAllMocks()
     
     // Mock the useRouter hook directly
-    require('next/navigation').useRouter = jest.fn(() => ({
+    const navigation = jest.requireMock('next/navigation')
+    navigation.useRouter = jest.fn(() => ({
       push: mockPush,
       replace: jest.fn(),
       prefetch: jest.fn(),
