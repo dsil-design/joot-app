@@ -11,8 +11,15 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
--- Update the column to use the enum type
+-- Update the column to use the enum type  
+-- First drop the default to avoid casting issues
+ALTER TABLE public.users ALTER COLUMN role DROP DEFAULT;
+
+-- Convert the column type
 ALTER TABLE public.users ALTER COLUMN role TYPE user_role USING role::user_role;
+
+-- Re-add the default with proper enum value
+ALTER TABLE public.users ALTER COLUMN role SET DEFAULT 'user'::user_role;
 
 -- Set admin role for the specified admin user
 UPDATE public.users 
