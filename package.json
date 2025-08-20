@@ -10,7 +10,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:unit": "jest --testPathPatterns=__tests__ --testPathIgnorePatterns=integration,accessibility,performance,e2e",
+    "test:unit": "jest --testPathPatterns=__tests__ --testPathIgnorePatterns=\"integration|accessibility|performance|e2e\"",
     "test:integration": "jest --testPathPatterns=integration",
     "test:accessibility": "jest --testPathPatterns=accessibility",
     "test:performance": "jest --testPathPatterns=performance",
@@ -19,9 +19,9 @@
     "test:e2e:headed": "playwright test --headed",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:accessibility && npm run test:performance",
     "test:docs": "jest --testPathPatterns=docs --coverage --collectCoverageFrom='src/app/docs/**/*.{ts,tsx}' --collectCoverageFrom='src/components/docs/**/*.{ts,tsx}'",
-    "test:supabase": "node scripts/test-supabase-connection.js",
+    "test:supabase": "node scripts/db/test-supabase-connection.js",
     "test:ci": "npm run test:coverage && npm run test:e2e",
-    "validate:env": "node scripts/validate-env.js"
+    "validate:env": "node scripts/env/validate-env.js"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.11",
