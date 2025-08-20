@@ -1,13 +1,10 @@
 import { render, screen } from '@testing-library/react'
-import { axe, toHaveNoViolations } from 'jest-axe'
+import { axe } from 'jest-axe'
 import userEvent from '@testing-library/user-event'
 import LoginPage from '@/app/login/page'
 import SignupPage from '@/app/signup/page'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { GlobalActionProvider } from '@/contexts/GlobalActionContext'
-
-// Extend Jest matchers
-expect.extend(toHaveNoViolations)
 
 // Helper function to wrap components with GlobalActionProvider
 const renderWithProvider = (component: React.ReactElement) => {

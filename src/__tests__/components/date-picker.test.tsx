@@ -1,11 +1,9 @@
 import * as React from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe, toHaveNoViolations } from "jest-axe"
+import { axe } from "jest-axe"
 
 import { DatePicker, DateInput } from "@/components/ui/date-picker"
-
-expect.extend(toHaveNoViolations)
 
 describe("DatePicker", () => {
   const mockOnDateChange = jest.fn()

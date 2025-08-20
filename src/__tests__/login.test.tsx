@@ -2,6 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import LoginPage from '@/app/login/page'
 import { auth } from '@/lib/supabase/auth'
+import type { User } from '@supabase/supabase-js'
+import type { AuthError } from '@supabase/supabase-js'
 
 // Mock the auth module
 jest.mock('@/lib/supabase/auth', () => ({
@@ -25,6 +27,42 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams
 }))
 
+// Helper function to create proper User mock
+const createMockUser = (overrides: Partial<User> = {}): User => ({
+  id: '123',
+  email: 'test@example.com',
+  aud: 'authenticated',
+  role: 'authenticated',
+  email_confirmed_at: new Date().toISOString(),
+  phone: '',
+  confirmed_at: new Date().toISOString(),
+  last_sign_in_at: new Date().toISOString(),
+  app_metadata: {},
+  user_metadata: {},
+  identities: [],
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+  is_anonymous: false,
+  ...overrides
+})
+
+// Helper function to create proper AuthError mock
+const createMockAuthError = (message: string): AuthError => {
+  const error = new Error(message) as AuthError
+  error.status = 400
+  return error
+}
+
+// Helper function to create mock session
+const createMockSession = () => ({
+  access_token: 'mock-access-token',
+  refresh_token: 'mock-refresh-token',
+  expires_in: 3600,
+  expires_at: Date.now() + 3600000,
+  token_type: 'bearer',
+  user: createMockUser()
+})
+
 const mockAuth = auth as jest.Mocked<typeof auth>
 
 describe('LoginPage', () => {
@@ -34,7 +72,7 @@ describe('LoginPage', () => {
   })
 
   it('renders login form elements', async () => {
-    render(<LoginPage searchParams={mockSearchParams} />)
+    render(<LoginPage />)
     
     expect(screen.getByRole('heading', { name: /sign in to your account/i })).toBeInTheDocument()
     expect(screen.getByText('Welcome back to Joot')).toBeInTheDocument()
@@ -44,7 +82,7 @@ describe('LoginPage', () => {
   })
 
   it('has correct input types', () => {
-    render(<LoginPage searchParams={mockSearchParams} />)
+    render(<LoginPage />)
     
     const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement
     const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement
@@ -54,7 +92,7 @@ describe('LoginPage', () => {
   })
 
   it('has navigation links', () => {
-    render(<LoginPage searchParams={mockSearchParams} />)
+    render(<LoginPage />)
     
     const signUpText = screen.getByText("Don't have an account?")
     const signUpLink = screen.getByRole('link', { name: /sign up/i })
@@ -67,11 +105,11 @@ describe('LoginPage', () => {
   it('successfully logs in user and redirects to dashboard', async () => {
     const user = userEvent.setup()
     mockAuth.signIn.mockResolvedValue({
-      data: { user: { id: '123', email: 'test@example.com' } },
+      data: { user: createMockUser(), session: createMockSession() },
       error: null
     })
 
-    render(<LoginPage searchParams={mockSearchParams} />)
+    render(<LoginPage />)
     
     await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
     await user.type(screen.getByLabelText(/password/i), 'password123')
@@ -86,11 +124,11 @@ describe('LoginPage', () => {
   it('handles login errors', async () => {
     const user = userEvent.setup()
     mockAuth.signIn.mockResolvedValue({
-      data: null,
-      error: { message: 'Invalid login credentials' }
+      data: { user: null, session: null },
+      error: createMockAuthError('Invalid login credentials')
     })
 
-    render(<LoginPage searchParams={mockSearchParams} />)
+    render(<LoginPage />)
     
     await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
     await user.type(screen.getByLabelText(/password/i), 'wrongpassword')
@@ -104,11 +142,11 @@ describe('LoginPage', () => {
   it('clears errors when user starts typing', async () => {
     const user = userEvent.setup()
     mockAuth.signIn.mockResolvedValue({
-      data: null,
-      error: { message: 'Invalid login credentials' }
+      data: { user: null, session: null },
+      error: createMockAuthError('Invalid login credentials')
     })
 
-    render(<LoginPage searchParams={mockSearchParams} />)
+    render(<LoginPage />)
     
     await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
     await user.type(screen.getByLabelText(/password/i), 'wrongpassword')
@@ -130,7 +168,7 @@ describe('LoginPage', () => {
     const user = userEvent.setup()
     mockAuth.signIn.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
 
-    render(<LoginPage searchParams={mockSearchParams} />)
+    render(<LoginPage />)
     
     await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
     await user.type(screen.getByLabelText(/password/i), 'password123')
@@ -145,7 +183,7 @@ describe('LoginPage', () => {
     const user = userEvent.setup()
     mockAuth.signIn.mockRejectedValue(new Error('Network error'))
 
-    render(<LoginPage searchParams={mockSearchParams} />)
+    render(<LoginPage />)
     
     await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
     await user.type(screen.getByLabelText(/password/i), 'password123')

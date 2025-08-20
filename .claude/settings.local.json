@@ -50,7 +50,9 @@
       "Bash(cd:*)",
       "Bash(cd:*)",
       "Bash(git add:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(gh run view:*)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

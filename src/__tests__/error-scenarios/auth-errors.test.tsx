@@ -5,6 +5,8 @@ import SignupPage from '@/app/signup/page'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { auth } from '@/lib/supabase/auth'
 import * as authLib from '@/lib/auth'
+import { GlobalActionProvider } from '@/contexts/GlobalActionContext'
+import type { AuthError, User } from '@supabase/supabase-js'
 
 // Mock modules
 jest.mock('@/lib/supabase/auth')
@@ -16,16 +18,42 @@ const mockAuthLib = authLib as jest.Mocked<typeof authLib>
 
 describe('Authentication Error Scenarios', () => {
   const mockPush = jest.fn()
-  const mockSearchParams = Promise.resolve({})
+
+  // Helper function to create proper AuthError mock
+  const createAuthError = (message: string): AuthError => {
+    const error = new Error(message) as AuthError
+    error.status = 400
+    return error
+  }
+
+  // Helper function to create mock session
+  const createMockSession = (user: User) => ({
+    access_token: 'mock-access-token',
+    refresh_token: 'mock-refresh-token',
+    expires_in: 3600,
+    expires_at: Date.now() + 3600000,
+    token_type: 'bearer',
+    user
+  })
+
+  // Helper function to wrap components with GlobalActionProvider
+  const renderWithProvider = (component: React.ReactElement) => {
+    return render(
+      <GlobalActionProvider>
+        {component}
+      </GlobalActionProvider>
+    )
+  }
 
   beforeEach(() => {
     jest.clearAllMocks()
-    const { useRouter } = jest.requireActual('next/navigation')
-    jest.mocked(useRouter).mockReturnValue({
+    
+    // Mock the useRouter hook directly
+    require('next/navigation').useRouter = jest.fn(() => ({
       push: mockPush,
       replace: jest.fn(),
       prefetch: jest.fn(),
-    })
+    }))
   })
 
   describe('Network Error Scenarios', () => {
@@ -33,11 +61,11 @@ describe('Authentication Error Scenarios', () => {
       const user = userEvent.setup()
       mockAuth.signIn.mockRejectedValue(new Error('Network timeout'))
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      renderWithProvider(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'user@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       
       await waitFor(() => {
         expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeInTheDocument()
@@ -48,12 +76,11 @@ describe('Authentication Error Scenarios', () => {
       const user = userEvent.setup()
       mockAuth.signUp.mockRejectedValue(new Error('Connection failed'))
 
-      render(<SignupPage searchParams={mockSearchParams} />)
+      renderWithProvider(<SignupPage />)
       
-      await user.type(screen.getByLabelText(/full name/i), 'Test User')
-      await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/^password$/i), 'password123')
-      await user.type(screen.getByLabelText(/confirm password/i), 'password123')
+      await user.type(screen.getByLabelText(/first name/i), 'Test User')
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+      await user.type(screen.getByLabelText(/password/i), 'password123')
       await user.click(screen.getByRole('button', { name: /create account/i }))
       
       await waitFor(() => {
@@ -67,11 +94,11 @@ describe('Authentication Error Scenarios', () => {
       // Simulate offline error
       mockAuth.signIn.mockRejectedValue(new Error('Failed to fetch'))
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      renderWithProvider(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'user@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       
       await waitFor(() => {
         expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeInTheDocument()
@@ -83,15 +110,15 @@ describe('Authentication Error Scenarios', () => {
     it('should handle invalid credentials error', async () => {
       const user = userEvent.setup()
       mockAuth.signIn.mockResolvedValue({
-        data: null,
-        error: { message: 'Invalid login credentials' }
+        data: { user: null, session: null },
+        error: createAuthError('Invalid login credentials')
       })
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      renderWithProvider(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'wrong@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'wrong@example.com')
       await user.type(screen.getByLabelText(/password/i), 'wrongpassword')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       
       await waitFor(() => {
         expect(screen.getByText('Invalid login credentials')).toBeInTheDocument()
@@ -101,15 +128,15 @@ describe('Authentication Error Scenarios', () => {
     it('should handle email not confirmed error', async () => {
       const user = userEvent.setup()
       mockAuth.signIn.mockResolvedValue({
-        data: null,
-        error: { message: 'Email not confirmed' }
+        data: { user: null, session: null },
+        error: createAuthError('Email not confirmed')
       })
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      renderWithProvider(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'unverified@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'unverified@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       
       await waitFor(() => {
         expect(screen.getByText('Email not confirmed')).toBeInTheDocument()
@@ -119,15 +146,15 @@ describe('Authentication Error Scenarios', () => {
     it('should handle user not found error', async () => {
       const user = userEvent.setup()
       mockAuth.signIn.mockResolvedValue({
-        data: null,
-        error: { message: 'User not found' }
+        data: { user: null, session: null },
+        error: createAuthError('User not found')
       })
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      renderWithProvider(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'nonexistent@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'nonexistent@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       
       await waitFor(() => {
         expect(screen.getByText('User not found')).toBeInTheDocument()
@@ -137,15 +164,15 @@ describe('Authentication Error Scenarios', () => {
     it('should handle account disabled error', async () => {
       const user = userEvent.setup()
       mockAuth.signIn.mockResolvedValue({
-        data: null,
-        error: { message: 'Account has been disabled' }
+        data: { user: null, session: null },
+        error: createAuthError('Account has been disabled')
       })
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      renderWithProvider(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'disabled@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'disabled@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       
       await waitFor(() => {
         expect(screen.getByText('Account has been disabled')).toBeInTheDocument()
@@ -157,16 +184,15 @@ describe('Authentication Error Scenarios', () => {
     it('should handle email already registered error', async () => {
       const user = userEvent.setup()
       mockAuth.signUp.mockResolvedValue({
-        data: null,
-        error: { message: 'User already registered' }
+        data: { user: null, session: null },
+        error: createAuthError('User already registered')
       })
 
-      render(<SignupPage searchParams={mockSearchParams} />)
+      renderWithProvider(<SignupPage />)
       
-      await user.type(screen.getByLabelText(/full name/i), 'Existing User')
-      await user.type(screen.getByLabelText(/email address/i), 'existing@example.com')
-      await user.type(screen.getByLabelText(/^password$/i), 'password123')
-      await user.type(screen.getByLabelText(/confirm password/i), 'password123')
+      await user.type(screen.getByLabelText(/first name/i), 'Existing User')
+      await user.type(screen.getByLabelText(/email/i), 'existing@example.com')
+      await user.type(screen.getByLabelText(/password/i), 'password123')
       await user.click(screen.getByRole('button', { name: /create account/i }))
       
       await waitFor(() => {
@@ -177,16 +203,15 @@ describe('Authentication Error Scenarios', () => {
     it('should handle weak password error from backend', async () => {
       const user = userEvent.setup()
       mockAuth.signUp.mockResolvedValue({
-        data: null,
-        error: { message: 'Password should be at least 6 characters' }
+        data: { user: null, session: null },
+        error: createAuthError('Password should be at least 6 characters')
       })
 
-      render(<SignupPage searchParams={mockSearchParams} />)
+      renderWithProvider(<SignupPage />)
       
-      await user.type(screen.getByLabelText(/full name/i), 'Test User')
-      await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/^password$/i), 'weakpass')
-      await user.type(screen.getByLabelText(/confirm password/i), 'weakpass')
+      await user.type(screen.getByLabelText(/first name/i), 'Test User')
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+      await user.type(screen.getByLabelText(/password/i), 'weakpass')
       await user.click(screen.getByRole('button', { name: /create account/i }))
       
       await waitFor(() => {
@@ -197,16 +222,15 @@ describe('Authentication Error Scenarios', () => {
     it('should handle invalid email format error from backend', async () => {
       const user = userEvent.setup()
       mockAuth.signUp.mockResolvedValue({
-        data: null,
-        error: { message: 'Invalid email format' }
+        data: { user: null, session: null },
+        error: createAuthError('Invalid email format')
       })
 
-      render(<SignupPage searchParams={mockSearchParams} />)
+      renderWithProvider(<SignupPage />)
       
-      await user.type(screen.getByLabelText(/full name/i), 'Test User')
-      await user.type(screen.getByLabelText(/email address/i), 'invalid.email')
-      await user.type(screen.getByLabelText(/^password$/i), 'validpassword123')
-      await user.type(screen.getByLabelText(/confirm password/i), 'validpassword123')
+      await user.type(screen.getByLabelText(/first name/i), 'Test User')
+      await user.type(screen.getByLabelText(/email/i), 'invalid.email')
+      await user.type(screen.getByLabelText(/password/i), 'validpassword123')
       await user.click(screen.getByRole('button', { name: /create account/i }))
       
       await waitFor(() => {
@@ -251,7 +275,7 @@ describe('Authentication Error Scenarios', () => {
     it('should handle missing user data', async () => {
       mockAuth.getUser.mockResolvedValue({
         data: { user: null },
-        error: { message: 'User not found in session' }
+        error: createAuthError('User not found in session')
       })
 
       mockAuthLib.getAuthState.mockReturnValue({
@@ -275,15 +299,15 @@ describe('Authentication Error Scenarios', () => {
     it('should handle rate limiting errors', async () => {
       const user = userEvent.setup()
       mockAuth.signIn.mockResolvedValue({
-        data: null,
-        error: { message: 'Too many attempts. Please try again later.' }
+        data: { user: null, session: null },
+        error: createAuthError('Too many attempts. Please try again later.')
       })
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      renderWithProvider(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'user@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       
       await waitFor(() => {
         expect(screen.getByText('Too many attempts. Please try again later.')).toBeInTheDocument()
@@ -293,15 +317,15 @@ describe('Authentication Error Scenarios', () => {
     it('should handle service unavailable errors', async () => {
       const user = userEvent.setup()
       mockAuth.signIn.mockResolvedValue({
-        data: null,
-        error: { message: 'Service temporarily unavailable' }
+        data: { user: null, session: null },
+        error: createAuthError('Service temporarily unavailable')
       })
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      renderWithProvider(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'user@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       
       await waitFor(() => {
         expect(screen.getByText('Service temporarily unavailable')).toBeInTheDocument()
@@ -312,11 +336,11 @@ describe('Authentication Error Scenarios', () => {
       const user = userEvent.setup()
       mockAuth.signIn.mockRejectedValue(new Error('Database connection failed'))
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      renderWithProvider(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'user@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       
       await waitFor(() => {
         expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeInTheDocument()
@@ -328,25 +352,25 @@ describe('Authentication Error Scenarios', () => {
     it('should preserve form data when errors occur', async () => {
       const user = userEvent.setup()
       mockAuth.signIn.mockResolvedValue({
-        data: null,
-        error: { message: 'Invalid credentials' }
+        data: { user: null, session: null },
+        error: createAuthError('Invalid credentials')
       })
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      renderWithProvider(<LoginPage />)
       
       const email = 'user@example.com'
       const password = 'wrongpassword'
       
-      await user.type(screen.getByLabelText(/email address/i), email)
+      await user.type(screen.getByLabelText(/email/i), email)
       await user.type(screen.getByLabelText(/password/i), password)
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       
       await waitFor(() => {
         expect(screen.getByText('Invalid credentials')).toBeInTheDocument()
       })
 
       // Form data should be preserved
-      expect(screen.getByLabelText(/email address/i)).toHaveValue(email)
+      expect(screen.getByLabelText(/email/i)).toHaveValue(email)
       expect(screen.getByLabelText(/password/i)).toHaveValue(password)
     })
 
@@ -355,29 +379,52 @@ describe('Authentication Error Scenarios', () => {
       
       // First attempt fails
       mockAuth.signIn.mockResolvedValueOnce({
-        data: null,
-        error: { message: 'Network error' }
+        data: { user: null, session: null },
+        error: createAuthError('Network error')
       })
       
       // Second attempt succeeds
+      const mockUser: User = { 
+        id: '123', 
+        email: 'user@example.com',
+        aud: 'authenticated',
+        role: 'authenticated',
+        email_confirmed_at: new Date().toISOString(),
+        phone: '',
+        confirmed_at: new Date().toISOString(),
+        last_sign_in_at: new Date().toISOString(),
+        app_metadata: {},
+        user_metadata: {
+          first_name: 'Test',
+          last_name: 'User'
+        },
+        identities: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_anonymous: false
+      }
+      
       mockAuth.signIn.mockResolvedValueOnce({
-        data: { user: { id: '123', email: 'user@example.com' } },
+        data: { 
+          user: mockUser, 
+          session: createMockSession(mockUser)
+        },
         error: null
       })
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      renderWithProvider(<LoginPage />)
       
-      await user.type(screen.getByLabelText(/email address/i), 'user@example.com')
+      await user.type(screen.getByLabelText(/email/i), 'user@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
       
       // First attempt
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       await waitFor(() => {
         expect(screen.getByText('Network error')).toBeInTheDocument()
       })
 
       // Second attempt
-      await user.click(screen.getByRole('button', { name: /^sign in$/i }))
+      await user.click(screen.getByRole('button', { name: /^log in$/i }))
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/dashboard')
       })

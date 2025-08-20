@@ -24,7 +24,7 @@ function TransactionCardComponent({ transaction }: TransactionCardProps) {
   }
 
   const vendorName = transaction.vendors?.name || 'Unknown Vendor'
-  const paymentMethodName = transaction.payment_methods?.name || transaction.payment_method || 'Unknown Payment'
+  const paymentMethodName = transaction.payment_methods?.name || 'Unknown Payment'
   
   return (
     <TransactionCard

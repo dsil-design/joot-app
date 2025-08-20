@@ -4,6 +4,7 @@ import LoginPage from '@/app/login/page'
 import SignupPage from '@/app/signup/page'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { auth } from '@/lib/supabase/auth'
+import type { User } from '@supabase/supabase-js'
 
 // Mock modules
 jest.mock('@/lib/supabase/auth')
@@ -13,7 +14,34 @@ jest.mock('@/lib/auth')
 const mockAuth = auth as jest.Mocked<typeof auth>
 
 describe('Authentication Performance Tests', () => {
-  const mockSearchParams = Promise.resolve({})
+  // Helper function to create proper User mock
+  const createMockUser = (overrides: Partial<User> = {}): User => ({
+    id: '123',
+    email: 'test@example.com',
+    aud: 'authenticated',
+    role: 'authenticated',
+    email_confirmed_at: new Date().toISOString(),
+    phone: '',
+    confirmed_at: new Date().toISOString(),
+    last_sign_in_at: new Date().toISOString(),
+    app_metadata: {},
+    user_metadata: {},
+    identities: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    is_anonymous: false,
+    ...overrides
+  })
+
+  // Helper function to create mock session
+  const createMockSession = () => ({
+    access_token: 'mock-access-token',
+    refresh_token: 'mock-refresh-token',
+    expires_in: 3600,
+    expires_at: Date.now() + 3600000,
+    token_type: 'bearer',
+    user: createMockUser()
+  })
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -31,7 +59,7 @@ describe('Authentication Performance Tests', () => {
   describe('Component Render Performance', () => {
     it('should render login page within performance budget', () => {
       const startTime = performance.now()
-      render(<LoginPage searchParams={mockSearchParams} />)
+      render(<LoginPage />)
       const endTime = performance.now()
       
       const renderTime = endTime - startTime
@@ -40,7 +68,7 @@ describe('Authentication Performance Tests', () => {
 
     it('should render signup page within performance budget', () => {
       const startTime = performance.now()
-      render(<SignupPage searchParams={mockSearchParams} />)
+      render(<SignupPage />)
       const endTime = performance.now()
       
       const renderTime = endTime - startTime
@@ -51,7 +79,7 @@ describe('Authentication Performance Tests', () => {
       const { getAuthState } = jest.requireActual('@/lib/auth')
       jest.mocked(getAuthState).mockReturnValue({
         isAuthenticated: true,
-        user: { id: '123', email: 'user@example.com' }
+        user: createMockUser({ email: 'user@example.com' })
       })
 
       const startTime = performance.now()
@@ -70,7 +98,7 @@ describe('Authentication Performance Tests', () => {
   describe('Form Interaction Performance', () => {
     it('should handle rapid typing without lag', async () => {
       const user = userEvent.setup({ delay: null }) // No delay for performance testing
-      render(<LoginPage searchParams={mockSearchParams} />)
+      render(<LoginPage />)
       
       const emailInput = screen.getByLabelText(/email address/i)
       const testEmail = 'verylongemailaddressforthisperfomancetest@example.com'
@@ -85,7 +113,7 @@ describe('Authentication Performance Tests', () => {
 
     it('should validate form inputs efficiently', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<SignupPage searchParams={mockSearchParams} />)
+      render(<SignupPage />)
       
       // Fill form with invalid data to trigger validation
       await user.type(screen.getByLabelText(/full name/i), 'T')
@@ -103,7 +131,7 @@ describe('Authentication Performance Tests', () => {
 
     it('should clear errors quickly when user types', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<SignupPage searchParams={mockSearchParams} />)
+      render(<SignupPage />)
       
       // Trigger validation error first
       await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -133,13 +161,13 @@ describe('Authentication Performance Tests', () => {
       mockAuth.signIn.mockImplementation(() => 
         new Promise(resolve => {
           setTimeout(() => resolve({
-            data: { user: { id: '123', email: 'test@example.com' } },
+            data: { user: createMockUser(), session: createMockSession() },
             error: null
           }), 10) // 10ms simulated API response
         })
       )
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      render(<LoginPage />)
       
       await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
@@ -162,13 +190,13 @@ describe('Authentication Performance Tests', () => {
       mockAuth.signUp.mockImplementation(() => 
         new Promise(resolve => {
           setTimeout(() => resolve({
-            data: { user: { id: '123', email: 'test@example.com' } },
+            data: { user: createMockUser(), session: createMockSession() },
             error: null
           }), 15) // 15ms simulated API response
         })
       )
 
-      render(<SignupPage searchParams={mockSearchParams} />)
+      render(<SignupPage />)
       
       await user.type(screen.getByLabelText(/full name/i), 'Test User')
       await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
@@ -194,13 +222,13 @@ describe('Authentication Performance Tests', () => {
       mockAuth.signIn.mockImplementation(() => 
         new Promise(resolve => {
           setTimeout(() => resolve({
-            data: { user: { id: '123', email: 'test@example.com' } },
+            data: { user: createMockUser(), session: createMockSession() },
             error: null
           }), 2000) // 2 second delay
         })
       )
 
-      render(<LoginPage searchParams={mockSearchParams} />)
+      render(<LoginPage />)
       
       await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
       await user.type(screen.getByLabelText(/password/i), 'password123')
@@ -221,10 +249,10 @@ describe('Authentication Performance Tests', () => {
   describe('Memory Performance', () => {
     it('should not create memory leaks with rapid re-renders', () => {
       // Simulate rapid re-renders
-      const { rerender } = render(<LoginPage searchParams={mockSearchParams} />)
+      const { rerender } = render(<LoginPage />)
       
       for (let i = 0; i < 10; i++) {
-        rerender(<LoginPage searchParams={mockSearchParams} />)
+        rerender(<LoginPage />)
       }
       
       // Check that cleanup functions are working (basic test)
@@ -233,7 +261,7 @@ describe('Authentication Performance Tests', () => {
 
     it('should handle multiple form state changes efficiently', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<SignupPage searchParams={mockSearchParams} />)
+      render(<SignupPage />)
       
       const fullNameInput = screen.getByLabelText(/full name/i)
       
@@ -252,7 +280,7 @@ describe('Authentication Performance Tests', () => {
     it('should not import unnecessary dependencies', () => {
       // Test that components don't import heavy dependencies unnecessarily
       // This is more of a static analysis test, but we can check basic functionality
-      render(<LoginPage searchParams={mockSearchParams} />)
+      render(<LoginPage />)
       
       // Basic functionality should work without heavy imports
       expect(screen.getByLabelText(/email address/i)).toBeInTheDocument()
@@ -262,7 +290,7 @@ describe('Authentication Performance Tests', () => {
 
   describe('Progressive Enhancement', () => {
     it('should work with JavaScript disabled (basic form)', () => {
-      render(<LoginPage searchParams={mockSearchParams} />)
+      render(<LoginPage />)
       
       // Form should have proper HTML attributes for basic functionality
       const form = screen.getByRole('button', { name: /^sign in$/i }).closest('form')
@@ -281,7 +309,7 @@ describe('Authentication Performance Tests', () => {
   describe('Core Web Vitals Simulation', () => {
     it('should have good Largest Contentful Paint timing', () => {
       const startTime = performance.now()
-      render(<LoginPage searchParams={mockSearchParams} />)
+      render(<LoginPage />)
       
       // Find the largest meaningful content element
       const heading = screen.getByRole('heading', { name: /sign in to your account/i })
@@ -293,7 +321,7 @@ describe('Authentication Performance Tests', () => {
 
     it('should have minimal layout shift', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<LoginPage searchParams={mockSearchParams} />)
+      render(<LoginPage />)
       
       const form = screen.getByRole('button', { name: /^sign in$/i }).closest('form')
       const initialRect = form?.getBoundingClientRect()
@@ -311,7 +339,7 @@ describe('Authentication Performance Tests', () => {
 
     it('should respond to interactions quickly (FID simulation)', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<LoginPage searchParams={mockSearchParams} />)
+      render(<LoginPage />)
       
       const emailInput = screen.getByLabelText(/email address/i)
       

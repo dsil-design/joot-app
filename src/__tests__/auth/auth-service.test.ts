@@ -15,12 +15,12 @@ const mockSupabase = {
   }
 }
 
-mockCreateClient.mockReturnValue(mockSupabase as ReturnType<typeof createClient>)
+mockCreateClient.mockReturnValue(mockSupabase as unknown as ReturnType<typeof createClient>)
 
 describe('Auth Service', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockCreateClient.mockReturnValue(mockSupabase as ReturnType<typeof createClient>)
+    mockCreateClient.mockReturnValue(mockSupabase as unknown as ReturnType<typeof createClient>)
   })
 
   describe('signUp', () => {

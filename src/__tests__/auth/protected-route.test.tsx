@@ -28,7 +28,7 @@ describe('ProtectedRoute', () => {
   it('should render children when user is authenticated', async () => {
     mockGetAuthState.mockReturnValue({
       isAuthenticated: true,
-      user: { id: '123', email: 'test@example.com' }
+      user: { id: '123', email: 'test@example.com', name: 'Test User' }
     })
 
     render(
@@ -46,7 +46,7 @@ describe('ProtectedRoute', () => {
     // This test verifies the loading state structure exists
     mockGetAuthState.mockReturnValue({
       isAuthenticated: true,
-      user: { id: '123', email: 'test@example.com' }
+      user: { id: '123', email: 'test@example.com', name: 'Test User' }
     })
 
     render(

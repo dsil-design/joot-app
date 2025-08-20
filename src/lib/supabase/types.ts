@@ -456,6 +456,5 @@ export type UserUpdate = TablesUpdate<"users">
 export type TransactionWithVendorAndPayment = Tables<"transactions"> & {
   vendors?: Tables<"vendors"> | null
   payment_methods?: Tables<"payment_methods"> | null
-  payment_method?: string
 }
 
