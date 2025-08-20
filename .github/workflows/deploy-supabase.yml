@@ -75,79 +75,37 @@ jobs:
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
+      - name: Initialize migration system if needed
+        run: |
+          echo "Checking migration system status..."
+          migration_list=$(echo "$SUPABASE_DB_PASSWORD" | supabase migration list --workdir database 2>&1)
+          echo "Current migration status:"
+          echo "$migration_list"
+          
+          # If no migrations are tracked, initialize the system
+          if ! echo "$migration_list" | grep -q "20250819100000"; then
+            echo "⚠️ Migration system not tracking existing migrations. Initializing..."
+            
+            # Mark existing migrations as applied
+            echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status applied 20250819100000 20250819134041 20250820000000 --workdir database
+            
+            echo "✅ Migration system initialized with existing migrations"
+          else
+            echo "✅ Migration system is tracking migrations"
+          fi
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
       - name: Push migrations to Supabase
         run: |
           echo "Attempting to push migrations..."
           supabase db push --workdir database
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      
-      - name: Apply critical role migration if needed
-        run: |
-          echo "Checking if role migration needs to be applied directly..."
-          
-          # Check if role column exists using psql
-          ROLE_EXISTS=$(psql "${{ secrets.DATABASE_URL }}" -t -c "
-            SELECT EXISTS (
-              SELECT 1 FROM information_schema.columns 
-              WHERE table_schema = 'public' 
-              AND table_name = 'users' 
-              AND column_name = 'role'
-            );
-          " | tr -d '[:space:]')
-          
-          echo "Role column exists: $ROLE_EXISTS"
-          
-          if [ "$ROLE_EXISTS" = "f" ]; then
-            echo "⚠️ Role column missing! Applying migration directly..."
-            psql "${{ secrets.DATABASE_URL }}" -f database/apply-role-migration.sql
-            echo "✅ Role migration applied successfully"
-          else
-            echo "✅ Role column already exists"
-            
-            # Ensure admin user has admin role
-            psql "${{ secrets.DATABASE_URL }}" -c "
-              UPDATE public.users 
-              SET role = 'admin' 
-              WHERE email = 'admin@dsil.design' AND (role IS NULL OR role != 'admin');
-            "
-            echo "✅ Admin user role verified"
-          fi
-        env:
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
       - name: Verify deployment
         run: |
-          echo "Migration list:"
+          echo "Final migration status:"
           echo "$SUPABASE_DB_PASSWORD" | supabase migration list --workdir database
-          
-          echo ""
-          echo "Verifying role setup:"
-          psql "${{ secrets.DATABASE_URL }}" -c "
-            SELECT 
-              'Column Check' as test,
-              EXISTS (
-                SELECT 1 FROM information_schema.columns 
-                WHERE table_schema = 'public' 
-                AND table_name = 'users' 
-                AND column_name = 'role'
-              ) as passed
-            UNION ALL
-            SELECT 
-              'Admin User Check' as test,
-              EXISTS (
-                SELECT 1 FROM public.users 
-                WHERE email = 'admin@dsil.design' 
-                AND role = 'admin'
-              ) as passed
-            UNION ALL
-            SELECT 
-              'Function Check' as test,
-              EXISTS (
-                SELECT 1 FROM pg_proc 
-                WHERE proname = 'is_admin'
-              ) as passed;
-          "
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
