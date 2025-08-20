@@ -63,10 +63,14 @@ jobs:
       - name: Repair migration history if needed
         run: |
           # Check if we need to repair migration history due to directory restructure
-          if echo "$SUPABASE_DB_PASSWORD" | supabase migration list --workdir database | grep -q "20250819100000.*Remote"; then
+          migration_output=$(echo "$SUPABASE_DB_PASSWORD" | supabase migration list --workdir database)
+          if echo "$migration_output" | grep -q "| 20250819100000 |" && ! echo "$migration_output" | grep -q "20250819100000.*Local"; then
             echo "Found migration history mismatch. Repairing..."
+            echo "Remote migrations found that are not marked as local. Running repair..."
             echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status reverted 20250819100000 20250819134041 --workdir database
             echo "Migration history repaired."
+          else
+            echo "No migration history repair needed."
           fi
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
