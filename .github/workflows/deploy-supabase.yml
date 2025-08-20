@@ -87,9 +87,9 @@ jobs:
             echo "⚠️ Migration system not tracking existing migrations."
             echo "🔄 Initializing migration system with known working migrations..."
             
-            # Create supabase/migrations directory for repair command compatibility
-            mkdir -p supabase/migrations
-            cp database/migrations/*.sql supabase/migrations/
+            # Create migrations directory inside database workdir for repair command compatibility
+            mkdir -p database/supabase/migrations
+            cp database/migrations/*.sql database/supabase/migrations/
             
             # Only mark migrations as applied that we know actually ran successfully
             echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status applied 20250819100000 20250819134041 20250820000000 --workdir database
@@ -103,9 +103,9 @@ jobs:
               echo "🔍 Role migration marked as applied - but we know it needs to run"
               echo "🔄 Resetting role migration status to force re-execution..."
               
-              # Create supabase/migrations directory for repair command compatibility
-              mkdir -p supabase/migrations
-              cp database/migrations/*.sql supabase/migrations/
+              # Create migrations directory inside database workdir for repair command compatibility
+              mkdir -p database/supabase/migrations
+              cp database/migrations/*.sql database/supabase/migrations/
               
               echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status reverted 20250820120000 --workdir database
               echo "✅ Role migration reset - will be re-executed by db push"
