@@ -1,7 +1,21 @@
 import { NextResponse } from 'next/server';
 import { monitoringService } from '@/lib/services/monitoring-service';
+import { createAdminClient, isAdminAvailable } from '@/lib/supabase/admin';
 
 export async function GET() {
+  // Check if admin operations are available in this environment
+  if (!isAdminAvailable()) {
+    console.warn('⚠️ Admin operations not available - missing or dummy environment variables');
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Admin operations not available in this environment',
+        timestamp: new Date().toISOString()
+      },
+      { status: 503 }
+    );
+  }
+  
   try {
     console.log('📊 Getting data quality metrics...');
     

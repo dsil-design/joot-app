@@ -53,7 +53,9 @@
       "Bash(npx tsx:*)",
       "Bash(gh run view:*)",
       "Bash(cd:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(gh workflow run:*)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npm run build)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
