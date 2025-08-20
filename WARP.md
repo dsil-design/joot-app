@@ -72,6 +72,11 @@ npm run validate:env
 
 # Test Supabase connection and database setup
 npm run test:supabase
+
+# Reset transaction data with fresh examples (fixes display issues)
+npm run db:reset-transactions
+# Or run the wrapper script:
+./scripts/reset-transactions.sh
 ```
 
 ## Application Architecture
@@ -283,3 +288,33 @@ This approach gives you **checkpoints** at each stage to catch issues before the
 - Component lazy loading where appropriate
 - Memory leak detection in performance tests
 - Core Web Vitals monitoring and optimization
+
+## Troubleshooting
+
+### Transaction Display Issues
+
+**Problem**: Home page shows "No transactions yet" despite having data in the database.
+
+**Common Causes**:
+- Broken foreign key relationships from incomplete migrations
+- Missing vendor/payment method data
+- RLS policy conflicts
+- Data integrity issues after schema changes
+
+**Solution**: Reset transaction data with fresh examples
+```bash
+# Quick fix - reset all transaction data with realistic examples
+npm run db:reset-transactions
+
+# Or use the interactive script with helpful guidance
+./scripts/reset-transactions.sh
+```
+
+**What this does**:
+1. Wipes existing transactions, vendors, and payment methods
+2. Creates fresh, consistent data with proper FK relationships  
+3. Generates 15+ realistic transaction examples per user
+4. Ensures data works correctly with the home page query
+5. Provides verification and troubleshooting output
+
+**After running**: Refresh your home page - you should see sample transactions immediately.

@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Toaster } from "@/components/ui/sonner";
 import { GlobalActionWrapper } from "@/components/providers/GlobalActionWrapper";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,9 +26,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} font-geist-sans antialiased`} suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <GlobalActionWrapper>
-          {children}
-        </GlobalActionWrapper>
+        <AuthProvider>
+          <GlobalActionWrapper>
+            {children}
+          </GlobalActionWrapper>
+        </AuthProvider>
         <Toaster />
       </body>
     </html>

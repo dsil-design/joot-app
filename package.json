@@ -20,6 +20,7 @@
     "test:all": "npm run test:unit && npm run test:integration && npm run test:accessibility && npm run test:performance",
     "test:docs": "jest --testPathPatterns=docs --coverage --collectCoverageFrom='src/app/docs/**/*.{ts,tsx}' --collectCoverageFrom='src/components/docs/**/*.{ts,tsx}'",
     "test:supabase": "node scripts/db/test-supabase-connection.js",
+    "db:reset-transactions": "node scripts/db/reset-transaction-data.js",
     "test:ci": "npm run test:coverage && npm run test:e2e",
     "validate:env": "node scripts/env/validate-env.js"
   },

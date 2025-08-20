@@ -9,6 +9,9 @@ import { RateExplorer } from '@/components/admin/rate-explorer';
 import { SyncHistoryTable } from '@/components/admin/sync-history-table';
 import { CurrencyManager } from '@/components/admin/currency-manager';
 import { Badge } from '@/components/ui/badge';
+import { LogoutModal } from '@/components/logout-modal';
+import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
@@ -35,6 +38,12 @@ export default async function AdminDashboardPage() {
             <div className="flex items-center gap-spacing-2">
               <Badge variant="secondary">Admin Dashboard</Badge>
               <Badge variant="outline">Welcome, {user.email?.split('@')[0]}</Badge>
+              <LogoutModal>
+                <Button variant="ghost" size="sm" className="h-8 px-3">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              </LogoutModal>
             </div>
           </div>
           

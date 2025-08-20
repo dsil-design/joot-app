@@ -57,7 +57,6 @@ export async function middleware(request: NextRequest) {
       '/api',
       '/error',
       '/demo',
-      '/home',
       '/docs',
     ]
 
