@@ -87,7 +87,7 @@ jobs:
             echo "⚠️ Migration system not tracking existing migrations. Initializing..."
             
             # Mark existing migrations as applied
-            echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status applied 20250819100000 20250819134041 20250820000000 --workdir database
+            echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status applied 20250819100000 20250819134041 20250820000000 20250820120000 --workdir database
             
             echo "✅ Migration system initialized with existing migrations"
           else
