@@ -88,7 +88,7 @@ export const auth = {
     const { data: authUser, error: authError } = await auth.getUser()
     
     if (authError || !authUser.user) {
-      return { user: null, error: authError }
+      return { user: null, error: authError as PostgrestError | null }
     }
 
     return await auth.getUserProfile(authUser.user.id)
