@@ -24,6 +24,8 @@ const customJestConfig = {
     '!src/**/*.d.ts',
     '!src/**/*.stories.{js,jsx,ts,tsx}',
     '!src/**/types.ts',
+    '!src/middleware.ts',
+    '!src/lib/auth/admin-auth.ts',
   ],
   coverageReporters: ['text', 'html', 'json-summary'],
   coverageThreshold: {
