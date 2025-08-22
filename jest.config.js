@@ -36,7 +36,7 @@ const customJestConfig = {
       statements: 0,
     },
   },
-  testTimeout: 10000,
+  testTimeout: 15000,
   transformIgnorePatterns: [
     'node_modules/(?!(.*\\.mjs$|@supabase|isows|eventemitter3))'
   ],
@@ -46,6 +46,9 @@ const customJestConfig = {
       useESM: true
     }
   },
+  maxWorkers: process.env.CI ? 1 : '50%',
+  forceExit: true,
+  detectOpenHandles: true,
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

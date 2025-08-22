@@ -297,6 +297,16 @@ export const dateHelpers = {
   },
 
   /**
+   * Get yesterday's date in YYYY-MM-DD format
+   * @returns Yesterday's date string
+   */
+  getYesterday: (): string => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday.toISOString().split('T')[0];
+  },
+
+  /**
    * Check if a date is in the future
    * @param date YYYY-MM-DD format
    * @returns true if the date is in the future

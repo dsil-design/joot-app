@@ -59,7 +59,15 @@
       "Bash(gh run list:*)",
       "Bash(awk:*)",
       "Bash(sed:*)",
-      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key npm run test:unit)"
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key npm run test:unit)",
+      "Bash(npm run test:e2e:*)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key npm run test:coverage)",
+      "Bash(npm --version)",
+      "Bash(npm ls:*)",
+      "Bash(npm prune:*)",
+      "Bash(npm ci:*)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key CI=true npm run test:unit -- --verbose --no-cache --runInBand)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key NODE_ENV=test npm run build)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

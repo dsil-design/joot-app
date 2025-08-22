@@ -2,6 +2,10 @@
   "name": "joot",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -22,7 +26,10 @@
     "test:supabase": "node scripts/db/test-supabase-connection.js",
     "db:reset-transactions": "node scripts/db/reset-transaction-data.js",
     "test:ci": "npm run test:coverage && npm run test:e2e",
-    "validate:env": "node scripts/env/validate-env.js"
+    "validate:env": "node scripts/env/validate-env.js",
+    "backfill:rates": "tsx scripts/backfill-historical-rates.ts",
+    "backfill:rates:check": "tsx scripts/backfill-historical-rates.ts --check",
+    "backfill:rates:dry": "tsx scripts/backfill-historical-rates.ts --dry-run"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.11",
@@ -85,14 +92,17 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/xml2js": "^0.4.14",
+    "commander": "^14.0.0",
     "dotenv": "^17.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.4.5",
     "jest": "^30.0.5",
     "jest-axe": "^10.0.0",
     "jest-environment-jsdom": "^30.0.5",
+    "ora": "^8.2.0",
     "playwright": "^1.54.2",
     "tailwindcss": "^4.1.11",
+    "tsx": "^4.20.4",
     "typescript": "^5"
   }
 }

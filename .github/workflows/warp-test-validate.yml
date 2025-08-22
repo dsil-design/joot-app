@@ -26,11 +26,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: |
+          echo "🔍 Environment Information:"
+          node --version
+          npm --version
+          echo "Operating System: $(uname -a)"
+          echo ""
+          npm ci --verbose
+          npm ls --depth=0
       
       - name: TypeScript compilation check
         run: |
@@ -47,7 +54,8 @@ jobs:
       - name: Build verification
         run: |
           echo "🔍 Testing production build..."
-          npm run build
+          set -e
+          npm run build || { echo "❌ Build failed"; exit 1; }
           echo "✅ Production build successful"
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
@@ -58,11 +66,14 @@ jobs:
       - name: Unit tests
         run: |
           echo "🔍 Running unit tests..."
-          npm run test:unit
+          set -e
+          npm run test:unit -- --verbose --no-cache --runInBand || { echo "❌ Unit tests failed"; exit 1; }
           echo "✅ Unit tests passed"
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-key
+          CRON_SECRET: test-cron-secret
+          CI: true
 
       - name: Test coverage check
         if: ${{ inputs.coverage_required }}
@@ -73,6 +84,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-key
+          CRON_SECRET: test-cron-secret
 
       - name: Full test suite
         if: ${{ inputs.run_all_tests }}
@@ -83,6 +95,18 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-key
+          CRON_SECRET: test-cron-secret
+
+      - name: Exchange Rate Sync Tests
+        run: |
+          echo "🔍 Running exchange rate sync tests..."
+          npm run test:unit -- --testPathPattern="sync|cron" --verbose
+          echo "✅ Sync tests passed"
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-key
+          CRON_SECRET: test-cron-secret
+          CI: true
 
       - name: Validation Summary
         run: |
@@ -91,6 +115,7 @@ jobs:
           echo "✅ Code quality checks passed"  
           echo "✅ Production build successful"
           echo "✅ Unit tests passed"
+          echo "✅ Exchange rate sync tests passed"
           echo ""
           echo "🎯 Your AI-generated code is ready for deployment!"
           echo "Next steps:"

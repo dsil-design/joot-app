@@ -5,6 +5,10 @@
       "schedule": "0 18 * * 1-5"
     },
     {
+      "path": "/api/cron/sync-exchange-rates-v2",
+      "schedule": "0 17 * * *"
+    },
+    {
       "path": "/api/cron/sync-crypto-rates", 
       "schedule": "15 18 * * *"
     }
@@ -13,10 +17,16 @@
     "src/app/api/cron/sync-exchange-rates/route.ts": {
       "maxDuration": 300
     },
+    "src/app/api/cron/sync-exchange-rates-v2/route.ts": {
+      "maxDuration": 300
+    },
     "src/app/api/admin/backfill-rates/route.ts": {
       "maxDuration": 300
     },
     "src/app/api/cron/sync-crypto-rates/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/admin/sync/trigger/route.ts": {
       "maxDuration": 300
     }
   }
