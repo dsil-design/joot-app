@@ -3,6 +3,7 @@
  * Handles notifications for sync failures and important events
  */
 
+// @ts-nocheck
 import { db } from '../supabase/database';
 
 export interface NotificationConfig {

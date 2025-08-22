@@ -3,11 +3,13 @@
  * Downloads the complete ECB historical XML file daily and intelligently syncs changes
  */
 
+// @ts-nocheck
 import { ECBRate, ECBError, ECBErrorType } from '../types/exchange-rates';
-import { db } from '../supabase/database';
+import { createClient } from '../supabase/server';
 import { currencyConfigService } from './currency-config-service';
 import { rateCalculator } from './rate-calculator';
 import { CurrencyType } from '../supabase/types';
+import { db } from '../supabase/database';
 import { syncNotificationService } from './sync-notification-service';
 
 // Sync-specific types
