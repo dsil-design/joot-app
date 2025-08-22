@@ -21,52 +21,50 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🚀 Starting scheduled ECB sync job...');
 
-    // Check if auto-sync is enabled
+    // Check if auto-sync is enabled (fallback for when sync tables don't exist yet)
     const supabase = await createClient();
-    const { data: config, error: configError } = await supabase
-      .from('sync_configuration')
-      .select('auto_sync_enabled')
-      .single();
+    let autoSyncEnabled = true; // Default to enabled
+    
+    try {
+      const { data: config } = await supabase
+        .rpc('get_sync_configuration' as any);
 
-    if (configError) {
-      console.error('Failed to load sync configuration:', configError);
-      return NextResponse.json(
-        { error: 'Configuration error' },
-        { status: 500 }
-      );
-    }
-
-    if (!config?.auto_sync_enabled) {
-      console.log('⏸️  Auto-sync is disabled, skipping scheduled sync');
-      return NextResponse.json({
-        success: true,
-        message: 'Auto-sync disabled',
-        skipped: true
-      });
-    }
-
-    // Check if sync is already running
-    const { data: latestSync } = await supabase
-      .from('sync_history')
-      .select('status, started_at')
-      .order('started_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (latestSync?.status === 'running') {
-      // Check if it's been running too long (over 10 minutes is suspicious)
-      const runningTime = Date.now() - new Date(latestSync.started_at).getTime();
-      if (runningTime > 10 * 60 * 1000) {
-        console.warn('⚠️  Previous sync has been running for over 10 minutes, may be stuck');
-        // Continue with new sync - the stuck one will likely fail
-      } else {
-        console.log('⏳ Sync already in progress, skipping scheduled sync');
+      if (config?.[0]?.auto_sync_enabled === false) {
+        console.log('⏸️  Auto-sync is disabled, skipping scheduled sync');
         return NextResponse.json({
           success: true,
-          message: 'Sync already in progress',
+          message: 'Auto-sync disabled',
           skipped: true
         });
       }
+    } catch (error) {
+      // Sync tables don't exist yet, proceed with sync
+      console.log('Sync configuration not available yet, proceeding with sync...');
+    }
+
+    // Check if sync is already running (fallback for when sync tables don't exist yet)
+    try {
+      const { data: latestSync } = await supabase
+        .rpc('get_latest_sync_status' as any);
+
+      if (latestSync?.[0]?.status === 'running') {
+        // Check if it's been running too long (over 10 minutes is suspicious)
+        const runningTime = Date.now() - new Date(latestSync[0].started_at).getTime();
+        if (runningTime > 10 * 60 * 1000) {
+          console.warn('⚠️  Previous sync has been running for over 10 minutes, may be stuck');
+          // Continue with new sync - the stuck one will likely fail
+        } else {
+          console.log('⏳ Sync already in progress, skipping scheduled sync');
+          return NextResponse.json({
+            success: true,
+            message: 'Sync already in progress',
+            skipped: true
+          });
+        }
+      }
+    } catch (error) {
+      // Sync tables don't exist yet, proceed with sync
+      console.log('Sync history not available yet, proceeding...');
     }
 
     // Execute the sync

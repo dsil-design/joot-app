@@ -1,4 +1,4 @@
-import { backfillService, BackfillOptions, BackfillResult } from './backfill-service';
+import { backfillService, BackfillResult } from './backfill-service';
 import { db } from '../supabase/database';
 import { dateHelpers } from '../utils/date-helpers';
 
@@ -193,7 +193,7 @@ export class HistoricalBackfillJob {
     // Identify gaps
     const gaps: Array<{ startDate: string; endDate: string; days: number }> = [];
     let currentGapStart: string | null = null;
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     const end = new Date(endDate);
 
     while (currentDate <= end) {

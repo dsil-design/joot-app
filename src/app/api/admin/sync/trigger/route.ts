@@ -15,11 +15,11 @@ export async function POST(request: NextRequest) {
     // Check if user is admin
     const { data: userData } = await supabase
       .from('users')
-      .select('*')
+      .select('role')
       .eq('id', user.id)
       .single();
 
-    const isAdmin = userData?.raw_user_meta_data?.is_admin === 'true';
+    const isAdmin = userData?.role === 'admin';
     if (!isAdmin) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
@@ -27,19 +27,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { syncType = 'manual' } = body;
 
-    // Check if sync is already running
-    const { data: latestSync } = await supabase
-      .from('sync_history')
-      .select('status')
-      .order('started_at', { ascending: false })
-      .limit(1)
-      .single();
+    // Check if sync is already running (fallback for when sync tables don't exist yet)
+    try {
+      const { data: latestSync } = await supabase
+        .rpc('get_latest_sync_status' as any);
 
-    if (latestSync?.status === 'running') {
-      return NextResponse.json(
-        { error: 'Sync already in progress' }, 
-        { status: 409 }
-      );
+      if (latestSync?.[0]?.status === 'running') {
+        return NextResponse.json(
+          { error: 'Sync already in progress' }, 
+          { status: 409 }
+        );
+      }
+    } catch (error) {
+      // Sync tables don't exist yet, proceed with sync
+      console.log('Sync tables not available yet, proceeding...');
     }
 
     // Start sync in background (don't await)
