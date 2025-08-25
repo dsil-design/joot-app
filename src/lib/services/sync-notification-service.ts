@@ -244,18 +244,18 @@ export class SyncNotificationService {
   private async logNotification(notification: SyncNotification): Promise<void> {
     try {
       const supabase = await createClient();
-      // @ts-ignore
+      // @ts-expect-error Database schema not typed
       await supabase.from('sync_logs').insert({
-        // @ts-ignore
+        // @ts-expect-error Database schema not typed
         sync_history_id: notification.syncId,
-        // @ts-ignore
+        // @ts-expect-error Database schema not typed
         log_level: notification.type === 'failure' ? 'error' : 
                   notification.type === 'warning' ? 'warning' : 'info',
-        // @ts-ignore
+        // @ts-expect-error Database schema not typed
         phase: 'notification',
-        // @ts-ignore
+        // @ts-expect-error Database schema not typed
         message: `${notification.title}: ${notification.message}`,
-        // @ts-ignore
+        // @ts-expect-error Database schema not typed
         details: notification.details
       });
     } catch (error) {
@@ -314,7 +314,7 @@ export class SyncNotificationService {
   async shouldNotifySuccessAfterFailure(syncId: string): Promise<boolean> {
     try {
       const supabase = await createClient();
-      // @ts-ignore
+      // @ts-expect-error Database schema not typed
       const { data } = await supabase.from('sync_history')
         .select('status')
         .order('started_at', { ascending: false })
@@ -324,7 +324,7 @@ export class SyncNotificationService {
 
       // Check if the previous sync failed but current succeeded
       const [current, previous] = data;
-      // @ts-ignore
+      // @ts-expect-error Database schema not typed
       return current.status === 'completed' && previous.status === 'failed';
 
     } catch (error) {
