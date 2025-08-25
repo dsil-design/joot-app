@@ -3,7 +3,6 @@
  * Downloads the complete ECB historical XML file daily and intelligently syncs changes
  */
 
-// @ts-nocheck
 import { ECBRate, ECBError, ECBErrorType } from '../types/exchange-rates';
 import { createClient } from '../supabase/server';
 import { currencyConfigService } from './currency-config-service';
@@ -207,7 +206,8 @@ export class ECBFullSyncService {
 
       // Update sync history with download metrics
       if (this.syncHistoryId) {
-        await db.from('sync_history').update({
+        const supabase = await createClient();
+        await supabase.from('sync_history').update({
           xml_file_size_bytes: fileSize,
           xml_download_time_ms: downloadTime
         }).eq('id', this.syncHistoryId);
@@ -690,7 +690,7 @@ export class ECBFullSyncService {
       syncTime: data.sync_time,
       maxRetries: data.max_retries,
       retryDelaySeconds: data.retry_delay_seconds,
-      trackedCurrencies: currencies?.map(c => c.currency_code) || []
+      trackedCurrencies: currencies?.map((c: any) => c.currency_code) || []
     };
   }
 

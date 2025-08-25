@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { backfillService, BackfillOptions, BackfillResult } from './backfill-service';
+import { backfillService, BackfillResult } from './backfill-service';
 import { db } from '../supabase/database';
 import { dateHelpers } from '../utils/date-helpers';
 
@@ -120,8 +119,8 @@ export class HistoricalBackfillJob {
         results.push(chunkResult);
         
         this.status.processedDays = Math.min(
-          this.status.processedDays + settings.chunkSizeInDays,
-          this.status.totalDays
+          (this.status.processedDays || 0) + settings.chunkSizeInDays,
+          this.status.totalDays || 0
         );
 
         // Log chunk results

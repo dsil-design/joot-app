@@ -3,8 +3,8 @@
  * Handles notifications for sync failures and important events
  */
 
-// @ts-nocheck
 import { db } from '../supabase/database';
+import { createClient } from '../supabase/server';
 
 export interface NotificationConfig {
   emailEnabled: boolean;
@@ -243,7 +243,8 @@ export class SyncNotificationService {
    */
   private async logNotification(notification: SyncNotification): Promise<void> {
     try {
-      await db.from('sync_logs').insert({
+      const supabase = await createClient();
+      await supabase.from('sync_logs').insert({
         sync_history_id: notification.syncId,
         log_level: notification.type === 'failure' ? 'error' : 
                   notification.type === 'warning' ? 'warning' : 'info',
