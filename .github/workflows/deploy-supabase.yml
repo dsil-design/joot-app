@@ -138,7 +138,7 @@ jobs:
       - name: Push migrations to Supabase
         run: |
           echo "Attempting to push migrations..."
-          supabase db push --workdir database
+          supabase db push --include-all --workdir database
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
