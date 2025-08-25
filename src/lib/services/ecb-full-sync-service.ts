@@ -281,7 +281,8 @@ export class ECBFullSyncService {
 
       // Update sync history
       if (this.syncHistoryId) {
-        await db.from('sync_history').update({
+        const supabase = await createClient();
+        await supabase.from('sync_history').update({
           total_rates_in_xml: rates.length
         }).eq('id', this.syncHistoryId);
       }
@@ -326,7 +327,8 @@ export class ECBFullSyncService {
 
       // Update sync history
       if (this.syncHistoryId) {
-        await db.from('sync_history').update({
+        const supabase = await createClient();
+        await supabase.from('sync_history').update({
           filtered_rates: filteredRates.length,
           currencies_tracked: trackedCurrencies,
           start_date: startDate,
@@ -371,7 +373,8 @@ export class ECBFullSyncService {
         const processedRates = this.generateCurrencyPairs(rates, date);
         
         // Get existing rates from database for this date
-        const { data: existingRates } = await db.from('exchange_rates')
+        const supabase = await createClient();
+        const { data: existingRates } = await supabase.from('exchange_rates')
           .select('id, from_currency, to_currency, rate, date')
           .eq('date', date);
         
@@ -539,7 +542,8 @@ export class ECBFullSyncService {
             is_interpolated: false
           }));
           
-          const { error } = await db.from('exchange_rates').insert(insertData);
+          const supabase = await createClient();
+          const { error } = await supabase.from('exchange_rates').insert(insertData);
           if (error) throw error;
           
           insertedCount += batch.length;
@@ -554,14 +558,15 @@ export class ECBFullSyncService {
               rate_date: diff.date,
               new_rate: diff.newRate
             }));
-            await db.from('rate_changes').insert(changeRecords);
+            await supabase.from('rate_changes').insert(changeRecords);
           }
         }
       }
       
       // Process updates individually (usually fewer)
       for (const update of updates) {
-        const { error } = await db.from('exchange_rates')
+        const supabase = await createClient();
+        const { error } = await supabase.from('exchange_rates')
           .update({ rate: update.newRate })
           .eq('id', update.rateId!);
         
@@ -570,7 +575,7 @@ export class ECBFullSyncService {
           
           // Log rate change for audit
           if (this.syncHistoryId) {
-            await db.from('rate_changes').insert({
+            await supabase.from('rate_changes').insert({
               sync_history_id: this.syncHistoryId,
               exchange_rate_id: update.rateId,
               change_type: 'update',
@@ -589,6 +594,7 @@ export class ECBFullSyncService {
         const idsToDelete = deletes.map(d => d.rateId!).filter(Boolean);
         if (idsToDelete.length > 0) {
           // Log deletions before removing
+          const supabase = await createClient();
           if (this.syncHistoryId) {
             const deleteRecords = deletes.map(diff => ({
               sync_history_id: this.syncHistoryId,
@@ -599,10 +605,10 @@ export class ECBFullSyncService {
               rate_date: diff.date,
               old_rate: diff.oldRate
             }));
-            await db.from('rate_changes').insert(deleteRecords);
+            await supabase.from('rate_changes').insert(deleteRecords);
           }
           
-          const { error } = await db.from('exchange_rates')
+          const { error } = await supabase.from('exchange_rates')
             .delete()
             .in('id', idsToDelete);
           
@@ -645,7 +651,8 @@ export class ECBFullSyncService {
       const { startDate } = this.configuration!;
       
       // Delete rates older than configured start date
-      const { data, error } = await db.from('exchange_rates')
+      const supabase = await createClient();
+      const { data, error } = await supabase.from('exchange_rates')
         .delete()
         .lt('date', startDate)
         .select('id');
@@ -672,14 +679,15 @@ export class ECBFullSyncService {
    * Load sync configuration from database
    */
   private async loadConfiguration(): Promise<SyncConfiguration> {
-    const { data, error } = await db.from('sync_configuration')
+    const supabase = await createClient();
+    const { data, error } = await supabase.from('sync_configuration')
       .select('*')
       .single();
     
     if (error) throw error;
     
     // Get tracked currencies
-    const { data: currencies } = await db.from('currency_configuration')
+    const { data: currencies } = await supabase.from('currency_configuration')
       .select('currency_code')
       .eq('is_tracked', true)
       .eq('source', 'ECB');
@@ -701,7 +709,8 @@ export class ECBFullSyncService {
     syncType: string,
     triggeredBy?: string
   ): Promise<string> {
-    const { data, error } = await db.from('sync_history')
+    const supabase = await createClient();
+    const { data, error } = await supabase.from('sync_history')
       .insert({
         sync_type: syncType,
         status: 'running',
@@ -725,7 +734,8 @@ export class ECBFullSyncService {
   ): Promise<void> {
     if (!this.syncHistoryId) return;
     
-    await db.from('sync_history').update({
+    const supabase = await createClient();
+    await supabase.from('sync_history').update({
       status: success ? 'completed' : 'failed',
       completed_at: new Date().toISOString(),
       duration_ms: duration,
@@ -755,7 +765,8 @@ export class ECBFullSyncService {
     
     // Database logging
     if (this.syncHistoryId) {
-      await db.from('sync_logs').insert({
+      const supabase = await createClient();
+      await supabase.from('sync_logs').insert({
         sync_history_id: this.syncHistoryId,
         log_level: level,
         phase,

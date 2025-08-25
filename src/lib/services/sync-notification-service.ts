@@ -307,7 +307,8 @@ export class SyncNotificationService {
    */
   async shouldNotifySuccessAfterFailure(syncId: string): Promise<boolean> {
     try {
-      const { data } = await db.from('sync_history')
+      const supabase = await createClient();
+      const { data } = await supabase.from('sync_history')
         .select('status')
         .order('started_at', { ascending: false })
         .limit(5);
