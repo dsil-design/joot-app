@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     // Check if auto-sync is enabled (fallback for when sync tables don't exist yet)
     const supabase = await createClient();
-    let autoSyncEnabled = true; // Default to enabled
+    const autoSyncEnabled = true; // Default to enabled
     
     try {
       const { data: config } = await supabase
