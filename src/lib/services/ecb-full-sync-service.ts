@@ -207,11 +207,8 @@ export class ECBFullSyncService {
       // Update sync history with download metrics
       if (this.syncHistoryId) {
         const supabase = await createClient();
-        // @ts-expect-error Database schema not typed
         await supabase.from('sync_history').update({
-          // @ts-expect-error Database schema not typed
           xml_file_size_bytes: fileSize,
-          // @ts-expect-error Database schema not typed
           xml_download_time_ms: downloadTime
         }).eq('id', this.syncHistoryId);
       }
@@ -286,9 +283,7 @@ export class ECBFullSyncService {
       // Update sync history
       if (this.syncHistoryId) {
         const supabase = await createClient();
-        // @ts-expect-error Database schema not typed
         await supabase.from('sync_history').update({
-          // @ts-expect-error Database schema not typed
           total_rates_in_xml: rates.length
         }).eq('id', this.syncHistoryId);
       }
@@ -334,15 +329,10 @@ export class ECBFullSyncService {
       // Update sync history
       if (this.syncHistoryId) {
         const supabase = await createClient();
-        // @ts-expect-error Database schema not typed
         await supabase.from('sync_history').update({
-          // @ts-expect-error Database schema not typed
           filtered_rates: filteredRates.length,
-          // @ts-expect-error Database schema not typed
           currencies_tracked: trackedCurrencies,
-          // @ts-expect-error Database schema not typed
           start_date: startDate,
-          // @ts-expect-error Database schema not typed
           end_date: endDate
         }).eq('id', this.syncHistoryId);
       }
@@ -379,7 +369,6 @@ export class ECBFullSyncService {
       }
 
       // Process each date
-      // @ts-expect-error Map iteration types
       for (const [date, rates] of ratesByDate) {
         // Generate all currency pairs for this date
         const processedRates = this.generateCurrencyPairs(rates, date);
@@ -440,7 +429,6 @@ export class ECBFullSyncService {
         }
 
         // Any remaining in existingMap should be deleted (no longer in ECB data)
-        // @ts-expect-error Map iteration types
         for (const [key, existing] of existingMap) {
           // Only delete if within our configured date range
           if (existing.date >= startDate && existing.date <= endDate) {
@@ -564,20 +552,13 @@ export class ECBFullSyncService {
           // Log rate changes for audit
           if (this.syncHistoryId) {
             const changeRecords = batch.map(diff => ({
-              // @ts-expect-error Database schema not typed
               sync_history_id: this.syncHistoryId,
-              // @ts-expect-error Database schema not typed
               change_type: 'insert',
-              // @ts-expect-error Database schema not typed
               from_currency: diff.fromCurrency,
-              // @ts-expect-error Database schema not typed
               to_currency: diff.toCurrency,
-              // @ts-expect-error Database schema not typed
               rate_date: diff.date,
-              // @ts-expect-error Database schema not typed
               new_rate: diff.newRate
             }));
-            // @ts-expect-error Database schema not typed
             await supabase.from('rate_changes').insert(changeRecords);
           }
         }
@@ -595,23 +576,14 @@ export class ECBFullSyncService {
           
           // Log rate change for audit
           if (this.syncHistoryId) {
-            // @ts-expect-error Database schema not typed
             await supabase.from('rate_changes').insert({
-              // @ts-expect-error Database schema not typed
               sync_history_id: this.syncHistoryId,
-              // @ts-expect-error Database schema not typed
               exchange_rate_id: update.rateId,
-              // @ts-expect-error Database schema not typed
               change_type: 'update',
-              // @ts-expect-error Database schema not typed
               from_currency: update.fromCurrency,
-              // @ts-expect-error Database schema not typed
               to_currency: update.toCurrency,
-              // @ts-expect-error Database schema not typed
               rate_date: update.date,
-              // @ts-expect-error Database schema not typed
               old_rate: update.oldRate,
-              // @ts-expect-error Database schema not typed
               new_rate: update.newRate
             });
           }
@@ -626,22 +598,14 @@ export class ECBFullSyncService {
           const supabase = await createClient();
           if (this.syncHistoryId) {
             const deleteRecords = deletes.map(diff => ({
-              // @ts-expect-error Database schema not typed
               sync_history_id: this.syncHistoryId,
-              // @ts-expect-error Database schema not typed
               exchange_rate_id: diff.rateId,
-              // @ts-expect-error Database schema not typed
               change_type: 'delete',
-              // @ts-expect-error Database schema not typed
               from_currency: diff.fromCurrency,
-              // @ts-expect-error Database schema not typed
               to_currency: diff.toCurrency,
-              // @ts-expect-error Database schema not typed
               rate_date: diff.date,
-              // @ts-expect-error Database schema not typed
               old_rate: diff.oldRate
             }));
-            // @ts-expect-error Database schema not typed
             await supabase.from('rate_changes').insert(deleteRecords);
           }
           
@@ -717,7 +681,6 @@ export class ECBFullSyncService {
    */
   private async loadConfiguration(): Promise<SyncConfiguration> {
     const supabase = await createClient();
-    // @ts-expect-error Database schema not typed
     const { data, error } = await supabase.from('sync_configuration')
       .select('*')
       .single();
@@ -725,7 +688,6 @@ export class ECBFullSyncService {
     if (error) throw error;
     
     // Get tracked currencies
-    // @ts-expect-error Database schema not typed
     const { data: currencies } = await supabase.from('currency_configuration')
       .select('currency_code')
       .eq('is_tracked', true)
@@ -754,14 +716,10 @@ export class ECBFullSyncService {
     triggeredBy?: string
   ): Promise<string> {
     const supabase = await createClient();
-    // @ts-expect-error Database schema not typed
     const { data, error } = await supabase.from('sync_history')
       .insert({
-        // @ts-expect-error Database schema not typed
         sync_type: syncType,
-        // @ts-expect-error Database schema not typed
         status: 'running',
-        // @ts-expect-error Database schema not typed
         triggered_by: triggeredBy
       })
       .select('id')
@@ -783,23 +741,14 @@ export class ECBFullSyncService {
     if (!this.syncHistoryId) return;
     
     const supabase = await createClient();
-    // @ts-expect-error Database schema not typed
     await supabase.from('sync_history').update({
-      // @ts-expect-error Database schema not typed
       status: success ? 'completed' : 'failed',
-      // @ts-expect-error Database schema not typed
       completed_at: new Date().toISOString(),
-      // @ts-expect-error Database schema not typed
       duration_ms: duration,
-      // @ts-expect-error Database schema not typed
       new_rates_inserted: statistics?.newRatesInserted || 0,
-      // @ts-expect-error Database schema not typed
       rates_updated: statistics?.ratesUpdated || 0,
-      // @ts-expect-error Database schema not typed
       rates_deleted: statistics?.ratesDeleted || 0,
-      // @ts-expect-error Database schema not typed
       rates_unchanged: statistics?.ratesUnchanged || 0,
-      // @ts-expect-error Database schema not typed
       error_message: errorMessage
     }).eq('id', this.syncHistoryId);
   }
@@ -823,17 +772,11 @@ export class ECBFullSyncService {
     // Database logging
     if (this.syncHistoryId) {
       const supabase = await createClient();
-      // @ts-expect-error Database schema not typed
       await supabase.from('sync_logs').insert({
-        // @ts-expect-error Database schema not typed
         sync_history_id: this.syncHistoryId,
-        // @ts-expect-error Database schema not typed
         log_level: level,
-        // @ts-expect-error Database schema not typed
         phase,
-        // @ts-expect-error Database schema not typed
         message,
-        // @ts-expect-error Database schema not typed
         details
       });
     }
