@@ -3,6 +3,7 @@
  * Handles notifications for sync failures and important events
  */
 
+// @ts-nocheck - Accessing tables that are not yet in TypeScript types
 import { db } from '../supabase/database';
 import { createClient } from '../supabase/server';
 

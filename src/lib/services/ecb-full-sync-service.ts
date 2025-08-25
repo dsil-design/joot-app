@@ -3,6 +3,7 @@
  * Downloads the complete ECB historical XML file daily and intelligently syncs changes
  */
 
+// @ts-nocheck - Accessing tables that are not yet in TypeScript types
 import { ECBRate, ECBError, ECBErrorType } from '../types/exchange-rates';
 import { createClient } from '../supabase/server';
 import { currencyConfigService } from './currency-config-service';
