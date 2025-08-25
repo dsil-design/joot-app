@@ -694,16 +694,11 @@ export class ECBFullSyncService {
       .eq('source', 'ECB');
     
     return {
-      // @ts-expect-error Database schema not typed
       startDate: data.start_date,
-      // @ts-expect-error Database schema not typed
-      autoSyncEnabled: data.auto_sync_enabled,
-      // @ts-expect-error Database schema not typed
-      syncTime: data.sync_time,
-      // @ts-expect-error Database schema not typed
-      maxRetries: data.max_retries,
-      // @ts-expect-error Database schema not typed
-      retryDelaySeconds: data.retry_delay_seconds,
+      autoSyncEnabled: data.auto_sync_enabled ?? true,
+      syncTime: data.sync_time ?? '17:00:00',
+      maxRetries: data.max_retries ?? 3,
+      retryDelaySeconds: data.retry_delay_seconds ?? 300,
       trackedCurrencies: currencies?.map((c: any) => c.currency_code) || []
     };
   }

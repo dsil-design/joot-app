@@ -268,6 +268,241 @@ export type Database = {
           },
         ]
       }
+      rate_changes: {
+        Row: {
+          change_type: string
+          created_at: string | null
+          exchange_rate_id: string | null
+          from_currency: string
+          id: string
+          new_rate: number | null
+          old_rate: number | null
+          rate_date: string
+          sync_history_id: string | null
+          to_currency: string
+        }
+        Insert: {
+          change_type: string
+          created_at?: string | null
+          exchange_rate_id?: string | null
+          from_currency: string
+          id?: string
+          new_rate?: number | null
+          old_rate?: number | null
+          rate_date: string
+          sync_history_id?: string | null
+          to_currency: string
+        }
+        Update: {
+          change_type?: string
+          created_at?: string | null
+          exchange_rate_id?: string | null
+          from_currency?: string
+          id?: string
+          new_rate?: number | null
+          old_rate?: number | null
+          rate_date?: string
+          sync_history_id?: string | null
+          to_currency?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_changes_exchange_rate_id_fkey"
+            columns: ["exchange_rate_id"]
+            isOneToOne: false
+            referencedRelation: "exchange_rates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rate_changes_sync_history_id_fkey"
+            columns: ["sync_history_id"]
+            isOneToOne: false
+            referencedRelation: "sync_history"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      sync_configuration: {
+        Row: {
+          auto_sync_enabled: boolean | null
+          created_at: string | null
+          id: string
+          last_modified_by: string | null
+          max_retries: number | null
+          retry_delay_seconds: number | null
+          start_date: string
+          sync_time: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_sync_enabled?: boolean | null
+          created_at?: string | null
+          id?: string
+          last_modified_by?: string | null
+          max_retries?: number | null
+          retry_delay_seconds?: number | null
+          start_date: string
+          sync_time?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_sync_enabled?: boolean | null
+          created_at?: string | null
+          id?: string
+          last_modified_by?: string | null
+          max_retries?: number | null
+          retry_delay_seconds?: number | null
+          start_date?: string
+          sync_time?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_configuration_last_modified_by_fkey"
+            columns: ["last_modified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      sync_history: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          currencies_tracked: string[] | null
+          database_time_ms: number | null
+          duration_ms: number | null
+          end_date: string | null
+          error_details: Json | null
+          error_message: string | null
+          filtered_rates: number | null
+          id: string
+          new_rates_inserted: number | null
+          processing_time_ms: number | null
+          rates_deleted: number | null
+          rates_unchanged: number | null
+          rates_updated: number | null
+          retry_count: number | null
+          retry_of: string | null
+          start_date: string | null
+          started_at: string
+          status: string
+          sync_type: string
+          total_rates_in_xml: number | null
+          triggered_by: string | null
+          xml_download_time_ms: number | null
+          xml_file_size_bytes: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          currencies_tracked?: string[] | null
+          database_time_ms?: number | null
+          duration_ms?: number | null
+          end_date?: string | null
+          error_details?: Json | null
+          error_message?: string | null
+          filtered_rates?: number | null
+          id?: string
+          new_rates_inserted?: number | null
+          processing_time_ms?: number | null
+          rates_deleted?: number | null
+          rates_unchanged?: number | null
+          rates_updated?: number | null
+          retry_count?: number | null
+          retry_of?: string | null
+          start_date?: string | null
+          started_at?: string
+          status: string
+          sync_type: string
+          total_rates_in_xml?: number | null
+          triggered_by?: string | null
+          xml_download_time_ms?: number | null
+          xml_file_size_bytes?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          currencies_tracked?: string[] | null
+          database_time_ms?: number | null
+          duration_ms?: number | null
+          end_date?: string | null
+          error_details?: Json | null
+          error_message?: string | null
+          filtered_rates?: number | null
+          id?: string
+          new_rates_inserted?: number | null
+          processing_time_ms?: number | null
+          rates_deleted?: number | null
+          rates_unchanged?: number | null
+          rates_updated?: number | null
+          retry_count?: number | null
+          retry_of?: string | null
+          start_date?: string | null
+          started_at?: string | null
+          status?: string
+          sync_type?: string
+          total_rates_in_xml?: number | null
+          triggered_by?: string | null
+          xml_download_time_ms?: number | null
+          xml_file_size_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_history_retry_of_fkey"
+            columns: ["retry_of"]
+            isOneToOne: false
+            referencedRelation: "sync_history"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sync_history_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      sync_logs: {
+        Row: {
+          details: Json | null
+          id: string
+          log_level: string
+          message: string
+          phase: string
+          sync_history_id: string | null
+          timestamp: string | null
+        }
+        Insert: {
+          details?: Json | null
+          id?: string
+          log_level: string
+          message: string
+          phase: string
+          sync_history_id?: string | null
+          timestamp?: string | null
+        }
+        Update: {
+          details?: Json | null
+          id?: string
+          log_level?: string
+          message?: string
+          phase?: string
+          sync_history_id?: string | null
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_logs_sync_history_id_fkey"
+            columns: ["sync_history_id"]
+            isOneToOne: false
+            referencedRelation: "sync_history"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       available_currency_pairs: {
