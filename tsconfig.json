@@ -23,9 +23,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/**/*.d.ts", "jest-extend.d.ts"],
-  "exclude": [
-    "node_modules",
-    "src/lib/services/ecb-full-sync-service.ts",
-    "src/lib/services/sync-notification-service.ts"
-  ]
+  "exclude": ["node_modules"]
 }
