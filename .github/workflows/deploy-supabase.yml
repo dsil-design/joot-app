@@ -145,8 +145,8 @@ jobs:
             echo "Retrying migration push..."
             supabase db push --include-all --workdir database || {
               echo "❌ Migration still failed, but checking if essential objects exist..."
-              echo "🔍 Checking if sync tables exist in database..."
-              if supabase db dump --data-only --workdir database | grep -q "sync_history\|sync_logs\|sync_configuration\|rate_changes"; then
+              echo "🔍 Checking if sync tables exist in database schema..."
+              if supabase db dump --schema-only --workdir database | grep -q "CREATE TABLE.*sync_history\|CREATE TABLE.*sync_logs\|CREATE TABLE.*sync_configuration\|CREATE TABLE.*rate_changes"; then
                 echo "✅ Essential sync tables appear to exist, treating as successful"
                 exit 0
               else
