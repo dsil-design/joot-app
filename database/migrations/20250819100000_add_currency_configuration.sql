@@ -155,12 +155,14 @@ ORDER BY c1.currency_code, c2.currency_code;
 ALTER TABLE currency_configuration ENABLE ROW LEVEL SECURITY;
 
 -- Read access for all authenticated users
+DROP POLICY IF EXISTS "Authenticated users can view currency configuration" ON currency_configuration;
 CREATE POLICY "Authenticated users can view currency configuration" 
 ON currency_configuration
 FOR SELECT 
 USING (auth.role() = 'authenticated');
 
 -- Write access only for admin users (you may want to adjust this based on your admin setup)
+DROP POLICY IF EXISTS "Admin users can update currency configuration" ON currency_configuration;
 CREATE POLICY "Admin users can update currency configuration" 
 ON currency_configuration
 FOR UPDATE 
@@ -182,6 +184,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add trigger for updated_at
+DROP TRIGGER IF EXISTS update_currency_config_updated_at ON currency_configuration;
 CREATE TRIGGER update_currency_config_updated_at 
 BEFORE UPDATE ON currency_configuration
 FOR EACH ROW 
