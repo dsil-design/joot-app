@@ -67,7 +67,14 @@
       "Bash(npm prune:*)",
       "Bash(npm ci:*)",
       "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key CI=true npm run test:unit -- --verbose --no-cache --runInBand)",
-      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key NODE_ENV=test npm run build)"
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key NODE_ENV=test npm run build)",
+      "Bash(gh workflow:*)",
+      "Bash(gh run watch:*)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx tsc --noEmit)",
+      "Bash(npx eslint:*)",
+      "Bash(git log:*)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key npm test -- __tests__/services/)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key npm test -- __tests__/services/ --verbose)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

@@ -24,6 +24,7 @@ const customJestConfig = {
     'src/lib/auth.ts',
     'src/lib/utils.ts',
     'src/lib/types/*.ts',
+    'src/lib/services/*.ts',
     '!src/**/*.d.ts',
     '!src/**/*.stories.{js,jsx,ts,tsx}',
   ],
