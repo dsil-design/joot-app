@@ -66,10 +66,17 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-key
 
-  deploy-production:
-    name: "Deploy to Production"
+  deploy-database:
+    name: "Deploy Database Changes"
     needs: smoke-test
     if: always() && (needs.smoke-test.result == 'success' || needs.smoke-test.result == 'skipped' || inputs.force_deploy)
+    uses: ./.github/workflows/deploy-supabase.yml
+    secrets: inherit
+
+  deploy-production:
+    name: "Deploy to Production"
+    needs: [smoke-test, deploy-database]
+    if: always() && (needs.smoke-test.result == 'success' || needs.smoke-test.result == 'skipped' || inputs.force_deploy) && needs.deploy-database.result == 'success'
     runs-on: ubuntu-latest
     
     steps:
@@ -117,30 +124,38 @@ jobs:
 
   summary:
     name: "Deployment Summary"
-    needs: [smoke-test, deploy-production]
+    needs: [smoke-test, deploy-database, deploy-production]
     if: always()
     runs-on: ubuntu-latest
     
     steps:
       - name: Production Deployment Summary
         run: |
-          echo "🚀 Production Deployment Summary"
-          echo "================================"
+          echo "🚀 Full Production Deployment Summary"
+          echo "===================================="
           
           if [[ "${{ needs.smoke-test.result }}" == "success" || "${{ needs.smoke-test.result }}" == "skipped" ]]; then
-            echo "✅ Smoke tests: Passed"
+            echo "✅ Pre-deployment tests: Passed"
           elif [[ "${{ inputs.force_deploy }}" == "true" ]]; then
-            echo "⚠️ Smoke tests: Bypassed (forced deployment)"
+            echo "⚠️ Pre-deployment tests: Bypassed (forced deployment)"
           else
-            echo "❌ Smoke tests: Failed"
+            echo "❌ Pre-deployment tests: Failed"
+          fi
+          
+          if [[ "${{ needs.deploy-database.result }}" == "success" ]]; then
+            echo "✅ Database deployment: Successful"
+          else
+            echo "❌ Database deployment: Failed"
           fi
           
           if [[ "${{ needs.deploy-production.result }}" == "success" ]]; then
-            echo "✅ Production deployment: Successful"
+            echo "✅ Application deployment: Successful"
             echo ""
-            echo "🎆 Your application is now live in production!"
+            echo "🎆 Your full application stack is now live in production!"
+            echo "📊 Monitor health at: /api/health/exchange-rates"
+            echo "🔧 Admin dashboard at: /admin/dashboard"
             echo "👀 Monitor for any issues and be ready to 🔄 rollback if needed"
           else
-            echo "❌ Production deployment: Failed"
+            echo "❌ Application deployment: Failed"
             echo "🚨 Check logs and resolve issues"
           fi

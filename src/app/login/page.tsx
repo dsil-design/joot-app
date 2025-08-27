@@ -3,11 +3,11 @@
 import { login } from './actions'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState, useRef, Suspense } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useEffect, useRef, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Info, User } from 'lucide-react';
+import { User } from 'lucide-react';
+import { toast } from 'sonner';
 import { useGlobalAction } from '@/contexts/GlobalActionContext';
 
 
@@ -16,37 +16,17 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const formRef = useRef<HTMLFormElement>(null);
   const { withGlobalAction } = useGlobalAction();
-  const [alert, setAlert] = useState<{show: boolean, type: 'success' | 'info', message: string}>({
-    show: false, 
-    type: 'success', 
-    message: ''
-  });
 
   useEffect(() => {
     const success = searchParams?.get('success');
     const error = searchParams?.get('error');
     
     if (success === 'logout_successful') {
-      setAlert({
-        show: true,
-        type: 'success',
-        message: 'You are logged out!'
-      });
+      toast.success('You are logged out!');
     }
 
     if (error === 'auth_failed') {
-      setAlert({
-        show: true,
-        type: 'info',
-        message: 'Please log in to access that page.'
-      });
-    }
-
-    if (success || error) {
-      const timer = setTimeout(() => {
-        setAlert(prev => ({ ...prev, show: false }));
-      }, 5000);
-      return () => clearTimeout(timer);
+      toast.info('Please log in to access that page.');
     }
   }, [searchParams]);
 
@@ -91,18 +71,6 @@ function LoginPageContent() {
       {/* Left Panel - Login Form */}
       <div className="flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-16 xl:px-24 py-8 sm:py-12 md:py-16 lg:py-24 flex-1">
         <div className="flex flex-col gap-6 w-full sm:max-w-96">
-          {alert.show && (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>
-                {alert.type === 'success' ? 'Success' : 'Information'}
-              </AlertTitle>
-              <AlertDescription>
-                {alert.message}
-              </AlertDescription>
-            </Alert>
-          )}
-          
           {/* Welcome Container */}
           <div className="flex flex-col gap-2.5 items-center text-center w-full">
             <h1 className="text-[30px] font-bold leading-[36px] text-foreground">

@@ -332,7 +332,8 @@ describe('HistoricalBackfillJob', () => {
       expect(result.insertedRecords).toBeGreaterThanOrEqual(0);
       expect(result.skippedRecords).toBeGreaterThanOrEqual(0);
       expect(result.duration).toBeGreaterThan(0);
-      expect(result.coverage).toBeDefined();
+      // Coverage property was removed from BackfillResult type
+      // expect(result.coverage).toBeDefined();
     });
   });
 

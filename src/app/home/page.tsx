@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { UserMenu } from '@/components/page-specific/user-menu'
-import { TransactionCard } from '@/components/ui/transaction-card'
+import { HomeTransactionCard } from '@/components/ui/home-transaction-card'
 import { Plus, X } from 'lucide-react'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
 
@@ -77,14 +77,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     .order('transaction_date', { ascending: false })
     .limit(5)
 
-  // Format amount helper function
-  const formatAmount = (transaction: TransactionWithVendorAndPayment) => {
-    const amount = transaction.original_currency === 'USD' 
-      ? transaction.amount_usd 
-      : transaction.amount_thb
-    const symbol = transaction.original_currency === 'USD' ? '$' : '฿'
-    return `${symbol}${amount.toFixed(2)}`
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -179,11 +171,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <div className="flex flex-col gap-3 w-full">
             {transactions && transactions.length > 0 ? (
               transactions.map((transaction) => (
-                <TransactionCard
+                <HomeTransactionCard 
                   key={transaction.id}
-                  amount={formatAmount(transaction as TransactionWithVendorAndPayment)}
-                  vendor={transaction.vendors?.name || 'Unknown Vendor'}
-                  description={transaction.description || 'No description'}
+                  transaction={transaction as TransactionWithVendorAndPayment}
                 />
               ))
             ) : (
