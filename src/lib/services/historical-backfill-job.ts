@@ -116,6 +116,11 @@ export class HistoricalBackfillJob {
           dryRun: settings.dryRun
         });
 
+        // Ensure chunk result is valid before processing
+        if (!chunkResult) {
+          throw new Error(`Chunk ${i + 1} returned null result`);
+        }
+
         results.push(chunkResult);
         
         this.status.processedDays = Math.min(
@@ -124,7 +129,7 @@ export class HistoricalBackfillJob {
         );
 
         // Log chunk results
-        console.log(`   ✅ Chunk completed: ${chunkResult.insertedRecords} inserted, ${chunkResult.skippedRecords} skipped`);
+        console.log(`   ✅ Chunk completed: ${chunkResult.insertedRecords || 0} inserted, ${chunkResult.skippedRecords || 0} skipped`);
 
         // Add delay between chunks to be respectful to ECB servers
         if (i < chunks.length - 1 && !settings.dryRun) {
