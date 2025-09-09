@@ -101,8 +101,20 @@ export default function AddTransactionPage() {
   }
 
   const handleCancel = () => {
-    // Navigate back to home
-    router.push("/home")
+    // Clear form data
+    setCurrency("THB")
+    setTransactionType("expense")
+    setVendor("")
+    setPaymentMethod("")
+    setDescription("")
+    setAmount("")
+    setTransactionDate(new Date())
+    
+    // Show confirmation message
+    toast.info("Transaction discarded")
+    
+    // Navigate back to previous page
+    router.back()
   }
 
   // Removed converted amount display to match Figma design exactly
