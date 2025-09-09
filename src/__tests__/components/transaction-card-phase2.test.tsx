@@ -208,7 +208,7 @@ describe('TransactionCard Phase 2 Features', () => {
       const card = screen.getByRole('button')
       expect(card.className).toContain('cursor-pointer')
       expect(card.className).toContain('hover:shadow-md')
-      expect(card.className).toContain('focus-within:ring-2')
+      expect(card.className).toContain('focus:ring-2')
     })
   })
 

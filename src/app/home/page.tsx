@@ -5,9 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { UserMenu } from '@/components/page-specific/user-menu'
-import { HomeTransactionCard } from '@/components/ui/home-transaction-card'
-import { Plus, X } from 'lucide-react'
+import { TransactionCard } from '@/components/ui/transaction-card'
+import { AddTransactionFooter } from '@/components/page-specific/add-transaction-footer'
+import { X } from 'lucide-react'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
+import { formatExchangeRateTimestamp } from '@/lib/utils/date-formatter'
+import { formatCurrency } from '@/lib/utils'
 
 interface HomePageProps {
   searchParams?: Promise<{ error?: string }>
@@ -77,6 +80,57 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     .order('transaction_date', { ascending: false })
     .limit(5)
 
+  // Fetch latest USD to THB exchange rate
+  const { data: latestExchangeRate } = await supabase
+    .from('exchange_rates')
+    .select('rate, date, created_at')
+    .eq('from_currency', 'USD')
+    .eq('to_currency', 'THB')
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+  
+  // Format exchange rate and timestamp
+  const exchangeRate = latestExchangeRate?.rate ? formatCurrency(latestExchangeRate.rate, 'THB') : '฿35.00'
+  const exchangeRateTimestamp = latestExchangeRate?.created_at 
+    ? formatExchangeRateTimestamp(latestExchangeRate.created_at)
+    : latestExchangeRate?.date 
+    ? formatExchangeRateTimestamp(latestExchangeRate.date)
+    : 'no data available'
+
+  // Group transactions by day
+  const groupTransactionsByDay = (transactions: TransactionWithVendorAndPayment[]) => {
+    const groups: { [key: string]: TransactionWithVendorAndPayment[] } = {}
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    
+    transactions.forEach(transaction => {
+      const transactionDate = new Date(transaction.transaction_date)
+      const dateStr = transactionDate.toDateString()
+      const todayStr = today.toDateString()
+      const yesterdayStr = yesterday.toDateString()
+      
+      let dayLabel: string
+      if (dateStr === todayStr) {
+        dayLabel = 'Today'
+      } else if (dateStr === yesterdayStr) {
+        dayLabel = 'Yesterday'
+      } else {
+        dayLabel = transactionDate.toLocaleDateString('en-US', { weekday: 'long' })
+      }
+      
+      if (!groups[dayLabel]) {
+        groups[dayLabel] = []
+      }
+      groups[dayLabel].push(transaction)
+    })
+    
+    return groups
+  }
+
+  const transactionGroups = transactions ? groupTransactionsByDay(transactions) : {}
 
   return (
     <div className="min-h-screen bg-background">
@@ -97,15 +151,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       )}
 
       {/* Main scrollable content */}
-      <div className="flex flex-col gap-6 pb-32 pt-16 px-10">
+      <div className="flex flex-col gap-6 pb-12 pt-16 px-10">
         {/* Header */}
         <div className="flex items-center justify-between w-full">
-          <h1 className="text-4xl font-medium text-foreground leading-10">
+          <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
             Home
           </h1>
           <UserMenu userName={fullName} isAdmin={isAdmin}>
             <Avatar className="size-10 cursor-pointer hover:opacity-80 transition-opacity">
-              <AvatarFallback className="bg-secondary text-secondary-foreground text-sm font-semibold">
+              <AvatarFallback className="bg-zinc-100 text-zinc-950 text-sm font-semibold">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
@@ -114,67 +168,59 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
         {/* Main Content - Figma Design Implementation */}
         <div className="flex flex-col gap-4 w-full">
-          {/* Row 1: KPI Cards */}
-          <div className="flex flex-row gap-7 items-center justify-start w-full">
-            {/* USD Exchange Rate Card */}
-            <div className="flex-1">
-              <Card className="bg-card border-border rounded-lg shadow-xs p-0">
-                <div className="p-6">
-                  <div className="flex flex-col gap-1 items-start justify-start">
-                    <div className="font-medium text-xl text-foreground leading-7">
-                      ฿32.24
-                    </div>
-                    <div className="font-normal text-sm text-muted-foreground leading-5">
-                      1 USD
-                    </div>
-                    <div className="font-medium text-sm text-foreground leading-5">
-                      as of 2:12pm
-                    </div>
+          {/* Opening Section - Latest Exchange Rate */}
+          <div className="flex flex-col gap-2 items-start justify-start w-full">
+            <div className="text-[12px] font-medium text-muted-foreground leading-4">
+              Latest exchange rate
+            </div>
+            <Card className="bg-white border-zinc-200 rounded-lg shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-0 w-full">
+              <div className="p-6">
+                <div className="flex flex-col gap-1 items-start justify-start">
+                  <div className="text-[20px] font-medium text-zinc-950 leading-[28px]">
+                    {exchangeRate}
+                  </div>
+                  <div className="text-[14px] font-normal text-zinc-500 leading-[20px]">
+                    1 USD
+                  </div>
+                  <div className="text-[14px] font-medium text-zinc-950 leading-[20px]">
+                    as of {exchangeRateTimestamp}
                   </div>
                 </div>
-              </Card>
-            </div>
-
-            {/* This Month Card */}
-            <div className="flex-1">
-              <Card className="bg-card border-border rounded-lg shadow-xs p-0">
-                <div className="p-6">
-                  <div className="flex flex-col gap-1 items-start justify-start">
-                    <div className="font-medium text-xl text-foreground leading-7">
-                      $2,760
-                    </div>
-                    <div className="font-normal text-sm text-muted-foreground leading-5">
-                      1 USD
-                    </div>
-                    <div className="font-medium text-sm text-foreground leading-5">
-                      Aug '25
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
+              </div>
+            </Card>
           </div>
 
           {/* Section Header */}
-          <div className="flex flex-row gap-4 items-center justify-start w-full">
-            <div className="flex-1 font-medium text-xs text-muted-foreground leading-4">
+          <div className="flex gap-4 items-center justify-start w-full">
+            <div className="flex-1 text-[12px] font-medium text-muted-foreground leading-4">
               Recent Transactions
             </div>
-            <Button variant="link" size="default" className="text-primary" asChild>
+            <Button variant="link" size="default" className="text-[#155dfc] h-9 px-4 py-2" asChild>
               <Link href="/transactions">
                 View all
               </Link>
             </Button>
           </div>
 
-          {/* Transaction Cards */}
-          <div className="flex flex-col gap-3 w-full">
-            {transactions && transactions.length > 0 ? (
-              transactions.map((transaction) => (
-                <HomeTransactionCard 
-                  key={transaction.id}
-                  transaction={transaction as TransactionWithVendorAndPayment}
-                />
+          {/* Transaction Groups by Day */}
+          <div className="flex flex-col gap-4 w-full">
+            {Object.keys(transactionGroups).length > 0 ? (
+              Object.entries(transactionGroups).map(([dayLabel, dayTransactions]) => (
+                <div key={dayLabel} className="flex flex-col gap-2 items-start justify-start w-full">
+                  <div className="text-[12px] font-light text-muted-foreground leading-4">
+                    {dayLabel}
+                  </div>
+                  <div className="flex flex-col gap-0 w-full">
+                    {dayTransactions.map((transaction, index) => (
+                      <div key={transaction.id} className={index > 0 ? "mt-2" : ""}>
+                        <TransactionCard 
+                          transaction={transaction as TransactionWithVendorAndPayment}
+                          viewMode="recorded"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ))
             ) : (
               <div className="text-center py-8 text-muted-foreground">
@@ -186,16 +232,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       </div>
 
       {/* Fixed Sticky Footer - Always visible at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex flex-col gap-2.5 pb-12 pt-6 px-10">
-        <Link href="/add-transaction" className="w-full">
-          <Button className="w-full gap-1.5 px-4 py-2 transition-all duration-200 hover:scale-[0.98] hover:bg-primary/90 active:scale-[0.96]">
-            <Plus className="size-5 transition-transform duration-200 group-hover:rotate-90" />
-            <span className="text-sm font-medium text-primary-foreground leading-5">
-              Add transaction
-            </span>
-          </Button>
-        </Link>
-      </div>
+      <AddTransactionFooter />
     </div>
   )
 }

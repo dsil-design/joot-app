@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { TransactionCard } from "@/components/ui/transaction-card"
+import { AddTransactionFooter } from "@/components/page-specific/add-transaction-footer"
 import { calculateTransactionDisplayAmounts, triggerExchangeRateSync } from "@/lib/utils/currency-converter"
 
 type ViewMode = "recorded" | "all-usd" | "all-thb"
@@ -222,7 +223,7 @@ export default function AllTransactionsPage() {
   if (loading || error || transactions.length === 0) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="w-full max-w-md sm:max-w-lg mx-auto bg-white flex flex-col gap-6 min-h-screen pb-6 pt-12 sm:pt-20 px-6 sm:px-8 lg:px-10">
+        <div className="w-full max-w-md sm:max-w-lg mx-auto bg-white flex flex-col gap-6 min-h-screen pb-32 pt-12 sm:pt-20 px-6 sm:px-8 lg:px-10">
           <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
             <div className="bg-white content-stretch flex gap-1.5 items-center justify-center relative rounded-lg shrink-0 size-10 border border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
               <div className="relative shrink-0 size-5">
@@ -250,13 +251,14 @@ export default function AllTransactionsPage() {
             </div>
           )}
         </div>
+        <AddTransactionFooter />
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="w-full max-w-md sm:max-w-lg mx-auto bg-white flex flex-col gap-6 min-h-screen pb-6 pt-12 sm:pt-20 px-6 sm:px-8 lg:px-10">
+      <div className="w-full max-w-md sm:max-w-lg mx-auto bg-white flex flex-col gap-6 min-h-screen pb-32 pt-12 sm:pt-20 px-6 sm:px-8 lg:px-10">
         <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
           <button
             onClick={navigateToHome}
@@ -280,6 +282,7 @@ export default function AllTransactionsPage() {
           ))}
         </div>
       </div>
+      <AddTransactionFooter />
     </div>
   )
 }
