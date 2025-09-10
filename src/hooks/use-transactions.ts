@@ -183,6 +183,46 @@ export function useTransactions() {
     }
   }
 
+  const getTransactionById = useCallback(async (
+    id: string
+  ): Promise<TransactionWithVendorAndPayment | null> => {
+    try {
+      setError(null)
+
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        throw new Error("User not authenticated")
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from("transactions")
+        .select(`
+          *,
+          vendors (
+            id,
+            name
+          ),
+          payment_methods (
+            id,
+            name
+          )
+        `)
+        .eq("user_id", user.id)
+        .eq("id", id)
+        .single()
+
+      if (fetchError) {
+        throw fetchError
+      }
+
+      return (data as TransactionWithVendorAndPayment) || null
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch transaction")
+      return null
+    }
+  }, [supabase])
+
   const getTransactionsByDateRange = async (
     startDate: string, 
     endDate: string
@@ -236,6 +276,7 @@ export function useTransactions() {
     createTransaction,
     updateTransaction,
     deleteTransaction,
+    getTransactionById,
     getTransactionsByDateRange,
     refetch: fetchTransactions
   }

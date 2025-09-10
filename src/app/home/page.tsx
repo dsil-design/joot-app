@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { UserMenu } from '@/components/page-specific/user-menu'
-import { TransactionCard } from '@/components/ui/transaction-card'
+import { HomeTransactionList } from '@/components/page-specific/home-transaction-list'
 import { AddTransactionFooter } from '@/components/page-specific/add-transaction-footer'
 import { X } from 'lucide-react'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
@@ -203,31 +203,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </div>
 
           {/* Transaction Groups by Day */}
-          <div className="flex flex-col gap-4 w-full">
-            {Object.keys(transactionGroups).length > 0 ? (
-              Object.entries(transactionGroups).map(([dayLabel, dayTransactions]) => (
-                <div key={dayLabel} className="flex flex-col gap-2 items-start justify-start w-full">
-                  <div className="text-[12px] font-light text-muted-foreground leading-4">
-                    {dayLabel}
-                  </div>
-                  <div className="flex flex-col gap-0 w-full">
-                    {dayTransactions.map((transaction, index) => (
-                      <div key={transaction.id} className={index > 0 ? "mt-2" : ""}>
-                        <TransactionCard 
-                          transaction={transaction as TransactionWithVendorAndPayment}
-                          viewMode="recorded"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No transactions yet. Add your first transaction!
-              </div>
-            )}
-          </div>
+          <HomeTransactionList transactionGroups={transactionGroups} />
         </div>
       </div>
 

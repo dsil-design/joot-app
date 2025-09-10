@@ -10,7 +10,6 @@ import { ArrowLeft } from "lucide-react"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
-import { format, isToday, isYesterday, parseISO } from "date-fns"
 import { 
   Select,
   SelectContent,
@@ -18,127 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { TransactionCard } from "@/components/ui/transaction-card"
+import { TransactionGroup } from "@/components/page-specific/transactions-list"
 import { AddTransactionFooter } from "@/components/page-specific/add-transaction-footer"
-import { calculateTransactionDisplayAmounts, triggerExchangeRateSync } from "@/lib/utils/currency-converter"
 
 type ViewMode = "recorded" | "all-usd" | "all-thb"
 
-interface TransactionCardProps {
-  transaction: TransactionWithVendorAndPayment
-  viewMode: ViewMode
-}
-
-function TransactionCardComponent({ transaction, viewMode }: TransactionCardProps) {
-  const [amounts, setAmounts] = React.useState<{
-    primary: string
-    secondary: string | null
-  }>({
-    primary: '',
-    secondary: null
-  })
-  const [isLoadingRates, setIsLoadingRates] = React.useState(false)
-
-  // Calculate display amounts based on view mode
-  React.useEffect(() => {
-    const calculateAmounts = async () => {
-      if (viewMode === "all-usd") {
-        // Show only USD amounts
-        setAmounts({
-          primary: `$${transaction.amount_usd.toFixed(2)}`,
-          secondary: null
-        })
-      } else if (viewMode === "all-thb") {
-        // Show only THB amounts
-        setAmounts({
-          primary: `฿${transaction.amount_thb.toFixed(2)}`,
-          secondary: null
-        })
-      } else {
-        // "recorded" - show recorded amount as primary, calculate secondary
-        setIsLoadingRates(true)
-        try {
-          const calculatedAmounts = await calculateTransactionDisplayAmounts(transaction)
-          
-          setAmounts({
-            primary: calculatedAmounts.primary,
-            secondary: calculatedAmounts.secondary
-          })
-          
-          // If sync is needed and secondary is null, trigger sync
-          if (calculatedAmounts.secondaryNeedsSync && !calculatedAmounts.secondary) {
-            const syncSuccess = await triggerExchangeRateSync()
-            if (syncSuccess) {
-              // Retry calculation after sync
-              setTimeout(async () => {
-                const retryAmounts = await calculateTransactionDisplayAmounts(transaction)
-                setAmounts({
-                  primary: retryAmounts.primary,
-                  secondary: retryAmounts.secondary
-                })
-              }, 2000) // Wait 2 seconds for sync to potentially complete
-            }
-          }
-        } catch (error) {
-          console.error('Error calculating display amounts:', error)
-          // Fallback to stored amounts
-          if (transaction.original_currency === "USD") {
-            setAmounts({
-              primary: `$${transaction.amount_usd.toFixed(2)}`,
-              secondary: `฿${transaction.amount_thb.toFixed(2)}`
-            })
-          } else {
-            setAmounts({
-              primary: `฿${transaction.amount_thb.toFixed(2)}`,
-              secondary: `$${transaction.amount_usd.toFixed(2)}`
-            })
-          }
-        } finally {
-          setIsLoadingRates(false)
-        }
-      }
-    }
-
-    calculateAmounts()
-  }, [transaction, viewMode])
-  
-  return (
-    <TransactionCard
-      description={transaction.description || 'No description'}
-      vendor={transaction.vendors?.name || 'Unknown Vendor'}
-      amount={amounts.primary}
-      calculatedAmount={amounts.secondary || undefined}
-    />
-  )
-}
-
-interface TransactionGroupProps {
-  date: string
-  transactions: TransactionWithVendorAndPayment[]
-  viewMode: ViewMode
-}
-
-function TransactionGroup({ date, transactions, viewMode }: TransactionGroupProps) {
-  const formatDateHeader = (dateString: string) => {
-    const date = parseISO(dateString)
-    if (isToday(date)) return 'Today'
-    if (isYesterday(date)) return 'Yesterday'
-    return format(date, 'MMMM d, yyyy')
-  }
-
-  return (
-    <>
-      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-black text-[20px] text-nowrap">
-        <p className="leading-[28px] whitespace-pre">{formatDateHeader(date)}</p>
-      </div>
-      <div className="content-stretch flex flex-col gap-3 items-start justify-start relative shrink-0 w-full">
-        {transactions.map((transaction) => (
-          <TransactionCardComponent key={transaction.id} transaction={transaction} viewMode={viewMode} />
-        ))}
-      </div>
-    </>
-  )
-}
 
 function ArrowLeftIcon() {
   return (
