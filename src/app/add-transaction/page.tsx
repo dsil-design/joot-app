@@ -283,7 +283,8 @@ export default function AddTransactionPage() {
             <Button
               onClick={handleSave}
               disabled={saving || !description.trim() || !amount || parseFloat(amount) <= 0}
-              className="h-10 w-full bg-blue-600 text-white rounded-lg px-6 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              size="lg"
+              className="w-full"
             >
               {saving ? "Saving..." : "Save"}
             </Button>
@@ -291,7 +292,8 @@ export default function AddTransactionPage() {
               variant="secondary"
               onClick={handleCancel}
               disabled={saving}
-              className="h-10 w-full bg-zinc-100 text-zinc-900 rounded-lg px-6 text-sm font-medium hover:bg-zinc-200"
+              size="lg"
+              className="w-full"
             >
               Cancel
             </Button>

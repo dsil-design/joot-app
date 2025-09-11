@@ -13,19 +13,13 @@ import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
 import { format, parseISO } from "date-fns"
+import { Button } from "@/components/ui/button"
 
-function ArrowLeftIcon() {
-  return (
-    <div className="relative size-full">
-      <ArrowLeft className="absolute inset-0 w-full h-full text-zinc-800" strokeWidth={1.5} />
-    </div>
-  )
-}
 
 function EditIcon() {
   return (
-    <div className="relative size-full">
-      <Edit className="absolute inset-0 w-full h-full text-zinc-800" strokeWidth={1.5} />
+    <div className="relative size-full flex items-center justify-center">
+      <Edit className="w-full h-full text-zinc-800" strokeWidth={1.5} />
     </div>
   )
 }
@@ -124,15 +118,15 @@ export default function ViewTransactionPage() {
     return (
       <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
         <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-          <button
+          <Button
             onClick={handleBackClick}
             disabled={isPending}
-            className="bg-white content-stretch flex gap-1.5 items-center justify-center relative rounded-[8px] shrink-0 size-10 border border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            variant="outline"
+            size="icon"
+            className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
           >
-            <div className="relative shrink-0 size-5">
-              <ArrowLeftIcon />
-            </div>
-          </button>
+            <ArrowLeft className="size-5 text-zinc-800" strokeWidth={1.5} />
+          </Button>
         </div>
         <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
           <p className="leading-[36px] whitespace-pre">View transaction</p>
@@ -148,15 +142,15 @@ export default function ViewTransactionPage() {
     return (
       <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
         <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-          <button
+          <Button
             onClick={handleBackClick}
             disabled={isPending}
-            className="bg-white content-stretch flex gap-1.5 items-center justify-center relative rounded-[8px] shrink-0 size-10 border border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            variant="outline"
+            size="icon"
+            className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
           >
-            <div className="relative shrink-0 size-5">
-              <ArrowLeftIcon />
-            </div>
-          </button>
+            <ArrowLeft className="size-5 text-zinc-800" strokeWidth={1.5} />
+          </Button>
         </div>
         <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
           <p className="leading-[36px] whitespace-pre">View transaction</p>
@@ -171,27 +165,27 @@ export default function ViewTransactionPage() {
   return (
     <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
       <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-        <button
+        <Button
           onClick={handleBackClick}
           disabled={isPending}
-          className="bg-white content-stretch flex gap-1.5 items-center justify-center relative rounded-[8px] shrink-0 size-10 border border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50 transition-colors disabled:opacity-50"
+          variant="outline"
+          size="icon"
+          className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
         >
-          <div className="relative shrink-0 size-5">
-            <ArrowLeftIcon />
-          </div>
-        </button>
-        <button
+          <ArrowLeft className="size-5 text-zinc-800" strokeWidth={1.5} />
+        </Button>
+        <Button
           onClick={handleEditClick}
           disabled={isPending}
-          className="bg-zinc-100 box-border content-stretch flex gap-1.5 h-9 items-center justify-center px-4 py-2 relative rounded-[8px] shrink-0 hover:bg-zinc-200 transition-colors disabled:opacity-50"
+          variant="secondary"
+          size="sm"
+          className="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 gap-1.5 items-center"
         >
-          <div className="relative shrink-0 size-5">
+          <div className="relative shrink-0 size-4 flex items-center justify-center">
             <EditIcon />
           </div>
-          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-900">
-            <p className="leading-[20px] whitespace-pre">Edit</p>
-          </div>
-        </button>
+          Edit
+        </Button>
       </div>
       <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
         <p className="leading-[36px] whitespace-pre">View transaction</p>

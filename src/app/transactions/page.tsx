@@ -7,6 +7,7 @@
 
 import * as React from "react"
 import { ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
@@ -23,13 +24,6 @@ import { AddTransactionFooter } from "@/components/page-specific/add-transaction
 type ViewMode = "recorded" | "all-usd" | "all-thb"
 
 
-function ArrowLeftIcon() {
-  return (
-    <div className="relative size-full">
-      <ArrowLeft className="absolute inset-0 w-full h-full text-zinc-950" strokeWidth={1.5} />
-    </div>
-  )
-}
 
 interface ViewControllerProps {
   viewMode: ViewMode
@@ -108,11 +102,13 @@ export default function AllTransactionsPage() {
       <div className="min-h-screen bg-white">
         <div className="w-full max-w-md sm:max-w-lg mx-auto bg-white flex flex-col gap-6 min-h-screen pb-32 pt-12 sm:pt-20 px-6 sm:px-8 lg:px-10">
           <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-            <div className="bg-white content-stretch flex gap-1.5 items-center justify-center relative rounded-lg shrink-0 size-10 border border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
-              <div className="relative shrink-0 size-5">
-                <ArrowLeftIcon />
-              </div>
-            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
+            >
+              <ArrowLeft className="size-5 text-zinc-950" strokeWidth={1.5} />
+            </Button>
             <ViewController viewMode={viewMode} onViewModeChange={setViewMode} />
           </div>
           <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
@@ -143,15 +139,15 @@ export default function AllTransactionsPage() {
     <div className="min-h-screen bg-white">
       <div className="w-full max-w-md sm:max-w-lg mx-auto bg-white flex flex-col gap-6 min-h-screen pb-32 pt-12 sm:pt-20 px-6 sm:px-8 lg:px-10">
         <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-          <button
+          <Button
             onClick={navigateToHome}
             disabled={isPending}
-            className="bg-white content-stretch flex gap-1.5 items-center justify-center relative rounded-lg shrink-0 size-10 border border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            variant="outline"
+            size="icon"
+            className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
           >
-            <div className="relative shrink-0 size-5">
-              <ArrowLeftIcon />
-            </div>
-          </button>
+            <ArrowLeft className="size-5 text-zinc-950" strokeWidth={1.5} />
+          </Button>
           <ViewController viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
         <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">

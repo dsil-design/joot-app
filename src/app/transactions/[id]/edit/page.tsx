@@ -351,14 +351,17 @@ export default function EditTransactionPage() {
           <Button
             onClick={handleSaveChanges}
             disabled={saving || navigationPending || !description.trim() || !amount || parseFloat(amount) <= 0}
-            className="bg-[#155dfc] box-border content-stretch flex gap-1.5 h-10 items-center justify-center px-6 py-0 relative rounded-[8px] shrink-0 w-full text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            size="lg"
+            className="w-full"
           >
             {saving ? "Saving..." : "Save changes"}
           </Button>
           <Button
             onClick={handleDiscard}
             disabled={saving || navigationPending}
-            className="bg-zinc-100 box-border content-stretch flex gap-1.5 h-10 items-center justify-center px-6 py-0 relative rounded-[8px] shrink-0 w-full text-zinc-900 hover:bg-zinc-200"
+            variant="secondary"
+            size="lg"
+            className="w-full"
           >
             Discard
           </Button>
