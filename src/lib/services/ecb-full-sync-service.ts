@@ -544,7 +544,11 @@ export class ECBFullSyncService {
           }));
           
           const supabase = await createClient();
-          const { error } = await supabase.from('exchange_rates').insert(insertData);
+          const { error } = await supabase.from('exchange_rates')
+            .upsert(insertData, {
+              onConflict: 'from_currency,to_currency,date',
+              ignoreDuplicates: false
+            });
           if (error) throw error;
           
           insertedCount += batch.length;
