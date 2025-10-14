@@ -512,6 +512,23 @@ export class ECBFullSyncService {
   }
 
   /**
+   * Deduplicate inserts to prevent "cannot affect row a second time" error
+   * Keeps the first occurrence of each unique (from_currency, to_currency, date) combination
+   */
+  private deduplicateInserts(inserts: RateDiff[]): RateDiff[] {
+    const seen = new Map<string, RateDiff>();
+
+    for (const insert of inserts) {
+      const key = `${insert.fromCurrency}-${insert.toCurrency}-${insert.date}`;
+      if (!seen.has(key)) {
+        seen.set(key, insert);
+      }
+    }
+
+    return Array.from(seen.values());
+  }
+
+  /**
    * Apply updates to the database
    */
   private async applyUpdates(diffs: RateDiff[]): Promise<any> {
@@ -524,16 +541,20 @@ export class ECBFullSyncService {
       const inserts = diffs.filter(d => d.type === 'insert');
       const updates = diffs.filter(d => d.type === 'update');
       const deletes = diffs.filter(d => d.type === 'delete');
-      
+
       let insertedCount = 0;
       let updatedCount = 0;
       let deletedCount = 0;
-      
+
+      // Deduplicate inserts to avoid "cannot affect row a second time" error
+      const deduplicatedInserts = this.deduplicateInserts(inserts);
+      await this.log(LogLevel.INFO, phase, `Deduplicated ${inserts.length} inserts to ${deduplicatedInserts.length} unique rates`);
+
       // Process inserts in batches
-      if (inserts.length > 0) {
+      if (deduplicatedInserts.length > 0) {
         const batchSize = 500;
-        for (let i = 0; i < inserts.length; i += batchSize) {
-          const batch = inserts.slice(i, i + batchSize);
+        for (let i = 0; i < deduplicatedInserts.length; i += batchSize) {
+          const batch = deduplicatedInserts.slice(i, i + batchSize);
           const insertData = batch.map(diff => ({
             from_currency: diff.fromCurrency as CurrencyType,
             to_currency: diff.toCurrency as CurrencyType,
