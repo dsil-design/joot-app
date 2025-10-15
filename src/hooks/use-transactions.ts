@@ -132,8 +132,9 @@ export function useTransactions() {
       }
 
       if (data) {
-        // Refresh the transactions list
-        await fetchTransactions()
+        // Optimistically add the new transaction to the state
+        // The home page will handle fetching fresh data when it loads
+        setTransactions(prev => [data as TransactionWithVendorAndPayment, ...prev])
         return data
       }
 

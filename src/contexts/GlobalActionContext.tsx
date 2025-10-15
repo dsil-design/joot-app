@@ -107,14 +107,14 @@ export const GlobalActionProvider: React.FC<GlobalActionProviderProps> = ({ chil
       if (isLikelyNavigation) {
         // Set navigation pending to maintain disabled state
         setNavigationPending(true)
-        
+
         // For navigation actions, NEVER end the action in the finally block
         // The action will only be cleared by navigation events or fallback timeout
         setTimeout(() => {
           setNavigationPending(false)
           endAction(actionId)
-        }, 5000) // 5 second fallback - longer to ensure navigation completes
-        
+        }, 2000) // 2 second fallback timeout - optimized for performance
+
         return result
       }
       
