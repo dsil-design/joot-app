@@ -8,5 +8,12 @@
 ALTER TABLE transactions
 ALTER COLUMN exchange_rate DROP NOT NULL;
 
+-- Update constraint to allow NULL values
+ALTER TABLE transactions
+DROP CONSTRAINT IF EXISTS positive_exchange_rate;
+
+ALTER TABLE transactions
+ADD CONSTRAINT positive_exchange_rate CHECK (exchange_rate IS NULL OR exchange_rate > 0);
+
 -- Add a comment explaining the deprecation
 COMMENT ON COLUMN transactions.exchange_rate IS 'DEPRECATED: Exchange rate is now fetched from exchange_rates table. This column will be removed in a future migration.';
