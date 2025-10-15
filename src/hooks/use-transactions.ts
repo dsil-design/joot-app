@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
-import type { 
-  Transaction, 
-  TransactionInsert, 
+import type {
+  Transaction,
+  TransactionInsert,
   TransactionWithVendorAndPayment,
   CurrencyType,
-  TransactionType 
+  TransactionType
 } from "@/lib/supabase/types"
+import { getExchangeRateForDate } from "@/lib/utils/exchange-rate-utils"
 
 export interface CreateTransactionData {
   description?: string
@@ -74,20 +75,37 @@ export function useTransactions() {
   }, [supabase])
 
   const createTransaction = async (
-    transactionData: CreateTransactionData,
-    exchangeRate: number
+    transactionData: CreateTransactionData
   ): Promise<Transaction | null> => {
     try {
       setError(null)
 
       const { data: { user } } = await supabase.auth.getUser()
-      
+
       if (!user) {
         throw new Error("User not authenticated")
       }
 
-      // Calculate amounts in both currencies
+      const transactionDate = transactionData.transactionDate || new Date().toISOString().split('T')[0]
+
+      // Get exchange rate from the exchange_rates table
       const isUSD = transactionData.originalCurrency === "USD"
+      const fromCurrency = isUSD ? "USD" : "THB"
+      const toCurrency = isUSD ? "THB" : "USD"
+
+      const rateResult = await getExchangeRateForDate(
+        transactionDate,
+        fromCurrency,
+        toCurrency
+      )
+
+      if (!rateResult) {
+        throw new Error("Exchange rate not available for the selected date")
+      }
+
+      const exchangeRate = rateResult.rate
+
+      // Calculate amounts in both currencies
       const amountUSD = isUSD ? transactionData.amount : transactionData.amount * (1 / exchangeRate)
       const amountTHB = isUSD ? transactionData.amount * exchangeRate : transactionData.amount
 
@@ -98,10 +116,9 @@ export function useTransactions() {
         payment_method_id: transactionData.paymentMethodId || null,
         amount_usd: Math.round(amountUSD * 100) / 100,
         amount_thb: Math.round(amountTHB * 100) / 100,
-        exchange_rate: exchangeRate,
         original_currency: transactionData.originalCurrency,
         transaction_type: transactionData.transactionType,
-        transaction_date: transactionData.transactionDate || new Date().toISOString().split('T')[0]
+        transaction_date: transactionDate
       }
 
       const { data, error: insertError } = await supabase

@@ -107,7 +107,10 @@
       "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npm run build --silent)",
       "mcp__figma-dev-mode-mcp-server__get_metadata",
       "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx tsc --noEmit src/app/transactions/[id]/page.tsx src/app/transactions/[id]/edit/page.tsx src/hooks/use-transactions.ts)",
-      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx tsc --noEmit \"src/app/transactions/[id]/page.tsx\" \"src/app/transactions/[id]/edit/page.tsx\" \"src/hooks/use-transactions.ts\")"
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx tsc --noEmit \"src/app/transactions/[id]/page.tsx\" \"src/app/transactions/[id]/edit/page.tsx\" \"src/hooks/use-transactions.ts\")",
+      "mcp__figma-dev-mode-mcp-server__get_screenshot",
+      "Bash(ls:*)",
+      "WebFetch(domain:www.ecb.europa.eu)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

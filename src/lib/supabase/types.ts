@@ -127,7 +127,7 @@ export type Database = {
           amount_usd: number
           created_at: string | null
           description: string | null
-          exchange_rate: number
+          exchange_rate: number | null
           id: string
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id: string | null
@@ -143,7 +143,7 @@ export type Database = {
           amount_usd: number
           created_at?: string | null
           description?: string | null
-          exchange_rate: number
+          exchange_rate?: number | null
           id?: string
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
@@ -159,7 +159,7 @@ export type Database = {
           amount_usd?: number
           created_at?: string | null
           description?: string | null
-          exchange_rate?: number
+          exchange_rate?: number | null
           id?: string
           original_currency?: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null

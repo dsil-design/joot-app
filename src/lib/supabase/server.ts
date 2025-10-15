@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { Database } from './types'
 
@@ -31,5 +32,30 @@ export async function createClient() {
         }
       },
     },
+  })
+}
+
+/**
+ * Create a Supabase client with service role privileges
+ * This bypasses Row Level Security and should only be used for:
+ * - Background jobs (cron, webhooks)
+ * - Admin operations
+ * - Server-side operations that need full database access
+ */
+export function createServiceRoleClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error(
+      'Missing Supabase environment variables. Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.'
+    )
+  }
+
+  return createSupabaseClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
   })
 }

@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ComboBox } from "@/components/ui/combobox"
 import { DatePicker } from "@/components/ui/date-picker"
 // Removed Card imports - not needed for pixel-perfect Figma design"
-import { useVendorOptions, usePaymentMethodOptions, useExchangeRates, useTransactions } from "@/hooks"
+import { useVendorOptions, usePaymentMethodOptions, useTransactions } from "@/hooks"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import { CreditCard, DollarSign } from "lucide-react"
@@ -28,7 +28,6 @@ export default function AddTransactionPage() {
   // Custom hooks
   const { options: vendorOptions, addCustomOption: addVendor, loading: vendorsLoading } = useVendorOptions()
   const { options: paymentOptions, addCustomOption: addPaymentMethod, loading: paymentsLoading } = usePaymentMethodOptions()
-  const { getTHBRate, getUSDRate } = useExchangeRates()
   const { createTransaction } = useTransactions()
 
   const handleAddVendor = async (vendorName: string) => {
@@ -69,10 +68,6 @@ export default function AddTransactionPage() {
     setSaving(true)
 
     try {
-      // Get current exchange rate
-      const exchangeRate = currency === "USD" ? getTHBRate().rate : getUSDRate().rate
-      
-      
       const transactionData = {
         description: description.trim() || undefined,
         vendorId: vendor || undefined,
@@ -83,9 +78,8 @@ export default function AddTransactionPage() {
         transactionDate: format(transactionDate, "yyyy-MM-dd")
       }
 
-      
-      const result = await createTransaction(transactionData, exchangeRate)
-      
+      const result = await createTransaction(transactionData)
+
       if (result) {
         toast.success("Transaction saved successfully!")
         // Navigate back to home after successful save

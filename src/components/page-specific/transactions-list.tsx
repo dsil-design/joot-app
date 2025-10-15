@@ -3,7 +3,7 @@
 import { TransactionCard } from "@/components/ui/transaction-card"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
-import { format, isToday, isYesterday, parseISO } from "date-fns"
+import { formatTransactionDateLabel } from "@/lib/utils/date-formatter"
 
 interface TransactionCardProps {
   transaction: TransactionWithVendorAndPayment
@@ -30,17 +30,10 @@ interface TransactionGroupProps {
 }
 
 export function TransactionGroup({ date, transactions, viewMode }: TransactionGroupProps) {
-  const formatDateHeader = (dateString: string) => {
-    const date = parseISO(dateString)
-    if (isToday(date)) return 'Today'
-    if (isYesterday(date)) return 'Yesterday'
-    return format(date, 'MMMM d, yyyy')
-  }
-
   return (
     <>
       <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-black text-[20px] text-nowrap">
-        <p className="leading-[28px] whitespace-pre">{formatDateHeader(date)}</p>
+        <p className="leading-[28px] whitespace-pre">{formatTransactionDateLabel(date)}</p>
       </div>
       <div className="content-stretch flex flex-col gap-3 items-start justify-start relative shrink-0 w-full">
         {transactions.map((transaction) => (

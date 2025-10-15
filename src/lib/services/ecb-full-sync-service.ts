@@ -4,7 +4,7 @@
  */
 
 import { ECBRate, ECBError, ECBErrorType } from '../types/exchange-rates';
-import { createClient } from '../supabase/server';
+import { createServiceRoleClient } from '../supabase/server';
 import { currencyConfigService } from './currency-config-service';
 import { rateCalculator } from './rate-calculator';
 import { CurrencyType } from '../supabase/types';
@@ -206,7 +206,7 @@ export class ECBFullSyncService {
 
       // Update sync history with download metrics
       if (this.syncHistoryId) {
-        const supabase = await createClient();
+        const supabase = createServiceRoleClient();
         await supabase.from('sync_history').update({
           xml_file_size_bytes: fileSize,
           xml_download_time_ms: downloadTime
@@ -282,7 +282,7 @@ export class ECBFullSyncService {
 
       // Update sync history
       if (this.syncHistoryId) {
-        const supabase = await createClient();
+        const supabase = createServiceRoleClient();
         await supabase.from('sync_history').update({
           total_rates_in_xml: rates.length
         }).eq('id', this.syncHistoryId);
@@ -328,7 +328,7 @@ export class ECBFullSyncService {
 
       // Update sync history
       if (this.syncHistoryId) {
-        const supabase = await createClient();
+        const supabase = createServiceRoleClient();
         await supabase.from('sync_history').update({
           filtered_rates: filteredRates.length,
           currencies_tracked: trackedCurrencies,
@@ -374,7 +374,7 @@ export class ECBFullSyncService {
         const processedRates = this.generateCurrencyPairs(rates, date);
         
         // Get existing rates from database for this date
-        const supabase = await createClient();
+        const supabase = createServiceRoleClient();
         const { data: existingRates } = await supabase.from('exchange_rates')
           .select('id, from_currency, to_currency, rate, date')
           .eq('date', date);
@@ -561,10 +561,11 @@ export class ECBFullSyncService {
             rate: diff.newRate!,
             date: diff.date,
             source: 'ECB',
-            is_interpolated: false
+            is_interpolated: false,
+            interpolated_from_date: null
           }));
-          
-          const supabase = await createClient();
+
+          const supabase = createServiceRoleClient();
           const { error } = await supabase.from('exchange_rates')
             .upsert(insertData, {
               onConflict: 'from_currency,to_currency,date',
@@ -591,7 +592,7 @@ export class ECBFullSyncService {
       
       // Process updates individually (usually fewer)
       for (const update of updates) {
-        const supabase = await createClient();
+        const supabase = createServiceRoleClient();
         const { error } = await supabase.from('exchange_rates')
           .update({ rate: update.newRate })
           .eq('id', update.rateId!);
@@ -620,7 +621,7 @@ export class ECBFullSyncService {
         const idsToDelete = deletes.map(d => d.rateId!).filter(Boolean);
         if (idsToDelete.length > 0) {
           // Log deletions before removing
-          const supabase = await createClient();
+          const supabase = createServiceRoleClient();
           if (this.syncHistoryId) {
             const deleteRecords = deletes.map(diff => ({
               sync_history_id: this.syncHistoryId,
@@ -675,9 +676,9 @@ export class ECBFullSyncService {
       await this.log(LogLevel.INFO, phase, 'Checking for old data to clean up');
       
       const { startDate } = this.configuration!;
-      
+
       // Delete rates older than configured start date
-      const supabase = await createClient();
+      const supabase = createServiceRoleClient();
       const { data, error } = await supabase.from('exchange_rates')
         .delete()
         .lt('date', startDate)
@@ -705,7 +706,7 @@ export class ECBFullSyncService {
    * Load sync configuration from database
    */
   private async loadConfiguration(): Promise<SyncConfiguration> {
-    const supabase = await createClient();
+    const supabase = createServiceRoleClient();
     const { data, error } = await supabase.from('sync_configuration')
       .select('*')
       .single();
@@ -735,7 +736,7 @@ export class ECBFullSyncService {
     syncType: string,
     triggeredBy?: string
   ): Promise<string> {
-    const supabase = await createClient();
+    const supabase = createServiceRoleClient();
     const { data, error } = await supabase.from('sync_history')
       .insert({
         sync_type: syncType,
@@ -759,8 +760,8 @@ export class ECBFullSyncService {
     errorMessage?: string
   ): Promise<void> {
     if (!this.syncHistoryId) return;
-    
-    const supabase = await createClient();
+
+    const supabase = createServiceRoleClient();
     await supabase.from('sync_history').update({
       status: success ? 'completed' : 'failed',
       completed_at: new Date().toISOString(),
@@ -788,10 +789,10 @@ export class ECBFullSyncService {
                      console.log;
     
     logMethod(`[${phase.toUpperCase()}] ${message}`, details || '');
-    
+
     // Database logging
     if (this.syncHistoryId) {
-      const supabase = await createClient();
+      const supabase = createServiceRoleClient();
       await supabase.from('sync_logs').insert({
         sync_history_id: this.syncHistoryId,
         log_level: level,

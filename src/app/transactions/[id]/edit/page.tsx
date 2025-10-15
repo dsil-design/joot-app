@@ -15,8 +15,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ComboBox } from "@/components/ui/combobox"
 import { DatePicker } from "@/components/ui/date-picker"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
-import { useTransactions, useVendorOptions, usePaymentMethodOptions, useExchangeRates } from "@/hooks"
+import { useTransactions, useVendorOptions, usePaymentMethodOptions } from "@/hooks"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
+import { getExchangeRateForDate } from "@/lib/utils/exchange-rate-utils"
 import { format, parseISO } from "date-fns"
 import { toast } from "sonner"
 import { CreditCard, DollarSign } from "lucide-react"
@@ -30,7 +31,6 @@ export default function EditTransactionPage() {
   const { getTransactionById, updateTransaction } = useTransactions()
   const { options: vendorOptions, addCustomOption: addVendor, loading: vendorsLoading } = useVendorOptions()
   const { options: paymentOptions, addCustomOption: addPaymentMethod, loading: paymentsLoading } = usePaymentMethodOptions()
-  const { getTHBRate, getUSDRate } = useExchangeRates()
   
   const [transaction, setTransaction] = React.useState<TransactionWithVendorAndPayment | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -104,7 +104,7 @@ export default function EditTransactionPage() {
 
   const handleSaveChanges = async () => {
     if (!transaction) return
-    
+
     if (!description.trim()) {
       toast.error("Please enter a description")
       return
@@ -118,11 +118,28 @@ export default function EditTransactionPage() {
     setSaving(true)
 
     try {
-      // Get current exchange rate
-      const exchangeRate = currency === "USD" ? getTHBRate().rate : getUSDRate().rate
-      
-      // Calculate amounts in both currencies
+      const transactionDateStr = format(transactionDate, "yyyy-MM-dd")
+
+      // Get exchange rate from the exchange_rates table
       const isUSD = currency === "USD"
+      const fromCurrency = isUSD ? "USD" : "THB"
+      const toCurrency = isUSD ? "THB" : "USD"
+
+      const rateResult = await getExchangeRateForDate(
+        transactionDateStr,
+        fromCurrency,
+        toCurrency
+      )
+
+      if (!rateResult) {
+        toast.error("Exchange rate not available for the selected date")
+        setSaving(false)
+        return
+      }
+
+      const exchangeRate = rateResult.rate
+
+      // Calculate amounts in both currencies
       const amountUSD = isUSD ? parseFloat(amount) : parseFloat(amount) * (1 / exchangeRate)
       const amountTHB = isUSD ? parseFloat(amount) * exchangeRate : parseFloat(amount)
 
@@ -132,14 +149,13 @@ export default function EditTransactionPage() {
         payment_method_id: paymentMethod || null,
         amount_usd: Math.round(amountUSD * 100) / 100,
         amount_thb: Math.round(amountTHB * 100) / 100,
-        exchange_rate: exchangeRate,
         original_currency: currency,
         transaction_type: transactionType,
-        transaction_date: format(transactionDate, "yyyy-MM-dd")
+        transaction_date: transactionDateStr
       }
 
       const result = await updateTransaction(transaction.id, updates)
-      
+
       if (result) {
         toast.success("Transaction updated successfully!")
         navigateToViewTransactionFromEdit(transaction.id, source || undefined)

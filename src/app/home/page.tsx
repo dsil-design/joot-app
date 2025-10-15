@@ -9,7 +9,7 @@ import { HomeTransactionList } from '@/components/page-specific/home-transaction
 import { AddTransactionFooter } from '@/components/page-specific/add-transaction-footer'
 import { X } from 'lucide-react'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
-import { formatExchangeRateTimestamp } from '@/lib/utils/date-formatter'
+import { formatExchangeRateTimestamp, formatTransactionDateLabel } from '@/lib/utils/date-formatter'
 import { formatCurrency } from '@/lib/utils'
 
 interface HomePageProps {
@@ -102,31 +102,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   // Group transactions by day
   const groupTransactionsByDay = (transactions: TransactionWithVendorAndPayment[]) => {
     const groups: { [key: string]: TransactionWithVendorAndPayment[] } = {}
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
-    
+
     transactions.forEach(transaction => {
-      const transactionDate = new Date(transaction.transaction_date)
-      const dateStr = transactionDate.toDateString()
-      const todayStr = today.toDateString()
-      const yesterdayStr = yesterday.toDateString()
-      
-      let dayLabel: string
-      if (dateStr === todayStr) {
-        dayLabel = 'Today'
-      } else if (dateStr === yesterdayStr) {
-        dayLabel = 'Yesterday'
-      } else {
-        dayLabel = transactionDate.toLocaleDateString('en-US', { weekday: 'long' })
-      }
-      
+      const dayLabel = formatTransactionDateLabel(transaction.transaction_date)
+
       if (!groups[dayLabel]) {
         groups[dayLabel] = []
       }
       groups[dayLabel].push(transaction)
     })
-    
+
     return groups
   }
 

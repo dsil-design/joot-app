@@ -13,7 +13,9 @@ import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
 import { format, parseISO } from "date-fns"
+import { formatInTimeZone } from "date-fns-tz"
 import { Button } from "@/components/ui/button"
+import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
 
 
 function EditIcon() {
@@ -27,19 +29,26 @@ function EditIcon() {
 interface FieldValuePairProps {
   label: string
   value: string
+  secondaryText?: string
+  showAsterisk?: boolean
 }
 
-function FieldValuePair({ label, value }: FieldValuePairProps) {
+function FieldValuePair({ label, value, secondaryText, showAsterisk }: FieldValuePairProps) {
   return (
     <div className="content-stretch flex flex-col gap-1 items-start justify-start relative shrink-0">
       <div className="content-stretch flex gap-2 items-center justify-start relative shrink-0">
         <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-950">
-          <p className="leading-[20px] whitespace-pre">{label}</p>
+          <p className="leading-[20px] whitespace-pre">{label}{showAsterisk ? '*' : ''}</p>
         </div>
       </div>
       <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-950">
         <p className="leading-[20px] whitespace-pre">{value}</p>
       </div>
+      {secondaryText && (
+        <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[#71717b] text-[14px] text-nowrap">
+          <p className="leading-[20px] whitespace-pre">{secondaryText}</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -53,20 +62,42 @@ export default function ViewTransactionPage() {
   const { getTransactionById } = useTransactions()
   
   const [transaction, setTransaction] = React.useState<TransactionWithVendorAndPayment | null>(null)
+  const [exchangeRate, setExchangeRate] = React.useState<number | null>(null)
+  const [exchangeRateTimestamp, setExchangeRateTimestamp] = React.useState<string | null>(null)
+  const [isUsingLatestRate, setIsUsingLatestRate] = React.useState(false)
+  const [fallbackRateDate, setFallbackRateDate] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const fetchTransaction = async () => {
       if (!id) return
-      
+
       setLoading(true)
       setError(null)
-      
+
       try {
         const data = await getTransactionById(id)
         if (data) {
           setTransaction(data)
+
+          // Fetch the exchange rate from the exchange_rates table
+          const fromCurrency = data.original_currency === "USD" ? "USD" : "THB"
+          const toCurrency = data.original_currency === "USD" ? "THB" : "USD"
+          const transactionDate = data.transaction_date
+
+          const rateMetadata = await getExchangeRateWithMetadata(
+            transactionDate,
+            fromCurrency,
+            toCurrency
+          )
+
+          if (rateMetadata.rate !== null) {
+            setExchangeRate(rateMetadata.rate)
+            setExchangeRateTimestamp(rateMetadata.timestamp)
+            setIsUsingLatestRate(rateMetadata.isUsingLatestRate)
+            setFallbackRateDate(rateMetadata.fallbackDate)
+          }
         } else {
           setError("Transaction not found")
         }
@@ -78,7 +109,7 @@ export default function ViewTransactionPage() {
     }
 
     fetchTransaction()
-  }, [id])
+  }, [id, getTransactionById])
 
   const formatDate = (dateString: string) => {
     try {
@@ -91,10 +122,60 @@ export default function ViewTransactionPage() {
 
   const formatAmount = (transaction: TransactionWithVendorAndPayment) => {
     const symbol = transaction.original_currency === "USD" ? "$" : "฿"
-    const amount = transaction.original_currency === "USD" 
-      ? transaction.amount_usd 
+    const amount = transaction.original_currency === "USD"
+      ? transaction.amount_usd
       : transaction.amount_thb
     return `${symbol}${amount.toFixed(2)} ${transaction.original_currency}`
+  }
+
+  const formatExchangeRate = (transaction: TransactionWithVendorAndPayment, rate: number | null) => {
+    if (rate === null) {
+      return "No rate available"
+    }
+
+    // Always format as: 1 USD = [x] THB
+    if (transaction.original_currency === "USD") {
+      // Transaction is in USD, exchange_rate is already USD to THB
+      return `1 USD = ${rate.toFixed(2)} THB`
+    } else {
+      // Transaction is in THB, exchange_rate is THB to USD, so invert it
+      const usdToThb = 1 / rate
+      return `1 USD = ${usdToThb.toFixed(2)} THB`
+    }
+  }
+
+  const formatExchangeRateTimestamp = (
+    timestamp: string | null,
+    usingLatest: boolean,
+    fallbackDate: string | null
+  ): string | undefined => {
+    if (!timestamp) return undefined
+
+    try {
+      if (usingLatest) {
+        // For today/future dates when using latest rate
+        return "*rate not available, using latest instead"
+      }
+
+      if (fallbackDate) {
+        // For past dates when using a fallback rate (e.g., weekend or missing data)
+        // Format: "*using rate for Oct 3 instead"
+        const date = parseISO(fallbackDate)
+        const formattedDate = format(date, "MMM d")
+        return `*using rate for ${formattedDate} instead`
+      }
+
+      // Get the user's timezone from the browser
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+      // Format: "as of 2:12pm, March 14, 2024"
+      const time = formatInTimeZone(parseISO(timestamp), userTimezone, "h:mmaaa")
+      const date = formatInTimeZone(parseISO(timestamp), userTimezone, "MMMM d, yyyy")
+
+      return `as of ${time}, ${date}`
+    } catch {
+      return undefined
+    }
   }
 
   const handleBackClick = () => {
@@ -212,9 +293,15 @@ export default function ViewTransactionPage() {
             label="Payment method" 
             value={transaction.payment_methods?.name || "Unknown"} 
           />
-          <FieldValuePair 
-            label="Amount" 
-            value={formatAmount(transaction)} 
+          <FieldValuePair
+            label="Amount"
+            value={formatAmount(transaction)}
+          />
+          <FieldValuePair
+            label="Exchange rate"
+            value={formatExchangeRate(transaction, exchangeRate)}
+            secondaryText={formatExchangeRateTimestamp(exchangeRateTimestamp, isUsingLatestRate, fallbackRateDate)}
+            showAsterisk={isUsingLatestRate || !!fallbackRateDate}
           />
         </div>
         <div className="h-10 shrink-0 w-full" />

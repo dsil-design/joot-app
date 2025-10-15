@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ecbFullSyncService } from '@/lib/services/ecb-full-sync-service';
 import { dailySyncService } from '@/lib/services/daily-sync-service';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/lib/supabase/server';
 
 /**
  * Consolidated ECB Exchange Rates Sync
@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
     // 1. Execute ECB Full Sync (runs daily)
     try {
       console.log('📊 Executing ECB full sync...');
-      const supabase = await createClient();
-      
+      const supabase = createServiceRoleClient();
+
       // Check if auto-sync is enabled
       let autoSyncEnabled = true;
       try {
@@ -82,11 +82,18 @@ export async function GET(request: NextRequest) {
       }
     } catch (error) {
       console.error('❌ ECB full sync failed:', error);
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
       results.ecbFullSync = {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        data: null
+        message: errorMessage,
+        data: {
+          error: errorMessage,
+          stack: errorStack,
+          fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
+        }
       };
+      console.error('Full error details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     }
 
     // 2. Execute Daily Sync Service (weekdays only for gap filling)
