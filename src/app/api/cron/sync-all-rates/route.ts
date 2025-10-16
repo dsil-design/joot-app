@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
 
   const startTime = Date.now();
   const results = {
+    cleanup: { success: false, message: '', data: null as any },
     ecbFullSync: { success: false, message: '', data: null as any },
     dailySync: { success: false, message: '', data: null as any }
   };
@@ -24,6 +25,58 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🚀 Starting ECB rates sync job at', new Date().toISOString());
     const isWeekday = new Date().getDay() >= 1 && new Date().getDay() <= 5;
+
+    // 0. Cleanup stuck syncs first (before starting new syncs)
+    try {
+      console.log('🧹 Cleaning up stuck syncs...');
+      const supabase = createServiceRoleClient();
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+      const { data: stuckSyncs, error: findError } = await supabase
+        .from('sync_history')
+        .select('id, sync_type, started_at')
+        .eq('status', 'running')
+        .lt('started_at', tenMinutesAgo);
+
+      if (!findError && stuckSyncs && stuckSyncs.length > 0) {
+        console.log(`  Found ${stuckSyncs.length} stuck sync(s) to clean up`);
+        let cleanedUp = 0;
+
+        for (const sync of stuckSyncs) {
+          const runningDuration = Date.now() - new Date(sync.started_at).getTime();
+          await supabase
+            .from('sync_history')
+            .update({
+              status: 'failed',
+              completed_at: new Date().toISOString(),
+              error_message: 'Sync exceeded timeout limit and was automatically marked as failed',
+              duration_ms: runningDuration
+            })
+            .eq('id', sync.id);
+          cleanedUp++;
+        }
+
+        results.cleanup = {
+          success: true,
+          message: `Cleaned up ${cleanedUp} stuck sync(s)`,
+          data: { cleanedUp, total: stuckSyncs.length }
+        };
+        console.log(`  ✅ Cleaned up ${cleanedUp} stuck syncs`);
+      } else {
+        results.cleanup = {
+          success: true,
+          message: 'No stuck syncs found',
+          data: { cleanedUp: 0 }
+        };
+      }
+    } catch (error) {
+      console.error('⚠️  Cleanup failed (non-critical):', error);
+      results.cleanup = {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        data: null
+      };
+    }
 
     // 1. Execute ECB Full Sync (runs daily)
     try {
