@@ -13,7 +13,6 @@ import { TransactionForm, type TransactionFormData } from "@/components/forms/tr
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
-import { getExchangeRateForDate } from "@/lib/utils/exchange-rate-utils"
 import { format, parseISO } from "date-fns"
 import { toast } from "sonner"
 
@@ -62,35 +61,11 @@ export default function EditTransactionPage() {
     try {
       const transactionDateStr = format(formData.transactionDate, "yyyy-MM-dd")
 
-      // Get exchange rate from the exchange_rates table
-      const isUSD = formData.currency === "USD"
-      const fromCurrency = isUSD ? "USD" : "THB"
-      const toCurrency = isUSD ? "THB" : "USD"
-
-      const rateResult = await getExchangeRateForDate(
-        transactionDateStr,
-        fromCurrency,
-        toCurrency
-      )
-
-      if (!rateResult) {
-        toast.error("Exchange rate not available for the selected date")
-        setSaving(false)
-        return
-      }
-
-      const exchangeRate = rateResult.rate
-
-      // Calculate amounts in both currencies
-      const amountUSD = isUSD ? parseFloat(formData.amount) : parseFloat(formData.amount) * (1 / exchangeRate)
-      const amountTHB = isUSD ? parseFloat(formData.amount) * exchangeRate : parseFloat(formData.amount)
-
       const updates = {
         description: formData.description.trim(),
         vendor_id: formData.vendor || null,
         payment_method_id: formData.paymentMethod || null,
-        amount_usd: Math.round(amountUSD * 100) / 100,
-        amount_thb: Math.round(amountTHB * 100) / 100,
+        amount: Math.round(parseFloat(formData.amount) * 100) / 100,
         original_currency: formData.currency,
         transaction_type: formData.transactionType,
         transaction_date: transactionDateStr
@@ -166,7 +141,7 @@ export default function EditTransactionPage() {
     paymentMethod: transaction.payment_method_id || undefined,
     tags: transaction.tags?.map(tag => tag.id) || [],
     description: transaction.description || "",
-    amount: String(transaction.original_currency === "USD" ? transaction.amount_usd : transaction.amount_thb),
+    amount: String(transaction.amount),
     transactionDate: parseISO(transaction.transaction_date)
   }
 

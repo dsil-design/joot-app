@@ -121,224 +121,6 @@ export type Database = {
           },
         ]
       }
-      transactions: {
-        Row: {
-          amount_thb: number
-          amount_usd: number
-          created_at: string | null
-          description: string | null
-          exchange_rate: number | null
-          id: string
-          original_currency: Database["public"]["Enums"]["currency_type"]
-          payment_method_id: string | null
-          title: string | null
-          transaction_date: string
-          transaction_type: Database["public"]["Enums"]["transaction_type"]
-          updated_at: string | null
-          user_id: string
-          vendor_id: string | null
-        }
-        Insert: {
-          amount_thb: number
-          amount_usd: number
-          created_at?: string | null
-          description?: string | null
-          exchange_rate?: number | null
-          id?: string
-          original_currency: Database["public"]["Enums"]["currency_type"]
-          payment_method_id?: string | null
-          title?: string | null
-          transaction_date?: string
-          transaction_type: Database["public"]["Enums"]["transaction_type"]
-          updated_at?: string | null
-          user_id: string
-          vendor_id?: string | null
-        }
-        Update: {
-          amount_thb?: number
-          amount_usd?: number
-          created_at?: string | null
-          description?: string | null
-          exchange_rate?: number | null
-          id?: string
-          original_currency?: Database["public"]["Enums"]["currency_type"]
-          payment_method_id?: string | null
-          title?: string | null
-          transaction_date?: string
-          transaction_type?: Database["public"]["Enums"]["transaction_type"]
-          updated_at?: string | null
-          user_id?: string
-          vendor_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_payment_method_id_fkey"
-            columns: ["payment_method_id"]
-            isOneToOne: false
-            referencedRelation: "payment_methods"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      users: {
-        Row: {
-          avatar_url: string | null
-          created_at: string | null
-          email: string
-          first_name: string | null
-          id: string
-          last_name: string | null
-          preferred_currency:
-            | Database["public"]["Enums"]["currency_type"]
-            | null
-          role: Database["public"]["Enums"]["user_role"] | null
-          updated_at: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email: string
-          first_name?: string | null
-          id: string
-          last_name?: string | null
-          preferred_currency?:
-            | Database["public"]["Enums"]["currency_type"]
-            | null
-          role?: Database["public"]["Enums"]["user_role"] | null
-          updated_at?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string
-          first_name?: string | null
-          id?: string
-          last_name?: string | null
-          preferred_currency?:
-            | Database["public"]["Enums"]["currency_type"]
-            | null
-          role?: Database["public"]["Enums"]["user_role"] | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      vendors: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vendors_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      tags: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          color: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          color?: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          color?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tags_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      transaction_tags: {
-        Row: {
-          created_at: string | null
-          id: string
-          transaction_id: string
-          tag_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          transaction_id: string
-          tag_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          transaction_id?: string
-          tag_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transaction_tags_transaction_id_fkey"
-            columns: ["transaction_id"]
-            isOneToOne: false
-            referencedRelation: "transactions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transaction_tags_tag_id_fkey"
-            columns: ["tag_id"]
-            isOneToOne: false
-            referencedRelation: "tags"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       rate_changes: {
         Row: {
           change_type: string
@@ -390,7 +172,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sync_history"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       sync_configuration: {
@@ -412,7 +194,7 @@ export type Database = {
           last_modified_by?: string | null
           max_retries?: number | null
           retry_delay_seconds?: number | null
-          start_date: string
+          start_date?: string
           sync_time?: string | null
           updated_at?: string | null
         }
@@ -427,15 +209,7 @@ export type Database = {
           sync_time?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "sync_configuration_last_modified_by_fkey"
-            columns: ["last_modified_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       sync_history: {
         Row: {
@@ -511,7 +285,7 @@ export type Database = {
           retry_count?: number | null
           retry_of?: string | null
           start_date?: string | null
-          started_at?: string | null
+          started_at?: string
           status?: string
           sync_type?: string
           total_rates_in_xml?: number | null
@@ -527,13 +301,6 @@ export type Database = {
             referencedRelation: "sync_history"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "sync_history_triggered_by_fkey"
-            columns: ["triggered_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
         ]
       }
       sync_logs: {
@@ -571,7 +338,207 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sync_history"
             referencedColumns: ["id"]
-          }
+          },
+        ]
+      }
+      tags: {
+        Row: {
+          color: string
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tags_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_tags: {
+        Row: {
+          created_at: string | null
+          id: string
+          tag_id: string
+          transaction_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          tag_id: string
+          transaction_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          tag_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_tags_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string | null
+          id: string
+          original_currency: Database["public"]["Enums"]["currency_type"]
+          payment_method_id: string | null
+          transaction_date: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string | null
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          original_currency: Database["public"]["Enums"]["currency_type"]
+          payment_method_id?: string | null
+          transaction_date?: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          original_currency?: Database["public"]["Enums"]["currency_type"]
+          payment_method_id?: string | null
+          transaction_date?: string
+          transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      vendors: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -601,6 +568,50 @@ export type Database = {
           source: string
         }[]
       }
+      get_latest_sync_status: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          completed_at: string
+          duration_ms: number
+          error_message: string
+          id: string
+          new_rates_inserted: number
+          rates_deleted: number
+          rates_unchanged: number
+          rates_updated: number
+          started_at: string
+          status: string
+          sync_type: string
+        }[]
+      }
+      get_next_tag_color: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
+      get_sync_configuration: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          auto_sync_enabled: boolean
+          max_retries: number
+          retry_delay_seconds: number
+          start_date: string
+          sync_time: string
+          tracked_currencies: string[]
+        }[]
+      }
+      get_sync_statistics: {
+        Args: { p_days?: number }
+        Returns: {
+          average_duration_ms: number
+          failed_syncs: number
+          last_failed_sync: string
+          last_successful_sync: string
+          successful_syncs: number
+          total_rates_inserted: number
+          total_rates_updated: number
+          total_syncs: number
+        }[]
+      }
       get_tracked_currencies: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -613,6 +624,15 @@ export type Database = {
       }
       is_admin: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      update_sync_configuration: {
+        Args: {
+          p_auto_sync_enabled?: boolean
+          p_start_date?: string
+          p_sync_time?: string
+          p_user_id?: string
+        }
         Returns: boolean
       }
       update_tracked_currencies: {
@@ -828,6 +848,7 @@ export const Constants = {
         "IDR",
       ],
       transaction_type: ["income", "expense"],
+      user_role: ["user", "admin"],
     },
   },
 } as const

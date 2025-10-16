@@ -158,10 +158,7 @@ export default function ViewTransactionPage() {
 
   const formatAmount = (transaction: TransactionWithVendorAndPayment) => {
     const symbol = transaction.original_currency === "USD" ? "$" : "฿"
-    const amount = transaction.original_currency === "USD"
-      ? transaction.amount_usd
-      : transaction.amount_thb
-    return `${symbol}${amount.toFixed(2)} ${transaction.original_currency}`
+    return `${symbol}${transaction.amount.toFixed(2)} ${transaction.original_currency}`
   }
 
   const formatExchangeRate = (transaction: TransactionWithVendorAndPayment, rate: number | null) => {

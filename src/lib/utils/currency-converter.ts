@@ -12,7 +12,7 @@ export interface CurrencyDisplayAmounts {
 /**
  * Get the most recent exchange rate available (preferably today's rate)
  */
-async function getCurrentExchangeRate(
+export async function getCurrentExchangeRate(
   fromCurrency: CurrencyType,
   toCurrency: CurrencyType
 ): Promise<{ rate: number | null; needsSync: boolean }> {
@@ -44,16 +44,14 @@ async function getCurrentExchangeRate(
 
 /**
  * Calculate the correct display amounts for a transaction
- * Primary = recorded currency amount
+ * Primary = recorded currency amount (from transaction.amount)
  * Secondary = calculated amount in the opposite currency using CURRENT exchange rates
  */
 export async function calculateTransactionDisplayAmounts(
   transaction: TransactionWithVendorAndPayment
 ): Promise<CurrencyDisplayAmounts> {
   const recordedCurrency = transaction.original_currency
-  const recordedAmount = recordedCurrency === 'USD' 
-    ? transaction.amount_usd 
-    : transaction.amount_thb
+  const recordedAmount = transaction.amount
 
   // Primary amount is always the recorded amount with correct symbol
   const primarySymbol = recordedCurrency === 'USD' ? '$' : '฿'

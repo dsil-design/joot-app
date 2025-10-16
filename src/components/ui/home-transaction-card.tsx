@@ -44,20 +44,11 @@ export function HomeTransactionCard({ transaction }: HomeTransactionCardProps) {
         }
       } catch (error) {
         console.error('Error calculating display amounts:', error)
-        // Fallback to stored amounts with correct symbols
-        const recordedAmount = transaction.original_currency === 'USD' 
-          ? transaction.amount_usd 
-          : transaction.amount_thb
-        const recordedSymbol = transaction.original_currency === 'USD' ? '$' : '฿'
-        
-        const calculatedAmount = transaction.original_currency === 'USD' 
-          ? transaction.amount_thb 
-          : transaction.amount_usd
-        const calculatedSymbol = transaction.original_currency === 'USD' ? '฿' : '$'
-        
+        // Fallback to showing only the recorded amount
+        const symbol = transaction.original_currency === 'USD' ? '$' : '฿'
         setAmounts({
-          primary: `${recordedSymbol}${recordedAmount.toFixed(2)}`,
-          secondary: `${calculatedSymbol}${calculatedAmount.toFixed(2)}`
+          primary: `${symbol}${transaction.amount.toFixed(2)}`,
+          secondary: null
         })
       }
     }

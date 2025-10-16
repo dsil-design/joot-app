@@ -21,8 +21,7 @@ describe('currency-converter', () => {
     vendor_id: 'vendor-789',
     payment_method_id: 'payment-123',
     transaction_date: '2024-03-15',
-    amount_thb: 1000,
-    amount_usd: 28.50,
+    amount: 28.50,
     original_currency: 'USD',
     exchange_rate: 35.09,
     description: 'Test transaction',
@@ -77,8 +76,8 @@ describe('currency-converter', () => {
     })
 
     it('calculates display amounts for THB transaction with current rates', async () => {
-      const thbTransaction = { ...mockTransaction, original_currency: 'THB' as const }
-      
+      const thbTransaction = { ...mockTransaction, amount: 1000, original_currency: 'THB' as const }
+
       mockSupabaseClient.rpc.mockResolvedValueOnce({
         data: [{ rate: 0.0282, actual_date: '2024-03-15' }],
         error: null
@@ -153,12 +152,11 @@ describe('currency-converter', () => {
 
     it('handles same currency transactions', async () => {
       // This shouldn't happen in practice, but we handle it
-      const sameCurrencyTransaction = { 
-        ...mockTransaction, 
-        original_currency: 'USD' as const,
-        amount_thb: 28.50 // Same as USD amount
+      const sameCurrencyTransaction = {
+        ...mockTransaction,
+        original_currency: 'USD' as const
       }
-      
+
       // When from and to currency are the same (shouldn't happen but handled)
       mockSupabaseClient.rpc.mockResolvedValueOnce({
         data: [{ rate: 35.50, actual_date: '2024-03-15' }],
@@ -175,12 +173,11 @@ describe('currency-converter', () => {
     })
 
     it('formats large amounts correctly', async () => {
-      const largeTransaction = { 
-        ...mockTransaction, 
-        amount_usd: 12345.67,
-        amount_thb: 438169.29
+      const largeTransaction = {
+        ...mockTransaction,
+        amount: 12345.67
       }
-      
+
       mockSupabaseClient.rpc.mockResolvedValueOnce({
         data: [{ rate: 35.50, actual_date: '2024-03-15' }],
         error: null
@@ -196,12 +193,11 @@ describe('currency-converter', () => {
     })
 
     it('handles zero amounts', async () => {
-      const zeroTransaction = { 
-        ...mockTransaction, 
-        amount_usd: 0,
-        amount_thb: 0
+      const zeroTransaction = {
+        ...mockTransaction,
+        amount: 0
       }
-      
+
       mockSupabaseClient.rpc.mockResolvedValueOnce({
         data: [{ rate: 35.50, actual_date: '2024-03-15' }],
         error: null

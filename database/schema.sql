@@ -21,7 +21,6 @@ CREATE TABLE public.users (
   first_name TEXT,
   last_name TEXT,
   avatar_url TEXT,
-  preferred_currency currency_type DEFAULT 'USD',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -33,18 +32,15 @@ CREATE TABLE public.transactions (
   vendor_id UUID,
   payment_method_id UUID,
   description TEXT,
-  amount_usd DECIMAL(12, 2) NOT NULL, -- Always store USD amount
-  amount_thb DECIMAL(12, 2) NOT NULL, -- Always store THB amount
-  exchange_rate DECIMAL(10, 4), -- DEPRECATED: Exchange rate is now fetched from exchange_rates table
+  amount DECIMAL(12, 2) NOT NULL, -- Amount in the original currency
   original_currency currency_type NOT NULL, -- Which currency was originally entered
   transaction_type transaction_type NOT NULL,
   transaction_date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
+
   -- Constraints
-  CONSTRAINT positive_amounts CHECK (amount_usd > 0 AND amount_thb > 0),
-  CONSTRAINT positive_exchange_rate CHECK (exchange_rate IS NULL OR exchange_rate > 0)
+  CONSTRAINT positive_amount CHECK (amount > 0)
 );
 
 -- Payment methods table

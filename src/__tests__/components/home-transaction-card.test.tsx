@@ -35,8 +35,7 @@ describe('HomeTransactionCard', () => {
     vendor_id: 'vendor-789',
     payment_method_id: 'payment-123',
     transaction_date: '2024-03-15',
-    amount_thb: 1000,
-    amount_usd: 28.50,
+    amount: 28.50,
     original_currency: 'USD',
     exchange_rate: 35.09,
     description: 'Test transaction',
@@ -192,26 +191,26 @@ describe('HomeTransactionCard', () => {
     const mockCalculate = currencyConverter.calculateTransactionDisplayAmounts as jest.MockedFunction<
       typeof currencyConverter.calculateTransactionDisplayAmounts
     >
-    
+
     // Mock console.error to avoid noise in test output
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { /* no-op */ })
-    
+
     mockCalculate.mockRejectedValueOnce(new Error('Calculation failed'))
 
-    const thbTransaction = { ...mockTransaction, original_currency: 'THB' as const }
+    const thbTransaction = { ...mockTransaction, amount: 1000, original_currency: 'THB' as const }
     render(<HomeTransactionCard transaction={thbTransaction} />)
 
     await waitFor(() => {
-      // Should show fallback amounts based on stored values
+      // Should show fallback with only the recorded amount
       expect(screen.getByTestId('amount')).toHaveTextContent('฿1000.00')
-      expect(screen.getByTestId('calculated-amount')).toHaveTextContent('$28.50')
+      expect(screen.queryByTestId('calculated-amount')).not.toBeInTheDocument()
     })
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'Error calculating display amounts:',
       expect.any(Error)
     )
-    
+
     consoleErrorSpy.mockRestore()
   })
 

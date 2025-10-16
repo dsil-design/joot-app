@@ -4,7 +4,7 @@
 import * as React from 'react'
 import { cn, formatCurrency } from '@/lib/utils'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
-import { calculateTransactionDisplayAmounts, triggerExchangeRateSync } from '@/lib/utils/currency-converter'
+import { calculateTransactionDisplayAmounts, triggerExchangeRateSync, getCurrentExchangeRate } from '@/lib/utils/currency-converter'
 
 type ViewMode = 'recorded' | 'all-usd' | 'all-thb'
 
@@ -48,17 +48,51 @@ export const TransactionCard = React.memo(function TransactionCard({
 
     const calculateAmounts = async () => {
       if (viewMode === 'all-usd') {
-        // Show only USD amounts
-        setAmounts({
-          primary: formatCurrency(transaction.amount_usd, 'USD'),
-          secondary: null
-        })
+        // Show only USD amounts - need to calculate if transaction was recorded in THB
+        if (transaction.original_currency === 'USD') {
+          setAmounts({
+            primary: formatCurrency(transaction.amount, 'USD'),
+            secondary: null
+          })
+        } else {
+          // Need to convert THB to USD
+          try {
+            const { rate } = await getCurrentExchangeRate('THB', 'USD')
+            const usdAmount = transaction.amount * (rate || 0.028)
+            setAmounts({
+              primary: formatCurrency(usdAmount, 'USD'),
+              secondary: null
+            })
+          } catch {
+            setAmounts({
+              primary: formatCurrency(transaction.amount * 0.028, 'USD'),
+              secondary: null
+            })
+          }
+        }
       } else if (viewMode === 'all-thb') {
-        // Show only THB amounts
-        setAmounts({
-          primary: formatCurrency(transaction.amount_thb, 'THB'),
-          secondary: null
-        })
+        // Show only THB amounts - need to calculate if transaction was recorded in USD
+        if (transaction.original_currency === 'THB') {
+          setAmounts({
+            primary: formatCurrency(transaction.amount, 'THB'),
+            secondary: null
+          })
+        } else {
+          // Need to convert USD to THB
+          try {
+            const { rate } = await getCurrentExchangeRate('USD', 'THB')
+            const thbAmount = transaction.amount * (rate || 35)
+            setAmounts({
+              primary: formatCurrency(thbAmount, 'THB'),
+              secondary: null
+            })
+          } catch {
+            setAmounts({
+              primary: formatCurrency(transaction.amount * 35, 'THB'),
+              secondary: null
+            })
+          }
+        }
       } else {
         // 'recorded' - show recorded amount as primary, calculate secondary
         try {
@@ -85,18 +119,12 @@ export const TransactionCard = React.memo(function TransactionCard({
           }
         } catch (error) {
           console.error('Error calculating display amounts:', error)
-          // Fallback to stored amounts
-          if (transaction.original_currency === 'USD') {
-            setAmounts({
-              primary: formatCurrency(transaction.amount_usd, 'USD'),
-              secondary: formatCurrency(transaction.amount_thb, 'THB')
-            })
-          } else {
-            setAmounts({
-              primary: formatCurrency(transaction.amount_thb, 'THB'),
-              secondary: formatCurrency(transaction.amount_usd, 'USD')
-            })
-          }
+          // Fallback to showing only the recorded amount
+          const symbol = transaction.original_currency === 'USD' ? '$' : '฿'
+          setAmounts({
+            primary: `${symbol}${transaction.amount.toFixed(2)}`,
+            secondary: null
+          })
         }
       }
     }
