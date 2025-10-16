@@ -127,12 +127,12 @@ describe('TransactionCard', () => {
     const transaction = {
       id: '1',
       description: 'Test transaction',
-      amount_usd: 100,
-      amount_thb: 3500,
+      amount: 100,
+      original_currency: 'USD',
     };
-    
+
     render(<TransactionCard transaction={transaction} />);
-    
+
     expect(screen.getByText('Test transaction')).toBeInTheDocument();
     expect(screen.getByText('$100.00')).toBeInTheDocument();
   });
@@ -283,15 +283,16 @@ describe('Accessibility', () => {
 describe('Performance', () => {
   it('renders large transaction list efficiently', async () => {
     const startTime = performance.now();
-    
+
     const transactions = Array.from({ length: 1000 }, (_, i) => ({
       id: i.toString(),
       description: `Transaction ${i}`,
-      amount_usd: Math.random() * 100,
+      amount: Math.random() * 100,
+      original_currency: 'USD',
     }));
-    
+
     render(<TransactionList transactions={transactions} />);
-    
+
     const renderTime = performance.now() - startTime;
     expect(renderTime).toBeLessThan(100); // 100ms threshold
   });
@@ -411,9 +412,9 @@ export const createMockTransaction = (overrides = {}) => ({
   id: '1',
   user_id: 'user-1',
   description: 'Test transaction',
-  amount_usd: 100,
-  amount_thb: 3500,
-  exchange_rate: 35,
+  amount: 100,
+  original_currency: 'USD',
+  transaction_type: 'expense',
   transaction_date: new Date().toISOString(),
   created_at: new Date().toISOString(),
   ...overrides,

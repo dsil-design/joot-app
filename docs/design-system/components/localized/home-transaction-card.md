@@ -37,10 +37,10 @@ interface HomeTransactionCardProps {
 
 ### Transaction Type Structure
 The component expects a transaction object with:
-- Basic transaction fields (id, amount_usd, amount_thb, description, etc.)
+- Basic transaction fields (id, amount, original_currency, description, etc.)
 - Related vendor information (`vendors?.name`)
 - Payment method data (`payment_methods`)
-- Currency metadata (`original_currency`)
+- Transaction metadata (transaction_type, transaction_date)
 
 ## Business Logic Implementation
 
@@ -74,11 +74,12 @@ The component expects a transaction object with:
 ```tsx
 catch (error) {
   console.error('Error calculating display amounts:', error)
-  // Fallback to stored amounts with correct symbols
-  const recordedAmount = transaction.original_currency === 'USD' 
-    ? transaction.amount_usd 
-    : transaction.amount_thb
-  // ... fallback logic
+  // Fallback to recorded amount with correct symbol
+  const symbol = transaction.original_currency === 'USD' ? '$' : '฿'
+  setAmounts({
+    primary: `${symbol}${transaction.amount.toFixed(2)}`,
+    secondary: null
+  })
 }
 ```
 
@@ -151,12 +152,12 @@ return (
 ```tsx
 // USD recorded transaction
 if (transaction.original_currency === 'USD') {
-  primary: `$${transaction.amount_usd.toFixed(2)}`
-  secondary: `฿${transaction.amount_thb.toFixed(2)}`
+  primary: `$${transaction.amount.toFixed(2)}`
+  secondary: null  // Calculated using exchange_rates table
 } else {
-  // THB recorded transaction  
-  primary: `฿${transaction.amount_thb.toFixed(2)}`
-  secondary: `$${transaction.amount_usd.toFixed(2)}`
+  // THB recorded transaction
+  primary: `฿${transaction.amount.toFixed(2)}`
+  secondary: null  // Calculated using exchange_rates table
 }
 ```
 
@@ -300,7 +301,7 @@ const [error, setError] = useState<string | null>(null)
 ```tsx
 const calculatedAmounts = useMemo(() => {
   return calculateTransactionDisplayAmounts(transaction)
-}, [transaction.id, transaction.amount_usd, transaction.amount_thb])
+}, [transaction.id, transaction.amount, transaction.original_currency])
 ```
 
 ## Integration Pattern
