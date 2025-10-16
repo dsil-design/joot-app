@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/client"
 import type { CurrencyType } from "@/lib/supabase/types"
-import { onDemandRateFetcher } from "@/lib/services/on-demand-rate-fetcher"
 
 export interface ExchangeRateResult {
   rate: number
@@ -119,46 +118,13 @@ export async function getExchangeRateWithMetadata(
   }
 
   // For past dates, try to get the exact date's rate
-  let { data: rateData } = await supabase
+  const { data: rateData } = await supabase
     .from("exchange_rates")
     .select("rate, created_at, date")
     .eq("from_currency", fromCurrency)
     .eq("to_currency", toCurrency)
     .eq("date", transactionDate)
     .single()
-
-  // If no exact rate found, attempt on-demand fetch for recent dates
-  if (!rateData) {
-    console.log(`No rate found for ${transactionDate}, attempting on-demand fetch...`);
-
-    try {
-      const fetchResult = await onDemandRateFetcher.fetchRatesForDate(
-        transactionDate,
-        fromCurrency,
-        toCurrency
-      );
-
-      if (fetchResult.success && !fetchResult.cacheHit) {
-        console.log(`✅ On-demand fetch succeeded, re-querying database...`);
-
-        // Re-query the database for the rate
-        const { data: newRateData } = await supabase
-          .from("exchange_rates")
-          .select("rate, created_at, date")
-          .eq("from_currency", fromCurrency)
-          .eq("to_currency", toCurrency)
-          .eq("date", transactionDate)
-          .single();
-
-        if (newRateData) {
-          rateData = newRateData;
-        }
-      }
-    } catch (onDemandError) {
-      console.error('On-demand fetch error:', onDemandError);
-      // Continue with fallback logic if on-demand fetch fails
-    }
-  }
 
   if (rateData) {
     // Exact rate found for this date
@@ -168,6 +134,22 @@ export async function getExchangeRateWithMetadata(
       isUsingLatestRate: false,
       fallbackDate: null
     }
+  }
+
+  // If no exact rate found, trigger background fetch via API
+  // (don't await - let it happen in background for future use)
+  if (typeof window !== 'undefined') {
+    fetch('/api/rates/fetch-on-demand', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: transactionDate,
+        fromCurrency,
+        toCurrency
+      })
+    }).catch(() => {
+      // Silent fail - this is just a background optimization
+    });
   }
 
   // No exact rate found - fetch the most recent rate before this date
