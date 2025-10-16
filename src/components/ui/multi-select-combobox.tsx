@@ -164,17 +164,24 @@ const MultiSelectComboBox = React.forwardRef<HTMLButtonElement, MultiSelectCombo
                     className="gap-1"
                   >
                     {option.label}
-                    <button
-                      type="button"
-                      className="ml-0.5 ring-offset-background rounded-sm hover:bg-zinc-900/10"
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="ml-0.5 ring-offset-background rounded-sm hover:bg-zinc-900/10 cursor-pointer"
                       onMouseDown={(e) => handleRemove(option.value, e)}
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          handleRemove(option.value, e as unknown as React.MouseEvent)
+                        }
+                      }}
                     >
                       <X className="h-3 w-3" />
-                    </button>
+                    </span>
                   </Badge>
                 ))
               ) : (
@@ -194,17 +201,24 @@ const MultiSelectComboBox = React.forwardRef<HTMLButtonElement, MultiSelectCombo
                       className="gap-1"
                     >
                       {option.label}
-                      <button
-                        type="button"
-                        className="ml-0.5 ring-offset-background rounded-sm hover:bg-zinc-900/10"
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="ml-0.5 ring-offset-background rounded-sm hover:bg-zinc-900/10 cursor-pointer"
                         onMouseDown={(e) => handleRemove(option.value, e)}
                         onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            handleRemove(option.value, e as unknown as React.MouseEvent)
+                          }
+                        }}
                       >
                         <X className="h-3 w-3" />
-                      </button>
+                      </span>
                     </Badge>
                   ))}
                   <Badge variant="secondary">

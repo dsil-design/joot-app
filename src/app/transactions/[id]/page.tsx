@@ -329,19 +329,25 @@ export default function ViewTransactionPage() {
             label="Payment method"
             value={transaction.payment_methods?.name || "Unknown"}
           />
+          <div className="content-stretch flex gap-6 items-start justify-start relative shrink-0 w-full">
+            <div className="flex-1">
+              <FieldValuePair
+                label="Amount"
+                value={formatAmount(transaction)}
+              />
+            </div>
+            <div className="flex-1">
+              <FieldValuePair
+                label="Exchange rate"
+                value={formatExchangeRate(transaction, exchangeRate)}
+                secondaryText={formatExchangeRateTimestamp(exchangeRateTimestamp, isUsingLatestRate, fallbackRateDate)}
+                showAsterisk={isUsingLatestRate || !!fallbackRateDate}
+              />
+            </div>
+          </div>
           <FieldTags
             label="Tags"
             tags={transaction.tags}
-          />
-          <FieldValuePair
-            label="Amount"
-            value={formatAmount(transaction)}
-          />
-          <FieldValuePair
-            label="Exchange rate"
-            value={formatExchangeRate(transaction, exchangeRate)}
-            secondaryText={formatExchangeRateTimestamp(exchangeRateTimestamp, isUsingLatestRate, fallbackRateDate)}
-            showAsterisk={isUsingLatestRate || !!fallbackRateDate}
           />
         </div>
         <div className="h-10 shrink-0 w-full" />
