@@ -26,18 +26,20 @@ function isValidDate(date: Date | undefined): boolean {
 
 function parseDate(value: string): Date | undefined {
   if (!value.trim()) return undefined
-  
-  // Try multiple date formats
+
+  // Try multiple date formats (US formats prioritized)
   const formats = [
-    "MMMM d, yyyy",
-    "MMM d, yyyy", 
     "M/d/yyyy",
     "MM/dd/yyyy",
+    "M-d-yyyy",
+    "MM-dd-yyyy",
+    "MMMM d, yyyy",
+    "MMM d, yyyy",
     "yyyy-MM-dd",
     "d MMMM yyyy",
     "d MMM yyyy"
   ]
-  
+
   for (const formatStr of formats) {
     try {
       const parsed = parse(value, formatStr, new Date())
@@ -48,7 +50,7 @@ function parseDate(value: string): Date | undefined {
       // Continue to next format
     }
   }
-  
+
   // Fallback to native Date parsing
   const fallback = new Date(value)
   return isValid(fallback) ? fallback : undefined
@@ -99,11 +101,19 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
     const [open, setOpen] = React.useState(false)
     const [value, setValue] = React.useState(formatDate(date, formatStr))
     const [month, setMonth] = React.useState<Date | undefined>(date)
+    const inputRef = React.useRef<HTMLInputElement>(null)
 
     // Update input value when date prop changes
     React.useEffect(() => {
       setValue(formatDate(date, formatStr))
     }, [date, formatStr])
+
+    // Restore focus to input when calendar opens
+    React.useEffect(() => {
+      if (open && inputRef.current) {
+        inputRef.current.focus()
+      }
+    }, [open])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const inputValue = e.target.value
@@ -147,16 +157,24 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       setOpen(!open)
     }
 
+    const handleInputFocus = () => {
+      // Open calendar when input receives focus
+      // Using onFocus instead of onClick allows cursor positioning to happen first
+      setOpen(true)
+    }
+
     return (
       <div ref={ref} className={cn(datePickerVariants({ size }), className)} {...props}>
         <Popover open={open} onOpenChange={setOpen}>
           <div className="relative flex gap-2">
             <Input
+              ref={inputRef}
               value={value}
               placeholder={placeholder}
               className="bg-background pr-10"
               onChange={handleInputChange}
               onBlur={handleInputBlur}
+              onFocus={handleInputFocus}
               onKeyDown={handleKeyDown}
               disabled={disabled}
               aria-label={label || "Select date"}
@@ -175,7 +193,14 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
               </Button>
             </PopoverTrigger>
           </div>
-          <PopoverContent className="w-auto p-0" align="end">
+          <PopoverContent
+            className="w-auto p-0"
+            align="end"
+            onOpenAutoFocus={(e) => {
+              // Prevent popover from stealing focus from input
+              e.preventDefault()
+            }}
+          >
             <Calendar
               mode="single"
               selected={date}
@@ -183,7 +208,6 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
               month={month}
               onMonthChange={setMonth}
               disabled={disabled}
-              initialFocus
             />
           </PopoverContent>
         </Popover>

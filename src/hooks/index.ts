@@ -15,3 +15,8 @@ export type { VendorPaymentOption } from "./use-vendor-payment-options"
 // Exchange rate hooks
 export { useExchangeRates } from "./use-exchange-rates"
 export type { ExchangeRateData } from "./use-exchange-rates"
+
+// Tag hooks
+export { useTags } from "./use-tags"
+export { useTagOptions } from "./use-tag-options"
+export type { TagOption } from "./use-tag-options"

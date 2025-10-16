@@ -110,7 +110,13 @@
       "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx tsc --noEmit \"src/app/transactions/[id]/page.tsx\" \"src/app/transactions/[id]/edit/page.tsx\" \"src/hooks/use-transactions.ts\")",
       "mcp__figma-dev-mode-mcp-server__get_screenshot",
       "Bash(ls:*)",
-      "WebFetch(domain:www.ecb.europa.eu)"
+      "WebFetch(domain:www.ecb.europa.eu)",
+      "Bash(pbcopy)",
+      "Bash(PGPASSWORD=NkWsbieKWodIMkjF psql:*)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx tsc --noEmit src/app/add-transaction/page.tsx src/components/ui/currency-input.tsx src/lib/utils/currency-symbols.ts)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://uwjmgjqongcrsamprvjr.supabase.co SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3am1nanFvbmdjcnNhbXBydmpyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDI5NjMyMiwiZXhwIjoyMDY5ODcyMzIyfQ.BZ7dxe3P_I7sUA0L8KSODMiAHG0mwHu8M6UqpfZs6Ns npx tsx:*)",
+      "Bash(SUPABASE_DB_PASSWORD=NkWsbieKWodIMkjF npx tsx:*)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx tsc:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

@@ -67,6 +67,26 @@ CREATE TABLE public.vendors (
   UNIQUE(name, user_id)
 );
 
+-- Tags table
+CREATE TABLE public.tags (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#dbeafe',
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(name, user_id)
+);
+
+-- Transaction tags junction table
+CREATE TABLE public.transaction_tags (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  transaction_id UUID REFERENCES public.transactions(id) ON DELETE CASCADE NOT NULL,
+  tag_id UUID REFERENCES public.tags(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(transaction_id, tag_id)
+);
+
 -- Exchange rates table (for historical tracking)
 CREATE TABLE public.exchange_rates (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -93,6 +113,10 @@ CREATE INDEX idx_vendors_user_id ON public.vendors(user_id);
 CREATE INDEX idx_vendors_name ON public.vendors(name);
 CREATE INDEX idx_exchange_rates_date ON public.exchange_rates(date DESC);
 CREATE INDEX idx_exchange_rates_currencies ON public.exchange_rates(from_currency, to_currency);
+CREATE INDEX idx_tags_user_id ON public.tags(user_id);
+CREATE INDEX idx_tags_name ON public.tags(name);
+CREATE INDEX idx_transaction_tags_transaction_id ON public.transaction_tags(transaction_id);
+CREATE INDEX idx_transaction_tags_tag_id ON public.transaction_tags(tag_id);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -100,6 +124,8 @@ ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_methods ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.exchange_rates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transaction_tags ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for users table
 CREATE POLICY "Users can view own profile" ON public.users
@@ -154,6 +180,47 @@ CREATE POLICY "Users can delete own vendors" ON public.vendors
 CREATE POLICY "Authenticated users can view exchange rates" ON public.exchange_rates
   FOR SELECT USING (auth.role() = 'authenticated');
 
+-- RLS Policies for tags table
+CREATE POLICY "Users can view own tags" ON public.tags
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own tags" ON public.tags
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own tags" ON public.tags
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own tags" ON public.tags
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- RLS Policies for transaction_tags table
+CREATE POLICY "Users can view own transaction tags" ON public.transaction_tags
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.transactions
+      WHERE transactions.id = transaction_tags.transaction_id
+      AND transactions.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can insert own transaction tags" ON public.transaction_tags
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.transactions
+      WHERE transactions.id = transaction_tags.transaction_id
+      AND transactions.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can delete own transaction tags" ON public.transaction_tags
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM public.transactions
+      WHERE transactions.id = transaction_tags.transaction_id
+      AND transactions.user_id = auth.uid()
+    )
+  );
+
 -- Functions for automatic timestamp updates
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -174,6 +241,9 @@ CREATE TRIGGER update_payment_methods_updated_at BEFORE UPDATE ON public.payment
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_vendors_updated_at BEFORE UPDATE ON public.vendors
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_tags_updated_at BEFORE UPDATE ON public.tags
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Function to handle user creation
@@ -206,7 +276,29 @@ BEGIN
     ('Netflix', NEW.id),
     ('Spotify', NEW.id),
     ('Shell', NEW.id);
-  
+
+  -- Create default tags for new user based on email
+  IF NEW.email = 'dennis@dsil.design' THEN
+    -- Custom tags for dennis@dsil.design
+    INSERT INTO public.tags (name, color, user_id) VALUES
+      ('Reimburseable', '#dbeafe', NEW.id),
+      ('Business Expense', '#fef3c7', NEW.id),
+      ('Florida Villa', '#dcfce7', NEW.id);
+  ELSIF NEW.email LIKE '%demo%' OR NEW.email = 'demo@example.com' THEN
+    -- Tags for demo accounts
+    INSERT INTO public.tags (name, color, user_id) VALUES
+      ('Personal', '#dbeafe', NEW.id),
+      ('Work Travel', '#dcfce7', NEW.id),
+      ('Client Meeting', '#fef3c7', NEW.id);
+  ELSE
+    -- Default tags for all other users
+    INSERT INTO public.tags (name, color, user_id) VALUES
+      ('Personal', '#dbeafe', NEW.id),
+      ('Business', '#dcfce7', NEW.id),
+      ('Tax Deductible', '#fef3c7', NEW.id),
+      ('Recurring', '#ffe2e2', NEW.id);
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

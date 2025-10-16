@@ -72,16 +72,51 @@ export class ECBFullSyncService {
   private syncHistoryId?: string;
   private configuration?: SyncConfiguration;
   private abortController?: AbortController;
+  private readonly SYNC_TIMEOUT_MS = 4.5 * 60 * 1000; // 4.5 minutes (Vercel has 5min limit)
 
   /**
-   * Execute a full sync of ECB exchange rates
+   * Execute a full sync of ECB exchange rates with timeout protection
    */
   async executeSync(
     syncType: 'manual' | 'scheduled' | 'auto_retry' = 'manual',
     triggeredBy?: string
   ): Promise<SyncResult> {
+    const syncStartTime = Date.now();
+
+    // Wrap the sync with a timeout
+    const timeoutPromise = new Promise<SyncResult>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Sync timeout exceeded (${this.SYNC_TIMEOUT_MS / 1000}s)`));
+      }, this.SYNC_TIMEOUT_MS);
+    });
+
+    try {
+      return await Promise.race([
+        this.executeSyncInternal(syncType, triggeredBy),
+        timeoutPromise
+      ]);
+    } catch (error) {
+      // If timeout error, ensure we mark the sync as failed
+      if (error instanceof Error && error.message.includes('timeout')) {
+        const duration = Date.now() - syncStartTime;
+        if (this.syncHistoryId) {
+          await this.completeSyncHistory(false, duration, undefined, error.message);
+        }
+        this.abortController?.abort();
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Internal sync execution (can be cancelled by timeout)
+   */
+  private async executeSyncInternal(
+    syncType: 'manual' | 'scheduled' | 'auto_retry' = 'manual',
+    triggeredBy?: string
+  ): Promise<SyncResult> {
     const startTime = Date.now();
-    
+
     try {
       // Load configuration
       this.configuration = await this.loadConfiguration();

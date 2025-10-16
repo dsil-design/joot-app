@@ -15,6 +15,7 @@ export interface CreateTransactionData {
   description?: string
   vendorId?: string
   paymentMethodId?: string
+  tagIds?: string[]
   amount: number
   originalCurrency: CurrencyType
   transactionType: TransactionType
@@ -50,6 +51,14 @@ export function useTransactions() {
           payment_methods (
             id,
             name
+          ),
+          transaction_tags (
+            tag_id,
+            tags (
+              id,
+              name,
+              color
+            )
           )
         `)
         .eq("user_id", user.id)
@@ -65,7 +74,13 @@ export function useTransactions() {
         throw fetchError
       }
 
-      setTransactions((data as TransactionWithVendorAndPayment[]) || [])
+      // Transform the data to include tags array
+      const transformedData = (data || []).map((transaction: any) => ({
+        ...transaction,
+        tags: transaction.transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
+      }))
+
+      setTransactions(transformedData as TransactionWithVendorAndPayment[])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch transactions")
       setTransactions([])
@@ -132,6 +147,22 @@ export function useTransactions() {
       }
 
       if (data) {
+        // If there are tags, create the transaction_tags relationships
+        if (transactionData.tagIds && transactionData.tagIds.length > 0) {
+          const tagInserts = transactionData.tagIds.map(tagId => ({
+            transaction_id: data.id,
+            tag_id: tagId
+          }))
+
+          const { error: tagError } = await supabase
+            .from("transaction_tags")
+            .insert(tagInserts)
+
+          if (tagError) {
+            console.error("Failed to add tags to transaction:", tagError)
+          }
+        }
+
         // Optimistically add the new transaction to the state
         // The home page will handle fetching fresh data when it loads
         setTransactions(prev => [data as TransactionWithVendorAndPayment, ...prev])
@@ -208,7 +239,7 @@ export function useTransactions() {
       setError(null)
 
       const { data: { user } } = await supabase.auth.getUser()
-      
+
       if (!user) {
         throw new Error("User not authenticated")
       }
@@ -224,6 +255,14 @@ export function useTransactions() {
           payment_methods (
             id,
             name
+          ),
+          transaction_tags (
+            tag_id,
+            tags (
+              id,
+              name,
+              color
+            )
           )
         `)
         .eq("user_id", user.id)
@@ -231,11 +270,23 @@ export function useTransactions() {
         .single()
 
       if (fetchError) {
+        console.error("Error fetching transaction:", fetchError)
         throw fetchError
       }
 
-      return (data as TransactionWithVendorAndPayment) || null
+      if (!data) {
+        return null
+      }
+
+      // Transform the data to include tags array
+      const transformed = {
+        ...data,
+        tags: (data as any).transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
+      }
+
+      return transformed as TransactionWithVendorAndPayment
     } catch (err) {
+      console.error("getTransactionById error:", err)
       setError(err instanceof Error ? err.message : "Failed to fetch transaction")
       return null
     }
@@ -265,6 +316,14 @@ export function useTransactions() {
           payment_methods (
             id,
             name
+          ),
+          transaction_tags (
+            tag_id,
+            tags (
+              id,
+              name,
+              color
+            )
           )
         `)
         .eq("user_id", user.id)
@@ -276,10 +335,56 @@ export function useTransactions() {
         throw fetchError
       }
 
-      return (data as TransactionWithVendorAndPayment[]) || []
+      // Transform the data to include tags array
+      const transformedData = (data || []).map((transaction: any) => ({
+        ...transaction,
+        tags: transaction.transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
+      }))
+
+      return transformedData as TransactionWithVendorAndPayment[]
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch transactions by date range")
       return []
+    }
+  }
+
+  const updateTransactionTags = async (
+    transactionId: string,
+    tagIds: string[]
+  ): Promise<boolean> => {
+    try {
+      setError(null)
+
+      // Delete existing tags
+      const { error: deleteError } = await supabase
+        .from("transaction_tags")
+        .delete()
+        .eq("transaction_id", transactionId)
+
+      if (deleteError) {
+        throw deleteError
+      }
+
+      // Insert new tags if any
+      if (tagIds.length > 0) {
+        const tagInserts = tagIds.map(tagId => ({
+          transaction_id: transactionId,
+          tag_id: tagId
+        }))
+
+        const { error: insertError } = await supabase
+          .from("transaction_tags")
+          .insert(tagInserts)
+
+        if (insertError) {
+          throw insertError
+        }
+      }
+
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update transaction tags")
+      return false
     }
   }
 
@@ -296,6 +401,7 @@ export function useTransactions() {
     deleteTransaction,
     getTransactionById,
     getTransactionsByDateRange,
+    updateTransactionTags,
     refetch: fetchTransactions
   }
 }

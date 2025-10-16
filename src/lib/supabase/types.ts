@@ -268,6 +268,77 @@ export type Database = {
           },
         ]
       }
+      tags: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          color: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          color?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          color?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tags_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_tags: {
+        Row: {
+          created_at: string | null
+          id: string
+          transaction_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          transaction_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          transaction_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_tags_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_changes: {
         Row: {
           change_type: string
@@ -782,6 +853,14 @@ export type ExchangeRate = Database['public']['Tables']['exchange_rates']['Row']
 export type ExchangeRateInsert = Database['public']['Tables']['exchange_rates']['Insert']
 export type ExchangeRateUpdate = Database['public']['Tables']['exchange_rates']['Update']
 
+export type Tag = Database['public']['Tables']['tags']['Row']
+export type TagInsert = Database['public']['Tables']['tags']['Insert']
+export type TagUpdate = Database['public']['Tables']['tags']['Update']
+
+export type TransactionTag = Database['public']['Tables']['transaction_tags']['Row']
+export type TransactionTagInsert = Database['public']['Tables']['transaction_tags']['Insert']
+export type TransactionTagUpdate = Database['public']['Tables']['transaction_tags']['Update']
+
 export type CurrencyType = Database['public']['Enums']['currency_type']
 export type TransactionType = Database['public']['Enums']['transaction_type']
 export type UserRole = Database['public']['Enums']['user_role']
@@ -796,4 +875,9 @@ export type TransactionWithVendorAndPayment = Transaction & {
     id: string
     name: string
   } | null
+  tags?: {
+    id: string
+    name: string
+    color: string
+  }[]
 }

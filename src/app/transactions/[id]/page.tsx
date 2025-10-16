@@ -15,6 +15,7 @@ import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
 import { format, parseISO } from "date-fns"
 import { formatInTimeZone } from "date-fns-tz"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
 
 
@@ -47,6 +48,41 @@ function FieldValuePair({ label, value, secondaryText, showAsterisk }: FieldValu
       {secondaryText && (
         <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[#71717b] text-[14px] text-nowrap">
           <p className="leading-[20px] whitespace-pre">{secondaryText}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface FieldTagsProps {
+  label: string
+  tags: Array<{ id: string; name: string; color: string }> | undefined
+}
+
+function FieldTags({ label, tags }: FieldTagsProps) {
+  return (
+    <div className="content-stretch flex flex-col gap-2 items-start justify-start relative shrink-0">
+      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-950">
+        <p className="leading-[20px] whitespace-pre">{label}</p>
+      </div>
+      {tags && tags.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {tags.map((tag) => (
+            <Badge
+              key={tag.id}
+              variant="secondary"
+              style={{
+                backgroundColor: tag.color,
+                color: '#18181b', // zinc-950 for readable text
+              }}
+            >
+              {tag.name}
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-500">
+          <p className="leading-[20px] whitespace-pre">No tags</p>
         </div>
       )}
     </div>
@@ -289,9 +325,13 @@ export default function ViewTransactionPage() {
             label="Vendor" 
             value={transaction.vendors?.name || "Unknown"} 
           />
-          <FieldValuePair 
-            label="Payment method" 
-            value={transaction.payment_methods?.name || "Unknown"} 
+          <FieldValuePair
+            label="Payment method"
+            value={transaction.payment_methods?.name || "Unknown"}
+          />
+          <FieldTags
+            label="Tags"
+            tags={transaction.tags}
           />
           <FieldValuePair
             label="Amount"
