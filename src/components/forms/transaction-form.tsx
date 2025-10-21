@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input"
 import { CurrencyInput } from "@/components/ui/currency-input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { ComboBox } from "@/components/ui/combobox"
+import { SearchableComboBox } from "@/components/ui/searchable-combobox"
 import { MultiSelectComboBox } from "@/components/ui/multi-select-combobox"
 import { DatePicker } from "@/components/ui/date-picker"
-import { useVendorOptions, usePaymentMethodOptions, useTagOptions } from "@/hooks"
+import { useVendorSearch } from "@/hooks/use-vendor-search"
+import { usePaymentMethodSearch } from "@/hooks/use-payment-method-search"
+import { useTagOptions } from "@/hooks"
 import { toast } from "sonner"
 import { CreditCard, DollarSign, ChevronLeft, ChevronRight } from "lucide-react"
 import type { CurrencyType, TransactionType } from "@/lib/supabase/types"
@@ -68,33 +70,70 @@ export function TransactionForm({
     initialData?.transactionDate || new Date()
   )
 
-  // Custom hooks for options
-  const { options: vendorOptions, addCustomOption: addVendor, loading: vendorsLoading } = useVendorOptions()
-  const { options: paymentOptions, addCustomOption: addPaymentMethod, loading: paymentsLoading } = usePaymentMethodOptions()
+  // Custom hooks for search-based selection
+  const { searchVendors, getVendorById, createVendor } = useVendorSearch()
+  const { searchPaymentMethods, getPaymentMethodById, createPaymentMethod } = usePaymentMethodSearch()
   const { options: tagOptions, addCustomOption: addTag, loading: tagsLoading } = useTagOptions()
 
-  const handleAddVendor = async (vendorName: string) => {
-    const newVendor = await addVendor(vendorName)
+  // State to track display labels for searchable fields
+  const [vendorLabel, setVendorLabel] = React.useState("")
+  const [paymentMethodLabel, setPaymentMethodLabel] = React.useState("")
+
+  // Load vendor and payment method names in edit mode
+  React.useEffect(() => {
+    const loadLabels = async () => {
+      if (mode === 'edit' && initialData?.vendor) {
+        const vendorData = await getVendorById(initialData.vendor)
+        if (vendorData) {
+          setVendorLabel(vendorData.name)
+        }
+      }
+
+      if (mode === 'edit' && initialData?.paymentMethod) {
+        const paymentMethodData = await getPaymentMethodById(initialData.paymentMethod)
+        if (paymentMethodData) {
+          setPaymentMethodLabel(paymentMethodData.name)
+        }
+      }
+    }
+
+    loadLabels()
+  }, [mode, initialData?.vendor, initialData?.paymentMethod, getVendorById, getPaymentMethodById])
+
+  const handleAddVendor = async (vendorName: string): Promise<string | null> => {
+    const newVendor = await createVendor(vendorName)
     if (newVendor) {
-      setVendor(newVendor)
+      setVendor(newVendor.id)
+      setVendorLabel(newVendor.name)
       toast.success(`Added vendor: ${vendorName}`)
-      return newVendor
+      return newVendor.id
     } else {
       toast.error("Failed to add vendor")
       return null
     }
   }
 
-  const handleAddPaymentMethod = async (methodName: string) => {
-    const newMethod = await addPaymentMethod(methodName)
+  const handleAddPaymentMethod = async (methodName: string): Promise<string | null> => {
+    const newMethod = await createPaymentMethod(methodName)
     if (newMethod) {
-      setPaymentMethod(newMethod)
+      setPaymentMethod(newMethod.id)
+      setPaymentMethodLabel(newMethod.name)
       toast.success(`Added payment method: ${methodName}`)
-      return newMethod
+      return newMethod.id
     } else {
       toast.error("Failed to add payment method")
       return null
     }
+  }
+
+  const handleSearchVendors = async (query: string) => {
+    const results = await searchVendors(query)
+    return results.map(v => ({ id: v.id, name: v.name }))
+  }
+
+  const handleSearchPaymentMethods = async (query: string) => {
+    const results = await searchPaymentMethods(query)
+    return results.map(pm => ({ id: pm.id, name: pm.name }))
   }
 
   const handleAddTag = async (tagName: string) => {
@@ -232,44 +271,40 @@ export function TransactionForm({
           />
         </div>
 
-        {/* Vendor ComboBox */}
+        {/* Vendor SearchableComboBox */}
         <div className="flex flex-col gap-1 items-start justify-start w-full">
           <Label htmlFor="vendor" className="text-sm font-medium text-zinc-950">
             Vendor
           </Label>
-          <ComboBox
-            id="vendor"
-            options={vendorOptions}
+          <SearchableComboBox
             value={vendor}
+            selectedLabel={vendorLabel}
             onValueChange={setVendor}
+            onSearch={handleSearchVendors}
             onAddNew={handleAddVendor}
-            allowAdd={true}
-            placeholder="Select option"
-            searchPlaceholder="Search vendors..."
-            addNewLabel="Add vendor"
-            label="Select or add a vendor"
-            disabled={vendorsLoading}
+            placeholder="Search for vendor..."
+            searchPlaceholder="Type to search..."
+            emptyMessage="No vendors found."
+            label="Search or add a vendor"
             className="w-full"
           />
         </div>
 
-        {/* Payment Method ComboBox */}
+        {/* Payment Method SearchableComboBox */}
         <div className="flex flex-col gap-1 items-start justify-start w-full">
           <Label htmlFor="payment-method" className="text-sm font-medium text-zinc-950">
             Payment Method
           </Label>
-          <ComboBox
-            id="payment-method"
-            options={paymentOptions}
+          <SearchableComboBox
             value={paymentMethod}
+            selectedLabel={paymentMethodLabel}
             onValueChange={setPaymentMethod}
+            onSearch={handleSearchPaymentMethods}
             onAddNew={handleAddPaymentMethod}
-            allowAdd={true}
-            placeholder="Select option"
-            searchPlaceholder="Search payment methods..."
-            addNewLabel="Add payment method"
-            label="Select or add a payment method"
-            disabled={paymentsLoading}
+            placeholder="Search for payment method..."
+            searchPlaceholder="Type to search..."
+            emptyMessage="No payment methods found."
+            label="Search or add a payment method"
             className="w-full"
           />
         </div>

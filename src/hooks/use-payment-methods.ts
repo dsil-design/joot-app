@@ -27,6 +27,7 @@ export function usePaymentMethods() {
         .select("*")
         .eq("user_id", user.id)
         .order("name", { ascending: true })
+        .limit(10000) // Increase limit to handle large payment method lists
 
       if (fetchError) {
         throw fetchError

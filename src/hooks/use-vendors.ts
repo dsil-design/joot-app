@@ -27,6 +27,7 @@ export function useVendors() {
         .select("*")
         .eq("user_id", user.id)
         .order("name", { ascending: true })
+        .limit(10000) // Increase limit to handle large vendor lists
 
       if (fetchError) {
         throw fetchError
