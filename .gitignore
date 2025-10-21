@@ -53,3 +53,13 @@ db_backups/
 # Prevent loose migration files (should be in database/migrations/)
 database/migration-*.sql
 database/*_migration.sql
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Data import files
+csv_imports/
+verification-output/
+
+# One-off scripts in root
+check-migrations.js
