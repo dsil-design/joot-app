@@ -94,6 +94,7 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          sort_order: number
           updated_at: string | null
           user_id: string
         }
@@ -101,6 +102,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          sort_order: number
           updated_at?: string | null
           user_id: string
         }
@@ -108,6 +110,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          sort_order?: number
           updated_at?: string | null
           user_id?: string
         }
@@ -853,18 +856,10 @@ export const Constants = {
   },
 } as const
 
-// Convenience type aliases
-export type User = Database['public']['Tables']['users']['Row']
-export type UserInsert = Database['public']['Tables']['users']['Insert']
-export type UserUpdate = Database['public']['Tables']['users']['Update']
-
-export type Transaction = Database['public']['Tables']['transactions']['Row']
-export type TransactionInsert = Database['public']['Tables']['transactions']['Insert']
-export type TransactionUpdate = Database['public']['Tables']['transactions']['Update']
-
-export type Vendor = Database['public']['Tables']['vendors']['Row']
-export type VendorInsert = Database['public']['Tables']['vendors']['Insert']
-export type VendorUpdate = Database['public']['Tables']['vendors']['Update']
+// Type exports
+export type CurrencyType = Database['public']['Enums']['currency_type']
+export type TransactionType = Database['public']['Enums']['transaction_type']
+export type UserRole = Database['public']['Enums']['user_role']
 
 export type PaymentMethod = Database['public']['Tables']['payment_methods']['Row']
 export type PaymentMethodInsert = Database['public']['Tables']['payment_methods']['Insert']
@@ -882,23 +877,30 @@ export type TransactionTag = Database['public']['Tables']['transaction_tags']['R
 export type TransactionTagInsert = Database['public']['Tables']['transaction_tags']['Insert']
 export type TransactionTagUpdate = Database['public']['Tables']['transaction_tags']['Update']
 
-export type CurrencyType = Database['public']['Enums']['currency_type']
-export type TransactionType = Database['public']['Enums']['transaction_type']
-export type UserRole = Database['public']['Enums']['user_role']
+export type Vendor = Database['public']['Tables']['vendors']['Row']
+export type VendorInsert = Database['public']['Tables']['vendors']['Insert']
+export type VendorUpdate = Database['public']['Tables']['vendors']['Update']
 
-// Extended types with relationships
-export type TransactionWithVendorAndPayment = Transaction & {
-  vendors: {
-    id: string
-    name: string
-  } | null
-  payment_methods: {
-    id: string
-    name: string
-  } | null
-  tags?: {
-    id: string
-    name: string
-    color: string
-  }[]
+export type Transaction = Database['public']['Tables']['transactions']['Row']
+export type TransactionInsert = Database['public']['Tables']['transactions']['Insert']
+export type TransactionUpdate = Database['public']['Tables']['transactions']['Update']
+
+export type SyncHistory = Database['public']['Tables']['sync_history']['Row']
+export type SyncHistoryInsert = Database['public']['Tables']['sync_history']['Insert']
+export type SyncHistoryUpdate = Database['public']['Tables']['sync_history']['Update']
+
+export type RateChange = Database['public']['Tables']['rate_changes']['Row']
+export type RateChangeInsert = Database['public']['Tables']['rate_changes']['Insert']
+export type RateChangeUpdate = Database['public']['Tables']['rate_changes']['Update']
+
+// User type
+export type User = Database['public']['Tables']['users']['Row']
+export type UserInsert = Database['public']['Tables']['users']['Insert']
+export type UserUpdate = Database['public']['Tables']['users']['Update']
+
+// Extended types with relations
+export interface TransactionWithVendorAndPayment extends Transaction {
+  vendors: Pick<Vendor, 'id' | 'name'> | Vendor | null
+  payment_methods: Pick<PaymentMethod, 'id' | 'name'> | PaymentMethod | null
+  tags?: Tag[]
 }

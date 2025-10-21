@@ -17,6 +17,7 @@ import { formatInTimeZone } from "date-fns-tz"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
+import { formatCurrency } from "@/lib/utils"
 
 
 function EditIcon() {
@@ -157,8 +158,7 @@ export default function ViewTransactionPage() {
   }
 
   const formatAmount = (transaction: TransactionWithVendorAndPayment) => {
-    const symbol = transaction.original_currency === "USD" ? "$" : "฿"
-    return `${symbol}${transaction.amount.toFixed(2)} ${transaction.original_currency}`
+    return `${formatCurrency(transaction.amount, transaction.original_currency)} ${transaction.original_currency}`
   }
 
   const formatExchangeRate = (transaction: TransactionWithVendorAndPayment, rate: number | null) => {
@@ -169,11 +169,13 @@ export default function ViewTransactionPage() {
     // Always format as: 1 USD = [x] THB
     if (transaction.original_currency === "USD") {
       // Transaction is in USD, exchange_rate is already USD to THB
-      return `1 USD = ${rate.toFixed(2)} THB`
+      const formattedRate = formatCurrency(rate, 'THB').replace('฿', '')
+      return `1 USD = ${formattedRate} THB`
     } else {
       // Transaction is in THB, exchange_rate is THB to USD, so invert it
       const usdToThb = 1 / rate
-      return `1 USD = ${usdToThb.toFixed(2)} THB`
+      const formattedRate = formatCurrency(usdToThb, 'THB').replace('฿', '')
+      return `1 USD = ${formattedRate} THB`
     }
   }
 

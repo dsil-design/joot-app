@@ -6,7 +6,17 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)]()
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green.svg)]()
 
-A comprehensive Next.js 15 transaction tracking application with USD/THB currency conversion capabilities, comprehensive authentication, and extensive testing coverage.
+A comprehensive Next.js 15 transaction tracking application with USD/THB currency conversion capabilities, monthly financial dashboard, comprehensive authentication, and extensive testing coverage.
+
+## ✨ Features
+
+- **📊 Dashboard Overview**: Monthly financial summary with income, expenses, and surplus/deficit tracking
+- **💰 Transaction Management**: Add, edit, view, and categorize transactions with vendor and payment method tracking
+- **💱 Currency Conversion**: Automatic USD/THB conversion with historical exchange rate tracking from ECB
+- **📱 Responsive Design**: Optimized for mobile and desktop experiences with adaptive layouts
+- **🔐 Secure Authentication**: Email-based authentication with row-level security
+- **🎨 Modern UI**: Clean, minimal design system with shadcn/ui components
+- **♿ Accessibility**: WCAG-compliant components with keyboard navigation and screen reader support
 
 ## 🚀 Tech Stack
 
@@ -14,8 +24,8 @@ A comprehensive Next.js 15 transaction tracking application with USD/THB currenc
 - **Authentication**: Supabase Auth with middleware-based route protection
 - **Database**: Supabase PostgreSQL with Row Level Security (RLS)
 - **UI**: shadcn/ui components ("new-york" style) with Radix UI primitives
-- **Styling**: Tailwind CSS with Geist font family
-- **Testing**: Jest + Playwright for comprehensive test coverage
+- **Styling**: Tailwind CSS with Geist font family and design tokens
+- **Testing**: Jest + Playwright for comprehensive test coverage (70%+ coverage)
 - **Language**: TypeScript 5 with strict configuration
 
 ## 🏗️ Project Structure
@@ -102,6 +112,8 @@ Detailed documentation is available in the `/docs` directory:
 - **[CI/CD Documentation](docs/deployment/ci.md)** - GitHub Actions workflows
 - **[Migration Guide](docs/deployment/migrations.md)** - Database migration procedures
 - **[Testing Documentation](docs/testing.md)** - Comprehensive testing guide
+- **[Design System Documentation](docs/design-system/README.md)** - Design tokens, components, and patterns
+- **[Monthly Summary Utility](docs/utilities/monthly-summary.md)** - Financial calculation utilities
 
 ## Learn More
 

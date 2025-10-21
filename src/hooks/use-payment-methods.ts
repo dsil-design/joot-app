@@ -26,7 +26,7 @@ export function usePaymentMethods() {
         .from("payment_methods")
         .select("*")
         .eq("user_id", user.id)
-        .order("name", { ascending: true })
+        .order("sort_order", { ascending: true })
         .limit(10000) // Increase limit to handle large payment method lists
 
       if (fetchError) {
@@ -47,14 +47,26 @@ export function usePaymentMethods() {
       setError(null)
 
       const { data: { user } } = await supabase.auth.getUser()
-      
+
       if (!user) {
         throw new Error("User not authenticated")
       }
 
+      // Get the next sort_order by finding the max and adding 1
+      const { data: maxSortOrder } = await supabase
+        .from("payment_methods")
+        .select("sort_order")
+        .eq("user_id", user.id)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .single()
+
+      const nextSortOrder = maxSortOrder ? maxSortOrder.sort_order + 1 : 1
+
       const insertData: PaymentMethodInsert = {
         name: name.trim(),
-        user_id: user.id
+        user_id: user.id,
+        sort_order: nextSortOrder
       }
 
       const { data, error: insertError } = await supabase
@@ -68,8 +80,8 @@ export function usePaymentMethods() {
       }
 
       if (data) {
-        // Add to local state
-        setPaymentMethods(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
+        // Add to local state and re-fetch to get proper sort order
+        await fetchPaymentMethods()
         return data
       }
 
@@ -99,10 +111,10 @@ export function usePaymentMethods() {
       // Update local state
       setPaymentMethods(prev =>
         prev.map(paymentMethod =>
-          paymentMethod.id === id 
+          paymentMethod.id === id
             ? { ...paymentMethod, name: name.trim() }
             : paymentMethod
-        ).sort((a, b) => a.name.localeCompare(b.name))
+        )
       )
 
       return true

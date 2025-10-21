@@ -73,9 +73,21 @@ export function usePaymentMethodSearch() {
         throw new Error("User not authenticated")
       }
 
+      // Get the next sort_order by finding the max and adding 1
+      const { data: maxSortOrder } = await supabase
+        .from("payment_methods")
+        .select("sort_order")
+        .eq("user_id", user.id)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .single()
+
+      const nextSortOrder = maxSortOrder ? maxSortOrder.sort_order + 1 : 1
+
       const insertData: PaymentMethodInsert = {
         name: name.trim(),
-        user_id: user.id
+        user_id: user.id,
+        sort_order: nextSortOrder
       }
 
       const { data, error: insertError } = await supabase

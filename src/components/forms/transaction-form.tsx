@@ -7,11 +7,11 @@ import { CurrencyInput } from "@/components/ui/currency-input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { SearchableComboBox } from "@/components/ui/searchable-combobox"
+import { ComboBox } from "@/components/ui/combobox"
 import { MultiSelectComboBox } from "@/components/ui/multi-select-combobox"
 import { DatePicker } from "@/components/ui/date-picker"
 import { useVendorSearch } from "@/hooks/use-vendor-search"
-import { usePaymentMethodSearch } from "@/hooks/use-payment-method-search"
-import { useTagOptions } from "@/hooks"
+import { usePaymentMethodOptions, useTagOptions } from "@/hooks"
 import { toast } from "sonner"
 import { CreditCard, DollarSign, ChevronLeft, ChevronRight } from "lucide-react"
 import type { CurrencyType, TransactionType } from "@/lib/supabase/types"
@@ -31,6 +31,7 @@ export interface TransactionFormProps {
   mode: "add" | "edit"
   initialData?: Partial<TransactionFormData>
   onSave: (data: TransactionFormData) => Promise<void>
+  onSaveAndAddAnother?: (data: TransactionFormData) => Promise<boolean>
   onCancel: () => void
   saving?: boolean
   saveButtonLabel?: string
@@ -43,6 +44,7 @@ export function TransactionForm({
   mode,
   initialData,
   onSave,
+  onSaveAndAddAnother,
   onCancel,
   saving = false,
   saveButtonLabel,
@@ -50,6 +52,9 @@ export function TransactionForm({
   showDateStepper = false,
   useStandardAmountInput = false,
 }: TransactionFormProps) {
+  // Ref for auto-focus
+  const descriptionRef = React.useRef<HTMLInputElement>(null)
+
   // Form state
   const [currency, setCurrency] = React.useState<CurrencyType>(
     initialData?.currency || "THB"
@@ -72,14 +77,13 @@ export function TransactionForm({
 
   // Custom hooks for search-based selection
   const { searchVendors, getVendorById, createVendor } = useVendorSearch()
-  const { searchPaymentMethods, getPaymentMethodById, createPaymentMethod } = usePaymentMethodSearch()
+  const { options: paymentOptions, addCustomOption: addPaymentMethod, loading: paymentsLoading } = usePaymentMethodOptions()
   const { options: tagOptions, addCustomOption: addTag, loading: tagsLoading } = useTagOptions()
 
   // State to track display labels for searchable fields
   const [vendorLabel, setVendorLabel] = React.useState("")
-  const [paymentMethodLabel, setPaymentMethodLabel] = React.useState("")
 
-  // Load vendor and payment method names in edit mode
+  // Load vendor name in edit mode
   React.useEffect(() => {
     const loadLabels = async () => {
       if (mode === 'edit' && initialData?.vendor) {
@@ -88,17 +92,32 @@ export function TransactionForm({
           setVendorLabel(vendorData.name)
         }
       }
-
-      if (mode === 'edit' && initialData?.paymentMethod) {
-        const paymentMethodData = await getPaymentMethodById(initialData.paymentMethod)
-        if (paymentMethodData) {
-          setPaymentMethodLabel(paymentMethodData.name)
-        }
-      }
     }
 
     loadLabels()
-  }, [mode, initialData?.vendor, initialData?.paymentMethod, getVendorById, getPaymentMethodById])
+  }, [mode, initialData?.vendor, getVendorById])
+
+  // Auto-focus description field on mount
+  React.useEffect(() => {
+    descriptionRef.current?.focus()
+  }, [])
+
+  // Reset form (keeping date and currency)
+  const resetForm = () => {
+    setTransactionType("expense")
+    setVendor("")
+    setPaymentMethod("")
+    setTags([])
+    setDescription("")
+    setAmount("")
+    setVendorLabel("")
+
+    // Scroll to top and focus description
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => {
+      descriptionRef.current?.focus()
+    }, 100)
+  }
 
   const handleAddVendor = async (vendorName: string): Promise<string | null> => {
     const newVendor = await createVendor(vendorName)
@@ -113,28 +132,22 @@ export function TransactionForm({
     }
   }
 
-  const handleAddPaymentMethod = async (methodName: string): Promise<string | null> => {
-    const newMethod = await createPaymentMethod(methodName)
+  const handleAddPaymentMethod = async (methodName: string) => {
+    const newMethod = await addPaymentMethod(methodName)
     if (newMethod) {
-      setPaymentMethod(newMethod.id)
-      setPaymentMethodLabel(newMethod.name)
+      setPaymentMethod(newMethod)
       toast.success(`Added payment method: ${methodName}`)
-      return newMethod.id
+      return newMethod
     } else {
       toast.error("Failed to add payment method")
       return null
     }
   }
 
-  const handleSearchVendors = async (query: string) => {
+  const handleSearchVendors = React.useCallback(async (query: string) => {
     const results = await searchVendors(query)
     return results.map(v => ({ id: v.id, name: v.name }))
-  }
-
-  const handleSearchPaymentMethods = async (query: string) => {
-    const results = await searchPaymentMethods(query)
-    return results.map(pm => ({ id: pm.id, name: pm.name }))
-  }
+  }, [searchVendors])
 
   const handleAddTag = async (tagName: string) => {
     const newTag = await addTag(tagName)
@@ -176,6 +189,38 @@ export function TransactionForm({
     }
 
     await onSave(formData)
+  }
+
+  const handleSubmitAndAddAnother = async () => {
+    if (!description.trim()) {
+      toast.error("Please enter a description")
+      return
+    }
+
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid amount")
+      return
+    }
+
+    if (!onSaveAndAddAnother) {
+      return
+    }
+
+    const formData: TransactionFormData = {
+      currency,
+      transactionType,
+      vendor,
+      paymentMethod,
+      tags,
+      description,
+      amount,
+      transactionDate,
+    }
+
+    const success = await onSaveAndAddAnother(formData)
+    if (success) {
+      resetForm()
+    }
   }
 
   const isFormValid =
@@ -262,6 +307,7 @@ export function TransactionForm({
             Description
           </Label>
           <Input
+            ref={descriptionRef}
             id="description"
             type="text"
             placeholder="e.g., Groceries, Drinks, Gas"
@@ -290,21 +336,23 @@ export function TransactionForm({
           />
         </div>
 
-        {/* Payment Method SearchableComboBox */}
+        {/* Payment Method ComboBox */}
         <div className="flex flex-col gap-1 items-start justify-start w-full">
           <Label htmlFor="payment-method" className="text-sm font-medium text-zinc-950">
             Payment Method
           </Label>
-          <SearchableComboBox
+          <ComboBox
+            id="payment-method"
+            options={paymentOptions}
             value={paymentMethod}
-            selectedLabel={paymentMethodLabel}
             onValueChange={setPaymentMethod}
-            onSearch={handleSearchPaymentMethods}
             onAddNew={handleAddPaymentMethod}
-            placeholder="Search for payment method..."
-            searchPlaceholder="Type to search..."
-            emptyMessage="No payment methods found."
-            label="Search or add a payment method"
+            allowAdd={true}
+            placeholder="Select option"
+            searchPlaceholder="Search payment methods..."
+            addNewLabel="Add payment method"
+            label="Select or add a payment method"
+            disabled={paymentsLoading}
             className="w-full"
           />
         </div>
@@ -397,8 +445,19 @@ export function TransactionForm({
             ? "Saving..."
             : saveButtonLabel || (mode === "edit" ? "Save changes" : "Save")}
         </Button>
+        {onSaveAndAddAnother && mode === "add" && (
+          <Button
+            variant="secondary"
+            onClick={handleSubmitAndAddAnother}
+            disabled={saving || !isFormValid}
+            size="lg"
+            className="w-full"
+          >
+            {saving ? "Saving..." : "Save & Add Another"}
+          </Button>
+        )}
         <Button
-          variant="secondary"
+          variant="ghost"
           onClick={onCancel}
           disabled={saving}
           size="lg"

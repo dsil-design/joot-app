@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
+import { CalendarIcon, X } from "lucide-react"
+import { format, parse, isValid } from "date-fns"
 import type { DateRange } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
+import { Input } from "@/components/ui/input"
 import {
   Popover,
   PopoverContent,
@@ -30,90 +31,271 @@ export interface DateRangePickerProps {
 }
 
 /**
- * DateRangePicker - A flexible date picker that supports both single date and date range selection
+ * Parses a date string with multiple format support
+ */
+function parseDate(dateStr: string): Date | null {
+  const trimmed = dateStr.trim()
+  if (!trimmed) return null
+
+  // Try common date formats
+  const formats = [
+    "M/d/yyyy",
+    "M/d/yy",
+    "MM/dd/yyyy",
+    "MM/dd/yy",
+    "MMM d, yyyy",
+    "MMMM d, yyyy",
+    "yyyy-MM-dd",
+    "M-d-yyyy",
+    "M-d-yy",
+  ]
+
+  for (const formatStr of formats) {
+    try {
+      const parsed = parse(trimmed, formatStr, new Date())
+      if (isValid(parsed)) {
+        return parsed
+      }
+    } catch {
+      continue
+    }
+  }
+
+  return null
+}
+
+/**
+ * Parses a date range string (e.g., "1/15/24 - 2/20/24")
+ */
+function parseDateRangeString(value: string): DateRange | undefined {
+  const trimmed = value.trim()
+
+  // Check if it contains a separator (-, to, etc.)
+  const separators = [" - ", " to ", " – ", " — "]
+  let separator: string | null = null
+
+  for (const sep of separators) {
+    if (trimmed.includes(sep)) {
+      separator = sep
+      break
+    }
+  }
+
+  if (separator) {
+    // Range format
+    const parts = trimmed.split(separator)
+    if (parts.length === 2) {
+      const fromDate = parseDate(parts[0])
+      const toDate = parseDate(parts[1])
+
+      if (fromDate && toDate) {
+        return { from: fromDate, to: toDate }
+      } else if (fromDate) {
+        // Only start date is valid
+        return { from: fromDate, to: undefined }
+      }
+    }
+  } else {
+    // Single date format
+    const date = parseDate(trimmed)
+    if (date) {
+      return { from: date, to: undefined }
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * Formats a DateRange for display in the input
+ */
+function formatDateRangeForInput(dateRange: DateRange | undefined): string {
+  if (!dateRange?.from) return ""
+
+  // Single date selection
+  if (!dateRange.to || dateRange.from.getTime() === dateRange.to.getTime()) {
+    return format(dateRange.from, "M/d/yyyy")
+  }
+
+  // Date range selection
+  return `${format(dateRange.from, "M/d/yyyy")} - ${format(dateRange.to, "M/d/yyyy")}`
+}
+
+/**
+ * DateRangePicker - A flexible date picker that supports both manual text input and calendar selection
  *
- * - Click once to select a single date
- * - Click twice to select a date range
- * - Clear button to reset selection
+ * - Type dates manually in formats like: 1/15/24, Jan 15, 2024, etc.
+ * - Type ranges like: 1/15/24 - 2/20/24
+ * - Click calendar icon to use visual date picker
+ * - Smart cursor positioning based on click location
  */
 export function DateRangePicker({
   dateRange,
   onDateRangeChange,
-  placeholder = "Pick a date or range",
+  placeholder = "Type or pick a date",
   disabled = false,
   className,
   label,
 }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false)
+  const [inputValue, setInputValue] = React.useState(() => formatDateRangeForInput(dateRange))
+  const [isEditing, setIsEditing] = React.useState(false)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  // Sync input value with dateRange prop when not editing
+  React.useEffect(() => {
+    if (!isEditing) {
+      setInputValue(formatDateRangeForInput(dateRange))
+    }
+  }, [dateRange, isEditing])
 
   const handleSelect = (range: DateRange | undefined) => {
     onDateRangeChange?.(range)
+    setIsEditing(false)
 
     // If both from and to are selected (complete range), close the popover
-    // For single date, user needs to click outside or press escape
     if (range?.from && range?.to && range.from.getTime() !== range.to.getTime()) {
       setOpen(false)
     }
   }
 
-  const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleClear = () => {
     onDateRangeChange?.(undefined)
+    setInputValue("")
+    setIsEditing(false)
+    inputRef.current?.focus()
   }
 
-  const formatDateRange = () => {
-    if (!dateRange?.from) return null
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setInputValue(value)
+    setIsEditing(true)
 
-    // Single date selection
-    if (!dateRange.to || dateRange.from.getTime() === dateRange.to.getTime()) {
-      return format(dateRange.from, "MMM d, yyyy")
+    // Clear selection if input is empty
+    if (!value.trim()) {
+      onDateRangeChange?.(undefined)
     }
-
-    // Date range selection
-    return `${format(dateRange.from, "MMM d, yyyy")} - ${format(dateRange.to, "MMM d, yyyy")}`
   }
 
-  const displayText = formatDateRange()
+  const handleInputBlur = () => {
+    setIsEditing(false)
+
+    // Try to parse the input value
+    const parsed = parseDateRangeString(inputValue)
+    if (parsed) {
+      onDateRangeChange?.(parsed)
+      // Format the successfully parsed value
+      setInputValue(formatDateRangeForInput(parsed))
+    } else if (!inputValue.trim()) {
+      // Clear if empty
+      onDateRangeChange?.(undefined)
+      setInputValue("")
+    } else {
+      // Invalid input - revert to last valid date or clear
+      if (dateRange) {
+        setInputValue(formatDateRangeForInput(dateRange))
+      } else {
+        setInputValue("")
+      }
+    }
+  }
+
+  const handleInputFocus = () => {
+    setIsEditing(true)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Open calendar on down arrow
+    if (e.key === "ArrowDown" && !open) {
+      e.preventDefault()
+      setOpen(true)
+    }
+    // Clear on Escape
+    else if (e.key === "Escape") {
+      if (inputValue) {
+        e.preventDefault()
+        handleClear()
+      }
+    }
+    // Parse on Enter
+    else if (e.key === "Enter") {
+      e.currentTarget.blur()
+    }
+  }
 
   return (
     <div className={cn("relative", className)}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            disabled={disabled}
-            aria-label={label || "Select date or date range"}
-            className={cn(
-              "w-full justify-start text-left font-normal bg-white",
-              !displayText && "text-muted-foreground"
-            )}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {displayText || placeholder}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="range"
-            selected={dateRange}
-            onSelect={handleSelect}
-            numberOfMonths={1}
-            disabled={disabled}
-          />
-          {displayText && (
-            <div className="border-t p-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClear}
-                className="w-full"
-              >
-                Clear
-              </Button>
-            </div>
+      <div className="relative">
+        <Input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onBlur={handleInputBlur}
+          onFocus={handleInputFocus}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          aria-label={label || "Enter date or date range"}
+          className={cn(
+            "pr-20 bg-white",
+            !inputValue && "text-muted-foreground"
           )}
-        </PopoverContent>
-      </Popover>
+        />
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+          {inputValue && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleClear}
+              disabled={disabled}
+              aria-label="Clear date"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={disabled}
+                aria-label="Open calendar"
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={handleSelect}
+                numberOfMonths={1}
+                disabled={disabled}
+              />
+              {dateRange?.from && (
+                <div className="border-t p-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      handleClear()
+                      setOpen(false)
+                    }}
+                    className="w-full"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
     </div>
   )
 }

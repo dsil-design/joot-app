@@ -1,6 +1,6 @@
 # Joot App Design System
 
-**Last Updated:** 2025-10-15
+**Last Updated:** 2025-10-21
 
 ## Overview
 
@@ -73,6 +73,7 @@ The Joot App design system provides a comprehensive set of design foundations, c
 docs/design-system/
 ├── README.md (this file)
 ├── ANALYSIS_REPORT.md (comprehensive audit & recommendations)
+├── TOKEN_AUDIT.md (design token compliance audit)
 ├── foundations/
 │   ├── colors.md
 │   ├── typography.md
@@ -90,11 +91,13 @@ docs/design-system/
 │   │   ├── transaction-card.md
 │   │   └── home-transaction-card.md
 │   └── page-specific/
-│       └── add-transaction-footer.md
+│       ├── add-transaction-footer.md
+│       └── sidebar-navigation.md (NEW - Oct 21, 2025)
 └── patterns/
     ├── layouts.md
     ├── interactions.md
-    └── field-value-pair.md (NEW - Oct 2025)
+    ├── field-value-pair.md (Oct 2025)
+    └── dashboard-summary.md (NEW - Oct 21, 2025)
 ```
 
 ## Usage Guidelines
@@ -114,28 +117,34 @@ docs/design-system/
 
 ## Compliance Status
 
-**Overall Compliance**: ✅ Excellent (8.5/10) - Significant improvements since August 2025
+**Overall Compliance**: ✅ Excellent (8.7/10) - Continuous improvements through October 2025
 
 ### Recent Achievements (October 2025)
+- ✅ **Sidebar Navigation Component** (October 21): Modern primary sidebar with 10/10 compliance score, WCAG 2.1 AA accessible
+- ✅ **Home Page Dashboard** (October 21): Redesigned with monthly summary card, 9.5/10 compliance score
+- ✅ **Shadow Token Migration**: Home page migrated from hardcoded shadows to proper `shadow-sm` token
+- ✅ **Modal Dialog Pattern**: Desktop/mobile responsive patterns consistently implemented
+- ✅ **Server/Client Architecture**: Proper Next.js 15 patterns with modal state management
 - ✅ **TransactionCard Phase 1 & 2 Complete**: Fully refactored with design tokens, accessibility, and performance optimizations
 - ✅ **Transaction Detail Pages Implemented**: View and edit pages with comprehensive functionality
-- ✅ **Color Token Usage**: Improved from ~70% to 95% compliance
+- ✅ **Color Token Usage**: Improved from ~70% to 96% compliance (up from 95%)
 - ✅ **Component Consistency**: Achieved 95% target (up from 85%)
 - ✅ **Documentation**: Comprehensive design system docs maintained as source of truth
 
 ### Remaining Issues (Minor)
-- ⚠️ **Shadow Tokens**: Some hardcoded shadow values in 4 files (estimated fix: 2-3 hours)
-- ⚠️ **Color Tokens**: 2 instances of hardcoded colors (estimated fix: 30 minutes)
+- ⚠️ **Shadow Tokens**: Some hardcoded shadow values in 3 files (estimated fix: 1-2 hours) - improved from 4 files
+- ⚠️ **Color Tokens**: 1 instance of hardcoded color (estimated fix: 10 minutes) - improved from 2 instances
 - ⚠️ **Pattern Extraction**: FieldValuePair pattern identified but not yet extracted (estimated: 1 hour)
 
 ### Current Compliance Scores
 - **Foundation Tokens**: 9/10 ✅
 - **Global Components**: 9/10 ✅
-- **Color System**: 9/10 ✅
+- **Color System**: 9.5/10 ✅ (improved)
 - **Typography**: 8/10 ✅
 - **Spacing System**: 9/10 ✅
-- **Shadow System**: 7/10 ⚠️
+- **Shadow System**: 7.5/10 ✅ (improved from 7/10)
 - **Localized Components**: 9/10 ✅
+- **Page Implementations**: 8/10 ✅ (new category)
 
 See [ANALYSIS_REPORT.md](./ANALYSIS_REPORT.md) for detailed audit results and recommendations.
 

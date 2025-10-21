@@ -4,6 +4,7 @@ import * as React from 'react'
 import { TransactionCard } from './transaction-card'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
 import { calculateTransactionDisplayAmounts, triggerExchangeRateSync } from '@/lib/utils/currency-converter'
+import { formatCurrency } from '@/lib/utils'
 
 interface HomeTransactionCardProps {
   transaction: TransactionWithVendorAndPayment
@@ -45,9 +46,8 @@ export function HomeTransactionCard({ transaction }: HomeTransactionCardProps) {
       } catch (error) {
         console.error('Error calculating display amounts:', error)
         // Fallback to showing only the recorded amount
-        const symbol = transaction.original_currency === 'USD' ? '$' : '฿'
         setAmounts({
-          primary: `${symbol}${transaction.amount.toFixed(2)}`,
+          primary: formatCurrency(transaction.amount, transaction.original_currency),
           secondary: null
         })
       }

@@ -1,16 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { UserMenu } from '@/components/page-specific/user-menu'
-import { HomeTransactionList } from '@/components/page-specific/home-transaction-list'
-import { AddTransactionFooter } from '@/components/page-specific/add-transaction-footer'
-import { X } from 'lucide-react'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
 import { formatExchangeRateTimestamp, formatTransactionDateLabel } from '@/lib/utils/date-formatter'
 import { formatCurrency } from '@/lib/utils'
+import {
+  calculateEnhancedMonthlySummary,
+  calculateYTDSummary,
+  calculate12MonthTrend,
+  calculateTopVendors
+} from '@/lib/utils/monthly-summary'
+import { format } from 'date-fns'
+import { HomePageClient } from '@/components/shared/HomePageClient'
 
 interface HomePageProps {
   searchParams?: Promise<{ error?: string }>
@@ -62,8 +62,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const userInitials = getInitials(userProfile?.first_name, userProfile?.last_name)
 
-  // Fetch recent transactions (limit to 5 for home page)
-  const { data: transactions } = await supabase
+  // Fetch ALL transactions for summary calculations (needed for 12-month averages)
+  const { data: allTransactions } = await supabase
     .from('transactions')
     .select(`
       *,
@@ -78,7 +78,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     `)
     .eq('user_id', user.id)
     .order('transaction_date', { ascending: false })
-    .limit(5)
+
+  // Get recent 5 for display only
+  const transactions = allTransactions?.slice(0, 5) || []
 
   // Fetch latest USD to THB exchange rate
   const { data: latestExchangeRate } = await supabase
@@ -115,85 +117,46 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     return groups
   }
 
-  const transactionGroups = transactions ? groupTransactionsByDay(transactions) : {}
+  const transactionGroups = groupTransactionsByDay(transactions)
+
+  // Calculate enhanced monthly summary using ALL transactions for accurate comparisons
+  const enhancedMonthlySummary = allTransactions && allTransactions.length > 0
+    ? calculateEnhancedMonthlySummary(allTransactions, new Date(), latestExchangeRate?.rate || 35)
+    : null
+
+  // Calculate YTD summary
+  const ytdSummary = allTransactions && allTransactions.length > 0
+    ? calculateYTDSummary(allTransactions, latestExchangeRate?.rate || 35)
+    : null
+
+  // Calculate 12-month trend
+  const monthlyTrend = allTransactions && allTransactions.length > 0
+    ? calculate12MonthTrend(allTransactions, latestExchangeRate?.rate || 35)
+    : []
+
+  // Calculate top vendors (YTD by default)
+  const topVendors = allTransactions && allTransactions.length > 0
+    ? calculateTopVendors(allTransactions, latestExchangeRate?.rate || 35, 5, 'ytd')
+    : []
+
+  // Get current month name for display
+  const currentMonthName = format(new Date(), 'MMMM yyyy')
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Error message for unauthorized access */}
-      {(resolvedSearchParams?.error === 'unauthorized' || resolvedSearchParams?.error === 'auth_error') && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
-          <Card className="bg-destructive/10 border-destructive text-destructive p-4 shadow-lg max-w-md">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">
-                Access denied. Admin privileges required.
-              </span>
-              <Button variant="ghost" size="sm" className="h-auto p-1 text-destructive hover:text-destructive/80">
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Main scrollable content */}
-      <div className="flex flex-col gap-6 pb-12 pt-16 px-10">
-        {/* Header */}
-        <div className="flex items-center justify-between w-full">
-          <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
-            Home
-          </h1>
-          <UserMenu userName={fullName} isAdmin={isAdmin}>
-            <Avatar className="size-10 cursor-pointer hover:opacity-80 transition-opacity">
-              <AvatarFallback className="bg-zinc-100 text-zinc-950 text-sm font-semibold">
-                {userInitials}
-              </AvatarFallback>
-            </Avatar>
-          </UserMenu>
-        </div>
-
-        {/* Main Content - Figma Design Implementation */}
-        <div className="flex flex-col gap-4 w-full">
-          {/* Opening Section - Latest Exchange Rate */}
-          <div className="flex flex-col gap-2 items-start justify-start w-full">
-            <div className="text-[12px] font-medium text-muted-foreground leading-4">
-              Latest exchange rate
-            </div>
-            <Card className="bg-white border-zinc-200 rounded-lg shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-0 w-full">
-              <div className="p-6">
-                <div className="flex flex-col gap-1 items-start justify-start">
-                  <div className="text-[20px] font-medium text-zinc-950 leading-[28px]">
-                    {exchangeRate}
-                  </div>
-                  <div className="text-[14px] font-normal text-zinc-500 leading-[20px]">
-                    1 USD
-                  </div>
-                  <div className="text-[14px] font-medium text-zinc-950 leading-[20px]">
-                    as of {exchangeRateTimestamp}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Section Header */}
-          <div className="flex gap-4 items-center justify-start w-full">
-            <div className="flex-1 text-[12px] font-medium text-muted-foreground leading-4">
-              Recent Transactions
-            </div>
-            <Button variant="link" size="default" className="text-[#155dfc] h-9 px-4 py-2" asChild>
-              <Link href="/transactions">
-                View all
-              </Link>
-            </Button>
-          </div>
-
-          {/* Transaction Groups by Day */}
-          <HomeTransactionList transactionGroups={transactionGroups} />
-        </div>
-      </div>
-
-      {/* Fixed Sticky Footer - Always visible at bottom */}
-      <AddTransactionFooter />
-    </div>
+    <HomePageClient
+      fullName={fullName}
+      userInitials={userInitials}
+      userEmail={user.email || ''}
+      isAdmin={isAdmin}
+      currentMonthName={currentMonthName}
+      enhancedMonthlySummary={enhancedMonthlySummary}
+      ytdSummary={ytdSummary}
+      monthlyTrend={monthlyTrend}
+      topVendors={topVendors}
+      exchangeRate={exchangeRate}
+      exchangeRateTimestamp={exchangeRateTimestamp}
+      transactionGroups={transactionGroups}
+      errorMessage={resolvedSearchParams?.error}
+    />
   )
 }

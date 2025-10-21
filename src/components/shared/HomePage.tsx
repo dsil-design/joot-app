@@ -28,6 +28,7 @@ import { useDemoContext } from '@/contexts/DemoContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -222,7 +223,7 @@ function ExchangeRateCard({ rate }: { rate: number }) {
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <div className="text-lg font-semibold">
-              1 USD = {rate.toFixed(2)} THB
+              1 USD = {formatCurrency(rate, 'THB').replace('฿', '')} THB
             </div>
             <p className="text-sm text-muted-foreground">
               Updated 2 minutes ago
@@ -304,7 +305,7 @@ function QuickStatsCard({ transactions }: { transactions: Transaction[] }) {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">USD Spent</p>
-            <p className="text-xl font-bold">${totalUSD.toFixed(2)}</p>
+            <p className="text-xl font-bold">{formatCurrency(totalUSD, 'USD')}</p>
           </div>
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">THB Spent</p>

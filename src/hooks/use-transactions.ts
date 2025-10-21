@@ -209,6 +209,116 @@ export function useTransactions() {
     }
   }
 
+  const bulkDeleteTransactions = async (ids: string[]): Promise<boolean> => {
+    try {
+      setError(null)
+
+      const { error: deleteError } = await supabase
+        .from("transactions")
+        .delete()
+        .in("id", ids)
+
+      if (deleteError) {
+        throw deleteError
+      }
+
+      setTransactions(prev => prev.filter(transaction => !ids.includes(transaction.id)))
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete transactions")
+      return false
+    }
+  }
+
+  const bulkUpdateTransactions = async (
+    ids: string[],
+    updates: Partial<Transaction>
+  ): Promise<boolean> => {
+    try {
+      setError(null)
+
+      const { error: updateError } = await supabase
+        .from("transactions")
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .in("id", ids)
+
+      if (updateError) {
+        throw updateError
+      }
+
+      // Update local state
+      setTransactions(prev =>
+        prev.map(transaction =>
+          ids.includes(transaction.id)
+            ? { ...transaction, ...updates }
+            : transaction
+        )
+      )
+
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update transactions")
+      return false
+    }
+  }
+
+  const bulkUpdateDescriptions = async (
+    ids: string[],
+    mode: "prepend" | "append" | "replace",
+    text: string
+  ): Promise<boolean> => {
+    try {
+      setError(null)
+
+      // For prepend/append, we need to update each transaction individually
+      // since we need to read the current description first
+      if (mode === "prepend" || mode === "append") {
+        const updates = transactions
+          .filter(t => ids.includes(t.id))
+          .map(t => {
+            const currentDesc = t.description || ""
+            const newDesc = mode === "prepend"
+              ? `${text}${currentDesc}`
+              : `${currentDesc}${text}`
+            return { id: t.id, description: newDesc }
+          })
+
+        for (const update of updates) {
+          const { error: updateError } = await supabase
+            .from("transactions")
+            .update({
+              description: update.description,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", update.id)
+
+          if (updateError) {
+            throw updateError
+          }
+        }
+
+        // Update local state
+        setTransactions(prev =>
+          prev.map(transaction => {
+            const update = updates.find(u => u.id === transaction.id)
+            return update ? { ...transaction, description: update.description } : transaction
+          })
+        )
+      } else {
+        // Replace mode
+        await bulkUpdateTransactions(ids, { description: text })
+      }
+
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update descriptions")
+      return false
+    }
+  }
+
   const getTransactionById = useCallback(async (
     id: string
   ): Promise<TransactionWithVendorAndPayment | null> => {
@@ -376,6 +486,9 @@ export function useTransactions() {
     createTransaction,
     updateTransaction,
     deleteTransaction,
+    bulkDeleteTransactions,
+    bulkUpdateTransactions,
+    bulkUpdateDescriptions,
     getTransactionById,
     getTransactionsByDateRange,
     updateTransactionTags,

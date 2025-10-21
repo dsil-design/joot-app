@@ -42,6 +42,38 @@ export default function AddTransactionPage() {
     }
   }
 
+  const handleSaveAndAddAnother = async (formData: TransactionFormData): Promise<boolean> => {
+    setSaving(true)
+
+    try {
+      const transactionData = {
+        description: formData.description.trim() || undefined,
+        vendorId: formData.vendor || undefined,
+        paymentMethodId: formData.paymentMethod || undefined,
+        tagIds: formData.tags || undefined,
+        amount: parseFloat(formData.amount),
+        originalCurrency: formData.currency,
+        transactionType: formData.transactionType,
+        transactionDate: format(formData.transactionDate, "yyyy-MM-dd")
+      }
+
+      const result = await createTransaction(transactionData)
+
+      if (result) {
+        toast.success("Transaction saved successfully!")
+        return true
+      } else {
+        toast.error("Failed to save transaction")
+        return false
+      }
+    } catch (error) {
+      toast.error(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleCancel = () => {
     toast.info("Transaction discarded")
     router.back()
@@ -50,7 +82,7 @@ export default function AddTransactionPage() {
   return (
     <div className="bg-white flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 min-h-screen w-full">
       {/* Page Header */}
-      <h1 className="text-3xl font-medium text-zinc-950 leading-9">
+      <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
         Add transaction
       </h1>
 
@@ -58,6 +90,7 @@ export default function AddTransactionPage() {
       <TransactionForm
         mode="add"
         onSave={handleSave}
+        onSaveAndAddAnother={handleSaveAndAddAnother}
         onCancel={handleCancel}
         saving={saving}
         showDateStepper={true}

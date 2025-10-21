@@ -139,6 +139,165 @@ describe('TransactionCard', () => {
 });
 ```
 
+#### Home Page Dashboard Tests
+
+**Location:** `__tests__/pages/home-dashboard.test.tsx`, `__tests__/utils/monthly-summary.test.ts`
+**Added:** October 21, 2025
+**Purpose:** Test home page dashboard functionality and monthly summary calculations
+
+**Test Coverage:**
+
+**Monthly Summary Utility** (`monthly-summary.test.ts`):
+- ✅ Should calculate monthly totals correctly for mixed USD/THB transactions
+- ✅ Should filter transactions by specified month
+- ✅ Should convert THB to USD at specified exchange rate
+- ✅ Should handle empty transaction array gracefully
+- ✅ Should count income and expense transactions separately
+- ✅ Should calculate net position (income - expenses)
+- ✅ Should use default exchange rate (35) when not provided
+- ✅ Should handle transactions on month boundaries correctly
+- ✅ Should handle future dates and return zero summary
+- ✅ Should maintain precision in currency conversion
+
+**Home Page Component** (`home-dashboard.test.tsx`):
+- ✅ Should display current month name in section header
+- ✅ Should show monthly income, expenses, and net amounts
+- ✅ Should display green color for surplus, red for deficit
+- ✅ Should show transaction counts for each metric
+- ✅ Should normalize all currencies to USD for display
+- ✅ Should open modal dialog when clicking Add Transaction (desktop)
+- ✅ Should show sticky footer on mobile
+- ✅ Should format currency with 2 decimal places
+- ✅ Should handle zero transactions gracefully
+- ✅ Should update when transactions change
+
+**Example Test:**
+
+```typescript
+// __tests__/utils/monthly-summary.test.ts
+import { calculateMonthlySummary } from '@/lib/utils/monthly-summary'
+import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
+
+describe('calculateMonthlySummary', () => {
+  it('should calculate monthly totals correctly', () => {
+    const transactions: TransactionWithVendorAndPayment[] = [
+      {
+        id: '1',
+        amount: 1000,
+        original_currency: 'USD',
+        transaction_type: 'income',
+        transaction_date: '2025-10-15',
+        // ... other required fields
+      },
+      {
+        id: '2',
+        amount: 17500, // THB
+        original_currency: 'THB',
+        transaction_type: 'expense',
+        transaction_date: '2025-10-20',
+        // ... other required fields
+      },
+    ]
+
+    const summary = calculateMonthlySummary(transactions, new Date('2025-10-01'), 35)
+
+    expect(summary.income).toBe(1000)
+    expect(summary.expenses).toBeCloseTo(500, 2) // 17500 / 35 = 500
+    expect(summary.net).toBeCloseTo(500, 2)
+    expect(summary.incomeCount).toBe(1)
+    expect(summary.expenseCount).toBe(1)
+    expect(summary.transactionCount).toBe(2)
+  })
+
+  it('should handle empty transaction array', () => {
+    const summary = calculateMonthlySummary([])
+
+    expect(summary.income).toBe(0)
+    expect(summary.expenses).toBe(0)
+    expect(summary.net).toBe(0)
+    expect(summary.transactionCount).toBe(0)
+  })
+})
+```
+
+**Responsive Design Tests** (using Playwright):
+
+```typescript
+// e2e/home-dashboard.spec.ts
+import { test, expect } from '@playwright/test'
+
+test.describe('Home Dashboard Responsive', () => {
+  test('desktop: should show Add Transaction button in header', async ({ page }) => {
+    await page.goto('/home')
+    await page.setViewportSize({ width: 1024, height: 768 })
+
+    const headerButton = page.locator('button:has-text("Add transaction")').first()
+    await expect(headerButton).toBeVisible()
+
+    const footer = page.locator('footer')
+    await expect(footer).not.toBeVisible()
+  })
+
+  test('mobile: should show sticky footer with Add Transaction', async ({ page }) => {
+    await page.goto('/home')
+    await page.setViewportSize({ width: 375, height: 667 })
+
+    const footer = page.locator('footer button:has-text("Add transaction")')
+    await expect(footer).toBeVisible()
+
+    const headerButton = page.locator('header button:has-text("Add transaction")')
+    await expect(headerButton).not.toBeVisible()
+  })
+
+  test('should display 3-column grid on desktop', async ({ page }) => {
+    await page.goto('/home')
+    await page.setViewportSize({ width: 1024, height: 768 })
+
+    const grid = page.locator('.grid-cols-1.md\\:grid-cols-3')
+    await expect(grid).toBeVisible()
+  })
+
+  test('should display single column on mobile', async ({ page }) => {
+    await page.goto('/home')
+    await page.setViewportSize({ width: 375, height: 667 })
+
+    const metrics = page.locator('[class*="grid-cols-1"]')
+    await expect(metrics).toBeVisible()
+  })
+})
+```
+
+**Modal Dialog Tests**:
+
+```typescript
+// __tests__/pages/home-dashboard.test.tsx
+describe('HomePageClient Modal', () => {
+  it('should open Add Transaction modal on desktop button click', async () => {
+    const user = userEvent.setup()
+    render(<HomePageClient {...mockProps} />)
+
+    const addButton = screen.getByRole('button', { name: /add transaction/i })
+    await user.click(addButton)
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('Add transaction')).toBeInTheDocument()
+  })
+
+  it('should close modal on cancel', async () => {
+    const user = userEvent.setup()
+    render(<HomePageClient {...mockProps} />)
+
+    // Open modal
+    await user.click(screen.getByRole('button', { name: /add transaction/i }))
+
+    // Cancel
+    await user.click(screen.getByRole('button', { name: /cancel/i }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+```
+
 ### Integration Tests
 
 **Location:** `__tests__/integration/`

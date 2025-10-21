@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client"
 import type { CurrencyType, TransactionWithVendorAndPayment } from "@/lib/supabase/types"
+import { formatCurrency } from "@/lib/utils"
 
 export interface CurrencyDisplayAmounts {
   primary: string
@@ -54,12 +55,10 @@ export async function calculateTransactionDisplayAmounts(
   const recordedAmount = transaction.amount
 
   // Primary amount is always the recorded amount with correct symbol
-  const primarySymbol = recordedCurrency === 'USD' ? '$' : '฿'
-  const primary = `${primarySymbol}${recordedAmount.toFixed(2)}`
+  const primary = formatCurrency(recordedAmount, recordedCurrency)
 
   // For secondary amount, we calculate using CURRENT exchange rates (today's rate or most recent)
   const oppositeCurrency: CurrencyType = recordedCurrency === 'USD' ? 'THB' : 'USD'
-  const oppositeSymbol = oppositeCurrency === 'USD' ? '$' : '฿'
 
   try {
     const { rate, needsSync } = await getCurrentExchangeRate(
@@ -76,7 +75,7 @@ export async function calculateTransactionDisplayAmounts(
     }
 
     const calculatedAmount = recordedAmount * rate
-    const secondary = `${oppositeSymbol}${calculatedAmount.toFixed(2)}`
+    const secondary = formatCurrency(calculatedAmount, oppositeCurrency)
 
     return {
       primary,

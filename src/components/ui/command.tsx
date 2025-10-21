@@ -86,8 +86,25 @@ function CommandList({
   className,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  const listRef = React.useRef<HTMLDivElement>(null)
+
+  // Ensure mouse wheel scrolling works in popovers
+  React.useEffect(() => {
+    const element = listRef.current
+    if (!element) return
+
+    const handleWheel = (e: WheelEvent) => {
+      // Allow wheel events to scroll the list
+      e.stopPropagation()
+    }
+
+    element.addEventListener('wheel', handleWheel, { passive: true })
+    return () => element.removeEventListener('wheel', handleWheel)
+  }, [])
+
   return (
     <CommandPrimitive.List
+      ref={listRef as any}
       data-slot="command-list"
       className={cn(
         "max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto",

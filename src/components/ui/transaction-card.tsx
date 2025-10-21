@@ -120,9 +120,8 @@ export const TransactionCard = React.memo(function TransactionCard({
         } catch (error) {
           console.error('Error calculating display amounts:', error)
           // Fallback to showing only the recorded amount
-          const symbol = transaction.original_currency === 'USD' ? '$' : '฿'
           setAmounts({
-            primary: `${symbol}${transaction.amount.toFixed(2)}`,
+            primary: formatCurrency(transaction.amount, transaction.original_currency),
             secondary: null
           })
         }
