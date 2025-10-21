@@ -29,7 +29,10 @@
     "validate:env": "node scripts/env/validate-env.js",
     "backfill:rates": "tsx scripts/backfill-historical-rates.ts",
     "backfill:rates:check": "tsx scripts/backfill-historical-rates.ts --check",
-    "backfill:rates:dry": "tsx scripts/backfill-historical-rates.ts --dry-run"
+    "backfill:rates:dry": "tsx scripts/backfill-historical-rates.ts --dry-run",
+    "verify:migrations": "./database/verify-migrations.sh",
+    "verify:types": "NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx tsc --noEmit",
+    "verify:all": "npm run verify:migrations && npm run verify:types && npm run test:unit && npm run build"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.11",
@@ -70,6 +73,8 @@
     "lucide-react": "^0.535.0",
     "next": "15.4.5",
     "next-themes": "^0.4.6",
+    "papaparse": "^5.5.3",
+    "pdf-parse": "^2.4.3",
     "postcss": "^8.5.6",
     "react": "19.1.0",
     "react-day-picker": "^9.8.1",
