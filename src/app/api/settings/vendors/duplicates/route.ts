@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic"
  * Returns pre-computed duplicate suggestions for the current user
  * (Suggestions are computed by a background cron job)
  */
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const supabase = await createClient()
 
@@ -147,7 +147,7 @@ export async function GET() {
  * Regenerate duplicate suggestions for the current user
  * This will find new potential duplicates and create suggestions in the database
  */
-export async function POST() {
+export async function POST(): Promise<NextResponse> {
   try {
     const supabase = await createClient()
 
