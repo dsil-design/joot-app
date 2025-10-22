@@ -57,6 +57,48 @@ interface DuplicateVendorsWorkspaceProps {
 type ConfidenceFilter = "all" | "high" | "medium" | "low"
 type StatusFilter = "all" | "pending" | "ignored"
 
+// Skeleton card component for loading state
+function SuggestionCardSkeleton() {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-6 w-24" />
+            </div>
+            <Skeleton className="h-8 w-8" />
+          </div>
+
+          {/* Vendor Names */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+            <Skeleton className="h-5 w-5 flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 pt-2 flex-wrap">
+            <Skeleton className="h-9 w-32" />
+            <Skeleton className="h-9 w-28" />
+            <div className="flex-1" />
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-40" />
+            <Skeleton className="h-9 w-20" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function DuplicateVendorsWorkspace({
   allVendors,
 }: DuplicateVendorsWorkspaceProps) {
@@ -104,18 +146,31 @@ export function DuplicateVendorsWorkspace({
   const handleRefresh = async () => {
     setIsRefreshing(true)
     try {
+      console.log("[handleRefresh] Starting refresh...")
       const response = await fetch("/api/settings/vendors/duplicates", {
         method: "POST",
       })
-      if (!response.ok) throw new Error("Failed to refresh suggestions")
+
+      console.log("[handleRefresh] Response status:", response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("[handleRefresh] Error response:", errorData)
+        throw new Error(errorData.error || "Failed to refresh suggestions")
+      }
 
       const data = await response.json()
+      console.log("[handleRefresh] Received data:", {
+        suggestionsCount: data.suggestions?.length || 0,
+        ignoredCount: data.ignored?.length || 0
+      })
+
       setSuggestions(data.suggestions || [])
       setIgnoredSuggestions(data.ignored || [])
-      toast.success("Duplicate suggestions refreshed")
+      toast.success(`Refreshed: ${data.suggestions?.length || 0} pending, ${data.ignored?.length || 0} ignored`)
     } catch (error) {
       console.error("Error refreshing suggestions:", error)
-      toast.error("Failed to refresh suggestions")
+      toast.error(error instanceof Error ? error.message : "Failed to refresh suggestions")
     } finally {
       setIsRefreshing(false)
     }
@@ -533,9 +588,9 @@ export function DuplicateVendorsWorkspace({
                   setConfidenceFilter(value as ConfidenceFilter)
                 }
               >
-                <SelectTrigger className="h-9 w-[180px] border-zinc-300 bg-white">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4" />
+                <SelectTrigger className="h-9 w-[200px] border-zinc-300 bg-white">
+                  <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                    <Target className="h-4 w-4 shrink-0" />
                     <SelectValue placeholder="All Confidence Levels" />
                   </div>
                 </SelectTrigger>
@@ -555,8 +610,8 @@ export function DuplicateVendorsWorkspace({
                 }
               >
                 <SelectTrigger className="h-9 w-[160px] border-zinc-300 bg-white">
-                  <div className="flex items-center gap-2">
-                    <ListFilter className="h-4 w-4" />
+                  <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                    <ListFilter className="h-4 w-4 shrink-0" />
                     <SelectValue placeholder="All Statuses" />
                   </div>
                 </SelectTrigger>
@@ -655,6 +710,12 @@ export function DuplicateVendorsWorkspace({
                 </Button>
               </CardContent>
             </Card>
+          ) : isRefreshing ? (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <SuggestionCardSkeleton key={i} />
+              ))}
+            </div>
           ) : (
             <div className="space-y-4">
               {filteredSuggestions.map((suggestion) => (

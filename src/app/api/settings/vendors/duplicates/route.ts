@@ -149,6 +149,7 @@ export async function GET(): Promise<NextResponse> {
  */
 export async function POST(): Promise<NextResponse> {
   try {
+    console.log("[POST /api/settings/vendors/duplicates] Starting refresh")
     const supabase = await createClient()
 
     // Check authentication
@@ -157,10 +158,13 @@ export async function POST(): Promise<NextResponse> {
       error: authError,
     } = await supabase.auth.getUser()
     if (authError || !user) {
+      console.error("[POST /api/settings/vendors/duplicates] Auth error:", authError)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+    console.log("[POST /api/settings/vendors/duplicates] User authenticated:", user.id)
 
     // Delete all existing pending suggestions for this user
+    console.log("[POST /api/settings/vendors/duplicates] Deleting old pending suggestions")
     const { error: deleteError } = await supabase
       .from("vendor_duplicate_suggestions")
       .delete()
@@ -168,17 +172,29 @@ export async function POST(): Promise<NextResponse> {
       .eq("status", "pending")
 
     if (deleteError) {
-      console.error("Error deleting old suggestions:", deleteError)
+      console.error("[POST /api/settings/vendors/duplicates] Error deleting old suggestions:", deleteError)
+    } else {
+      console.log("[POST /api/settings/vendors/duplicates] Old suggestions deleted")
     }
 
     // Fetch all vendors with transaction data for this user
+    console.log("[POST /api/settings/vendors/duplicates] Fetching vendors")
     const { data: vendors, error: vendorsError } = await supabase
       .from("vendors")
       .select("id, name, created_at, updated_at")
       .eq("user_id", user.id)
       .order("name")
 
-    if (vendorsError || !vendors || vendors.length === 0) {
+    if (vendorsError) {
+      console.error("[POST /api/settings/vendors/duplicates] Error fetching vendors:", vendorsError)
+      return NextResponse.json(
+        { error: "Failed to fetch vendors" },
+        { status: 500 }
+      )
+    }
+
+    if (!vendors || vendors.length === 0) {
+      console.log("[POST /api/settings/vendors/duplicates] No vendors found")
       // No vendors to analyze, return empty results
       return NextResponse.json({
         suggestions: [],
@@ -186,7 +202,10 @@ export async function POST(): Promise<NextResponse> {
       })
     }
 
+    console.log(`[POST /api/settings/vendors/duplicates] Found ${vendors.length} vendors`)
+
     // Fetch transaction counts and details for each vendor
+    console.log("[POST /api/settings/vendors/duplicates] Fetching transaction data for vendors")
     const vendorsWithTransactions: VendorWithTransactions[] = await Promise.all(
       vendors.map(async (vendor) => {
         const { count, error: countError } = await supabase
@@ -202,6 +221,13 @@ export async function POST(): Promise<NextResponse> {
           .eq("vendor_id", vendor.id)
           .eq("user_id", user.id)
           .order("transaction_date", { ascending: true })
+
+        if (countError) {
+          console.error(`[POST /api/settings/vendors/duplicates] Error fetching transaction count for vendor ${vendor.id}:`, countError)
+        }
+        if (transactionsError) {
+          console.error(`[POST /api/settings/vendors/duplicates] Error fetching transactions for vendor ${vendor.id}:`, transactionsError)
+        }
 
         if (countError || transactionsError || !transactions) {
           return {
@@ -225,38 +251,77 @@ export async function POST(): Promise<NextResponse> {
         }
       })
     )
+    console.log(`[POST /api/settings/vendors/duplicates] Transaction data fetched for ${vendorsWithTransactions.length} vendors`)
 
     // Generate duplicate suggestions
+    console.log("[POST /api/settings/vendors/duplicates] Running duplicate detection algorithm")
     const newSuggestions = findDuplicateVendors(vendorsWithTransactions, {
       minConfidence: 40,
       maxSuggestions: 200,
     })
+    console.log(`[POST /api/settings/vendors/duplicates] Found ${newSuggestions.length} duplicate suggestions`)
 
     // Save new suggestions to database
     if (newSuggestions.length > 0) {
-      const suggestionInserts = newSuggestions.map((suggestion) => ({
-        user_id: user.id,
-        source_vendor_id: suggestion.sourceVendor.id,
-        target_vendor_id: suggestion.targetVendor.id,
-        confidence_score: suggestion.confidence,
-        reasons: suggestion.reasons,
-        status: "pending" as const,
-      }))
+      console.log("[POST /api/settings/vendors/duplicates] Saving suggestions to database")
 
-      const { error: insertError } = await supabase
+      // Fetch existing ignored suggestions to avoid conflicts
+      const { data: existingIgnored } = await supabase
         .from("vendor_duplicate_suggestions")
-        .insert(suggestionInserts)
+        .select("source_vendor_id, target_vendor_id")
+        .eq("user_id", user.id)
+        .eq("status", "ignored")
 
-      if (insertError) {
-        console.error("Error inserting suggestions:", insertError)
-        return NextResponse.json(
-          { error: "Failed to save suggestions" },
-          { status: 500 }
-        )
+      // Create a set of existing pairs to check against
+      const existingPairs = new Set<string>()
+      if (existingIgnored) {
+        existingIgnored.forEach((sugg) => {
+          existingPairs.add(`${sugg.source_vendor_id}:${sugg.target_vendor_id}`)
+          existingPairs.add(`${sugg.target_vendor_id}:${sugg.source_vendor_id}`) // Both directions
+        })
       }
+
+      // Filter out suggestions that would conflict with ignored suggestions
+      const suggestionInserts = newSuggestions
+        .filter((suggestion) => {
+          const pairKey = `${suggestion.sourceVendor.id}:${suggestion.targetVendor.id}`
+          const isConflict = existingPairs.has(pairKey)
+          if (isConflict) {
+            console.log(`[POST /api/settings/vendors/duplicates] Skipping suggestion ${suggestion.sourceVendor.name} → ${suggestion.targetVendor.name} (conflicts with ignored suggestion)`)
+          }
+          return !isConflict
+        })
+        .map((suggestion) => ({
+          user_id: user.id,
+          source_vendor_id: suggestion.sourceVendor.id,
+          target_vendor_id: suggestion.targetVendor.id,
+          confidence_score: suggestion.confidence,
+          reasons: suggestion.reasons,
+          status: "pending" as const,
+        }))
+
+      if (suggestionInserts.length > 0) {
+        const { error: insertError } = await supabase
+          .from("vendor_duplicate_suggestions")
+          .insert(suggestionInserts)
+
+        if (insertError) {
+          console.error("[POST /api/settings/vendors/duplicates] Error inserting suggestions:", insertError)
+          return NextResponse.json(
+            { error: "Failed to save suggestions", details: insertError.message },
+            { status: 500 }
+          )
+        }
+        console.log("[POST /api/settings/vendors/duplicates] Suggestions saved successfully:", suggestionInserts.length)
+      } else {
+        console.log("[POST /api/settings/vendors/duplicates] No new suggestions to save (all filtered out)")
+      }
+    } else {
+      console.log("[POST /api/settings/vendors/duplicates] No suggestions to save")
     }
 
     // Now fetch and return the results
+    console.log("[POST /api/settings/vendors/duplicates] Fetching updated results")
     return GET()
   } catch (error) {
     console.error("Error in POST /api/settings/vendors/duplicates:", error)

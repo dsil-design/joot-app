@@ -47,10 +47,10 @@ export function DuplicateMergeToModal({
 
   useEffect(() => {
     if (open && suggestion) {
-      fetchVendors()
-      // Pre-select the suggested vendors
+      // Reset state when opening
       setSelectedSourceId(suggestion.sourceVendor.id)
-      setSelectedTargetId(suggestion.targetVendor.id)
+      setSelectedTargetId("")
+      fetchVendors()
     }
   }, [open, suggestion])
 
@@ -62,6 +62,11 @@ export function DuplicateMergeToModal({
 
       const data = await response.json()
       setVendors(data)
+
+      // Pre-select the target vendor after vendors are loaded
+      if (suggestion) {
+        setSelectedTargetId(suggestion.targetVendor.id)
+      }
     } catch (error) {
       console.error("Error fetching vendors:", error)
     } finally {
@@ -120,7 +125,10 @@ export function DuplicateMergeToModal({
               <SelectContent>
                 {sourceOptions.map((vendor) => (
                   <SelectItem key={vendor.id} value={vendor.id}>
-                    {vendor.name} ({vendor.transactionCount})
+                    {vendor.name}{" "}
+                    <span className="text-muted-foreground">
+                      ({vendor.transactionCount})
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -145,7 +153,10 @@ export function DuplicateMergeToModal({
                 ) : (
                   availableTargets.map((vendor) => (
                     <SelectItem key={vendor.id} value={vendor.id}>
-                      {vendor.name} ({vendor.transactionCount})
+                      {vendor.name}{" "}
+                      <span className="text-muted-foreground">
+                        ({vendor.transactionCount})
+                      </span>
                     </SelectItem>
                   ))
                 )}

@@ -37,6 +37,24 @@ const navigationItems = [
 export function SettingsLayout({ children, user }: SettingsLayoutProps) {
   const pathname = usePathname()
 
+  // Check if we're on a full-width child page (like duplicate vendors)
+  const isFullWidthPage = pathname?.includes('/duplicates')
+
+  // For full-width pages, just render children with sidebar offset
+  if (isFullWidthPage) {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Sidebar Navigation - Desktop only */}
+        <SidebarNavigation user={user} />
+
+        {/* Main Content Area with sidebar offset - Full width */}
+        <main className="lg:ml-[240px]">
+          {children}
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Sidebar Navigation - Desktop only */}

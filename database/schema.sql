@@ -372,6 +372,53 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Function to cleanup orphaned vendors (vendors with 0 transactions)
+CREATE OR REPLACE FUNCTION cleanup_orphaned_vendors()
+RETURNS TRIGGER AS $$
+DECLARE
+  vendor_to_check UUID;
+BEGIN
+  -- Determine which vendor(s) to check based on operation
+  IF TG_OP = 'DELETE' THEN
+    -- On DELETE, check the vendor of the deleted transaction
+    vendor_to_check := OLD.vendor_id;
+  ELSIF TG_OP = 'UPDATE' THEN
+    -- On UPDATE, check the old vendor if vendor_id changed
+    IF OLD.vendor_id IS DISTINCT FROM NEW.vendor_id THEN
+      vendor_to_check := OLD.vendor_id;
+    END IF;
+  END IF;
+
+  -- If we have a vendor to check and it's not NULL
+  IF vendor_to_check IS NOT NULL THEN
+    -- Check if this vendor has any remaining transactions
+    IF NOT EXISTS (
+      SELECT 1
+      FROM public.transactions
+      WHERE vendor_id = vendor_to_check
+      LIMIT 1
+    ) THEN
+      -- No transactions left, delete the vendor
+      DELETE FROM public.vendors
+      WHERE id = vendor_to_check;
+    END IF;
+  END IF;
+
+  -- Return appropriate record based on operation
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  ELSE
+    RETURN NEW;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to automatically cleanup orphaned vendors
+CREATE TRIGGER cleanup_orphaned_vendors_after_transaction_change
+AFTER DELETE OR UPDATE ON public.transactions
+FOR EACH ROW
+EXECUTE FUNCTION cleanup_orphaned_vendors();
+
 -- Add foreign key constraints after all tables are created
 ALTER TABLE public.transactions 
 ADD CONSTRAINT transactions_vendor_id_fkey 
