@@ -161,22 +161,27 @@ export const dateHelpers = {
 
   /**
    * Get the target sync date based on current day
-   * For daily sync: if Monday, sync Friday's data; otherwise sync previous business day
+   * For daily sync: attempts to get today's rates if it's a business day
+   * Falls back to previous business day if today is a weekend/holiday
+   *
+   * Note: ECB typically publishes rates around 14:00-15:00 UTC on business days
+   * Our cron runs at 18:00 UTC, providing a 3-4 hour buffer
+   *
    * @param currentDate Optional current date (defaults to today)
    * @param holidays Optional array of holiday dates to exclude
    * @returns Target date for sync in YYYY-MM-DD format
    */
   getTargetSyncDate: (currentDate?: Date, holidays: string[] = []): string => {
     const today = currentDate || new Date();
-    const dayOfWeek = today.getDay();
-    
-    // If Monday (1), sync Friday's data (3 business days back)
-    if (dayOfWeek === 1) {
-      return dateHelpers.subtractBusinessDays(today, 3, holidays);
+    const todayString = today.toISOString().split('T')[0];
+
+    // If today is a business day, sync today's data
+    if (dateHelpers.isBusinessDay(todayString, holidays)) {
+      return todayString;
     }
-    
-    // Otherwise, sync previous business day
-    return dateHelpers.subtractBusinessDays(today, 1, holidays);
+
+    // Otherwise, get the most recent business day
+    return dateHelpers.getPreviousBusinessDay(todayString, holidays);
   },
 
   /**

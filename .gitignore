@@ -57,6 +57,9 @@ database/*_migration.sql
 # Local Claude Code settings
 .claude/settings.local.json
 
+# Supabase CLI temp files
+supabase/.temp/
+
 # Data import files
 csv_imports/
 verification-output/

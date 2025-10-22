@@ -62,22 +62,53 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const userInitials = getInitials(userProfile?.first_name, userProfile?.last_name)
 
-  // Fetch ALL transactions for summary calculations (needed for 12-month averages)
-  const { data: allTransactions } = await supabase
-    .from('transactions')
-    .select(`
-      *,
-      vendors (
-        id,
-        name
-      ),
-      payment_methods (
-        id,
-        name
-      )
-    `)
-    .eq('user_id', user.id)
-    .order('transaction_date', { ascending: false })
+  // Calculate date range for last 13 months (to cover 12-month trend + current month)
+  const today = new Date()
+  const thirteenMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 13, 1)
+  const dateThreshold = thirteenMonthsAgo.toISOString().split('T')[0]
+
+  // Fetch transactions from last 13 months for summary calculations
+  // PostgREST has a 1000 row limit, so we use pagination to fetch all data
+  let allTransactions: TransactionWithVendorAndPayment[] = []
+  let hasMore = true
+  let page = 0
+  const pageSize = 1000
+
+  while (hasMore) {
+    const start = page * pageSize
+    const end = start + pageSize - 1
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .select(`
+        *,
+        vendors (
+          id,
+          name
+        ),
+        payment_methods (
+          id,
+          name
+        )
+      `)
+      .eq('user_id', user.id)
+      .gte('transaction_date', dateThreshold)
+      .order('transaction_date', { ascending: false })
+      .range(start, end)
+
+    if (error) {
+      console.error('Error fetching transactions:', error)
+      break
+    }
+
+    if (data && data.length > 0) {
+      allTransactions = [...allTransactions, ...data]
+      hasMore = data.length === pageSize
+      page++
+    } else {
+      hasMore = false
+    }
+  }
 
   // Get recent 5 for display only
   const transactions = allTransactions?.slice(0, 5) || []

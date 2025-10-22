@@ -46,8 +46,8 @@ export function QuickFilterBar({
               onClick={() => onPresetChange('this-month')}
               className={
                 isActive('this-month')
-                  ? 'bg-blue-600 text-white border-transparent hover:bg-blue-700'
-                  : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50'
+                  ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                  : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
               }
             >
               This Month
@@ -58,8 +58,8 @@ export function QuickFilterBar({
               onClick={() => onPresetChange('last-30-days')}
               className={
                 isActive('last-30-days')
-                  ? 'bg-blue-600 text-white border-transparent hover:bg-blue-700'
-                  : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50'
+                  ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                  : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
               }
             >
               Last 30 Days
@@ -70,8 +70,8 @@ export function QuickFilterBar({
               onClick={() => onPresetChange('this-year')}
               className={
                 isActive('this-year')
-                  ? 'bg-blue-600 text-white border-transparent hover:bg-blue-700'
-                  : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50'
+                  ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                  : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
               }
             >
               This Year
@@ -88,8 +88,8 @@ export function QuickFilterBar({
                     isActive('last-7-days') || isActive('this-week') || isActive('last-week') ||
                     isActive('last-month') || isActive('this-quarter') || isActive('last-quarter') ||
                     isActive('last-year') || isActive('all-time')
-                      ? 'bg-blue-600 text-white border-transparent hover:bg-blue-700'
-                      : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50'
+                      ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                      : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
                   }
                 >
                   More
@@ -152,8 +152,8 @@ export function QuickFilterBar({
                 onClick={() => onTransactionTypeChange('all')}
                 className={
                   activeTransactionType === 'all'
-                    ? 'bg-blue-600 text-white border-transparent hover:bg-blue-700'
-                    : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50'
+                    ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                    : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
                 }
               >
                 All
@@ -164,8 +164,8 @@ export function QuickFilterBar({
                 onClick={() => onTransactionTypeChange('expense')}
                 className={
                   activeTransactionType === 'expense'
-                    ? 'bg-blue-600 text-white border-transparent hover:bg-blue-700'
-                    : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50'
+                    ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                    : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
                 }
               >
                 Expenses
@@ -176,8 +176,8 @@ export function QuickFilterBar({
                 onClick={() => onTransactionTypeChange('income')}
                 className={
                   activeTransactionType === 'income'
-                    ? 'bg-blue-600 text-white border-transparent hover:bg-blue-700'
-                    : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50'
+                    ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                    : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
                 }
               >
                 Income

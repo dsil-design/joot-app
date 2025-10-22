@@ -113,7 +113,7 @@ export function BulkEditToolbar({
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-blue-50 border-t-2 border-blue-200 shadow-[0px_-2px_8px_0px_rgba(0,0,0,0.08)] z-40">
+    <div className="fixed bottom-0 left-0 right-0 lg:left-[240px] bg-blue-50 border-t-2 border-blue-200 shadow-[0px_-2px_8px_0px_rgba(0,0,0,0.08)] z-40">
       <div className="w-full max-w-md md:max-w-none mx-auto px-6 md:px-8 py-4">
         <div className="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row">
           {/* Left: Selection Info & Totals */}
