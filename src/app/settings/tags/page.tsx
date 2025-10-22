@@ -13,33 +13,30 @@ export default async function TagsPage() {
     redirect('/login')
   }
 
-  // Fetch tags with transaction counts
+  // Fetch all tags
   const { data: tags } = await supabase
     .from('tags')
-    .select(`
-      id,
-      name,
-      color,
-      created_at,
-      updated_at
-    `)
+    .select('id, name, color, created_at, updated_at')
     .eq('user_id', user.id)
     .order('name')
 
-  // Get transaction counts for each tag
-  const tagsWithCounts = await Promise.all(
-    (tags || []).map(async (tag) => {
-      const { count } = await supabase
-        .from('transaction_tags')
-        .select('transaction_id', { count: 'exact', head: true })
-        .eq('tag_id', tag.id)
+  // Fetch all transaction_tags in a single query
+  const { data: transactionTags } = await supabase
+    .from('transaction_tags')
+    .select('tag_id')
+    .in('tag_id', (tags || []).map(t => t.id))
 
-      return {
-        ...tag,
-        transactionCount: count || 0,
-      }
-    })
-  )
+  // Count transactions per tag in memory
+  const countsByTag = (transactionTags || []).reduce((acc, tt) => {
+    acc[tt.tag_id] = (acc[tt.tag_id] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  // Combine tags with their transaction counts
+  const tagsWithCounts = (tags || []).map(tag => ({
+    ...tag,
+    transactionCount: countsByTag[tag.id] || 0
+  }))
 
   return <TagsSettings tags={tagsWithCounts} />
 }

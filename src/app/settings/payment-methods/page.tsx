@@ -13,44 +13,37 @@ export default async function PaymentMethodsPage() {
     redirect('/login')
   }
 
-  // Fetch payment methods with transaction counts
+  // Fetch all payment methods
   const { data: paymentMethods } = await supabase
     .from('payment_methods')
-    .select(`
-      id,
-      name,
-      sort_order,
-      created_at,
-      updated_at
-    `)
+    .select('id, name, sort_order, created_at, updated_at')
     .eq('user_id', user.id)
     .order('sort_order', { ascending: true })
 
-  // Get transaction counts for each payment method
-  const paymentMethodsWithCounts = await Promise.all(
-    (paymentMethods || []).map(async (method) => {
-      const { count } = await supabase
-        .from('transactions')
-        .select('*', { count: 'exact', head: true })
-        .eq('payment_method_id', method.id)
-        .eq('user_id', user.id)
-
-      return {
-        ...method,
-        transactionCount: count || 0,
-      }
-    })
-  )
-
-  // Count transactions without a payment method
-  const { count: noneCount } = await supabase
+  // Fetch all transactions' payment_method_id in a single query
+  const { data: transactionCounts } = await supabase
     .from('transactions')
-    .select('*', { count: 'exact', head: true })
-    .is('payment_method_id', null)
+    .select('payment_method_id')
     .eq('user_id', user.id)
 
+  // Count transactions per payment method in memory
+  const countsByMethod = (transactionCounts || []).reduce((acc, t) => {
+    const methodId = t.payment_method_id || 'none'
+    acc[methodId] = (acc[methodId] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  // Combine payment methods with their transaction counts
+  const paymentMethodsWithCounts = (paymentMethods || []).map(method => ({
+    ...method,
+    transactionCount: countsByMethod[method.id] || 0
+  }))
+
+  // Get count of transactions without payment method from our in-memory counts
+  const noneCount = countsByMethod['none'] || 0
+
   // Add "None" entry if there are transactions without payment methods
-  const allPaymentMethods = noneCount && noneCount > 0
+  const allPaymentMethods = noneCount > 0
     ? [
         {
           id: 'none',

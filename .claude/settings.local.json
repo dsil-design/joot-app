@@ -119,7 +119,16 @@
       "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx tsc:*)",
       "Bash(wait:*)",
       "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npm test:*)",
-      "Bash(timeout 30 tail:*)"
+      "Bash(timeout 30 tail:*)",
+      "Bash(vercel list:*)",
+      "Bash(vercel logs:*)",
+      "Bash(vercel inspect:*)",
+      "Bash(tee:*)",
+      "Read(//private/tmp/**)",
+      "Bash(vercel ls:*)",
+      "Bash(env NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npm run lint:*)",
+      "Bash(env NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx tsc:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

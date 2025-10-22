@@ -32,6 +32,7 @@ import { TransactionGroup } from "@/components/page-specific/transactions-list"
 import { AddTransactionFooter } from "@/components/page-specific/add-transaction-footer"
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns"
 import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
+import { getBatchExchangeRates, getCacheKey } from "@/lib/utils/exchange-rate-batch"
 import { formatCurrency } from "@/lib/utils"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import type { DateRange } from "react-day-picker"
@@ -214,41 +215,60 @@ function TransactionsTable({
   const [exchangeRates, setExchangeRates] = React.useState<Record<string, number | null>>({})
   const [conversionRates, setConversionRates] = React.useState<Record<string, number | null>>({})
 
-  // Fetch exchange rates for all transactions only when showExchangeRates is true
+  // Fetch exchange rates for all transactions using batch optimization
   React.useEffect(() => {
     const fetchRates = async () => {
+      if (transactions.length === 0) return
+
+      // Build batch request for all needed exchange rates
+      const batchRequests = transactions.flatMap(transaction => {
+        const requests = []
+
+        // Always need USD/THB rate for display
+        const fromCurrency = transaction.original_currency === "USD" ? "USD" : "THB"
+        const toCurrency = transaction.original_currency === "USD" ? "THB" : "USD"
+        requests.push({
+          transactionDate: transaction.transaction_date,
+          fromCurrency,
+          toCurrency
+        })
+
+        // Need conversion rate if different from original
+        if (transaction.original_currency !== conversionCurrency) {
+          requests.push({
+            transactionDate: transaction.transaction_date,
+            fromCurrency: transaction.original_currency,
+            toCurrency: conversionCurrency
+          })
+        }
+
+        return requests
+      })
+
+      // Fetch all rates in batch (much faster than N queries)
+      const rateCache = await getBatchExchangeRates(batchRequests)
+
+      // Map rates back to transactions
       const rates: Record<string, number | null> = {}
       const convRates: Record<string, number | null> = {}
 
-      for (const transaction of transactions) {
+      transactions.forEach(transaction => {
         const fromCurrency = transaction.original_currency === "USD" ? "USD" : "THB"
         const toCurrency = transaction.original_currency === "USD" ? "THB" : "USD"
+        const displayKey = getCacheKey(transaction.transaction_date, fromCurrency, toCurrency)
+        rates[transaction.id] = rateCache[displayKey] ?? null
 
-        try {
-          // Get the exchange rate for display (always USD to THB)
-          const rateMetadata = await getExchangeRateWithMetadata(
+        if (transaction.original_currency !== conversionCurrency) {
+          const convKey = getCacheKey(
             transaction.transaction_date,
-            fromCurrency,
-            toCurrency
+            transaction.original_currency,
+            conversionCurrency
           )
-          rates[transaction.id] = rateMetadata.rate
-
-          // Get conversion rate to target currency if different from original
-          if (transaction.original_currency !== conversionCurrency) {
-            const conversionMetadata = await getExchangeRateWithMetadata(
-              transaction.transaction_date,
-              transaction.original_currency,
-              conversionCurrency
-            )
-            convRates[transaction.id] = conversionMetadata.rate
-          } else {
-            convRates[transaction.id] = 1 // No conversion needed
-          }
-        } catch {
-          rates[transaction.id] = null
-          convRates[transaction.id] = null
+          convRates[transaction.id] = rateCache[convKey] ?? null
+        } else {
+          convRates[transaction.id] = 1
         }
-      }
+      })
 
       setExchangeRates(rates)
       setConversionRates(convRates)
@@ -650,38 +670,57 @@ function TotalsFooter({ transactions, totalsCurrency, onTotalsCurrencyChange }: 
   })
   const [isCalculating, setIsCalculating] = React.useState(false)
 
-  // Calculate totals whenever transactions or currency changes
+  // Calculate totals whenever transactions or currency changes (using batch optimization)
   React.useEffect(() => {
     const calculateTotals = async () => {
+      if (transactions.length === 0) {
+        setTotals({
+          totalExpenses: 0,
+          totalIncome: 0,
+          currency: totalsCurrency,
+        })
+        setIsCalculating(false)
+        return
+      }
+
       setIsCalculating(true)
+
+      // Build batch request for all needed conversions
+      const batchRequests = transactions
+        .filter(t => t.original_currency !== totalsCurrency)
+        .map(transaction => ({
+          transactionDate: transaction.transaction_date,
+          fromCurrency: transaction.original_currency,
+          toCurrency: totalsCurrency
+        }))
+
+      // Fetch all conversion rates in batch
+      const rateCache = batchRequests.length > 0 ? await getBatchExchangeRates(batchRequests) : {}
 
       let expenses = 0
       let income = 0
 
-      for (const transaction of transactions) {
+      // Calculate totals using cached rates
+      transactions.forEach(transaction => {
         let amount = transaction.amount
 
         // Convert to target currency if needed
         if (transaction.original_currency !== totalsCurrency) {
-          try {
-            const fromCurrency = transaction.original_currency
-            const toCurrency = totalsCurrency
+          const cacheKey = getCacheKey(
+            transaction.transaction_date,
+            transaction.original_currency,
+            totalsCurrency
+          )
+          const rate = rateCache[cacheKey]
 
-            const rateMetadata = await getExchangeRateWithMetadata(
-              transaction.transaction_date,
-              fromCurrency,
-              toCurrency
-            )
-
-            if (rateMetadata.rate) {
-              amount = transaction.amount * rateMetadata.rate
-            }
-          } catch (error) {
-            // If conversion fails, use a fallback rate
+          if (rate) {
+            amount = transaction.amount * rate
+          } else {
+            // Fallback rates
             if (totalsCurrency === "USD" && transaction.original_currency === "THB") {
-              amount = transaction.amount * 0.028 // Fallback THB to USD
+              amount = transaction.amount * 0.028
             } else if (totalsCurrency === "THB" && transaction.original_currency === "USD") {
-              amount = transaction.amount * 35 // Fallback USD to THB
+              amount = transaction.amount * 35
             }
           }
         }
@@ -691,7 +730,7 @@ function TotalsFooter({ transactions, totalsCurrency, onTotalsCurrencyChange }: 
         } else if (transaction.transaction_type === "income") {
           income += amount
         }
-      }
+      })
 
       setTotals({
         totalExpenses: expenses,
@@ -701,16 +740,7 @@ function TotalsFooter({ transactions, totalsCurrency, onTotalsCurrencyChange }: 
       setIsCalculating(false)
     }
 
-    if (transactions.length > 0) {
-      calculateTotals()
-    } else {
-      setTotals({
-        totalExpenses: 0,
-        totalIncome: 0,
-        currency: totalsCurrency,
-      })
-      setIsCalculating(false)
-    }
+    calculateTotals()
   }, [transactions, totalsCurrency])
 
   const formatTotal = (amount: number) => {

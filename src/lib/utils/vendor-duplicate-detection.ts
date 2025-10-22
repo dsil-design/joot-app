@@ -309,6 +309,52 @@ export function calculateVendorSimilarity(
 }
 
 /**
+ * Calculate a preference score for determining the better merge target
+ * Higher score = better candidate to be the target (the one to keep)
+ */
+function calculateTargetPreferenceScore(
+  vendor: VendorWithTransactions,
+  otherVendor: VendorWithTransactions
+): number {
+  let score = 0
+
+  // 1. Transaction count is the primary factor (heavily weighted)
+  // Vendors with significantly more transactions should be strongly preferred
+  const transactionDiff = vendor.transactionCount - otherVendor.transactionCount
+  const avgTransactions = (vendor.transactionCount + otherVendor.transactionCount) / 2
+
+  if (avgTransactions > 0) {
+    // Scale transaction difference: more transactions = higher score
+    // Use logarithmic scaling to prevent overwhelming other factors
+    const transactionScore = Math.log1p(vendor.transactionCount) * 100
+    score += transactionScore
+
+    // Add bonus if this vendor has significantly more transactions (>2x)
+    if (vendor.transactionCount >= otherVendor.transactionCount * 2) {
+      score += 200
+    }
+  }
+
+  // 2. Name quality factors (secondary)
+  // Prefer longer, more complete names
+  const nameLengthScore = vendor.name.length * 2
+  score += nameLengthScore
+
+  // 3. Prefer names that look more "official" or complete
+  // Names with spaces and proper capitalization are often more canonical
+  const hasSpaces = vendor.name.includes(' ')
+  const hasUpperCase = vendor.name !== vendor.name.toLowerCase()
+  if (hasSpaces) score += 20
+  if (hasUpperCase) score += 10
+
+  // 4. Penalize names that look truncated or abbreviated
+  const looksAbbreviated = vendor.name.length < 5 || /\d{4,}/.test(vendor.name)
+  if (looksAbbreviated) score -= 30
+
+  return score
+}
+
+/**
  * Find potential duplicate vendors from a list
  * Returns suggestions sorted by confidence (highest first)
  */
@@ -350,9 +396,13 @@ export function findDuplicateVendors(
       const { confidence, reasons } = calculateVendorSimilarity(vendor1, vendor2)
 
       if (confidence >= minConfidence) {
-        // Determine which vendor should be the target (keep the one with more transactions)
+        // Determine which vendor should be the target using preference scores
+        // The target is the one we keep (merge INTO), source is the one we merge FROM
+        const vendor1Score = calculateTargetPreferenceScore(vendor1, vendor2)
+        const vendor2Score = calculateTargetPreferenceScore(vendor2, vendor1)
+
         const [sourceVendor, targetVendor] =
-          vendor1.transactionCount >= vendor2.transactionCount
+          vendor1Score >= vendor2Score
             ? [vendor2, vendor1]
             : [vendor1, vendor2]
 

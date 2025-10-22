@@ -10,6 +10,7 @@ import {
   DuplicateSuggestionData,
 } from "./duplicate-suggestion-card"
 import { DuplicateReviewModal } from "./duplicate-review-modal"
+import { DuplicateMergeToModal } from "./duplicate-merge-to-modal"
 import { toast } from "sonner"
 
 interface VendorDuplicatesWorkspaceProps {
@@ -28,6 +29,8 @@ export function VendorDuplicatesWorkspace({
   const [showIgnored, setShowIgnored] = useState(false)
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
   const [reviewingSuggestion, setReviewingSuggestion] =
+    useState<DuplicateSuggestionData | null>(null)
+  const [mergeToSuggestion, setMergeToSuggestion] =
     useState<DuplicateSuggestionData | null>(null)
   const [displayCount, setDisplayCount] = useState(10) // Show 10 by default
   const ITEMS_PER_PAGE = 10
@@ -263,6 +266,7 @@ export function VendorDuplicatesWorkspace({
                     onMerge={handleMerge}
                     onIgnore={handleIgnore}
                     onReview={setReviewingSuggestion}
+                    onMergeTo={setMergeToSuggestion}
                     isExpanded={expandedCard === suggestion.id}
                     onToggleExpand={() =>
                       setExpandedCard((prev) =>
@@ -322,6 +326,7 @@ export function VendorDuplicatesWorkspace({
                       onMerge={handleMerge}
                       onIgnore={handleIgnore}
                       onReview={setReviewingSuggestion}
+                      onMergeTo={setMergeToSuggestion}
                       isExpanded={expandedCard === suggestion.id}
                       onToggleExpand={() =>
                         setExpandedCard((prev) =>
@@ -344,6 +349,14 @@ export function VendorDuplicatesWorkspace({
         onClose={() => setReviewingSuggestion(null)}
         onMerge={handleMerge}
         onIgnore={handleIgnore}
+      />
+
+      {/* Merge To Modal */}
+      <DuplicateMergeToModal
+        suggestion={mergeToSuggestion}
+        open={!!mergeToSuggestion}
+        onClose={() => setMergeToSuggestion(null)}
+        onMerge={handleMerge}
       />
     </>
   )

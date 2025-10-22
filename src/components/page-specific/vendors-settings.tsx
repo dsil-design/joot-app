@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { VendorDuplicatesWorkspace } from './vendor-duplicates-workspace'
+import { DuplicateVendorsAlert } from './duplicate-vendors-alert'
 
 interface Vendor {
   id: string
@@ -43,11 +43,15 @@ interface Vendor {
 
 interface VendorsSettingsProps {
   vendors: Vendor[]
+  duplicateCount: number
 }
 
 type DialogMode = 'create' | 'rename' | 'merge' | null
 
-export function VendorsSettings({ vendors: initialVendors }: VendorsSettingsProps) {
+export function VendorsSettings({
+  vendors: initialVendors,
+  duplicateCount
+}: VendorsSettingsProps) {
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<DialogMode>(null)
@@ -180,8 +184,10 @@ export function VendorsSettings({ vendors: initialVendors }: VendorsSettingsProp
         </Button>
       </div>
 
-      {/* Duplicate Detection Workspace */}
-      <VendorDuplicatesWorkspace onVendorsChanged={() => router.refresh()} />
+      {/* Duplicate Vendors Alert */}
+      {duplicateCount > 0 && (
+        <DuplicateVendorsAlert duplicateCount={duplicateCount} />
+      )}
 
       {/* All Vendors List */}
       <div>
@@ -284,7 +290,7 @@ export function VendorsSettings({ vendors: initialVendors }: VendorsSettingsProp
                       .filter((item) => item.id !== selectedItem?.id)
                       .map((item) => (
                         <SelectItem key={item.id} value={item.id}>
-                          {item.name}
+                          {item.name} ({item.transactionCount})
                         </SelectItem>
                       ))}
                   </SelectContent>

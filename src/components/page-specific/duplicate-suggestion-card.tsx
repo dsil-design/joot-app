@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ConfidenceBadge } from "@/components/ui/confidence-badge"
-import { ArrowRight, ChevronDown, ChevronUp, Eye } from "lucide-react"
+import { ArrowRight, ArrowLeftRight, ChevronDown, ChevronUp, Eye, GitMerge } from "lucide-react"
 
 export interface VendorInfo {
   id: string
@@ -27,6 +27,7 @@ interface DuplicateSuggestionCardProps {
   onMerge: (suggestionId: string, sourceId: string, targetId: string) => void
   onIgnore: (suggestionId: string) => void
   onReview: (suggestion: DuplicateSuggestionData) => void
+  onMergeTo?: (suggestion: DuplicateSuggestionData) => void
   isExpanded?: boolean
   onToggleExpand?: () => void
   disabled?: boolean
@@ -37,6 +38,7 @@ export function DuplicateSuggestionCard({
   onMerge,
   onIgnore,
   onReview,
+  onMergeTo,
   isExpanded = false,
   onToggleExpand,
   disabled = false,
@@ -50,6 +52,19 @@ export function DuplicateSuggestionCard({
         suggestion.id,
         suggestion.sourceVendor.id,
         suggestion.targetVendor.id
+      )
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleMergeReverse = async () => {
+    setIsProcessing(true)
+    try {
+      await onMerge(
+        suggestion.id,
+        suggestion.targetVendor.id,
+        suggestion.sourceVendor.id
       )
     } finally {
       setIsProcessing(false)
@@ -136,17 +151,25 @@ export function DuplicateSuggestionCard({
                 </ul>
               </div>
 
-              <div className="text-sm text-muted-foreground">
-                Merging will move all {suggestion.sourceVendor.transactionCount}{" "}
-                transaction{suggestion.sourceVendor.transactionCount !== 1 ? "s" : ""}{" "}
-                from <span className="font-medium">{suggestion.sourceVendor.name}</span>{" "}
-                to <span className="font-medium">{suggestion.targetVendor.name}</span>.
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>
+                  <span className="font-medium">Merge:</span> Move all {suggestion.sourceVendor.transactionCount}{" "}
+                  transaction{suggestion.sourceVendor.transactionCount !== 1 ? "s" : ""}{" "}
+                  from <span className="font-medium">{suggestion.sourceVendor.name}</span>{" "}
+                  to <span className="font-medium">{suggestion.targetVendor.name}</span>.
+                </p>
+                <p>
+                  <span className="font-medium">Merge the Other Way:</span> Move all {suggestion.targetVendor.transactionCount}{" "}
+                  transaction{suggestion.targetVendor.transactionCount !== 1 ? "s" : ""}{" "}
+                  from <span className="font-medium">{suggestion.targetVendor.name}</span>{" "}
+                  to <span className="font-medium">{suggestion.sourceVendor.name}</span>.
+                </p>
               </div>
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex items-center gap-2 pt-2 flex-wrap">
             <Button
               variant="ghost"
               size="sm"
@@ -156,6 +179,17 @@ export function DuplicateSuggestionCard({
               <Eye className="h-4 w-4 mr-2" />
               Review Details
             </Button>
+            {suggestion.status === "pending" && onMergeTo && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onMergeTo(suggestion)}
+                disabled={disabled || isProcessing}
+              >
+                <GitMerge className="h-4 w-4 mr-2" />
+                Merge to...
+              </Button>
+            )}
             <div className="flex-1" />
             <Button
               variant="outline"
@@ -166,13 +200,24 @@ export function DuplicateSuggestionCard({
               {suggestion.status === "ignored" ? "Restore" : "Ignore"}
             </Button>
             {suggestion.status === "pending" && (
-              <Button
-                size="sm"
-                onClick={handleMerge}
-                disabled={disabled || isProcessing}
-              >
-                Merge
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMergeReverse}
+                  disabled={disabled || isProcessing}
+                >
+                  <ArrowLeftRight className="h-4 w-4 mr-2" />
+                  Merge the Other Way
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleMerge}
+                  disabled={disabled || isProcessing}
+                >
+                  Merge
+                </Button>
+              </>
             )}
           </div>
         </div>
