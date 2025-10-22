@@ -33,6 +33,7 @@ import { AddTransactionFooter } from "@/components/page-specific/add-transaction
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns"
 import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
 import { getBatchExchangeRates, getCacheKey } from "@/lib/utils/exchange-rate-batch"
+import type { CurrencyType } from "@/lib/supabase/types"
 import { formatCurrency } from "@/lib/utils"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import type { DateRange } from "react-day-picker"
@@ -225,8 +226,8 @@ function TransactionsTable({
         const requests = []
 
         // Always need USD/THB rate for display
-        const fromCurrency = transaction.original_currency === "USD" ? "USD" : "THB"
-        const toCurrency = transaction.original_currency === "USD" ? "THB" : "USD"
+        const fromCurrency: CurrencyType = transaction.original_currency === "USD" ? "USD" : "THB"
+        const toCurrency: CurrencyType = transaction.original_currency === "USD" ? "THB" : "USD"
         requests.push({
           transactionDate: transaction.transaction_date,
           fromCurrency,
@@ -237,8 +238,8 @@ function TransactionsTable({
         if (transaction.original_currency !== conversionCurrency) {
           requests.push({
             transactionDate: transaction.transaction_date,
-            fromCurrency: transaction.original_currency,
-            toCurrency: conversionCurrency
+            fromCurrency: transaction.original_currency as CurrencyType,
+            toCurrency: conversionCurrency as CurrencyType
           })
         }
 
