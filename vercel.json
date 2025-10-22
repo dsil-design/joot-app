@@ -3,17 +3,10 @@
     {
       "path": "/api/cron/sync-all-rates",
       "schedule": "0 18 * * *"
-    },
-    {
-      "path": "/api/cron/sync-crypto-rates",
-      "schedule": "15 18 * * *"
     }
   ],
   "functions": {
     "src/app/api/cron/sync-all-rates/route.ts": {
-      "maxDuration": 300
-    },
-    "src/app/api/cron/sync-crypto-rates/route.ts": {
       "maxDuration": 300
     },
     "src/app/api/cron/cleanup-stuck-syncs/route.ts": {
