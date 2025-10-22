@@ -14,6 +14,12 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
+DO $$ BEGIN
+    CREATE TYPE duplicate_status AS ENUM ('pending', 'ignored', 'merged');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
 -- Users table (extends Supabase auth.users)
 CREATE TABLE public.users (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -91,11 +97,29 @@ CREATE TABLE public.exchange_rates (
   rate DECIMAL(10, 4) NOT NULL,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
+
   -- Constraints
   CONSTRAINT positive_rate CHECK (rate > 0),
   CONSTRAINT different_currencies CHECK (from_currency != to_currency),
   UNIQUE(from_currency, to_currency, date)
+);
+
+-- Vendor duplicate suggestions table (for tracking potential merges)
+CREATE TABLE public.vendor_duplicate_suggestions (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  source_vendor_id UUID REFERENCES public.vendors(id) ON DELETE CASCADE NOT NULL,
+  target_vendor_id UUID REFERENCES public.vendors(id) ON DELETE CASCADE NOT NULL,
+  confidence_score DECIMAL(5, 2) NOT NULL CHECK (confidence_score >= 0 AND confidence_score <= 100),
+  status duplicate_status NOT NULL DEFAULT 'pending',
+  reasons TEXT[],
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  resolved_at TIMESTAMP WITH TIME ZONE,
+
+  -- Constraints
+  CONSTRAINT different_vendors CHECK (source_vendor_id != target_vendor_id),
+  CONSTRAINT unique_suggestion UNIQUE(user_id, source_vendor_id, target_vendor_id)
 );
 
 -- Create indexes for better performance
@@ -113,6 +137,11 @@ CREATE INDEX idx_tags_user_id ON public.tags(user_id);
 CREATE INDEX idx_tags_name ON public.tags(name);
 CREATE INDEX idx_transaction_tags_transaction_id ON public.transaction_tags(transaction_id);
 CREATE INDEX idx_transaction_tags_tag_id ON public.transaction_tags(tag_id);
+CREATE INDEX idx_vendor_duplicates_user_id ON public.vendor_duplicate_suggestions(user_id);
+CREATE INDEX idx_vendor_duplicates_status ON public.vendor_duplicate_suggestions(status);
+CREATE INDEX idx_vendor_duplicates_source_vendor ON public.vendor_duplicate_suggestions(source_vendor_id);
+CREATE INDEX idx_vendor_duplicates_target_vendor ON public.vendor_duplicate_suggestions(target_vendor_id);
+CREATE INDEX idx_vendor_duplicates_confidence ON public.vendor_duplicate_suggestions(confidence_score DESC);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -122,6 +151,7 @@ ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.exchange_rates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transaction_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vendor_duplicate_suggestions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for users table
 CREATE POLICY "Users can view own profile" ON public.users
@@ -217,6 +247,27 @@ CREATE POLICY "Users can delete own transaction tags" ON public.transaction_tags
     )
   );
 
+-- RLS Policies for vendor_duplicate_suggestions table
+CREATE POLICY "Users can view their own duplicate suggestions"
+  ON public.vendor_duplicate_suggestions
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own duplicate suggestions"
+  ON public.vendor_duplicate_suggestions
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own duplicate suggestions"
+  ON public.vendor_duplicate_suggestions
+  FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own duplicate suggestions"
+  ON public.vendor_duplicate_suggestions
+  FOR DELETE
+  USING (auth.uid() = user_id);
+
 -- Functions for automatic timestamp updates
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -241,6 +292,23 @@ CREATE TRIGGER update_vendors_updated_at BEFORE UPDATE ON public.vendors
 
 CREATE TRIGGER update_tags_updated_at BEFORE UPDATE ON public.tags
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Function to handle vendor_duplicate_suggestions updates
+CREATE OR REPLACE FUNCTION update_vendor_duplicate_suggestions_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  IF (NEW.status != OLD.status AND NEW.status IN ('ignored', 'merged')) THEN
+    NEW.resolved_at = NOW();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_vendor_duplicate_suggestions_timestamp
+BEFORE UPDATE ON public.vendor_duplicate_suggestions
+FOR EACH ROW
+EXECUTE FUNCTION update_vendor_duplicate_suggestions_updated_at();
 
 -- Function to handle user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()

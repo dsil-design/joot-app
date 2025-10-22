@@ -57,6 +57,18 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to merge vendors' }, { status: 500 })
     }
 
+    // Mark any duplicate suggestions involving these vendors as "merged"
+    const { error: suggestionUpdateError } = await supabase
+      .from('vendor_duplicate_suggestions')
+      .update({ status: 'merged' })
+      .eq('user_id', user.id)
+      .or(`and(source_vendor_id.eq.${id},target_vendor_id.eq.${targetId}),and(source_vendor_id.eq.${targetId},target_vendor_id.eq.${id})`)
+
+    if (suggestionUpdateError) {
+      console.warn('Error updating duplicate suggestions:', suggestionUpdateError)
+      // Don't fail the merge if this fails
+    }
+
     // Delete the source vendor
     const { error: deleteError } = await supabase
       .from('vendors')

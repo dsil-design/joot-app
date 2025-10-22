@@ -1,33 +1,16 @@
 "use client"
 
 import { createClient } from "@/lib/supabase/client"
+import {
+  CURRENCY_CONFIG_FALLBACK,
+  getCurrencyInfoSync as getCurrencyInfoSyncBase,
+  getCurrencySymbolSync as getCurrencySymbolSyncBase,
+  type CurrencyInfo
+} from "./currency-symbols-sync"
 
-export interface CurrencyInfo {
-  symbol: string
-  decimalPlaces: number
-}
-
-/**
- * Currency configuration - provides fallback for common currencies
- * Includes both symbol and decimal place information
- */
-const CURRENCY_CONFIG_FALLBACK: Record<string, CurrencyInfo> = {
-  USD: { symbol: '$', decimalPlaces: 2 },
-  THB: { symbol: '฿', decimalPlaces: 2 },
-  EUR: { symbol: '€', decimalPlaces: 2 },
-  GBP: { symbol: '£', decimalPlaces: 2 },
-  JPY: { symbol: '¥', decimalPlaces: 0 },
-  CNY: { symbol: '¥', decimalPlaces: 2 },
-  SGD: { symbol: 'S$', decimalPlaces: 2 },
-  MYR: { symbol: 'RM', decimalPlaces: 2 },
-  AUD: { symbol: 'A$', decimalPlaces: 2 },
-  CAD: { symbol: 'C$', decimalPlaces: 2 },
-  CHF: { symbol: 'Fr', decimalPlaces: 2 },
-  INR: { symbol: '₹', decimalPlaces: 2 },
-  KRW: { symbol: '₩', decimalPlaces: 0 },
-  BTC: { symbol: '₿', decimalPlaces: 8 },
-  ETH: { symbol: 'Ξ', decimalPlaces: 8 },
-}
+// Re-export the sync versions for backwards compatibility
+export { getCurrencyInfoSync, getCurrencySymbolSync } from "./currency-symbols-sync"
+export type { CurrencyInfo } from "./currency-symbols-sync"
 
 // Cache for currency configuration to avoid repeated database queries
 let currencyConfigCache: Record<string, CurrencyInfo> | null = null
@@ -73,29 +56,18 @@ export async function getCurrencyInfo(currencyCode: string): Promise<CurrencyInf
 
   // Check if cache is valid
   if (currencyConfigCache && cacheTimestamp && (now - cacheTimestamp) < CACHE_DURATION_MS) {
-    return currencyConfigCache[currencyCode] || { symbol: currencyCode, decimalPlaces: 2 }
+    return currencyConfigCache[currencyCode] || getCurrencyInfoSyncBase(currencyCode)
   }
 
   // Reload cache from database
   currencyConfigCache = await loadCurrencyConfigFromDB()
   cacheTimestamp = now
 
-  return currencyConfigCache[currencyCode] || { symbol: currencyCode, decimalPlaces: 2 }
+  return currencyConfigCache[currencyCode] || getCurrencyInfoSyncBase(currencyCode)
 }
 
-/**
- * Synchronous version - uses only the fallback mapping
- * Useful for immediate rendering without async calls
- */
-export function getCurrencyInfoSync(currencyCode: string): CurrencyInfo {
-  // First check cache if available
-  if (currencyConfigCache && currencyConfigCache[currencyCode]) {
-    return currencyConfigCache[currencyCode]
-  }
-
-  // Fall back to hardcoded values
-  return CURRENCY_CONFIG_FALLBACK[currencyCode] || { symbol: currencyCode, decimalPlaces: 2 }
-}
+// Note: Sync versions are now imported from currency-symbols-sync.ts
+// and re-exported above for backwards compatibility
 
 /**
  * Get currency symbol for a given currency code
@@ -106,14 +78,6 @@ export async function getCurrencySymbol(currencyCode: string): Promise<string> {
   return info.symbol
 }
 
-/**
- * Synchronous version - get symbol only
- * @deprecated Use getCurrencyInfoSync for full configuration
- */
-export function getCurrencySymbolSync(currencyCode: string): string {
-  const info = getCurrencyInfoSync(currencyCode)
-  return info.symbol
-}
 
 /**
  * Preload currency configuration into cache

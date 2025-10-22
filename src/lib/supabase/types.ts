@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       currency_configuration: {
@@ -512,6 +537,67 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_duplicate_suggestions: {
+        Row: {
+          confidence_score: number
+          created_at: string | null
+          id: string
+          reasons: string[] | null
+          resolved_at: string | null
+          source_vendor_id: string
+          status: Database["public"]["Enums"]["duplicate_status"]
+          target_vendor_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          confidence_score: number
+          created_at?: string | null
+          id?: string
+          reasons?: string[] | null
+          resolved_at?: string | null
+          source_vendor_id: string
+          status?: Database["public"]["Enums"]["duplicate_status"]
+          target_vendor_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          confidence_score?: number
+          created_at?: string | null
+          id?: string
+          reasons?: string[] | null
+          resolved_at?: string | null
+          source_vendor_id?: string
+          status?: Database["public"]["Enums"]["duplicate_status"]
+          target_vendor_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_duplicate_suggestions_source_vendor_id_fkey"
+            columns: ["source_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_duplicate_suggestions_target_vendor_id_fkey"
+            columns: ["target_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_duplicate_suggestions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           created_at: string | null
@@ -684,6 +770,7 @@ export type Database = {
         | "HKD"
         | "PHP"
         | "IDR"
+      duplicate_status: "pending" | "ignored" | "merged"
       transaction_type: "income" | "expense"
       user_role: "user" | "admin"
     }
@@ -811,6 +898,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       currency_type: [
@@ -850,55 +940,38 @@ export const Constants = {
         "PHP",
         "IDR",
       ],
+      duplicate_status: ["pending", "ignored", "merged"],
       transaction_type: ["income", "expense"],
       user_role: ["user", "admin"],
     },
   },
 } as const
 
-// Type exports
-export type CurrencyType = Database['public']['Enums']['currency_type']
-export type TransactionType = Database['public']['Enums']['transaction_type']
-export type UserRole = Database['public']['Enums']['user_role']
-
-export type PaymentMethod = Database['public']['Tables']['payment_methods']['Row']
-export type PaymentMethodInsert = Database['public']['Tables']['payment_methods']['Insert']
-export type PaymentMethodUpdate = Database['public']['Tables']['payment_methods']['Update']
-
-export type ExchangeRate = Database['public']['Tables']['exchange_rates']['Row']
-export type ExchangeRateInsert = Database['public']['Tables']['exchange_rates']['Insert']
-export type ExchangeRateUpdate = Database['public']['Tables']['exchange_rates']['Update']
-
-export type Tag = Database['public']['Tables']['tags']['Row']
-export type TagInsert = Database['public']['Tables']['tags']['Insert']
-export type TagUpdate = Database['public']['Tables']['tags']['Update']
-
-export type TransactionTag = Database['public']['Tables']['transaction_tags']['Row']
-export type TransactionTagInsert = Database['public']['Tables']['transaction_tags']['Insert']
-export type TransactionTagUpdate = Database['public']['Tables']['transaction_tags']['Update']
-
-export type Vendor = Database['public']['Tables']['vendors']['Row']
-export type VendorInsert = Database['public']['Tables']['vendors']['Insert']
-export type VendorUpdate = Database['public']['Tables']['vendors']['Update']
+// Custom type exports for convenience
+export type User = Database['public']['Tables']['users']['Row']
+export type UserInsert = Database['public']['Tables']['users']['Insert']
+export type UserUpdate = Database['public']['Tables']['users']['Update']
 
 export type Transaction = Database['public']['Tables']['transactions']['Row']
 export type TransactionInsert = Database['public']['Tables']['transactions']['Insert']
 export type TransactionUpdate = Database['public']['Tables']['transactions']['Update']
 
-export type SyncHistory = Database['public']['Tables']['sync_history']['Row']
-export type SyncHistoryInsert = Database['public']['Tables']['sync_history']['Insert']
-export type SyncHistoryUpdate = Database['public']['Tables']['sync_history']['Update']
+export type Vendor = Database['public']['Tables']['vendors']['Row']
+export type VendorInsert = Database['public']['Tables']['vendors']['Insert']
 
-export type RateChange = Database['public']['Tables']['rate_changes']['Row']
-export type RateChangeInsert = Database['public']['Tables']['rate_changes']['Insert']
-export type RateChangeUpdate = Database['public']['Tables']['rate_changes']['Update']
+export type PaymentMethod = Database['public']['Tables']['payment_methods']['Row']
+export type PaymentMethodInsert = Database['public']['Tables']['payment_methods']['Insert']
 
-// User type
-export type User = Database['public']['Tables']['users']['Row']
-export type UserInsert = Database['public']['Tables']['users']['Insert']
-export type UserUpdate = Database['public']['Tables']['users']['Update']
+export type Tag = Database['public']['Tables']['tags']['Row']
+export type TagInsert = Database['public']['Tables']['tags']['Insert']
 
-// Extended types with relations
+export type ExchangeRate = Database['public']['Tables']['exchange_rates']['Row']
+export type ExchangeRateInsert = Database['public']['Tables']['exchange_rates']['Insert']
+
+export type CurrencyType = Database['public']['Enums']['currency_type']
+export type TransactionType = Database['public']['Enums']['transaction_type']
+
+// Extended types with relationships
 export interface TransactionWithVendorAndPayment extends Transaction {
   vendors: Pick<Vendor, 'id' | 'name'> | Vendor | null
   payment_methods: Pick<PaymentMethod, 'id' | 'name'> | PaymentMethod | null

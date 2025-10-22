@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
+import { VendorDuplicatesWorkspace } from './vendor-duplicates-workspace'
 
 interface Vendor {
   id: string
@@ -177,6 +178,14 @@ export function VendorsSettings({ vendors: initialVendors }: VendorsSettingsProp
           <Plus className="h-4 w-4" />
           Add Vendor
         </Button>
+      </div>
+
+      {/* Duplicate Detection Workspace */}
+      <VendorDuplicatesWorkspace onVendorsChanged={() => router.refresh()} />
+
+      {/* All Vendors List */}
+      <div>
+        <h3 className="text-lg font-semibold text-zinc-950 mb-3">All Vendors</h3>
       </div>
 
       <Card className="bg-white border-zinc-200 rounded-lg shadow-sm overflow-hidden">
