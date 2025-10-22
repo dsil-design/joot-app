@@ -189,8 +189,7 @@ export async function GET(request: NextRequest) {
       try {
         const dailyResult = await dailySyncService.executeDailySync({
           fillGaps: true,
-          maxGapDays: 7,
-          includeCrypto: false // Crypto has its own cron job at 18:15
+          maxGapDays: 7
         });
 
         results.dailySync = {
