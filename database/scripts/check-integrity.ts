@@ -108,10 +108,12 @@ async function checkIntegrity() {
       .select('*', { count: 'exact', head: true })
       .eq('vendor_id', vendor.id)
 
-    if (count === 0) vendorDistribution['0 transactions']++
-    else if (count === 1) vendorDistribution['1 transaction']++
-    else if (count >= 2 && count <= 5) vendorDistribution['2-5 transactions']++
-    else if (count >= 6 && count <= 10) vendorDistribution['6-10 transactions']++
+    const transactionCount = count ?? 0
+
+    if (transactionCount === 0) vendorDistribution['0 transactions']++
+    else if (transactionCount === 1) vendorDistribution['1 transaction']++
+    else if (transactionCount >= 2 && transactionCount <= 5) vendorDistribution['2-5 transactions']++
+    else if (transactionCount >= 6 && transactionCount <= 10) vendorDistribution['6-10 transactions']++
     else vendorDistribution['10+ transactions']++
   }
 
