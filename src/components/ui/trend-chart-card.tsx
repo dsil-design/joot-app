@@ -10,15 +10,11 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceDot,
 } from 'recharts'
 import { Card, CardHeader, CardTitle, CardAction, CardContent } from '@/components/ui/card'
 import { TimePeriodToggle, type TimePeriod } from '@/components/ui/time-period-toggle'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { analyzeChartData, filterOutliers, type ChartDataAnalysis } from '@/lib/utils/chart-data-analysis'
-import { AlertTriangle, X, Info } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 export interface TrendDataPoint {
   date: string
@@ -63,8 +59,6 @@ export function TrendChartCard({
     expenses: true,
     net: true,
   })
-  const [excludeOutliers, setExcludeOutliers] = React.useState(false)
-  const [bannerDismissed, setBannerDismissed] = React.useState(false)
 
   const handlePeriodChange = React.useCallback(
     (period: TimePeriod) => {
@@ -84,24 +78,13 @@ export function TrendChartCard({
   // Get data for the selected period
   // If dataByPeriod is provided, use it (new API - pre-calculated server-side)
   // Otherwise fall back to legacy data prop (old API - shows all data without period filtering)
-  const rawData = React.useMemo(() => {
+  const currentData = React.useMemo(() => {
     if (dataByPeriod) {
       return dataByPeriod[selectedPeriod] || []
     }
     // Legacy mode: just return all data regardless of selected period
     return data || []
   }, [dataByPeriod, data, selectedPeriod])
-
-  // Analyze data for outliers and statistics
-  const dataAnalysis = React.useMemo(() => analyzeChartData(rawData), [rawData])
-
-  // Apply outlier filtering if enabled
-  const currentData = React.useMemo(() => {
-    if (excludeOutliers) {
-      return filterOutliers(rawData, dataAnalysis)
-    }
-    return rawData
-  }, [rawData, excludeOutliers, dataAnalysis])
 
   // Detect breakpoint for responsive design
   const [breakpoint, setBreakpoint] = React.useState<'mobile' | 'tablet' | 'desktop'>('desktop')
@@ -145,62 +128,21 @@ export function TrendChartCard({
     return 0 // Show all labels for YTD and 1Y
   }, [currentData.length, breakpoint, selectedPeriod])
 
-  // Calculate Y-axis domain with outlier capping
+  // Calculate Y-axis domain - simple auto scaling
   const yAxisDomain = React.useMemo(() => {
-    if (excludeOutliers || !dataAnalysis.hasExtremeOutliers) {
-      return [0, 'auto'] as const
-    }
+    return [0, 'auto'] as const
+  }, [])
 
-    // Cap Y-axis at 95th percentile for better visibility
-    const maxDomain = Math.ceil(dataAnalysis.suggestedYAxisMax / 1000) * 1000 // Round to nearest 1000
-    return [0, maxDomain] as const
-  }, [excludeOutliers, dataAnalysis])
-
-  // Identify outlier data points that exceed Y-axis cap
-  const cappedOutliers = React.useMemo(() => {
-    if (excludeOutliers || !dataAnalysis.hasExtremeOutliers || yAxisDomain[1] === 'auto') {
-      return []
-    }
-
-    const maxY = yAxisDomain[1] as number
-    return currentData
-      .map(point => {
-        const outliers = []
-        if (point.income > maxY) {
-          outliers.push({ date: point.date, type: 'income' as const, value: point.income })
-        }
-        if (point.expenses > maxY) {
-          outliers.push({ date: point.date, type: 'expenses' as const, value: point.expenses })
-        }
-        return outliers
-      })
-      .flat()
-  }, [currentData, excludeOutliers, dataAnalysis, yAxisDomain])
-
-  // Custom tooltip component
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  // Custom tooltip component - memoized to prevent recreation
+  const CustomTooltip = React.useCallback(({ active, payload, label }: any) => {
     if (!active || !payload || payload.length === 0) return null
-
-    // Check if this point has capped values
-    const isCapped = cappedOutliers.some(o => o.date === label)
 
     return (
       <div className="rounded-lg border border-border bg-card p-3 shadow-lg backdrop-blur-sm">
         <div className="mb-2 text-xs font-semibold text-foreground">{label}</div>
-        {isCapped && (
-          <div className="mb-2 flex items-center gap-1 text-xs text-amber-600">
-            <AlertTriangle className="h-3 w-3" />
-            <span>Outlier detected</span>
-          </div>
-        )}
         <div className="space-y-1.5">
           {payload.map((entry: any) => {
             if (!visibleLines[entry.dataKey]) return null
-
-            // Find actual value if capped
-            const rawPoint = rawData.find(p => p.date === label)
-            const actualValue = rawPoint ? rawPoint[entry.dataKey as keyof TrendDataPoint] : entry.value
-            const isCappedValue = typeof actualValue === 'number' && actualValue > (yAxisDomain[1] as number)
 
             return (
               <div key={entry.dataKey} className="flex items-center justify-between gap-4">
@@ -214,24 +156,18 @@ export function TrendChartCard({
                   </span>
                 </div>
                 <span className="text-sm font-semibold text-foreground">
-                  {formatCurrency(typeof actualValue === 'number' ? actualValue : entry.value, 'USD')}
-                  {isCappedValue && <span className="ml-1 text-amber-600">*</span>}
+                  {formatCurrency(entry.value, 'USD')}
                 </span>
               </div>
             )
           })}
         </div>
-        {isCapped && (
-          <div className="mt-2 text-xs text-muted-foreground">
-            * Value exceeds chart scale
-          </div>
-        )}
       </div>
     )
-  }
+  }, [visibleLines])
 
-  // Custom legend component
-  const CustomLegend = () => {
+  // Custom legend component - memoized to prevent recreation
+  const CustomLegend = React.useCallback(() => {
     const legendItems: LegendItem[] = [
       { value: 'income', color: '#00a63e', label: 'Income', visible: visibleLines.income },
       { value: 'expenses', color: '#e7000b', label: 'Expenses', visible: visibleLines.expenses },
@@ -269,7 +205,7 @@ export function TrendChartCard({
         ))}
       </div>
     )
-  }
+  }, [visibleLines, toggleLineVisibility])
 
   return (
     <Card className={className}>
@@ -286,54 +222,6 @@ export function TrendChartCard({
         )}
       </CardHeader>
       <CardContent className="pt-4">
-        {/* Outlier Detection Banner */}
-        {dataAnalysis.hasExtremeOutliers && !bannerDismissed && (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-amber-900">
-                  Data Quality Alert
-                </div>
-                <div className="mt-1 text-xs text-amber-800">
-                  {dataAnalysis.outliers.filter(o => o.isExtreme).length} extreme {dataAnalysis.outliers.filter(o => o.isExtreme).length === 1 ? 'outlier' : 'outliers'} detected
-                  {dataAnalysis.outliers.filter(o => o.isExtreme).length > 0 && (
-                    <span className="ml-1">
-                      ({dataAnalysis.outliers.filter(o => o.isExtreme)[0].date}: {formatCurrency(dataAnalysis.outliers.filter(o => o.isExtreme)[0].value, 'USD')} {dataAnalysis.outliers.filter(o => o.isExtreme)[0].type})
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs bg-white hover:bg-amber-100"
-                    onClick={() => setExcludeOutliers(!excludeOutliers)}
-                  >
-                    {excludeOutliers ? 'Show All Data' : 'Exclude Outliers'}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-amber-700 hover:text-amber-900 hover:bg-amber-100"
-                    onClick={() => setBannerDismissed(true)}
-                  >
-                    Dismiss
-                  </Button>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 hover:bg-amber-100 flex-shrink-0"
-                onClick={() => setBannerDismissed(true)}
-              >
-                <X className="h-4 w-4 text-amber-600" />
-              </Button>
-            </div>
-          </div>
-        )}
-
         {!currentData || currentData.length === 0 ? (
           <div
             style={{ height }}
@@ -414,8 +302,7 @@ export function TrendChartCard({
                 dot={false}
                 activeDot={{ r: 5, fill: '#00a63e' }}
                 opacity={hoveredLine === null || hoveredLine === 'income' ? 1 : 0.3}
-                animationDuration={500}
-                animationEasing="ease-in-out"
+                isAnimationActive={false}
               />
             )}
 
@@ -430,8 +317,7 @@ export function TrendChartCard({
                 dot={false}
                 activeDot={{ r: 5, fill: '#e7000b' }}
                 opacity={hoveredLine === null || hoveredLine === 'expenses' ? 1 : 0.3}
-                animationDuration={500}
-                animationEasing="ease-in-out"
+                isAnimationActive={false}
               />
             )}
 
@@ -447,43 +333,9 @@ export function TrendChartCard({
                 activeDot={{ r: 5, fill: '#155dfc' }}
                 strokeDasharray="5 5"
                 opacity={hoveredLine === null || hoveredLine === 'net' ? 1 : 0.3}
-                animationDuration={500}
-                animationEasing="ease-in-out"
+                isAnimationActive={false}
               />
             )}
-
-            {/* Outlier markers for capped values */}
-            {cappedOutliers.map((outlier, index) => {
-              const yValue = yAxisDomain[1] as number
-              const color = outlier.type === 'income' ? '#00a63e' : '#e7000b'
-
-              return (
-                <ReferenceDot
-                  key={`${outlier.date}-${outlier.type}-${index}`}
-                  x={outlier.date}
-                  y={yValue * 0.95} // Position slightly below cap
-                  r={6}
-                  fill={color}
-                  stroke="#fff"
-                  strokeWidth={2}
-                  shape={(props: any) => {
-                    const { cx, cy } = props
-                    return (
-                      <g>
-                        <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" strokeWidth={2} />
-                        <path
-                          d={`M ${cx - 3} ${cy + 1} L ${cx} ${cy - 2} L ${cx + 3} ${cy + 1}`}
-                          fill="none"
-                          stroke="#fff"
-                          strokeWidth={1.5}
-                          strokeLinecap="round"
-                        />
-                      </g>
-                    )
-                  }}
-                />
-              )
-            })}
           </AreaChart>
         </ResponsiveContainer>
         </div>

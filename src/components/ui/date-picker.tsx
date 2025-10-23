@@ -118,20 +118,26 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const inputValue = e.target.value
       setValue(inputValue)
-      
-      const parsedDate = parseDate(inputValue)
-      if (isValidDate(parsedDate)) {
-        onDateChange?.(parsedDate)
-        setMonth(parsedDate)
-      } else if (!inputValue.trim()) {
-        onDateChange?.(undefined)
-      }
+      // Don't parse/validate while typing - only on blur
     }
 
     const handleInputBlur = () => {
-      // Reformat the input value to the standard format if we have a valid date
-      if (date) {
-        setValue(formatDate(date, formatStr))
+      // Parse and validate the input value on blur
+      const parsedDate = parseDate(value)
+      if (isValidDate(parsedDate)) {
+        onDateChange?.(parsedDate)
+        setMonth(parsedDate)
+        setValue(formatDate(parsedDate, formatStr))
+      } else if (!value.trim()) {
+        onDateChange?.(undefined)
+        setValue("")
+      } else {
+        // Invalid input - revert to the last valid date
+        if (date) {
+          setValue(formatDate(date, formatStr))
+        } else {
+          setValue("")
+        }
       }
     }
 

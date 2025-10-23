@@ -14,6 +14,7 @@ import { usePaginatedTransactions } from "@/hooks/use-paginated-transactions"
 import { TransactionListSkeleton, TransactionLoadingMore } from "@/components/ui/transaction-list-skeleton"
 import { useInView } from "react-intersection-observer"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   Select,
   SelectContent,
@@ -844,6 +845,7 @@ function TotalsFooter({ transactions, totalsCurrency, onTotalsCurrencyChange }: 
 
 export default function AllTransactionsPage() {
   const { user } = useAuth()
+  const queryClient = useQueryClient()
 
   // Keep useTransactions for mutations only
   const {
@@ -1009,6 +1011,7 @@ export default function AllTransactionsPage() {
       if (result) {
         toast.success("Transaction saved successfully!")
         setIsAddModalOpen(false)
+        await queryClient.invalidateQueries({ queryKey: ["transactions", "paginated"] })
       } else {
         toast.error("Failed to save transaction")
       }
@@ -1038,6 +1041,7 @@ export default function AllTransactionsPage() {
 
       if (result) {
         toast.success("Transaction saved successfully!")
+        await queryClient.invalidateQueries({ queryKey: ["transactions", "paginated"] })
         return true
       } else {
         toast.error("Failed to save transaction")
@@ -1084,8 +1088,8 @@ export default function AllTransactionsPage() {
         setIsEditModalOpen(false)
         setEditingTransaction(null)
 
-        // Refetch to get updated data
-        await refetch()
+        // Invalidate and refetch the paginated transactions query
+        await queryClient.invalidateQueries({ queryKey: ["transactions", "paginated"] })
       } else {
         toast.error("Failed to update transaction")
       }
@@ -1378,6 +1382,7 @@ export default function AllTransactionsPage() {
         if (success) {
           toast.success("Transaction deleted successfully")
           setDeleteConfirmOpen(false)
+          await queryClient.invalidateQueries({ queryKey: ["transactions", "paginated"] })
         } else {
           toast.error("Failed to delete transaction")
         }
@@ -1388,6 +1393,7 @@ export default function AllTransactionsPage() {
           toast.success(`${ids.length} transaction${ids.length > 1 ? 's' : ''} deleted successfully`)
           setSelectedIds(new Set())
           setDeleteConfirmOpen(false)
+          await queryClient.invalidateQueries({ queryKey: ["transactions", "paginated"] })
         } else {
           toast.error("Failed to delete transactions")
         }
@@ -1406,7 +1412,7 @@ export default function AllTransactionsPage() {
       if (success) {
         toast.success(`Updated vendor for ${ids.length} transaction${ids.length > 1 ? 's' : ''}`)
         setIsBulkVendorModalOpen(false)
-        await refetch()
+        await queryClient.invalidateQueries({ queryKey: ["transactions", "paginated"] })
       } else {
         toast.error("Failed to update vendor")
       }
@@ -1425,7 +1431,7 @@ export default function AllTransactionsPage() {
       if (success) {
         toast.success(`Updated date for ${ids.length} transaction${ids.length > 1 ? 's' : ''}`)
         setIsBulkDateModalOpen(false)
-        await refetch()
+        await queryClient.invalidateQueries({ queryKey: ["transactions", "paginated"] })
       } else {
         toast.error("Failed to update date")
       }
@@ -1442,7 +1448,7 @@ export default function AllTransactionsPage() {
       if (success) {
         toast.success(`Updated payment method for ${ids.length} transaction${ids.length > 1 ? 's' : ''}`)
         setIsBulkPaymentModalOpen(false)
-        await refetch()
+        await queryClient.invalidateQueries({ queryKey: ["transactions", "paginated"] })
       } else {
         toast.error("Failed to update payment method")
       }
@@ -1459,7 +1465,7 @@ export default function AllTransactionsPage() {
       if (success) {
         toast.success(`Updated description for ${ids.length} transaction${ids.length > 1 ? 's' : ''}`)
         setIsBulkDescriptionModalOpen(false)
-        await refetch()
+        await queryClient.invalidateQueries({ queryKey: ["transactions", "paginated"] })
       } else {
         toast.error("Failed to update description")
       }

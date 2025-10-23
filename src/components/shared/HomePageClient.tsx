@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -83,6 +83,17 @@ export function HomePageClient({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const { createTransaction } = useTransactions()
+
+  // Memoize trend chart data transformation to prevent unnecessary recalculation
+  const trendChartData = useMemo(() =>
+    allTrendData.map(point => ({
+      date: point.month,
+      income: point.income,
+      expenses: point.expenses,
+      net: point.net,
+    })),
+    [allTrendData]
+  )
 
   const handleSaveTransaction = async (formData: TransactionFormData) => {
     setSaving(true)
@@ -387,12 +398,7 @@ export function HomePageClient({
                 Financial Performance
               </div>
               <TrendChartCard
-                data={allTrendData.map(point => ({
-                  date: point.month,
-                  income: point.income,
-                  expenses: point.expenses,
-                  net: point.net,
-                }))}
+                data={trendChartData}
                 title="Net Worth Trend"
                 defaultPeriod="ytd"
                 height={300}
