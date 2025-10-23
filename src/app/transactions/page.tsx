@@ -6,10 +6,13 @@
 "use client"
 
 import * as React from "react"
-import { LayoutGrid, Table as TableIcon, Plus, Edit2, Trash2 } from "lucide-react"
+import { LayoutGrid, Table as TableIcon, Plus, Edit2, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useTransactions } from "@/hooks/use-transactions"
+import { usePaginatedTransactions } from "@/hooks/use-paginated-transactions"
+import { TransactionListSkeleton, TransactionLoadingMore } from "@/components/ui/transaction-list-skeleton"
+import { useInView } from "react-intersection-observer"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
 import {
   Select,
@@ -30,8 +33,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { TransactionGroup } from "@/components/page-specific/transactions-list"
 import { AddTransactionFooter } from "@/components/page-specific/add-transaction-footer"
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns"
-import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
+import { format, parseISO } from "date-fns"
 import { getBatchExchangeRates, getCacheKey } from "@/lib/utils/exchange-rate-batch"
 import type { CurrencyType } from "@/lib/supabase/types"
 import { formatCurrency } from "@/lib/utils"
@@ -78,6 +80,8 @@ type LayoutMode = "cards" | "table"
 type TotalsCurrency = "USD" | "THB"
 type TransactionType = "all" | "expense" | "income"
 type ConversionCurrency = "USD" | "THB"
+type SortField = "date" | "description" | "vendor" | "amount"
+type SortDirection = "asc" | "desc"
 
 interface TransactionFilters {
   dateRange?: DateRange
@@ -199,6 +203,9 @@ interface TransactionsTableProps {
   onToggleAll: () => void
   onEditTransaction: (transaction: TransactionWithVendorAndPayment) => void
   onDeleteTransaction: (id: string) => void
+  sortField: SortField
+  sortDirection: SortDirection
+  onSort: (field: SortField) => void
 }
 
 function TransactionsTable({
@@ -211,7 +218,10 @@ function TransactionsTable({
   onToggleSelection,
   onToggleAll,
   onEditTransaction,
-  onDeleteTransaction
+  onDeleteTransaction,
+  sortField,
+  sortDirection,
+  onSort
 }: TransactionsTableProps) {
   const [exchangeRates, setExchangeRates] = React.useState<Record<string, number | null>>({})
   const [conversionRates, setConversionRates] = React.useState<Record<string, number | null>>({})
@@ -347,6 +357,26 @@ function TransactionsTable({
   // Calculate colspan based on visible columns
   const totalColumns = 8 + (showExchangeRates ? 2 : 0) // Checkbox + 6 base columns + actions + optional exchange rate columns
 
+  // Sortable column header component
+  const SortableHeader = ({ field, children, className }: { field: SortField; children: React.ReactNode; className?: string }) => {
+    const isSorted = sortField === field
+    const Icon = isSorted ? (sortDirection === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown
+
+    return (
+      <TableHead className={className}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-3 h-8 data-[state=open]:bg-accent font-medium text-zinc-950 hover:bg-zinc-100"
+          onClick={() => onSort(field)}
+        >
+          {children}
+          <Icon className="ml-2 h-4 w-4" />
+        </Button>
+      </TableHead>
+    )
+  }
+
   return (
     <div className="w-full overflow-x-auto rounded-lg border border-zinc-200">
       <Table>
@@ -360,12 +390,13 @@ function TransactionsTable({
                 className={someSelected ? "data-[state=checked]:bg-blue-600" : ""}
               />
             </TableHead>
+            <TableHead className="w-[100px]"></TableHead>
             <TableHead className="font-medium text-zinc-950">Type</TableHead>
-            <TableHead className="font-medium text-zinc-950">Date</TableHead>
-            <TableHead className="font-medium text-zinc-950">Description</TableHead>
-            <TableHead className="font-medium text-zinc-950">Vendor</TableHead>
+            <SortableHeader field="date">Date</SortableHeader>
+            <SortableHeader field="description">Description</SortableHeader>
+            <SortableHeader field="vendor">Vendor</SortableHeader>
             <TableHead className="font-medium text-zinc-950">Payment Method</TableHead>
-            <TableHead className="font-medium text-zinc-950">Amount</TableHead>
+            <SortableHeader field="amount">Amount</SortableHeader>
             {showExchangeRates && (
               <>
                 <TableHead className="font-medium text-zinc-950">Exchange Rate</TableHead>
@@ -373,7 +404,6 @@ function TransactionsTable({
               </>
             )}
             <TableHead className="font-medium text-zinc-950">Tags</TableHead>
-            <TableHead className="font-medium text-zinc-950 w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -400,6 +430,28 @@ function TransactionsTable({
                       onCheckedChange={() => onToggleSelection(transaction.id, false, false)}
                       aria-label={`Select transaction ${transaction.id}`}
                     />
+                  </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => onEditTransaction(transaction)}
+                        aria-label="Edit transaction"
+                      >
+                        <Edit2 className="h-4 w-4 text-zinc-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => onDeleteTransaction(transaction.id)}
+                        aria-label="Delete transaction"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
                   </TableCell>
                   <TableCell className="capitalize">
                     {transaction.transaction_type}
@@ -449,28 +501,6 @@ function TransactionsTable({
                     ) : (
                       <span className="text-zinc-400 text-sm">—</span>
                     )}
-                  </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => onEditTransaction(transaction)}
-                        aria-label="Edit transaction"
-                      >
-                        <Edit2 className="h-4 w-4 text-zinc-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => onDeleteTransaction(transaction.id)}
-                        aria-label="Delete transaction"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
                   </TableCell>
                 </TableRow>
               )
@@ -814,10 +844,9 @@ function TotalsFooter({ transactions, totalsCurrency, onTotalsCurrencyChange }: 
 
 export default function AllTransactionsPage() {
   const { user } = useAuth()
+
+  // Keep useTransactions for mutations only
   const {
-    transactions,
-    loading,
-    error,
     createTransaction,
     updateTransaction,
     updateTransactionTags,
@@ -825,7 +854,6 @@ export default function AllTransactionsPage() {
     bulkDeleteTransactions,
     bulkUpdateTransactions,
     bulkUpdateDescriptions,
-    refetch
   } = useTransactions()
 
   // User profile state
@@ -850,6 +878,53 @@ export default function AllTransactionsPage() {
     paymentMethodIds: [],
     transactionType: "all",
   })
+
+  // Convert filters to API format
+  const apiFilters = React.useMemo(() => ({
+    datePreset: filters.datePreset,
+    dateFrom: filters.dateRange?.from ? format(filters.dateRange.from, "yyyy-MM-dd") : undefined,
+    dateTo: filters.dateRange?.to ? format(filters.dateRange.to, "yyyy-MM-dd") : undefined,
+    searchKeyword: filters.searchKeyword || undefined,
+    vendorIds: filters.vendorIds.length > 0 ? filters.vendorIds : undefined,
+    paymentMethodIds: filters.paymentMethodIds.length > 0 ? filters.paymentMethodIds : undefined,
+    transactionType: filters.transactionType !== "all" ? filters.transactionType : undefined,
+  }), [filters])
+
+  // Sorting state (needs to be declared before usePaginatedTransactions)
+  const [sortField, setSortField] = React.useState<SortField>("date")
+  const [sortDirection, setSortDirection] = React.useState<SortDirection>("desc")
+
+  // Use paginated transactions hook
+  const {
+    allTransactions,
+    totalCount,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error: paginationError,
+    refetch,
+  } = usePaginatedTransactions({
+    filters: apiFilters,
+    pageSize: 30,
+    sortField,
+    sortDirection,
+  })
+
+  // Infinite scroll observer
+  const { ref: infiniteScrollRef, inView } = useInView({
+    threshold: 0,
+    rootMargin: "400px", // Load more when user is 400px from bottom
+  })
+
+  // Trigger fetch when scroll sentinel comes into view
+  React.useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage])
+
   const [showAdvancedFilters, setShowAdvancedFilters] = React.useState(false)
   const [showCustomDateRange, setShowCustomDateRange] = React.useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false)
@@ -1164,7 +1239,7 @@ export default function AllTransactionsPage() {
     const vendorMap = new Map<string, { id: string; name: string }>()
     const paymentMethodMap = new Map<string, { id: string; name: string }>()
 
-    transactions.forEach((transaction) => {
+    allTransactions.forEach((transaction) => {
       if (transaction.vendors && !vendorMap.has(transaction.vendors.id)) {
         vendorMap.set(transaction.vendors.id, {
           id: transaction.vendors.id,
@@ -1191,74 +1266,25 @@ export default function AllTransactionsPage() {
       uniqueVendors: Array.from(vendorMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
       uniquePaymentMethods: paymentMethods,
     }
-  }, [transactions, hasNoneTransactions])
+  }, [allTransactions, hasNoneTransactions])
 
-  // Apply filters to transactions
-  const filteredTransactions = React.useMemo(() => {
-    return transactions.filter((transaction) => {
-      // Transaction type filter
-      if (filters.transactionType !== "all") {
-        if (transaction.transaction_type !== filters.transactionType) {
-          return false
-        }
-      }
+  // Sort handler - triggers refetch with new sort order
+  const handleSort = React.useCallback((field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if clicking the same field
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      // New field - default to ascending for most fields, descending for date
+      setSortField(field)
+      setSortDirection(field === "date" ? "desc" : "asc")
+    }
+  }, [sortField, sortDirection])
 
-      // Date range filter
-      if (filters.dateRange) {
-        const transactionDate = parseISO(transaction.transaction_date)
-        const { from, to } = filters.dateRange
-
-        if (from && to) {
-          // Date range selection
-          const isInRange = isWithinInterval(transactionDate, {
-            start: startOfDay(from),
-            end: endOfDay(to),
-          })
-          if (!isInRange) return false
-        } else if (from) {
-          // Single date selection (only 'from' is set)
-          const isSameDay = isWithinInterval(transactionDate, {
-            start: startOfDay(from),
-            end: endOfDay(from),
-          })
-          if (!isSameDay) return false
-        }
-      }
-
-      // Search keyword filter
-      if (filters.searchKeyword) {
-        const keyword = filters.searchKeyword.toLowerCase()
-        const description = (transaction.description || "").toLowerCase()
-        if (!description.includes(keyword)) return false
-      }
-
-      // Vendor filter
-      if (filters.vendorIds.length > 0) {
-        if (!transaction.vendor_id || !filters.vendorIds.includes(transaction.vendor_id)) {
-          return false
-        }
-      }
-
-      // Payment method filter
-      if (filters.paymentMethodIds.length > 0) {
-        const hasNoneFilter = filters.paymentMethodIds.includes("none")
-        const matchesNone = !transaction.payment_method_id && hasNoneFilter
-        const matchesPaymentMethod = transaction.payment_method_id && filters.paymentMethodIds.includes(transaction.payment_method_id)
-
-        if (!matchesNone && !matchesPaymentMethod) {
-          return false
-        }
-      }
-
-      return true
-    })
-  }, [transactions, filters])
-
-  // Group filtered transactions by date for card view
+  // Group transactions by date for card view
   const groupedTransactions = React.useMemo(() => {
     const groups: Record<string, TransactionWithVendorAndPayment[]> = {}
 
-    filteredTransactions.forEach((transaction) => {
+    allTransactions.forEach((transaction) => {
       const date = transaction.transaction_date
       if (!groups[date]) {
         groups[date] = []
@@ -1273,11 +1299,12 @@ export default function AllTransactionsPage() {
       date,
       transactions: groups[date]
     }))
-  }, [filteredTransactions])
+  }, [allTransactions])
 
   // Selection handlers
   const handleToggleSelection = React.useCallback((id: string, shiftKey: boolean, ctrlKey: boolean) => {
-    const currentIndex = filteredTransactions.findIndex(t => t.id === id)
+    const transactionList = allTransactions
+    const currentIndex = transactionList.findIndex(t => t.id === id)
 
     if (shiftKey && lastClickedIndex !== null) {
       // Range selection
@@ -1286,7 +1313,7 @@ export default function AllTransactionsPage() {
       const newSelection = new Set(selectedIds)
 
       for (let i = start; i <= end; i++) {
-        newSelection.add(filteredTransactions[i].id)
+        newSelection.add(transactionList[i].id)
       }
 
       setSelectedIds(newSelection)
@@ -1311,15 +1338,16 @@ export default function AllTransactionsPage() {
       setSelectedIds(newSelection)
       setLastClickedIndex(currentIndex)
     }
-  }, [filteredTransactions, selectedIds, lastClickedIndex])
+  }, [allTransactions, selectedIds, lastClickedIndex, layoutMode])
 
   const handleToggleAll = React.useCallback(() => {
-    if (selectedIds.size === filteredTransactions.length) {
+    const transactionList = allTransactions
+    if (selectedIds.size === transactionList.length) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(filteredTransactions.map(t => t.id)))
+      setSelectedIds(new Set(transactionList.map(t => t.id)))
     }
-  }, [filteredTransactions, selectedIds])
+  }, [allTransactions, selectedIds, layoutMode])
 
   const handleClearSelection = React.useCallback(() => {
     setSelectedIds(new Set())
@@ -1440,8 +1468,8 @@ export default function AllTransactionsPage() {
     }
   }
 
-  // Loading, error, and empty states remain simple without affecting design fidelity
-  if (loading || error || transactions.length === 0) {
+  // Loading and error states
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
         <div className="w-full max-w-md md:max-w-none mx-auto bg-white flex flex-col gap-6 min-h-screen pb-32 pt-6 md:pt-12 px-6 md:px-8">
@@ -1470,21 +1498,48 @@ export default function AllTransactionsPage() {
               <MainNavigation />
             </div>
           </div>
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-8 h-8 border-2 border-zinc-200 border-t-zinc-950 rounded-full animate-spin"></div>
+          <TransactionListSkeleton count={10} viewMode={layoutMode} />
+        </div>
+        <AddTransactionFooter />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="w-full max-w-md md:max-w-none mx-auto bg-white flex flex-col gap-6 min-h-screen pb-32 pt-6 md:pt-12 px-6 md:px-8">
+          {/* Header with Navigation */}
+          <div className="flex flex-col gap-4 w-full">
+            <div className="flex items-center justify-between w-full">
+              <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
+                All transactions
+              </h1>
+              <div className="flex items-center gap-3">
+                <ViewLayoutToggle layoutMode={layoutMode} onLayoutModeChange={handleLayoutModeChange} />
+                <ViewController viewMode={viewMode} onViewModeChange={setViewMode} />
+                <Button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="hidden md:flex gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg h-10"
+                >
+                  <Plus className="size-5" />
+                  <span className="text-[14px] font-medium leading-[20px]">
+                    Add transaction
+                  </span>
+                </Button>
+              </div>
             </div>
-          )}
-          {error && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-sm text-zinc-500">Failed to load transactions: {error}</p>
+            {/* Navigation Bar - Mobile/Tablet only */}
+            <div className="lg:hidden">
+              <MainNavigation />
             </div>
-          )}
-          {transactions.length === 0 && !loading && !error && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-sm text-zinc-500">No transactions found.</p>
-            </div>
-          )}
+          </div>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-sm text-zinc-500">Failed to load transactions: {paginationError?.message || 'Unknown error'}</p>
+            <Button onClick={() => refetch()} className="mt-4">
+              Retry
+            </Button>
+          </div>
         </div>
         <AddTransactionFooter />
       </div>
@@ -1554,7 +1609,7 @@ export default function AllTransactionsPage() {
           onRemoveAllVendors={handleRemoveAllVendors}
           onRemoveAllPaymentMethods={handleRemoveAllPaymentMethods}
           onClearAll={handleClearAll}
-          resultCount={filteredTransactions.length}
+          resultCount={allTransactions.length}
         />
 
         {/* Advanced Filters Panel - Modal/Bottom Sheet */}
@@ -1611,32 +1666,47 @@ export default function AllTransactionsPage() {
                 <p className="text-sm text-zinc-500">No transactions found matching the filters.</p>
               </div>
             ) : (
-              groupedTransactions.map(({ date, transactions: dayTransactions }) => (
-                <React.Fragment key={date}>
-                  <TransactionGroup
-                    date={date}
-                    transactions={dayTransactions}
-                    viewMode={viewMode}
-                    isMobile={isMobile}
-                    onEditTransaction={handleOpenEditModal}
-                  />
-                </React.Fragment>
-              ))
+              <>
+                {groupedTransactions.map(({ date, transactions: dayTransactions }) => (
+                  <React.Fragment key={date}>
+                    <TransactionGroup
+                      date={date}
+                      transactions={dayTransactions}
+                      viewMode={viewMode}
+                      isMobile={isMobile}
+                      onEditTransaction={handleOpenEditModal}
+                    />
+                  </React.Fragment>
+                ))}
+                {/* Infinite scroll sentinel */}
+                <div ref={infiniteScrollRef} className="h-4" />
+                {/* Loading more indicator */}
+                {isFetchingNextPage && <TransactionLoadingMore />}
+              </>
             )}
           </div>
         ) : (
-          <TransactionsTable
-            transactions={filteredTransactions}
-            viewMode={viewMode}
-            showExchangeRates={showExchangeRates}
-            conversionCurrency={conversionCurrency}
-            isMobile={isMobile}
-            selectedIds={selectedIds}
-            onToggleSelection={handleToggleSelection}
-            onToggleAll={handleToggleAll}
-            onEditTransaction={handleOpenEditModal}
-            onDeleteTransaction={handleDeleteSingle}
-          />
+          <>
+            <TransactionsTable
+              transactions={allTransactions}
+              viewMode={viewMode}
+              showExchangeRates={showExchangeRates}
+              conversionCurrency={conversionCurrency}
+              isMobile={isMobile}
+              selectedIds={selectedIds}
+              onToggleSelection={handleToggleSelection}
+              onToggleAll={handleToggleAll}
+              onEditTransaction={handleOpenEditModal}
+              onDeleteTransaction={handleDeleteSingle}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
+            {/* Infinite scroll sentinel */}
+            <div ref={infiniteScrollRef} className="h-4" />
+            {/* Loading more indicator */}
+            {isFetchingNextPage && <TransactionLoadingMore />}
+          </>
         )}
       </div>
 
@@ -1644,7 +1714,7 @@ export default function AllTransactionsPage() {
       {layoutMode === "table" && selectedIds.size > 0 && (
         <BulkEditToolbar
           selectedCount={selectedIds.size}
-          selectedTransactions={filteredTransactions.filter(t => selectedIds.has(t.id))}
+          selectedTransactions={allTransactions.filter(t => selectedIds.has(t.id))}
           totalsCurrency={totalsCurrency}
           onTotalsCurrencyChange={setTotalsCurrency}
           onClearSelection={handleClearSelection}
@@ -1659,7 +1729,7 @@ export default function AllTransactionsPage() {
       {/* Show totals footer when filters are active and no selection, otherwise show add transaction footer */}
       {!selectedIds.size && hasActiveFilters ? (
         <TotalsFooter
-          transactions={filteredTransactions}
+          transactions={allTransactions}
           totalsCurrency={totalsCurrency}
           onTotalsCurrencyChange={setTotalsCurrency}
         />

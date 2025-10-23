@@ -1,193 +1,151 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
-import { formatExchangeRateTimestamp, formatTransactionDateLabel } from '@/lib/utils/date-formatter'
-import { formatCurrency } from '@/lib/utils'
-import {
-  calculateEnhancedMonthlySummary,
-  calculateYTDSummary,
-  calculate12MonthTrend,
-  calculateTopVendors
-} from '@/lib/utils/monthly-summary'
-import { format } from 'date-fns'
-import { HomePageClient } from '@/components/shared/HomePageClient'
+import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
+import { MainNavigation } from '@/components/page-specific/main-navigation'
+import { AddTransactionFooter } from '@/components/page-specific/add-transaction-footer'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Plus, X } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+
+// Import server components
+import { UserProfileSection } from './components/UserProfileSection'
+import { MonthlyKPISection } from './components/MonthlyKPISection'
+import { YTDKPISection } from './components/YTDKPISection'
+import { TrendChartSection } from './components/TrendChartSection'
+import { TopVendorsSection } from './components/TopVendorsSection'
+import { RecentTransactionsSection } from './components/RecentTransactionsSection'
+
+// Import skeleton components
+import { MonthlyKPISkeleton, YTDKPISkeleton } from './components/KPISkeleton'
+import { TrendChartSkeleton, TopVendorsSkeleton, RecentTransactionsSkeleton } from './components/ChartSkeleton'
+
+// Client components
+import { HomePageClientWrapper } from './components/HomePageClientWrapper'
 
 interface HomePageProps {
   searchParams?: Promise<{ error?: string }>
 }
 
+// Enable partial prerendering and set revalidation time
+export const dynamic = 'force-dynamic' // Ensure fresh data on each visit
+export const revalidate = 60 // Revalidate every 60 seconds
+
 export default async function HomePage({ searchParams }: HomePageProps) {
   const resolvedSearchParams = await searchParams
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  // If not authenticated, redirect to login
+  // Quick auth check
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     redirect('/login')
   }
 
-  // Fetch user profile data with role information
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('first_name, last_name, role')
-    .eq('id', user.id)
-    .single()
-
-  // Create full name from first and last name
-  const fullName = userProfile?.first_name && userProfile?.last_name
-    ? `${userProfile.first_name} ${userProfile.last_name}`
-    : userProfile?.first_name || userProfile?.last_name || user.email || "User"
-
-  // Check if user has admin role (fallback to email check)
-  const isAdminByRole = userProfile?.role === 'admin'
-  const isAdminByEmail = user.email === 'admin@dsil.design'
-  const isAdmin = isAdminByRole || isAdminByEmail
-
-  // Generate initials from first and last name
-  const getInitials = (firstName?: string | null, lastName?: string | null): string => {
-    if (firstName && lastName) {
-      return `${firstName.charAt(0).toUpperCase()}${lastName.charAt(0).toUpperCase()}`
-    }
-    if (firstName) {
-      return firstName.charAt(0).toUpperCase()
-    }
-    if (lastName) {
-      return lastName.charAt(0).toUpperCase()
-    }
-    return "U" // Default fallback
-  }
-
-  const userInitials = getInitials(userProfile?.first_name, userProfile?.last_name)
-
-  // Calculate date range for last 13 months (to cover 12-month trend + current month)
-  const today = new Date()
-  const thirteenMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 13, 1)
-  const dateThreshold = thirteenMonthsAgo.toISOString().split('T')[0]
-
-  // Fetch transactions from last 13 months for summary calculations
-  // PostgREST has a 1000 row limit, so we use pagination to fetch all data
-  let allTransactions: TransactionWithVendorAndPayment[] = []
-  let hasMore = true
-  let page = 0
-  const pageSize = 1000
-
-  while (hasMore) {
-    const start = page * pageSize
-    const end = start + pageSize - 1
-
-    const { data, error } = await supabase
-      .from('transactions')
-      .select(`
-        *,
-        vendors (
-          id,
-          name
-        ),
-        payment_methods (
-          id,
-          name
-        )
-      `)
-      .eq('user_id', user.id)
-      .gte('transaction_date', dateThreshold)
-      .order('transaction_date', { ascending: false })
-      .range(start, end)
-
-    if (error) {
-      console.error('Error fetching transactions:', error)
-      break
-    }
-
-    if (data && data.length > 0) {
-      allTransactions = [...allTransactions, ...data]
-      hasMore = data.length === pageSize
-      page++
-    } else {
-      hasMore = false
-    }
-  }
-
-  // Get recent 5 for display only
-  const transactions = allTransactions?.slice(0, 5) || []
-
-  // Fetch latest USD to THB exchange rate
-  const { data: latestExchangeRate } = await supabase
-    .from('exchange_rates')
-    .select('rate, date, created_at')
-    .eq('from_currency', 'USD')
-    .eq('to_currency', 'THB')
-    .order('date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
-  
-  // Format exchange rate and timestamp
-  const exchangeRate = latestExchangeRate?.rate ? formatCurrency(latestExchangeRate.rate, 'THB') : '฿35.00'
-  const exchangeRateTimestamp = latestExchangeRate?.created_at 
-    ? formatExchangeRateTimestamp(latestExchangeRate.created_at)
-    : latestExchangeRate?.date 
-    ? formatExchangeRateTimestamp(latestExchangeRate.date)
-    : 'no data available'
-
-  // Group transactions by day
-  const groupTransactionsByDay = (transactions: TransactionWithVendorAndPayment[]) => {
-    const groups: { [key: string]: TransactionWithVendorAndPayment[] } = {}
-
-    transactions.forEach(transaction => {
-      const dayLabel = formatTransactionDateLabel(transaction.transaction_date)
-
-      if (!groups[dayLabel]) {
-        groups[dayLabel] = []
-      }
-      groups[dayLabel].push(transaction)
-    })
-
-    return groups
-  }
-
-  const transactionGroups = groupTransactionsByDay(transactions)
-
-  // Calculate enhanced monthly summary using ALL transactions for accurate comparisons
-  const enhancedMonthlySummary = allTransactions && allTransactions.length > 0
-    ? calculateEnhancedMonthlySummary(allTransactions, new Date(), latestExchangeRate?.rate || 35)
-    : null
-
-  // Calculate YTD summary
-  const ytdSummary = allTransactions && allTransactions.length > 0
-    ? calculateYTDSummary(allTransactions, latestExchangeRate?.rate || 35)
-    : null
-
-  // Calculate 12-month trend
-  const monthlyTrend = allTransactions && allTransactions.length > 0
-    ? calculate12MonthTrend(allTransactions, latestExchangeRate?.rate || 35)
-    : []
-
-  // Calculate top vendors (YTD by default)
-  const topVendors = allTransactions && allTransactions.length > 0
-    ? calculateTopVendors(allTransactions, latestExchangeRate?.rate || 35, 5, 'ytd')
-    : []
-
-  // Get current month name for display
-  const currentMonthName = format(new Date(), 'MMMM yyyy')
+  // Get user profile data (fast query)
+  const userProfile = await UserProfileSection()
 
   return (
-    <HomePageClient
-      fullName={fullName}
-      userInitials={userInitials}
-      userEmail={user.email || ''}
-      isAdmin={isAdmin}
-      currentMonthName={currentMonthName}
-      enhancedMonthlySummary={enhancedMonthlySummary}
-      ytdSummary={ytdSummary}
-      monthlyTrend={monthlyTrend}
-      topVendors={topVendors}
-      exchangeRate={exchangeRate}
-      exchangeRateTimestamp={exchangeRateTimestamp}
-      transactionGroups={transactionGroups}
-      errorMessage={resolvedSearchParams?.error}
-    />
+    <div className="min-h-screen bg-background">
+      {/* Sidebar Navigation - Renders immediately */}
+      <SidebarNavigation
+        user={{
+          fullName: userProfile.fullName,
+          email: userProfile.userEmail,
+          initials: userProfile.userInitials
+        }}
+      />
+
+      {/* Main Content Area with sidebar offset */}
+      <main className="lg:ml-[240px]">
+        {/* Error message for unauthorized access */}
+        {resolvedSearchParams?.error && (
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+            <Card className="bg-destructive/10 border-destructive text-destructive p-4 shadow-lg max-w-md">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">
+                  {resolvedSearchParams.error === 'unauthorized' || resolvedSearchParams.error === 'auth_error'
+                    ? 'Access denied. Admin privileges required.'
+                    : resolvedSearchParams.error}
+                </span>
+                <Button variant="ghost" size="sm" className="h-auto p-1 text-destructive hover:text-destructive/80">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Main scrollable content */}
+        <div className="flex flex-col gap-6 pb-12 pt-6 md:pt-12 px-6 md:px-10">
+          {/* Header with Navigation - Renders immediately */}
+          <div className="flex flex-col gap-4 w-full">
+            <div className="flex items-center justify-between w-full">
+              <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
+                Home
+              </h1>
+              <HomePageClientWrapper />
+            </div>
+            {/* Navigation Bar - Mobile/Tablet only */}
+            <div className="lg:hidden">
+              <MainNavigation />
+            </div>
+          </div>
+
+          {/* Main Content with Progressive Loading */}
+          <div className="flex flex-col gap-4 w-full">
+            {/* KPI Section - Combined layout with proper spacing */}
+            <div className="flex flex-col gap-4 w-full">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-6 gap-4 w-full relative">
+                {/* Vertical Divider - Only visible on XL screens between columns 3 and 4 */}
+                <div className="hidden xl:flex absolute left-1/2 top-0 bottom-0 items-center justify-center w-4 -ml-2 pointer-events-none">
+                  <div className="w-px h-full bg-zinc-200" />
+                </div>
+
+                {/* Current Month KPIs - Priority 1 */}
+                <div className="lg:col-span-1 xl:col-span-3">
+                  <Suspense fallback={<MonthlyKPISkeleton />}>
+                    <MonthlyKPISection />
+                  </Suspense>
+                </div>
+
+                {/* YTD KPIs - Priority 2 */}
+                <div className="lg:col-span-1 xl:col-span-3">
+                  <Suspense fallback={<YTDKPISkeleton />}>
+                    <YTDKPISection />
+                  </Suspense>
+                </div>
+              </div>
+            </div>
+
+            {/* Trend Chart - Priority 3 */}
+            <Suspense fallback={<TrendChartSkeleton />}>
+              <TrendChartSection />
+            </Suspense>
+
+            {/* Bottom Widgets - Priority 4 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full relative">
+              {/* Vertical Divider */}
+              <div className="hidden lg:flex absolute left-1/2 top-0 bottom-0 items-center justify-center w-4 -ml-2 pointer-events-none">
+                <div className="w-px h-full bg-zinc-200" />
+              </div>
+
+              {/* Top Vendors */}
+              <Suspense fallback={<TopVendorsSkeleton />}>
+                <TopVendorsSection />
+              </Suspense>
+
+              {/* Recent Transactions */}
+              <Suspense fallback={<RecentTransactionsSkeleton />}>
+                <RecentTransactionsSection />
+              </Suspense>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Fixed Sticky Footer - Mobile only */}
+      <AddTransactionFooter />
+    </div>
   )
 }

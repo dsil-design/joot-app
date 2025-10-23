@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import { Toaster } from "@/components/ui/sonner";
 import { GlobalActionWrapper } from "@/components/providers/GlobalActionWrapper";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,11 +27,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} font-geist-sans antialiased`} suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <AuthProvider>
-          <GlobalActionWrapper>
-            {children}
-          </GlobalActionWrapper>
-        </AuthProvider>
+        <ReactQueryProvider>
+          <AuthProvider>
+            <GlobalActionWrapper>
+              {children}
+            </GlobalActionWrapper>
+          </AuthProvider>
+        </ReactQueryProvider>
         <Toaster />
       </body>
     </html>

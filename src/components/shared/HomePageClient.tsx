@@ -9,6 +9,7 @@ import { AddTransactionFooter } from '@/components/page-specific/add-transaction
 import { ComparisonMetric } from '@/components/ui/comparison-metric'
 import { MiniSparkline } from '@/components/ui/mini-sparkline'
 import { MonthlyTrendChart } from '@/components/ui/monthly-trend-chart'
+import { TrendChartCard } from '@/components/ui/trend-chart-card'
 import { TopVendorsWidget } from '@/components/ui/top-vendors-widget'
 import { MainNavigation } from '@/components/page-specific/main-navigation'
 import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
@@ -31,6 +32,7 @@ interface HomePageClientProps {
   enhancedMonthlySummary: EnhancedMonthlySummary | null
   ytdSummary: YTDSummary | null
   monthlyTrend: MonthlyTrendData[]
+  allTrendData: MonthlyTrendData[]
   topVendors: TopVendor[]
   exchangeRate: string
   exchangeRateTimestamp: string
@@ -47,6 +49,7 @@ export function HomePageClient({
   enhancedMonthlySummary,
   ytdSummary,
   monthlyTrend,
+  allTrendData,
   topVendors,
   exchangeRate,
   exchangeRateTimestamp,
@@ -205,11 +208,12 @@ export function HomePageClient({
 
         {/* Main Content - Figma Design Implementation */}
         <div className="flex flex-col gap-4 w-full">
-          {/* Monthly Summary and YTD Summary - Side by side on desktop */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
-            {/* Current Month Summary */}
-            <div className="flex flex-col gap-2 items-start justify-start">
-              <div className="flex items-center justify-between w-full">
+          {/* KPI Section - Responsive Grid Layout */}
+          <div className="flex flex-col gap-4 w-full">
+            {/* Section Headers */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-6 gap-4 w-full">
+              {/* Current Month Header - spans 3 columns on XL */}
+              <div className="lg:col-span-1 xl:col-span-3 flex items-center gap-3">
                 <div className="text-[12px] font-medium text-muted-foreground leading-4">
                   {currentMonthName}
                 </div>
@@ -217,171 +221,195 @@ export function HomePageClient({
                   {monthlySummary.daysElapsed} of {monthlySummary.daysInMonth} days ({monthlySummary.percentElapsed}%)
                 </div>
               </div>
+              {/* YTD Header - spans 3 columns on XL */}
+              {ytdSummary && (
+                <div className="lg:col-span-1 xl:col-span-3">
+                  <div className="text-[12px] font-medium text-muted-foreground leading-4">
+                    Year to Date (2025)
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* KPI Cards Grid with Divider - Mobile: 1 col, Tablet: 2 cols, Desktop XL (1280px+): 6 cols */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-6 gap-4 w-full relative">
+              {/* Vertical Divider - Only visible on XL screens between columns 3 and 4 */}
+              {ytdSummary && (
+                <div className="hidden xl:flex absolute left-1/2 top-0 bottom-0 items-center justify-center w-4 -ml-2">
+                  <div className="w-px h-full bg-zinc-200" />
+                </div>
+              )}
+              {/* Current Month - Total Income */}
               <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
-                <div className="p-6">
-                  <div className="grid grid-cols-1 gap-6">
-                    {/* Total Income */}
-                    <div className="flex flex-col gap-2">
-                      <div className="text-[12px] font-medium text-zinc-500 leading-4">
-                        Total Income
-                      </div>
-                      <div className="text-[24px] font-semibold text-green-600 leading-[32px]">
-                        {formatCurrency(monthlySummary.income, 'USD')}
-                      </div>
-                      <div className="text-[12px] font-normal text-zinc-400 leading-4">
-                        {monthlySummary.incomeCount} {monthlySummary.incomeCount === 1 ? 'transaction' : 'transactions'}
-                      </div>
-                      {monthlySummary.previousMonth && (
-                        <ComparisonMetric
-                          value={monthlySummary.previousMonth.income.current}
-                          changeDirection={monthlySummary.previousMonth.income.changeDirection}
-                          changePercent={monthlySummary.previousMonth.income.changePercent}
-                          label="vs last month"
-                          variant="default"
-                        />
-                      )}
+                <div className="p-6 xl:p-5">
+                  <div className="flex flex-col gap-2 xl:gap-1.5">
+                    <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                      Total Income
                     </div>
-
-                    {/* Total Expenses */}
-                    <div className="flex flex-col gap-2">
-                      <div className="text-[12px] font-medium text-zinc-500 leading-4">
-                        Total Expenses
-                      </div>
-                      <div className="text-[24px] font-semibold text-red-600 leading-[32px]">
-                        {formatCurrency(monthlySummary.expenses, 'USD')}
-                      </div>
-                      <div className="text-[12px] font-normal text-zinc-400 leading-4">
-                        {monthlySummary.expenseCount} {monthlySummary.expenseCount === 1 ? 'transaction' : 'transactions'}
-                      </div>
-                      {monthlySummary.previousMonth && (
-                        <ComparisonMetric
-                          value={monthlySummary.previousMonth.expenses.current}
-                          changeDirection={monthlySummary.previousMonth.expenses.changeDirection}
-                          changePercent={monthlySummary.previousMonth.expenses.changePercent}
-                          label="vs last month"
-                          variant="inverse"
-                        />
-                      )}
-                      {monthlySummary.dailySpendTrend.length > 0 && (
-                        <div className="mt-2">
-                          <MiniSparkline data={monthlySummary.dailySpendTrend} color="#ef4444" height={32} />
-                        </div>
-                      )}
+                    <div className="text-[24px] xl:text-[20px] font-semibold text-green-600 leading-[32px] xl:leading-[28px]">
+                      {formatCurrency(monthlySummary.income, 'USD')}
                     </div>
-
-                    {/* Net Surplus/Deficit */}
-                    <div className="flex flex-col gap-2">
-                      <div className="text-[12px] font-medium text-zinc-500 leading-4">
-                        Net {monthlySummary.net >= 0 ? 'Surplus' : 'Deficit'}
-                      </div>
-                      <div className={`text-[24px] font-semibold leading-[32px] ${
-                        monthlySummary.net >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {formatCurrency(Math.abs(monthlySummary.net), 'USD')}
-                      </div>
-                      <div className="text-[12px] font-normal text-zinc-400 leading-4">
-                        {monthlySummary.transactionCount} total {monthlySummary.transactionCount === 1 ? 'transaction' : 'transactions'}
-                      </div>
-                      {monthlySummary.previousMonth && (
-                        <ComparisonMetric
-                          value={monthlySummary.previousMonth.net.current}
-                          changeDirection={monthlySummary.previousMonth.net.changeDirection}
-                          changePercent={monthlySummary.previousMonth.net.changePercent}
-                          label="vs last month"
-                          variant="default"
-                        />
-                      )}
+                    <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                      {monthlySummary.incomeCount} {monthlySummary.incomeCount === 1 ? 'transaction' : 'transactions'}
                     </div>
+                    {monthlySummary.previousMonth && (
+                      <ComparisonMetric
+                        value={monthlySummary.previousMonth.income.current}
+                        changeDirection={monthlySummary.previousMonth.income.changeDirection}
+                        changePercent={monthlySummary.previousMonth.income.changePercent}
+                        label="vs last month"
+                        variant="default"
+                      />
+                    )}
                   </div>
                 </div>
               </Card>
-            </div>
 
-            {/* YTD Summary and Exchange Rate - Combined */}
-            {ytdSummary && (
-              <div className="flex flex-col gap-2 items-start justify-start">
-                <div className="text-[12px] font-medium text-muted-foreground leading-4">
-                  Year to Date (2025)
+              {/* Current Month - Total Expenses */}
+              <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+                <div className="p-6 xl:p-5">
+                  <div className="flex flex-col gap-2 xl:gap-1.5">
+                    <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                      Total Expenses
+                    </div>
+                    <div className="text-[24px] xl:text-[20px] font-semibold text-red-600 leading-[32px] xl:leading-[28px]">
+                      {formatCurrency(monthlySummary.expenses, 'USD')}
+                    </div>
+                    <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                      {monthlySummary.expenseCount} {monthlySummary.expenseCount === 1 ? 'transaction' : 'transactions'}
+                    </div>
+                    {monthlySummary.previousMonth && (
+                      <ComparisonMetric
+                        value={monthlySummary.previousMonth.expenses.current}
+                        changeDirection={monthlySummary.previousMonth.expenses.changeDirection}
+                        changePercent={monthlySummary.previousMonth.expenses.changePercent}
+                        label="vs last month"
+                        variant="inverse"
+                      />
+                    )}
+                  </div>
                 </div>
+              </Card>
+
+              {/* Current Month - Net Surplus/Deficit */}
+              <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+                <div className="p-6 xl:p-5">
+                  <div className="flex flex-col gap-2 xl:gap-1.5">
+                    <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                      Net {monthlySummary.net >= 0 ? 'Surplus' : 'Deficit'}
+                    </div>
+                    <div className={`text-[24px] xl:text-[20px] font-semibold leading-[32px] xl:leading-[28px] ${
+                      monthlySummary.net >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {formatCurrency(Math.abs(monthlySummary.net), 'USD')}
+                    </div>
+                    <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                      {monthlySummary.transactionCount} total {monthlySummary.transactionCount === 1 ? 'transaction' : 'transactions'}
+                    </div>
+                    {monthlySummary.previousMonth && (
+                      <ComparisonMetric
+                        value={monthlySummary.previousMonth.net.current}
+                        changeDirection={monthlySummary.previousMonth.net.changeDirection}
+                        changePercent={monthlySummary.previousMonth.net.changePercent}
+                        label="vs last month"
+                        variant="default"
+                      />
+                    )}
+                  </div>
+                </div>
+              </Card>
+
+              {/* YTD - Total Income */}
+              {ytdSummary && (
                 <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 gap-6">
-                      {/* YTD Income */}
-                      <div className="flex flex-col gap-1">
-                        <div className="text-[12px] font-medium text-zinc-500 leading-4">
-                          Total Income
-                        </div>
-                        <div className="text-[24px] font-semibold text-green-600 leading-[32px]">
-                          {formatCurrency(ytdSummary.income, 'USD')}
-                        </div>
-                        <div className="text-[12px] font-normal text-zinc-400 leading-4">
-                          {formatCurrency(ytdSummary.averageMonthlyIncome, 'USD')}/month avg
-                        </div>
+                  <div className="p-6 xl:p-5">
+                    <div className="flex flex-col gap-2 xl:gap-1.5">
+                      <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                        Total Income
                       </div>
-
-                      {/* YTD Expenses */}
-                      <div className="flex flex-col gap-1">
-                        <div className="text-[12px] font-medium text-zinc-500 leading-4">
-                          Total Expenses
-                        </div>
-                        <div className="text-[24px] font-semibold text-red-600 leading-[32px]">
-                          {formatCurrency(ytdSummary.expenses, 'USD')}
-                        </div>
-                        <div className="text-[12px] font-normal text-zinc-400 leading-4">
-                          {formatCurrency(ytdSummary.averageMonthlyExpenses, 'USD')}/month avg
-                        </div>
+                      <div className="text-[24px] xl:text-[20px] font-semibold text-green-600 leading-[32px] xl:leading-[28px]">
+                        {formatCurrency(ytdSummary.income, 'USD')}
                       </div>
-
-                      {/* YTD Net */}
-                      <div className="flex flex-col gap-1">
-                        <div className="text-[12px] font-medium text-zinc-500 leading-4">
-                          Net {ytdSummary.net >= 0 ? 'Surplus' : 'Deficit'}
-                        </div>
-                        <div className={`text-[24px] font-semibold leading-[32px] ${
-                          ytdSummary.net >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {formatCurrency(Math.abs(ytdSummary.net), 'USD')}
-                        </div>
-                        <div className="text-[12px] font-normal text-zinc-400 leading-4">
-                          {ytdSummary.savingsRate.toFixed(1)}% savings rate
-                        </div>
-                      </div>
-
-                      {/* Exchange Rate - Compact */}
-                      <div className="flex flex-col gap-1 pt-4 border-t border-zinc-200">
-                        <div className="text-[12px] font-medium text-zinc-500 leading-4">
-                          Latest exchange rate
-                        </div>
-                        <div className="text-[20px] font-medium text-zinc-950 leading-[28px]">
-                          {exchangeRate}
-                        </div>
-                        <div className="text-[12px] font-normal text-zinc-400 leading-4">
-                          1 USD as of {exchangeRateTimestamp}
-                        </div>
+                      <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                        {formatCurrency(ytdSummary.averageMonthlyIncome, 'USD')}/month avg
                       </div>
                     </div>
                   </div>
                 </Card>
-              </div>
-            )}
+              )}
+
+              {/* YTD - Total Expenses */}
+              {ytdSummary && (
+                <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+                  <div className="p-6 xl:p-5">
+                    <div className="flex flex-col gap-2 xl:gap-1.5">
+                      <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                        Total Expenses
+                      </div>
+                      <div className="text-[24px] xl:text-[20px] font-semibold text-red-600 leading-[32px] xl:leading-[28px]">
+                        {formatCurrency(ytdSummary.expenses, 'USD')}
+                      </div>
+                      <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                        {formatCurrency(ytdSummary.averageMonthlyExpenses, 'USD')}/month avg
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* YTD - Net Surplus/Deficit */}
+              {ytdSummary && (
+                <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+                  <div className="p-6 xl:p-5">
+                    <div className="flex flex-col gap-2 xl:gap-1.5">
+                      <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                        Net {ytdSummary.net >= 0 ? 'Surplus' : 'Deficit'}
+                      </div>
+                      <div className={`text-[24px] xl:text-[20px] font-semibold leading-[32px] xl:leading-[28px] ${
+                        ytdSummary.net >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {formatCurrency(Math.abs(ytdSummary.net), 'USD')}
+                      </div>
+                      <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                        {ytdSummary.savingsRate.toFixed(1)}% savings rate
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
           </div>
 
-          {/* 12-Month Trend Chart */}
-          {monthlyTrend.length > 0 && (
+          {/* Interactive Trend Chart with Time Period Controls */}
+          {allTrendData.length > 0 && (
             <div className="flex flex-col gap-2 items-start justify-start w-full">
               <div className="text-[12px] font-medium text-muted-foreground leading-4">
-                12-Month Trend
+                Financial Performance
               </div>
-              <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
-                <div className="p-6">
-                  <MonthlyTrendChart data={monthlyTrend} height={300} />
-                </div>
-              </Card>
+              <TrendChartCard
+                data={allTrendData.map(point => ({
+                  date: point.month,
+                  income: point.income,
+                  expenses: point.expenses,
+                  net: point.net,
+                }))}
+                title="Net Worth Trend"
+                defaultPeriod="ytd"
+                height={300}
+                className="w-full"
+              />
             </div>
           )}
 
           {/* Top Vendors and Recent Transactions - Side by side on desktop */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full relative">
+            {/* Vertical Divider - Only visible on LG screens between columns */}
+            {topVendors.length > 0 && (
+              <div className="hidden lg:flex absolute left-1/2 top-0 bottom-0 items-center justify-center w-4 -ml-2">
+                <div className="w-px h-full bg-zinc-200" />
+              </div>
+            )}
+
             {/* Top Vendors */}
             {topVendors.length > 0 && (
               <div className="flex flex-col gap-2 items-start justify-start">
@@ -396,36 +424,30 @@ export function HomePageClient({
               </div>
             )}
 
-            {/* Recent Transactions with Enhanced Footer */}
-            <div className="flex flex-col gap-2 items-start justify-start">
+            {/* Recent Transactions with Scrollable Area */}
+            <div className="flex flex-col gap-2 items-start justify-start h-full min-h-0">
               <div className="flex gap-4 items-center justify-between w-full">
                 <div className="flex-1 text-[12px] font-medium text-muted-foreground leading-4">
                   Recent Transactions
                 </div>
               </div>
-              <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
-                <div className="p-6">
-                  {/* Transaction Groups by Day */}
+              {/* Scrollable transaction area with sticky footer */}
+              <div className="flex flex-col w-full bg-transparent relative flex-1 min-h-0">
+                {/* Scrollable content area */}
+                <div className="overflow-y-auto flex-1 min-h-0 scrollbar-thin scrollbar-thumb-zinc-300 scrollbar-track-transparent">
                   <HomeTransactionList transactionGroups={transactionGroups} />
-
-                  {/* Enhanced Footer with CTAs */}
-                  <div className="flex gap-3 mt-6 pt-4 border-t border-zinc-200">
-                    <Button variant="outline" className="flex-1" asChild>
-                      <Link href="/transactions" className="flex items-center justify-center gap-2">
-                        View All Transactions
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="default"
-                      className="flex-1"
-                      onClick={() => setIsAddModalOpen(true)}
-                    >
-                      Add Transaction
-                    </Button>
-                  </div>
                 </div>
-              </Card>
+
+                {/* Sticky Footer with View All CTA */}
+                <div className="sticky bottom-0 bg-background pt-4 mt-4 border-t border-zinc-200">
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href="/transactions" className="flex items-center justify-center gap-2">
+                      View All Transactions
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

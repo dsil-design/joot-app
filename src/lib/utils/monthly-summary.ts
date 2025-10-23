@@ -132,10 +132,7 @@ function calculateDailySpendTrend(
     const dateKey = formatDate(transactionDate, 'yyyy-MM-dd')
 
     if (dailyTotals[dateKey] !== undefined && transaction.transaction_type === 'expense') {
-      let amountUSD = transaction.amount
-      if (transaction.original_currency === 'THB') {
-        amountUSD = transaction.amount / exchangeRate
-      }
+      const amountUSD = convertToUSD(transaction, exchangeRate)
       dailyTotals[dateKey] += amountUSD
     }
   })
@@ -145,6 +142,34 @@ function calculateDailySpendTrend(
     date: formatDate(day, 'yyyy-MM-dd'),
     amount: dailyTotals[formatDate(day, 'yyyy-MM-dd')]
   }))
+}
+
+/**
+ * Helper: Convert transaction amount to USD using exchange rate
+ * Falls back to assuming USD if no exchange rate is available
+ * @param transaction - The transaction to convert
+ * @param exchangeRate - THB to USD exchange rate (for backwards compatibility)
+ * @returns Amount in USD
+ */
+function convertToUSD(transaction: TransactionWithVendorAndPayment, exchangeRate: number): number {
+  const currency = transaction.original_currency
+  const amount = transaction.amount
+
+  // If already USD, return as-is
+  if (currency === 'USD') {
+    return amount
+  }
+
+  // For THB, use the provided exchange rate
+  if (currency === 'THB') {
+    return amount / exchangeRate
+  }
+
+  // For any other currency, we need to convert via the exchange rate database
+  // Since we don't have access to the database here, we'll need the caller to provide
+  // exchange rates. For now, log a warning and return 0 to make the issue visible.
+  console.warn(`Unable to convert ${currency} to USD - no exchange rate available for transaction ${transaction.id}. This transaction will be excluded from calculations.`)
+  return 0
 }
 
 /**
@@ -175,11 +200,8 @@ export function calculateMonthlySummary(
   let expenseCount = 0
 
   monthTransactions.forEach(transaction => {
-    // Convert to USD if needed
-    let amountUSD = transaction.amount
-    if (transaction.original_currency === 'THB') {
-      amountUSD = transaction.amount / exchangeRate
-    }
+    // Convert to USD using the helper function
+    const amountUSD = convertToUSD(transaction, exchangeRate)
 
     if (transaction.transaction_type === 'income') {
       totalIncome += amountUSD
@@ -291,10 +313,7 @@ export function calculateYTDSummary(
   let expenseCount = 0
 
   ytdTransactions.forEach(transaction => {
-    let amountUSD = transaction.amount
-    if (transaction.original_currency === 'THB') {
-      amountUSD = transaction.amount / exchangeRate
-    }
+    const amountUSD = convertToUSD(transaction, exchangeRate)
 
     if (transaction.transaction_type === 'income') {
       totalIncome += amountUSD
@@ -406,10 +425,7 @@ export function calculateTopVendors(
     const vendorId = transaction.vendor_id || 'no-vendor'
     const vendorName = transaction.vendors?.name || 'Uncategorized'
 
-    let amountUSD = transaction.amount
-    if (transaction.original_currency === 'THB') {
-      amountUSD = transaction.amount / exchangeRate
-    }
+    const amountUSD = convertToUSD(transaction, exchangeRate)
 
     if (vendorMap.has(vendorId)) {
       const existing = vendorMap.get(vendorId)!

@@ -26,6 +26,7 @@ export const CURRENCY_CONFIG_FALLBACK: Record<string, CurrencyInfo> = {
   CHF: { symbol: 'Fr', decimalPlaces: 2 },
   INR: { symbol: '₹', decimalPlaces: 2 },
   KRW: { symbol: '₩', decimalPlaces: 0 },
+  VND: { symbol: '₫', decimalPlaces: 0 },
 }
 
 /**

@@ -132,7 +132,14 @@ export function QuickFilterBar({
                   {PRESET_LABELS['all-time']}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onCustomRangeClick}>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    // Defer the dialog opening to next tick to allow dropdown to close cleanly
+                    setTimeout(() => {
+                      onCustomRangeClick?.()
+                    }, 0)
+                  }}
+                >
                   <Calendar className="mr-2 h-4 w-4" />
                   <strong>Custom Range...</strong>
                 </DropdownMenuItem>

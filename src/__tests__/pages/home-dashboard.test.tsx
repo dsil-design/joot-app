@@ -112,6 +112,7 @@ describe('HomePageClient', () => {
   const mockProps = {
     fullName: 'Test User',
     userInitials: 'TU',
+    userEmail: 'test@example.com',
     isAdmin: false,
     currentMonthName: 'October 2025',
     enhancedMonthlySummary: {
@@ -143,6 +144,7 @@ describe('HomePageClient', () => {
     },
     ytdSummary: mockYTDSummary,
     monthlyTrend: mockMonthlyTrend,
+    allTrendData: mockMonthlyTrend,
     topVendors: mockTopVendors,
     exchangeRate: '฿35.00',
     exchangeRateTimestamp: 'Oct 21, 2025 at 10:00 AM',

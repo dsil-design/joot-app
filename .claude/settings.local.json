@@ -130,7 +130,13 @@
       "Bash(env NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx tsc:*)",
       "Bash(git restore:*)",
       "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npm run lint:*)",
-      "Bash(PGPASSWORD=${SUPABASE_DB_PASSWORD} psql:*)"
+      "Bash(PGPASSWORD=${SUPABASE_DB_PASSWORD} psql:*)",
+      "Bash(npm run verify:types:*)",
+      "Bash(timeout 120 npm run build:*)",
+      "Bash(gtimeout 120 npm run build:*)",
+      "Bash(env NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npm run build:*)",
+      "Bash(SUPABASE_DB_PASSWORD=NkWsbieKWodIMkjF npx supabase db push:*)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npx next build:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
