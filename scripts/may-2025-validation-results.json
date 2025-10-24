@@ -1,0 +1,424 @@
+{
+  "level1": {
+    "expenseTracker": {
+      "dbTotal": 6084.94,
+      "pdfTotal": 6067.3,
+      "variance": 17.639999999999418,
+      "variancePct": 0.29,
+      "pass": true,
+      "expenseCount": 151,
+      "reimbursementCount": 16,
+      "transactionCount": 167
+    },
+    "floridaHouse": {
+      "dbTotal": 93.83,
+      "pdfTotal": 93.83,
+      "variance": 0,
+      "pass": true,
+      "transactionCount": 2
+    },
+    "savings": {
+      "dbTotal": 341.67,
+      "pdfTotal": 341.67,
+      "variance": 0,
+      "pass": true,
+      "transactionCount": 1
+    },
+    "grossIncome": {
+      "dbTotal": 10409.29,
+      "pdfTotal": 10409.29,
+      "variance": 0,
+      "pass": true,
+      "transactionCount": 4
+    },
+    "overallPass": true
+  },
+  "level2": {
+    "comparison": [
+      {
+        "date": "2025-05-04",
+        "dbTotal": 1437.74,
+        "pdfTotal": 1476.4,
+        "difference": -38.66000000000008,
+        "status": "VARIANCE ⚠️"
+      },
+      {
+        "date": "2025-05-05",
+        "dbTotal": 1437.27,
+        "pdfTotal": 1414.31,
+        "difference": 22.960000000000036,
+        "status": "VARIANCE ⚠️"
+      },
+      {
+        "date": "2025-05-07",
+        "dbTotal": 16.62,
+        "pdfTotal": 0,
+        "difference": 16.62,
+        "status": "VARIANCE ⚠️"
+      },
+      {
+        "date": "2025-05-01",
+        "dbTotal": 784.99,
+        "pdfTotal": 792,
+        "difference": -7.009999999999991,
+        "status": "VARIANCE ⚠️"
+      },
+      {
+        "date": "2025-05-03",
+        "dbTotal": 286.26,
+        "pdfTotal": 279.39,
+        "difference": 6.8700000000000045,
+        "status": "VARIANCE ⚠️"
+      },
+      {
+        "date": "2025-05-14",
+        "dbTotal": 66.7,
+        "pdfTotal": 61.01,
+        "difference": 5.690000000000005,
+        "status": "VARIANCE ⚠️"
+      },
+      {
+        "date": "2025-05-09",
+        "dbTotal": 306.23,
+        "pdfTotal": 301.43,
+        "difference": 4.800000000000011,
+        "status": "WITHIN $5 ⚠️"
+      },
+      {
+        "date": "2025-05-19",
+        "dbTotal": 72.02,
+        "pdfTotal": 75.61,
+        "difference": -3.5900000000000034,
+        "status": "WITHIN $5 ⚠️"
+      },
+      {
+        "date": "2025-05-16",
+        "dbTotal": 137.53,
+        "pdfTotal": 134.82,
+        "difference": 2.710000000000008,
+        "status": "WITHIN $5 ⚠️"
+      },
+      {
+        "date": "2025-05-02",
+        "dbTotal": 76.81,
+        "pdfTotal": 74.32,
+        "difference": 2.490000000000009,
+        "status": "WITHIN $5 ⚠️"
+      },
+      {
+        "date": "2025-05-29",
+        "dbTotal": -106.29,
+        "pdfTotal": -104.48,
+        "difference": -1.8100000000000023,
+        "status": "WITHIN $5 ⚠️"
+      },
+      {
+        "date": "2025-05-18",
+        "dbTotal": 78.69,
+        "pdfTotal": 76.9,
+        "difference": 1.789999999999992,
+        "status": "WITHIN $5 ⚠️"
+      },
+      {
+        "date": "2025-05-17",
+        "dbTotal": 76.53,
+        "pdfTotal": 74.85,
+        "difference": 1.6800000000000068,
+        "status": "WITHIN $5 ⚠️"
+      },
+      {
+        "date": "2025-05-10",
+        "dbTotal": 177.06,
+        "pdfTotal": 175.41,
+        "difference": 1.6500000000000057,
+        "status": "WITHIN $5 ⚠️"
+      },
+      {
+        "date": "2025-05-27",
+        "dbTotal": 203.32,
+        "pdfTotal": 202.77,
+        "difference": 0.549999999999983,
+        "status": "WITHIN $1 ✅"
+      },
+      {
+        "date": "2025-05-13",
+        "dbTotal": 77.48,
+        "pdfTotal": 77.86,
+        "difference": -0.37999999999999545,
+        "status": "WITHIN $1 ✅"
+      },
+      {
+        "date": "2025-05-06",
+        "dbTotal": 336.62,
+        "pdfTotal": 336.25,
+        "difference": 0.37000000000000455,
+        "status": "WITHIN $1 ✅"
+      },
+      {
+        "date": "2025-05-15",
+        "dbTotal": 98.87,
+        "pdfTotal": 98.53,
+        "difference": 0.3400000000000034,
+        "status": "WITHIN $1 ✅"
+      },
+      {
+        "date": "2025-05-31",
+        "dbTotal": 103.41,
+        "pdfTotal": 103.12,
+        "difference": 0.28999999999999204,
+        "status": "WITHIN $1 ✅"
+      },
+      {
+        "date": "2025-05-30",
+        "dbTotal": -47.31,
+        "pdfTotal": -47.12,
+        "difference": -0.19000000000000483,
+        "status": "WITHIN $1 ✅"
+      },
+      {
+        "date": "2025-05-26",
+        "dbTotal": 106.39,
+        "pdfTotal": 106.2,
+        "difference": 0.18999999999999773,
+        "status": "WITHIN $1 ✅"
+      },
+      {
+        "date": "2025-05-24",
+        "dbTotal": 21.74,
+        "pdfTotal": 21.61,
+        "difference": 0.129999999999999,
+        "status": "WITHIN $1 ✅"
+      },
+      {
+        "date": "2025-05-12",
+        "dbTotal": 38.94,
+        "pdfTotal": 38.83,
+        "difference": 0.10999999999999943,
+        "status": "WITHIN $1 ✅"
+      },
+      {
+        "date": "2025-05-28",
+        "dbTotal": 65.88,
+        "pdfTotal": 65.84,
+        "difference": 0.03999999999999204,
+        "status": "WITHIN $1 ✅"
+      },
+      {
+        "date": "2025-05-25",
+        "dbTotal": 166.79,
+        "pdfTotal": 166.8,
+        "difference": -0.010000000000019327,
+        "status": "WITHIN $1 ✅"
+      },
+      {
+        "date": "2025-05-08",
+        "dbTotal": 13.77,
+        "pdfTotal": 13.77,
+        "difference": 0,
+        "status": "EXACT ✅"
+      },
+      {
+        "date": "2025-05-11",
+        "dbTotal": 18.99,
+        "pdfTotal": 18.99,
+        "difference": 0,
+        "status": "EXACT ✅"
+      },
+      {
+        "date": "2025-05-20",
+        "dbTotal": 0,
+        "pdfTotal": 0,
+        "difference": 0,
+        "status": "EXACT ✅"
+      },
+      {
+        "date": "2025-05-21",
+        "dbTotal": 0,
+        "pdfTotal": 0,
+        "difference": 0,
+        "status": "EXACT ✅"
+      },
+      {
+        "date": "2025-05-22",
+        "dbTotal": 9.35,
+        "pdfTotal": 9.35,
+        "difference": 0,
+        "status": "EXACT ✅"
+      },
+      {
+        "date": "2025-05-23",
+        "dbTotal": 22.54,
+        "pdfTotal": 22.54,
+        "difference": 0,
+        "status": "EXACT ✅"
+      }
+    ],
+    "statistics": {
+      "exactMatches": 6,
+      "within1": 17,
+      "within5": 25,
+      "over5": 6,
+      "over100": 0,
+      "matchRate": 54.8,
+      "pass": false
+    }
+  },
+  "level3": {
+    "total": {
+      "db": 174,
+      "expected": 174,
+      "pass": true
+    },
+    "expenses": {
+      "db": 154,
+      "expected": 154,
+      "pass": true
+    },
+    "income": {
+      "db": 20,
+      "expected": 20,
+      "pass": true
+    },
+    "usd": {
+      "db": 85,
+      "expected": 85,
+      "pass": true
+    },
+    "thb": {
+      "db": 89,
+      "expected": 89,
+      "pass": true
+    },
+    "overallPass": true
+  },
+  "level4": {
+    "reimbursement": {
+      "db": 16,
+      "expected": 16,
+      "pass": true
+    },
+    "floridaHouse": {
+      "db": 2,
+      "expected": 2,
+      "pass": true
+    },
+    "savings": {
+      "db": 1,
+      "expected": 1,
+      "pass": true
+    },
+    "business": {
+      "db": 0,
+      "expected": 0,
+      "pass": true
+    },
+    "overallPass": true
+  },
+  "level5": {
+    "checks": [
+      {
+        "name": "Rent Transaction",
+        "expected": "This Month's Rent - THB 35000",
+        "actual": "This Month’s Rent - THB 35000",
+        "pass": false
+      },
+      {
+        "name": "Largest THB Transaction",
+        "expected": "THB 35000 (Rent)",
+        "actual": "THB 35000 (This Month’s Rent)",
+        "pass": true
+      },
+      {
+        "name": "Largest USD Transaction",
+        "expected": "$1382.56 (Couch: Design Delivery)",
+        "actual": "$3975.66 (Paycheck)",
+        "pass": false
+      },
+      {
+        "name": "First Transaction",
+        "expected": "2025-05-01",
+        "actual": "2025-05-01",
+        "pass": true
+      },
+      {
+        "name": "Last Transaction",
+        "expected": "2025-05-31",
+        "actual": "2025-05-31",
+        "pass": true
+      }
+    ],
+    "overallPass": false
+  },
+  "level6": {
+    "dbTransactionCount": 174,
+    "pdfTransactionCount": 174,
+    "note": "Full 1:1 verification tables will be in MAY-2025-COMPREHENSIVE-VALIDATION.md"
+  },
+  "redFlags": [
+    {
+      "severity": "WARNING",
+      "transaction": "Daily Total 2025-05-01",
+      "issue": "Daily subtotal variance",
+      "variance": "$-7.01",
+      "rootCause": "Daily calculation mismatch",
+      "phase": "Validation",
+      "status": "OPEN"
+    },
+    {
+      "severity": "WARNING",
+      "transaction": "Daily Total 2025-05-03",
+      "issue": "Daily subtotal variance",
+      "variance": "$6.87",
+      "rootCause": "Daily calculation mismatch",
+      "phase": "Validation",
+      "status": "OPEN"
+    },
+    {
+      "severity": "WARNING",
+      "transaction": "Daily Total 2025-05-04",
+      "issue": "Daily subtotal variance",
+      "variance": "$-38.66",
+      "rootCause": "Daily calculation mismatch",
+      "phase": "Validation",
+      "status": "OPEN"
+    },
+    {
+      "severity": "WARNING",
+      "transaction": "Daily Total 2025-05-05",
+      "issue": "Daily subtotal variance",
+      "variance": "$22.96",
+      "rootCause": "Daily calculation mismatch",
+      "phase": "Validation",
+      "status": "OPEN"
+    },
+    {
+      "severity": "WARNING",
+      "transaction": "Daily Total 2025-05-07",
+      "issue": "Daily subtotal variance",
+      "variance": "$16.62",
+      "rootCause": "Daily calculation mismatch",
+      "phase": "Validation",
+      "status": "OPEN"
+    },
+    {
+      "severity": "WARNING",
+      "transaction": "Daily Total 2025-05-14",
+      "issue": "Daily subtotal variance",
+      "variance": "$5.69",
+      "rootCause": "Daily calculation mismatch",
+      "phase": "Validation",
+      "status": "OPEN"
+    }
+  ],
+  "summary": {
+    "overallStatus": "ACCEPT WITH NOTES",
+    "level1Pass": true,
+    "level2Pass": false,
+    "level3Pass": true,
+    "level4Pass": true,
+    "level5Pass": false,
+    "totalRedFlags": 6,
+    "criticalRedFlags": 0,
+    "warningRedFlags": 6
+  }
+}

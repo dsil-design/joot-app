@@ -1,0 +1,2497 @@
+{
+  "summary": {
+    "overallStatus": "FAIL",
+    "criticalErrors": 2,
+    "errors": 0,
+    "warnings": 0,
+    "recommendation": "REJECT: February 2025 import has validation failures. Review discrepancies before approval.",
+    "levels": {
+      "level1": "FAIL",
+      "level2": "PASS",
+      "level3": "PASS",
+      "level4": "PASS",
+      "level5": "FAIL",
+      "level6": "MANUAL_REVIEW_REQUIRED"
+    }
+  },
+  "level1": {
+    "expenseTracker": {
+      "dbTotal": "4949.88",
+      "pdfTotal": "4927.65",
+      "variance": "22.23",
+      "percentVariance": "0.45%",
+      "pass": true,
+      "transactionCount": 209
+    },
+    "floridaHouse": {
+      "dbTotal": "91.29",
+      "pdfTotal": "91.29",
+      "variance": "0.00",
+      "pass": true,
+      "transactionCount": 2
+    },
+    "savings": {
+      "dbTotal": "$0.00",
+      "pdfTotal": "$0.00",
+      "variance": "$0.00",
+      "pass": true,
+      "transactionCount": 0
+    },
+    "grossIncome": {
+      "dbTotal": "4283.66",
+      "pdfTotal": "175.00",
+      "variance": "4108.66",
+      "pass": false,
+      "transactionCount": 3
+    }
+  },
+  "level2": {
+    "dailyResults": [
+      {
+        "date": "2025-02-01",
+        "dbTotal": "1261.60",
+        "pdfTotal": "1261.60",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 16
+      },
+      {
+        "date": "2025-02-02",
+        "dbTotal": "136.53",
+        "pdfTotal": "136.53",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 5
+      },
+      {
+        "date": "2025-02-03",
+        "dbTotal": "-185.67",
+        "pdfTotal": "-185.67",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 6
+      },
+      {
+        "date": "2025-02-04",
+        "dbTotal": "46.25",
+        "pdfTotal": "46.25",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 4
+      },
+      {
+        "date": "2025-02-05",
+        "dbTotal": "939.13",
+        "pdfTotal": "939.13",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 5
+      },
+      {
+        "date": "2025-02-06",
+        "dbTotal": "46.70",
+        "pdfTotal": "46.70",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 8
+      },
+      {
+        "date": "2025-02-07",
+        "dbTotal": "22.29",
+        "pdfTotal": "22.29",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 5
+      },
+      {
+        "date": "2025-02-08",
+        "dbTotal": "112.95",
+        "pdfTotal": "112.95",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 10
+      },
+      {
+        "date": "2025-02-09",
+        "dbTotal": "166.16",
+        "pdfTotal": "151.46",
+        "variance": "14.70",
+        "status": "⚠️",
+        "transactionCount": 10
+      },
+      {
+        "date": "2025-02-10",
+        "dbTotal": "28.67",
+        "pdfTotal": "21.14",
+        "variance": "7.53",
+        "status": "⚠️",
+        "transactionCount": 4
+      },
+      {
+        "date": "2025-02-11",
+        "dbTotal": "210.00",
+        "pdfTotal": "210.00",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 9
+      },
+      {
+        "date": "2025-02-12",
+        "dbTotal": "39.64",
+        "pdfTotal": "39.64",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 3
+      },
+      {
+        "date": "2025-02-13",
+        "dbTotal": "124.11",
+        "pdfTotal": "124.11",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 9
+      },
+      {
+        "date": "2025-02-14",
+        "dbTotal": "182.35",
+        "pdfTotal": "182.35",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 10
+      },
+      {
+        "date": "2025-02-15",
+        "dbTotal": "95.49",
+        "pdfTotal": "95.49",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 5
+      },
+      {
+        "date": "2025-02-16",
+        "dbTotal": "620.15",
+        "pdfTotal": "620.15",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 12
+      },
+      {
+        "date": "2025-02-17",
+        "dbTotal": "52.32",
+        "pdfTotal": "52.32",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 6
+      },
+      {
+        "date": "2025-02-18",
+        "dbTotal": "122.21",
+        "pdfTotal": "122.21",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 8
+      },
+      {
+        "date": "2025-02-19",
+        "dbTotal": "4.47",
+        "pdfTotal": "4.47",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 2
+      },
+      {
+        "date": "2025-02-20",
+        "dbTotal": "157.07",
+        "pdfTotal": "157.07",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 4
+      },
+      {
+        "date": "2025-02-21",
+        "dbTotal": "130.09",
+        "pdfTotal": "130.10",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 10
+      },
+      {
+        "date": "2025-02-22",
+        "dbTotal": "111.21",
+        "pdfTotal": "111.21",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 17
+      },
+      {
+        "date": "2025-02-23",
+        "dbTotal": "244.85",
+        "pdfTotal": "244.85",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 9
+      },
+      {
+        "date": "2025-02-24",
+        "dbTotal": "-43.48",
+        "pdfTotal": "-43.49",
+        "variance": "0.01",
+        "status": "✅",
+        "transactionCount": 3
+      },
+      {
+        "date": "2025-02-25",
+        "dbTotal": "36.79",
+        "pdfTotal": "36.79",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 3
+      },
+      {
+        "date": "2025-02-26",
+        "dbTotal": "154.89",
+        "pdfTotal": "154.89",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 9
+      },
+      {
+        "date": "2025-02-27",
+        "dbTotal": "127.59",
+        "pdfTotal": "127.59",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 12
+      },
+      {
+        "date": "2025-02-28",
+        "dbTotal": "5.52",
+        "pdfTotal": "5.52",
+        "variance": "0.00",
+        "status": "✅",
+        "transactionCount": 5
+      }
+    ],
+    "stats": {
+      "within1Dollar": 26,
+      "within5Dollars": 0,
+      "over5Dollars": 2,
+      "over100Dollars": 0
+    },
+    "matchRate": "92.86%",
+    "pass": true
+  },
+  "level3": {
+    "total": 211,
+    "expected": 211,
+    "variance": 0,
+    "pass": true,
+    "byType": {
+      "expense": 189,
+      "income": 22
+    },
+    "byCurrency": {
+      "USD": 67,
+      "THB": 144
+    },
+    "bySection": {
+      "expenseTracker": 209,
+      "floridaHouse": 2,
+      "savings": 0,
+      "grossIncome": 3
+    }
+  },
+  "level4": {
+    "tagCounts": {
+      "reimbursement": {
+        "count": 19,
+        "expected": 19,
+        "variance": 0,
+        "pass": true,
+        "critical": false
+      },
+      "floridaHouse": {
+        "count": 2,
+        "expected": 2,
+        "variance": 0,
+        "pass": true,
+        "critical": false
+      },
+      "businessExpense": {
+        "count": 1,
+        "expected": 1,
+        "variance": 0,
+        "pass": true,
+        "critical": false
+      },
+      "savings": {
+        "count": 0,
+        "expected": 0,
+        "variance": 0,
+        "pass": true,
+        "critical": false
+      }
+    },
+    "pass": true
+  },
+  "level5": {
+    "checks": [
+      {
+        "name": "Rent Transaction",
+        "expected": {
+          "description": "This Month's Rent",
+          "amount": 25000,
+          "currency": "THB",
+          "date": "2025-02-05"
+        },
+        "found": null
+      },
+      {
+        "name": "Florida House - Water Bill",
+        "expected": {
+          "description": "Water Bill",
+          "amount": 54.8,
+          "currency": "USD",
+          "date": "2025-02-28"
+        },
+        "found": {
+          "id": "4316b9d9-9357-481e-888c-c8ed9ed03877",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "Water Bill",
+          "original_currency": "USD",
+          "transaction_type": "expense",
+          "transaction_date": "2025-02-28",
+          "created_at": "2025-10-24T09:01:18.220925+00:00",
+          "updated_at": "2025-10-24T09:01:18.220925+00:00",
+          "vendor_id": "1557b854-242a-4d15-9705-9b0d758f152c",
+          "payment_method_id": "8b3957e3-317f-4945-a468-dadefc15d52a",
+          "amount": 54.8,
+          "transaction_tags": [
+            {
+              "tags": {
+                "name": "Florida House"
+              },
+              "tag_id": "178739fd-1712-4356-b21a-8936b6d0a461"
+            }
+          ],
+          "tagNames": [
+            "Florida House"
+          ]
+        },
+        "pass": true
+      },
+      {
+        "name": "Florida House - Gas Bill",
+        "expected": {
+          "description": "Gas Bill",
+          "amount": 36.49,
+          "currency": "USD",
+          "date": "2025-02-28"
+        },
+        "found": {
+          "id": "34a712a5-d60e-491a-a758-9fe6fddd3657",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "Gas Bill",
+          "original_currency": "USD",
+          "transaction_type": "expense",
+          "transaction_date": "2025-02-28",
+          "created_at": "2025-10-24T09:01:18.220925+00:00",
+          "updated_at": "2025-10-24T09:01:18.220925+00:00",
+          "vendor_id": "299ac3fe-dd9c-4271-8ea9-1c7e58c906be",
+          "payment_method_id": "099589a4-beac-4749-a937-743cd109330a",
+          "amount": 36.49,
+          "transaction_tags": [
+            {
+              "tags": {
+                "name": "Florida House"
+              },
+              "tag_id": "178739fd-1712-4356-b21a-8936b6d0a461"
+            }
+          ],
+          "tagNames": [
+            "Florida House"
+          ]
+        },
+        "pass": true
+      },
+      {
+        "name": "Typo Reimbursements",
+        "expected": {
+          "count": 3,
+          "variants": [
+            "Remibursement:",
+            "Rembursement:",
+            "Reimbursment:"
+          ]
+        },
+        "found": {
+          "count": 3,
+          "found": [
+            "Rembursement: Lunch",
+            "Remibursement: Dinner",
+            "Reimbursment: House Rent"
+          ]
+        },
+        "pass": true
+      },
+      {
+        "name": "Golf Winnings",
+        "expected": {
+          "description": "Golf Winnings",
+          "amount": 500,
+          "currency": "THB",
+          "type": "income",
+          "date": "2025-02-09"
+        },
+        "found": {
+          "id": "44951980-0d50-40e8-8021-27091690c9ba",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "Golf Winnings",
+          "original_currency": "THB",
+          "transaction_type": "income",
+          "transaction_date": "2025-02-09",
+          "created_at": "2025-10-24T09:01:08.442726+00:00",
+          "updated_at": "2025-10-24T09:01:08.442726+00:00",
+          "vendor_id": "3465f90c-3c12-43e4-83c9-9a7422ab0334",
+          "payment_method_id": "1a1ec0c3-31a2-4c20-85b1-f8c860a828ff",
+          "amount": 500,
+          "transaction_tags": [],
+          "tagNames": []
+        },
+        "pass": true
+      },
+      {
+        "name": "Comma-Formatted Amount",
+        "expected": {
+          "description": "Florida House",
+          "amount": 1000,
+          "currency": "USD",
+          "date": "2025-02-01"
+        },
+        "found": {
+          "id": "69cf40c8-be3c-4d6d-be13-f698aee86de2",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "Florida House",
+          "original_currency": "USD",
+          "transaction_type": "expense",
+          "transaction_date": "2025-02-01",
+          "created_at": "2025-10-24T09:01:04.09344+00:00",
+          "updated_at": "2025-10-24T09:01:04.09344+00:00",
+          "vendor_id": "44d564e6-68dc-4bb3-8d86-9fd842c321fa",
+          "payment_method_id": "2caabb4d-f9bc-4418-b5cc-4e0adf3fb0c6",
+          "amount": 1000,
+          "transaction_tags": [],
+          "tagNames": []
+        },
+        "pass": true
+      },
+      {
+        "name": "Largest THB Transaction",
+        "found": {
+          "id": "23c37213-75c9-4056-9ea1-506958442144",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "This Month’s Rent",
+          "original_currency": "THB",
+          "transaction_type": "expense",
+          "transaction_date": "2025-02-05",
+          "created_at": "2025-10-24T09:01:04.09344+00:00",
+          "updated_at": "2025-10-24T09:01:04.09344+00:00",
+          "vendor_id": "a8a6a1d6-e799-4f3e-bb8a-85530ea0331d",
+          "payment_method_id": "bd798d93-fa54-4520-ba09-367f96e5a94f",
+          "amount": 25000,
+          "transaction_tags": [],
+          "tagNames": []
+        },
+        "pass": true
+      },
+      {
+        "name": "Largest USD Transaction",
+        "found": {
+          "id": "9bbae503-8f96-420c-9791-1f2f0927d5bb",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "Paycheck",
+          "original_currency": "USD",
+          "transaction_type": "income",
+          "transaction_date": "2025-02-21",
+          "created_at": "2025-10-24T09:01:18.220925+00:00",
+          "updated_at": "2025-10-24T09:01:18.220925+00:00",
+          "vendor_id": "e794283c-9979-49be-8383-ef0858044a4f",
+          "payment_method_id": "2caabb4d-f9bc-4418-b5cc-4e0adf3fb0c6",
+          "amount": 4093.96,
+          "transaction_tags": [],
+          "tagNames": []
+        },
+        "pass": true
+      }
+    ],
+    "pass": false
+  },
+  "level6": {
+    "data": {
+      "expenseTracker": [
+        {
+          "date": "2025-02-28",
+          "description": "CNX Cell Phone Service",
+          "amount": 533.93,
+          "currency": "THB",
+          "usdAmount": "15.70",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-28",
+          "description": "Lunch w/ Nidnoi",
+          "amount": 523.5,
+          "currency": "THB",
+          "usdAmount": "15.39",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-28",
+          "description": "CNX Internet",
+          "amount": 44.45,
+          "currency": "THB",
+          "usdAmount": "1.31",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-28",
+          "description": "Rembursement: Lunch",
+          "amount": 261,
+          "currency": "THB",
+          "usdAmount": "7.67",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-28",
+          "description": "Reimbursement: Dinner",
+          "amount": 653,
+          "currency": "THB",
+          "usdAmount": "19.20",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Monthly Subscription: Notion Plus",
+          "amount": 12.72,
+          "currency": "USD",
+          "usdAmount": "12.72",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Coffee and Lunch",
+          "amount": 425,
+          "currency": "THB",
+          "usdAmount": "12.49",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Water",
+          "amount": 25,
+          "currency": "THB",
+          "usdAmount": "0.73",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Transfer Fee",
+          "amount": 8.51,
+          "currency": "USD",
+          "usdAmount": "8.51",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Transfer Fee",
+          "amount": 44.76,
+          "currency": "THB",
+          "usdAmount": "1.32",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Meal Plan",
+          "amount": 1000,
+          "currency": "THB",
+          "usdAmount": "29.40",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Taxi to Restaurant",
+          "amount": 2.11,
+          "currency": "USD",
+          "usdAmount": "2.11",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Dinner",
+          "amount": 1367,
+          "currency": "THB",
+          "usdAmount": "40.19",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Drinks",
+          "amount": 500,
+          "currency": "THB",
+          "usdAmount": "14.70",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Drinks",
+          "amount": 400,
+          "currency": "THB",
+          "usdAmount": "11.76",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Taxi Home",
+          "amount": 2.3,
+          "currency": "USD",
+          "usdAmount": "2.30",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-27",
+          "description": "Reimbursement: Towels",
+          "amount": 294,
+          "currency": "THB",
+          "usdAmount": "8.64",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-26",
+          "description": "Ethernet Installation",
+          "amount": 3000,
+          "currency": "THB",
+          "usdAmount": "88.20",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-26",
+          "description": "Transfer Fee",
+          "amount": 8.54,
+          "currency": "USD",
+          "usdAmount": "8.54",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-26",
+          "description": "Transfer Fee",
+          "amount": 44.76,
+          "currency": "THB",
+          "usdAmount": "1.32",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-26",
+          "description": "Hand Towels, Kitchen Towels",
+          "amount": 17.48,
+          "currency": "USD",
+          "usdAmount": "17.48",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-26",
+          "description": "Taxi to Condo",
+          "amount": 2.71,
+          "currency": "USD",
+          "usdAmount": "2.71",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-26",
+          "description": "Taxi Home",
+          "amount": 4.99,
+          "currency": "USD",
+          "usdAmount": "4.99",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-26",
+          "description": "Dessert: After You",
+          "amount": 8.88,
+          "currency": "USD",
+          "usdAmount": "8.88",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-26",
+          "description": "Gym Membership",
+          "amount": 18.41,
+          "currency": "USD",
+          "usdAmount": "18.41",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-26",
+          "description": "Ethernet Cable",
+          "amount": 4.36,
+          "currency": "USD",
+          "usdAmount": "4.36",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-25",
+          "description": "Monthly Subscription: HBO Max",
+          "amount": 19.17,
+          "currency": "USD",
+          "usdAmount": "19.17",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-25",
+          "description": "Massage",
+          "amount": 13.5,
+          "currency": "USD",
+          "usdAmount": "13.50",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-25",
+          "description": "Flowers",
+          "amount": 140,
+          "currency": "THB",
+          "usdAmount": "4.12",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-24",
+          "description": "Lunch: Food4Thought",
+          "amount": 8.7,
+          "currency": "USD",
+          "usdAmount": "8.70",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-24",
+          "description": "Remibursement: Dinner",
+          "amount": 230,
+          "currency": "THB",
+          "usdAmount": "6.76",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-24",
+          "description": "Reimbursement: Groceries",
+          "amount": 1545,
+          "currency": "THB",
+          "usdAmount": "45.42",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-23",
+          "description": "Express Delivery for Leigh",
+          "amount": 2.36,
+          "currency": "USD",
+          "usdAmount": "2.36",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-23",
+          "description": "Breakfast",
+          "amount": 400,
+          "currency": "THB",
+          "usdAmount": "11.76",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-23",
+          "description": "Taxi to Condo",
+          "amount": 4.24,
+          "currency": "USD",
+          "usdAmount": "4.24",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-23",
+          "description": "Taxi to House",
+          "amount": 4.09,
+          "currency": "USD",
+          "usdAmount": "4.09",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-23",
+          "description": "Reimbursement: Dinner",
+          "amount": 175,
+          "currency": "THB",
+          "usdAmount": "5.14",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-23",
+          "description": "Dinner",
+          "amount": 985,
+          "currency": "THB",
+          "usdAmount": "28.96",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-23",
+          "description": "Bread",
+          "amount": 90,
+          "currency": "THB",
+          "usdAmount": "2.65",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-23",
+          "description": "Groceries",
+          "amount": 92.31,
+          "currency": "USD",
+          "usdAmount": "92.31",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-23",
+          "description": "USBA-USBC cable, Laser Pointer, Handheld Vacuum, Vacuum filters, Green Tea, Ethernet cable, Air plunger, Eye cream, Smellproof pouch",
+          "amount": 103.63,
+          "currency": "USD",
+          "usdAmount": "103.63",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Taxi to Golf",
+          "amount": 5.9,
+          "currency": "USD",
+          "usdAmount": "5.90",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Breakfast",
+          "amount": 109,
+          "currency": "THB",
+          "usdAmount": "3.20",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Socks",
+          "amount": 50,
+          "currency": "THB",
+          "usdAmount": "1.47",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Greens Fee",
+          "amount": 1000,
+          "currency": "THB",
+          "usdAmount": "29.40",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Drinks",
+          "amount": 55,
+          "currency": "THB",
+          "usdAmount": "1.62",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Drinks",
+          "amount": 100,
+          "currency": "THB",
+          "usdAmount": "2.94",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Caddy Tip",
+          "amount": 400,
+          "currency": "THB",
+          "usdAmount": "11.76",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Lunch",
+          "amount": 170,
+          "currency": "THB",
+          "usdAmount": "5.00",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Drinks",
+          "amount": 208,
+          "currency": "THB",
+          "usdAmount": "6.12",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Dinner",
+          "amount": 560,
+          "currency": "THB",
+          "usdAmount": "16.46",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Dinner",
+          "amount": 825,
+          "currency": "THB",
+          "usdAmount": "24.25",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Reimbursement: Dinner",
+          "amount": 1000,
+          "currency": "THB",
+          "usdAmount": "29.40",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Drink",
+          "amount": 100,
+          "currency": "THB",
+          "usdAmount": "2.94",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Drinks",
+          "amount": 400,
+          "currency": "THB",
+          "usdAmount": "11.76",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Drinks",
+          "amount": 300,
+          "currency": "THB",
+          "usdAmount": "8.82",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Reimbursement: Drinks",
+          "amount": 150,
+          "currency": "THB",
+          "usdAmount": "4.41",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-22",
+          "description": "Drinks",
+          "amount": 455,
+          "currency": "THB",
+          "usdAmount": "13.38",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-21",
+          "description": "Reimbursement: Dinner",
+          "amount": 400,
+          "currency": "THB",
+          "usdAmount": "11.76",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-21",
+          "description": "Reimbursement: Date",
+          "amount": 1200,
+          "currency": "THB",
+          "usdAmount": "35.28",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-21",
+          "description": "Reimbursement: Wine",
+          "amount": 2600,
+          "currency": "THB",
+          "usdAmount": "76.44",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-21",
+          "description": "Dinner",
+          "amount": 1030,
+          "currency": "THB",
+          "usdAmount": "30.28",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-21",
+          "description": "Wine Tasting",
+          "amount": 1200,
+          "currency": "THB",
+          "usdAmount": "35.28",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-21",
+          "description": "Food",
+          "amount": 130,
+          "currency": "THB",
+          "usdAmount": "3.82",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-21",
+          "description": "Food",
+          "amount": 65,
+          "currency": "THB",
+          "usdAmount": "1.91",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-21",
+          "description": "Meal Plan",
+          "amount": 1000,
+          "currency": "THB",
+          "usdAmount": "29.40",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-21",
+          "description": "Wine Bottles",
+          "amount": 5200,
+          "currency": "THB",
+          "usdAmount": "152.88",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-20",
+          "description": "Florida Internet",
+          "amount": 73,
+          "currency": "USD",
+          "usdAmount": "73.00",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-20",
+          "description": "Wine Bottles",
+          "amount": 39.85,
+          "currency": "USD",
+          "usdAmount": "39.85",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-20",
+          "description": "Reimbursement: Wine",
+          "amount": 670,
+          "currency": "THB",
+          "usdAmount": "19.70",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-20",
+          "description": "Dinner",
+          "amount": 2174,
+          "currency": "THB",
+          "usdAmount": "63.92",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-19",
+          "description": "Reimbursement: Groceries",
+          "amount": 112,
+          "currency": "THB",
+          "usdAmount": "3.29",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-19",
+          "description": "Coffee Beans Delivery",
+          "amount": 264,
+          "currency": "THB",
+          "usdAmount": "7.76",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-18",
+          "description": "Monthly Subscription: Claude Pro",
+          "amount": 20,
+          "currency": "USD",
+          "usdAmount": "20.00",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-18",
+          "description": "FL Internet Bill",
+          "amount": 73,
+          "currency": "USD",
+          "usdAmount": "73.00",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-18",
+          "description": "Groceries",
+          "amount": 6.69,
+          "currency": "USD",
+          "usdAmount": "6.69",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-18",
+          "description": "Massage",
+          "amount": 450,
+          "currency": "THB",
+          "usdAmount": "13.23",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-18",
+          "description": "Snacks",
+          "amount": 96,
+          "currency": "THB",
+          "usdAmount": "2.82",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-18",
+          "description": "Dinner",
+          "amount": 70,
+          "currency": "THB",
+          "usdAmount": "2.06",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-18",
+          "description": "Dinner",
+          "amount": 80,
+          "currency": "THB",
+          "usdAmount": "2.35",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-18",
+          "description": "Dinner",
+          "amount": 70,
+          "currency": "THB",
+          "usdAmount": "2.06",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-17",
+          "description": "Groceries",
+          "amount": 5.93,
+          "currency": "USD",
+          "usdAmount": "5.93",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-17",
+          "description": "Lunch",
+          "amount": 65,
+          "currency": "THB",
+          "usdAmount": "1.91",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-17",
+          "description": "Groceries: Tops",
+          "amount": 484,
+          "currency": "THB",
+          "usdAmount": "14.23",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-17",
+          "description": "Cannabis",
+          "amount": 420,
+          "currency": "THB",
+          "usdAmount": "12.35",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-17",
+          "description": "Cannabis Delivery",
+          "amount": 50,
+          "currency": "THB",
+          "usdAmount": "1.47",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-17",
+          "description": "Dinner: Food4Thought",
+          "amount": 559,
+          "currency": "THB",
+          "usdAmount": "16.43",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Bandages and cream",
+          "amount": 285,
+          "currency": "THB",
+          "usdAmount": "8.38",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Meal Plan",
+          "amount": 1000,
+          "currency": "THB",
+          "usdAmount": "29.40",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Lunch",
+          "amount": 260,
+          "currency": "THB",
+          "usdAmount": "7.64",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Groceries",
+          "amount": 240,
+          "currency": "THB",
+          "usdAmount": "7.06",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Groceries",
+          "amount": 2.68,
+          "currency": "USD",
+          "usdAmount": "2.68",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Groceries",
+          "amount": 44.22,
+          "currency": "USD",
+          "usdAmount": "44.22",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Smoothie",
+          "amount": 110,
+          "currency": "THB",
+          "usdAmount": "3.23",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Home Goods",
+          "amount": 366.23,
+          "currency": "USD",
+          "usdAmount": "366.23",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Taxi Home",
+          "amount": 180,
+          "currency": "THB",
+          "usdAmount": "5.29",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Nidnoi’s Birthday Dinner",
+          "amount": 5622.85,
+          "currency": "THB",
+          "usdAmount": "165.31",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Taxi Home",
+          "amount": 130,
+          "currency": "THB",
+          "usdAmount": "3.82",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-16",
+          "description": "Reimbursement: Groceries",
+          "amount": 786.5,
+          "currency": "THB",
+          "usdAmount": "23.12",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-15",
+          "description": "Water Bill (House)",
+          "amount": 505,
+          "currency": "THB",
+          "usdAmount": "14.85",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-15",
+          "description": "Laundry",
+          "amount": 448,
+          "currency": "THB",
+          "usdAmount": "13.17",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-15",
+          "description": "Lunch",
+          "amount": 367,
+          "currency": "THB",
+          "usdAmount": "10.79",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-15",
+          "description": "Milkshake and Movers",
+          "amount": 1390,
+          "currency": "THB",
+          "usdAmount": "40.87",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-15",
+          "description": "Dinner - Urban Pizza",
+          "amount": 538,
+          "currency": "THB",
+          "usdAmount": "15.82",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-14",
+          "description": "Transfer Fee",
+          "amount": 7.94,
+          "currency": "USD",
+          "usdAmount": "7.94",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-14",
+          "description": "Transfer Fee",
+          "amount": 1.32,
+          "currency": "USD",
+          "usdAmount": "1.32",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-14",
+          "description": "Monthly Cleaning",
+          "amount": 2086.5,
+          "currency": "THB",
+          "usdAmount": "61.34",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-14",
+          "description": "Gas",
+          "amount": 370,
+          "currency": "THB",
+          "usdAmount": "10.88",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-14",
+          "description": "Greens Fee",
+          "amount": 1400,
+          "currency": "THB",
+          "usdAmount": "41.16",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-14",
+          "description": "Drinks",
+          "amount": 80,
+          "currency": "THB",
+          "usdAmount": "2.35",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-14",
+          "description": "Drinks",
+          "amount": 100,
+          "currency": "THB",
+          "usdAmount": "2.94",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-14",
+          "description": "Drinks",
+          "amount": 120,
+          "currency": "THB",
+          "usdAmount": "3.53",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-14",
+          "description": "Drinks",
+          "amount": 180,
+          "currency": "THB",
+          "usdAmount": "5.29",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-14",
+          "description": "Valentine’s Day Dinner",
+          "amount": 1551,
+          "currency": "THB",
+          "usdAmount": "45.60",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-13",
+          "description": "Monthly Subscription: iPhone Payment",
+          "amount": 54.08,
+          "currency": "USD",
+          "usdAmount": "54.08",
+          "type": "expense",
+          "tags": [
+            "Business Expense"
+          ]
+        },
+        {
+          "date": "2025-02-13",
+          "description": "Monthly Subscription: Ring",
+          "amount": 10.69,
+          "currency": "USD",
+          "usdAmount": "10.69",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-13",
+          "description": "Boxes",
+          "amount": 450,
+          "currency": "THB",
+          "usdAmount": "13.23",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-13",
+          "description": "Taxi to Mall",
+          "amount": 2.54,
+          "currency": "USD",
+          "usdAmount": "2.54",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-13",
+          "description": "Birthday Card and Valentine’s Day Card",
+          "amount": 274,
+          "currency": "THB",
+          "usdAmount": "8.06",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-13",
+          "description": "Taxi to HomePro",
+          "amount": 150,
+          "currency": "THB",
+          "usdAmount": "4.41",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-13",
+          "description": "Bubble Wrap",
+          "amount": 199,
+          "currency": "THB",
+          "usdAmount": "5.85",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-13",
+          "description": "Taxi Home",
+          "amount": 178,
+          "currency": "THB",
+          "usdAmount": "5.23",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-13",
+          "description": "Dinner - My Kebab",
+          "amount": 681,
+          "currency": "THB",
+          "usdAmount": "20.02",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-12",
+          "description": "Monthly Subscription: Netflix",
+          "amount": 25.95,
+          "currency": "USD",
+          "usdAmount": "25.95",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-12",
+          "description": "App: Paprika",
+          "amount": 4.99,
+          "currency": "USD",
+          "usdAmount": "4.99",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-12",
+          "description": "Dinner: Beast Burger",
+          "amount": 8.7,
+          "currency": "USD",
+          "usdAmount": "8.70",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-11",
+          "description": "Monthly Subscription: YouTube Premium",
+          "amount": 18.99,
+          "currency": "USD",
+          "usdAmount": "18.99",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-11",
+          "description": "Flowers",
+          "amount": 3000,
+          "currency": "THB",
+          "usdAmount": "88.20",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-11",
+          "description": "Water Jug",
+          "amount": 42,
+          "currency": "THB",
+          "usdAmount": "1.23",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-11",
+          "description": "Coffee",
+          "amount": 240,
+          "currency": "THB",
+          "usdAmount": "7.06",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-11",
+          "description": "Cabinet Liners, Wine Bucket, Brown Paper Bags",
+          "amount": 26.7,
+          "currency": "USD",
+          "usdAmount": "26.70",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-11",
+          "description": "Massage",
+          "amount": 13.32,
+          "currency": "USD",
+          "usdAmount": "13.32",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-11",
+          "description": "Laundry",
+          "amount": 287,
+          "currency": "THB",
+          "usdAmount": "8.44",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-11",
+          "description": "Gift for Nidnoi: Signature",
+          "amount": 49,
+          "currency": "USD",
+          "usdAmount": "49.00",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-11",
+          "description": "Reimbursement: coffee",
+          "amount": 100,
+          "currency": "THB",
+          "usdAmount": "2.94",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-10",
+          "description": "Water Bill",
+          "amount": 256,
+          "currency": "THB",
+          "usdAmount": "7.53",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-10",
+          "description": "Lunch",
+          "amount": 130,
+          "currency": "THB",
+          "usdAmount": "3.82",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-10",
+          "description": "Coffee Beans",
+          "amount": 155,
+          "currency": "THB",
+          "usdAmount": "4.56",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-10",
+          "description": "Dinner: Radjarbar",
+          "amount": 12.76,
+          "currency": "USD",
+          "usdAmount": "12.76",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-09",
+          "description": "Coffee",
+          "amount": 65,
+          "currency": "THB",
+          "usdAmount": "1.91",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-09",
+          "description": "Drinks",
+          "amount": 125,
+          "currency": "THB",
+          "usdAmount": "3.67",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-09",
+          "description": "Greens Fee",
+          "amount": 88.84,
+          "currency": "USD",
+          "usdAmount": "88.84",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-09",
+          "description": "Drinks",
+          "amount": 200,
+          "currency": "THB",
+          "usdAmount": "5.88",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-09",
+          "description": "Snack/Drinks",
+          "amount": 430,
+          "currency": "THB",
+          "usdAmount": "12.64",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-09",
+          "description": "Caddy Tip",
+          "amount": 400,
+          "currency": "THB",
+          "usdAmount": "11.76",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-09",
+          "description": "Drinks",
+          "amount": 190,
+          "currency": "THB",
+          "usdAmount": "5.59",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-09",
+          "description": "Drinks",
+          "amount": 220,
+          "currency": "THB",
+          "usdAmount": "6.47",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-09",
+          "description": "Groceries and Dinner",
+          "amount": 1000,
+          "currency": "THB",
+          "usdAmount": "29.40",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-08",
+          "description": "Monthly Subscription: Paramount+",
+          "amount": 13.77,
+          "currency": "USD",
+          "usdAmount": "13.77",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-08",
+          "description": "Meal Plan",
+          "amount": 1000,
+          "currency": "THB",
+          "usdAmount": "29.40",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-08",
+          "description": "Taxi from Hotel to Lunch",
+          "amount": 2.18,
+          "currency": "USD",
+          "usdAmount": "2.18",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-08",
+          "description": "Lunch w/ Nidnoi",
+          "amount": 905,
+          "currency": "THB",
+          "usdAmount": "26.61",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-08",
+          "description": "Coffee",
+          "amount": 90,
+          "currency": "THB",
+          "usdAmount": "2.65",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-08",
+          "description": "Taxi from Airport to Condo",
+          "amount": 9.48,
+          "currency": "USD",
+          "usdAmount": "9.48",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-08",
+          "description": "Laundry",
+          "amount": 357,
+          "currency": "THB",
+          "usdAmount": "10.50",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-08",
+          "description": "Moving w/ Songthaew",
+          "amount": 370,
+          "currency": "THB",
+          "usdAmount": "10.88",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-08",
+          "description": "Dinner",
+          "amount": 255,
+          "currency": "THB",
+          "usdAmount": "7.50",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-07",
+          "description": "Water",
+          "amount": 20,
+          "currency": "THB",
+          "usdAmount": "0.59",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-07",
+          "description": "Taxi to Restaurant",
+          "amount": 2.03,
+          "currency": "USD",
+          "usdAmount": "2.03",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-07",
+          "description": "Lunch",
+          "amount": 492,
+          "currency": "THB",
+          "usdAmount": "14.46",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-07",
+          "description": "Taxi to Coffee Shop",
+          "amount": 1.97,
+          "currency": "USD",
+          "usdAmount": "1.97",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-07",
+          "description": "Coffee",
+          "amount": 110,
+          "currency": "THB",
+          "usdAmount": "3.23",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-06",
+          "description": "Taxi to The Wall",
+          "amount": 1.88,
+          "currency": "USD",
+          "usdAmount": "1.88",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-06",
+          "description": "Coffee",
+          "amount": 65,
+          "currency": "THB",
+          "usdAmount": "1.91",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-06",
+          "description": "Lunch",
+          "amount": 16.63,
+          "currency": "USD",
+          "usdAmount": "16.63",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-06",
+          "description": "Coffee",
+          "amount": 80,
+          "currency": "THB",
+          "usdAmount": "2.35",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-06",
+          "description": "Coffee",
+          "amount": 160,
+          "currency": "THB",
+          "usdAmount": "4.70",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-06",
+          "description": "Taxi to Hotel",
+          "amount": 1.88,
+          "currency": "USD",
+          "usdAmount": "1.88",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-06",
+          "description": "Dinner",
+          "amount": 325,
+          "currency": "THB",
+          "usdAmount": "9.55",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-06",
+          "description": "Coffee",
+          "amount": 265,
+          "currency": "THB",
+          "usdAmount": "7.79",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-05",
+          "description": "This Month’s Rent",
+          "amount": 25000,
+          "currency": "THB",
+          "usdAmount": "735.00",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-05",
+          "description": "Laundry",
+          "amount": 469,
+          "currency": "THB",
+          "usdAmount": "13.79",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-05",
+          "description": "Lunch: Food4Thought",
+          "amount": 9.59,
+          "currency": "USD",
+          "usdAmount": "9.59",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-05",
+          "description": "Flights and Baggage to KKC",
+          "amount": 5433.12,
+          "currency": "THB",
+          "usdAmount": "159.73",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-05",
+          "description": "Dinner",
+          "amount": 715,
+          "currency": "THB",
+          "usdAmount": "21.02",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-04",
+          "description": "Massage",
+          "amount": 13.32,
+          "currency": "USD",
+          "usdAmount": "13.32",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-04",
+          "description": "Lunch",
+          "amount": 470,
+          "currency": "THB",
+          "usdAmount": "13.82",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-04",
+          "description": "Dinner",
+          "amount": 600,
+          "currency": "THB",
+          "usdAmount": "17.64",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-04",
+          "description": "Groceries",
+          "amount": 50,
+          "currency": "THB",
+          "usdAmount": "1.47",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-03",
+          "description": "Reimbursment: House Rent",
+          "amount": 7500,
+          "currency": "THB",
+          "usdAmount": "220.50",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-03",
+          "description": "Gas",
+          "amount": 210,
+          "currency": "THB",
+          "usdAmount": "6.17",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-03",
+          "description": "Lunch: Food4Thought",
+          "amount": 8.56,
+          "currency": "USD",
+          "usdAmount": "8.56",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-03",
+          "description": "Groceries",
+          "amount": 15.89,
+          "currency": "USD",
+          "usdAmount": "15.89",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-03",
+          "description": "Dinner",
+          "amount": 597,
+          "currency": "THB",
+          "usdAmount": "17.55",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-03",
+          "description": "Reimbursement: Dinners and Groceries",
+          "amount": 454,
+          "currency": "THB",
+          "usdAmount": "13.35",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-02",
+          "description": "Greens Fee",
+          "amount": 71.26,
+          "currency": "USD",
+          "usdAmount": "71.26",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-02",
+          "description": "Caddy Fee",
+          "amount": 400,
+          "currency": "THB",
+          "usdAmount": "11.76",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-02",
+          "description": "Drinks",
+          "amount": 340,
+          "currency": "THB",
+          "usdAmount": "10.00",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-02",
+          "description": "Caddy Tip",
+          "amount": 400,
+          "currency": "THB",
+          "usdAmount": "11.76",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-02",
+          "description": "Dinner",
+          "amount": 1080,
+          "currency": "THB",
+          "usdAmount": "31.75",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Work Email",
+          "amount": 6.36,
+          "currency": "USD",
+          "usdAmount": "6.36",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Florida House",
+          "amount": 1000,
+          "currency": "USD",
+          "usdAmount": "1000.00",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Final Payment for Photo Session",
+          "amount": 1500,
+          "currency": "THB",
+          "usdAmount": "44.10",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Breakfast",
+          "amount": 170,
+          "currency": "THB",
+          "usdAmount": "5.00",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Lunch: Hummus",
+          "amount": 8.32,
+          "currency": "USD",
+          "usdAmount": "8.32",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Brita Pitcher, Cabinet Liners",
+          "amount": 50.03,
+          "currency": "USD",
+          "usdAmount": "50.03",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Groceries",
+          "amount": 39.98,
+          "currency": "USD",
+          "usdAmount": "39.98",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Dinner",
+          "amount": 300,
+          "currency": "THB",
+          "usdAmount": "8.82",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Taxi to Bar",
+          "amount": 4,
+          "currency": "USD",
+          "usdAmount": "4.00",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Reimbursement: Groceries",
+          "amount": 690,
+          "currency": "THB",
+          "usdAmount": "20.29",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Reimbursement: Dinner at Bsam",
+          "amount": 1090,
+          "currency": "THB",
+          "usdAmount": "32.05",
+          "type": "income",
+          "tags": [
+            "Reimbursement"
+          ]
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Lock",
+          "amount": 4.44,
+          "currency": "USD",
+          "usdAmount": "4.44",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Drinks",
+          "amount": 660,
+          "currency": "THB",
+          "usdAmount": "19.40",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Drinks",
+          "amount": 300,
+          "currency": "THB",
+          "usdAmount": "8.82",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Drinks",
+          "amount": 3650,
+          "currency": "THB",
+          "usdAmount": "107.31",
+          "type": "expense",
+          "tags": []
+        },
+        {
+          "date": "2025-02-01",
+          "description": "Taxi Home",
+          "amount": 250,
+          "currency": "THB",
+          "usdAmount": "7.35",
+          "type": "expense",
+          "tags": []
+        }
+      ],
+      "floridaHouse": [
+        {
+          "date": "2025-02-28",
+          "description": "Water Bill",
+          "amount": 54.8,
+          "currency": "USD",
+          "usdAmount": "54.80",
+          "type": "expense",
+          "tags": [
+            "Florida House"
+          ]
+        },
+        {
+          "date": "2025-02-28",
+          "description": "Gas Bill",
+          "amount": 36.49,
+          "currency": "USD",
+          "usdAmount": "36.49",
+          "type": "expense",
+          "tags": [
+            "Florida House"
+          ]
+        }
+      ],
+      "grossIncome": [
+        {
+          "date": "2025-02-21",
+          "description": "Paycheck",
+          "amount": 4093.96,
+          "currency": "USD",
+          "usdAmount": "4093.96",
+          "type": "income",
+          "tags": []
+        },
+        {
+          "date": "2025-02-09",
+          "description": "Golf Winnings",
+          "amount": 500,
+          "currency": "THB",
+          "usdAmount": "14.70",
+          "type": "income",
+          "tags": []
+        },
+        {
+          "date": "2025-02-08",
+          "description": "Freelance Income - January",
+          "amount": 175,
+          "currency": "USD",
+          "usdAmount": "175.00",
+          "type": "income",
+          "tags": []
+        }
+      ],
+      "savings": []
+    },
+    "stats": {
+      "expenseTracker": 206,
+      "floridaHouse": 2,
+      "grossIncome": 3,
+      "savings": 0,
+      "total": 211
+    },
+    "note": "Manual PDF verification required for 100% coverage"
+  },
+  "errors": [],
+  "warnings": [],
+  "criticalErrors": [
+    "Level 1: Gross Income total variance: $4108.66",
+    "Level 5: Failed critical transaction checks: Rent Transaction"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "month": "April 2025",
+  "totalIssues": 1,
+  "duplicates": 1,
+  "flags": [
+    {
+      "line": 1845,
+      "desc": "This Month’s Rent",
+      "issue": "Rent amount unexpected: THB 35000.00",
+      "severity": "CRITICAL",
+      "expected": "THB 35000.00"
+    }
+  ],
+  "duplicatesList": [
+    {
+      "merchant": "Xfinity",
+      "amount": "73.00",
+      "etLine": 1966,
+      "etDesc": "FL House Internet",
+      "fhLine": 2094,
+      "fhDesc": "Internet Bill"
+    }
+  ]
+}

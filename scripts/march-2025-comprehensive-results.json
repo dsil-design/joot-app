@@ -1,0 +1,133 @@
+{
+  "sections": {
+    "expenseTracker": {
+      "start": 2102,
+      "end": 2407,
+      "count": 274
+    },
+    "grossIncome": {
+      "start": 2409,
+      "end": 2421,
+      "count": 7
+    },
+    "savings": {
+      "start": 2423,
+      "end": 2427,
+      "count": 1
+    },
+    "floridaHouse": {
+      "start": 2438,
+      "end": 2452,
+      "count": 9
+    }
+  },
+  "statistics": {
+    "totalTransactions": 274,
+    "usdCount": 133,
+    "thbCount": 108,
+    "reimbursementCount": 28,
+    "businessExpenseCount": 2,
+    "reimbursableCount": 7,
+    "negativeAmountCount": 4,
+    "largeAmountCount": 5
+  },
+  "duplicates": [
+    {
+      "merchant": "Xfinity",
+      "expenseLine": 2266,
+      "floridaLine": 2448,
+      "amount": "$73.00",
+      "resolution": "Keep Expense Tracker"
+    },
+    {
+      "merchant": "Pest Control",
+      "expenseLine": 2364,
+      "floridaLine": 2450,
+      "amount": "$110.00",
+      "resolution": "PENDING - Needs user decision"
+    }
+  ],
+  "negativeAmounts": [
+    {
+      "line": 2159,
+      "desc": "Refund Cashback",
+      "merchant": "Agoda",
+      "amount": -28.22,
+      "currency": "USD",
+      "date": ""
+    },
+    {
+      "line": 2206,
+      "desc": "Refund Thunderbolt Cable",
+      "merchant": "Lazada",
+      "amount": -23.23,
+      "currency": "USD",
+      "date": ""
+    },
+    {
+      "line": 2310,
+      "desc": "Partial Refund: Pizza",
+      "merchant": "Grab",
+      "amount": -7.98,
+      "currency": "USD",
+      "date": ""
+    },
+    {
+      "line": 2378,
+      "desc": "Partial Refund",
+      "merchant": "Grab",
+      "amount": -7.49,
+      "currency": "USD",
+      "date": ""
+    }
+  ],
+  "largeAmounts": [
+    {
+      "line": 2105,
+      "desc": "This Month’s Rent",
+      "merchant": "Landlord",
+      "amount": 35000,
+      "currency": "THB",
+      "date": ""
+    },
+    {
+      "line": 2261,
+      "desc": "Hotel: Hua Hin",
+      "merchant": "Agoda",
+      "amount": 594.57,
+      "currency": "USD",
+      "date": ""
+    },
+    {
+      "line": 2344,
+      "desc": "2024 Tax Accounting",
+      "merchant": "Whittaker & Saucier",
+      "amount": 700,
+      "currency": "USD",
+      "date": ""
+    },
+    {
+      "line": 2346,
+      "desc": "Excursions",
+      "merchant": "NCL",
+      "amount": 688.98,
+      "currency": "USD",
+      "date": ""
+    },
+    {
+      "line": 2347,
+      "desc": "Cruise Trp Excursions w/ Nidnoi",
+      "merchant": "OnDeck Travel (Project Expedition)",
+      "amount": 688.98,
+      "currency": "USD",
+      "date": ""
+    }
+  ],
+  "pdfTotals": {
+    "expenseTrackerNet": 12204.52,
+    "grossIncome": 23252.96,
+    "savings": 0,
+    "floridaHouse": 312.76,
+    "expectedTotal": 12517.28
+  }
+}

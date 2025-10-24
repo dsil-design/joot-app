@@ -1,0 +1,93 @@
+================================================================================
+MAY 2025 PREFLIGHT ANALYSIS REPORT
+================================================================================
+
+Generated: 2025-10-23T11:41:47.409Z
+CSV File: csv_imports/fullImport_20251017.csv
+
+SECTION BOUNDARIES
+--------------------------------------------------------------------------------
+Expense Tracker:                Lines 1521 - 1757
+Gross Income Tracker:           Lines 1758 - 1771
+Personal Savings & Investments: Lines 1772 - 1776
+Florida House Expenses:         Lines 1787 - 1801
+
+TRANSACTION COUNTS
+--------------------------------------------------------------------------------
+Expense Tracker:                168 transactions
+Gross Income Tracker:           4 transactions
+Personal Savings & Investments: 1 transactions
+Florida House Expenses:         5 transactions
+
+TOTAL (before duplicate removal): 178 transactions
+TOTAL (after duplicate removal):  177 transactions
+
+GRAND TOTALS FROM CSV
+--------------------------------------------------------------------------------
+Expense Tracker NET:            $6067.30
+Florida House Total:            $166.83
+Expected Combined Total:        $6234.13
+
+TAG DISTRIBUTION PREVIEW
+--------------------------------------------------------------------------------
+Reimbursements:                 16 transactions
+  Sample reimbursements:
+    Line 1530: Reimbursement: Groceries | Nidnoi
+    Line 1531: Reimbursement: Rent & Electricity | Nidnoi
+    Line 1547: Reimbursement: Dinner | Nidnoi
+    Line 1551: Reimbursement: Dinner | Nidnoi
+    Line 1560: Reimbursement: Groceries | Nidnoi
+Business Expenses:              0 transactions
+Reimbursables (tracking only):  4 transactions
+Florida House:                  4 transactions (after dedup)
+Savings/Investment:             1 transactions
+
+CURRENCY DISTRIBUTION
+--------------------------------------------------------------------------------
+USD transactions:               78
+THB transactions:               89
+VND transactions:               0
+MYR transactions:               0
+CNY transactions:               0
+
+DUPLICATE DETECTION
+--------------------------------------------------------------------------------
+Found 1 potential duplicate(s):
+
+1. Xfinity - $73.00
+   Line 1667 (Expense Tracker): "FL Internet Bill" ✅ KEEP
+   Line 1795 (Florida House):   "FL Internet" ❌ REMOVE
+
+ANOMALIES AND WARNINGS
+--------------------------------------------------------------------------------
+✅ No anomalies detected.
+
+COMPARISON WITH BASELINE MONTHS
+--------------------------------------------------------------------------------
+                        Transactions  Reimbursements  THB Txns  Variance
+June 2025 (baseline):        190            25           85      0.00%
+July 2025:                   177            13           68      0.00%
+August 2025:                 194            32           82      2.24%
+September 2025:              159            23           25     -2.24%
+May 2025 (current):          177            16           89      TBD
+
+STRUCTURAL ANALYSIS
+--------------------------------------------------------------------------------
+✅ Structure matches expected format from previous months
+
+PREFLIGHT SUMMARY
+--------------------------------------------------------------------------------
+Total Transactions:             177 (after duplicate removal)
+Total Reimbursements:           16
+Total Business Expenses:        0
+Total THB Transactions:         89
+Total Duplicates Found:         1
+Total Anomalies:                0
+Total Warnings:                 0
+
+✅ PREFLIGHT CHECK: PASSED
+   Ready to proceed with parsing and import.
+
+================================================================================
+END OF REPORT
+================================================================================

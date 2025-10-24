@@ -1,0 +1,69 @@
+================================================================================
+MAY 2025 PARSING - QUICK REFERENCE SUMMARY
+================================================================================
+
+STATUS: ✅ READY FOR DATABASE IMPORT
+
+PARSED DATA:
+  File: scripts/may-2025-CORRECTED.json
+  Total Transactions: 174
+  
+BREAKDOWN:
+  Expense Tracker:              167 transactions
+  Gross Income Tracker:         4 transactions
+  Personal Savings:             1 transaction
+  Florida House Expenses:       2 transactions (after removing 1 duplicate)
+
+TRANSACTION TYPES:
+  Expenses:                     154 transactions
+  Income:                       20 transactions
+
+TAGS:
+  Reimbursement:                16 transactions
+  Florida House:                2 transactions
+  Savings/Investment:           1 transaction
+  No tags:                      155 transactions
+
+CURRENCIES:
+  USD:                          85 transactions
+  THB:                          89 transactions (original amounts preserved)
+
+FINANCIAL VALIDATION:
+  Expense Tracker Total:        $6,998.22
+  Reimbursements:               -$947.41
+  NET:                          $6,050.81
+  CSV Grand Total:              $6,067.30
+  Variance:                     $16.49 (0.27%) ✅ PASS
+
+DUPLICATES REMOVED:
+  1. Xfinity $73.00 (FL Internet Bill) - removed from Florida House section
+
+SKIPPED (ZERO AMOUNT):
+  1. Flight for Leigh (AirAsia) - $0.00
+  2. Doorcam (RING) - no amount
+  3. Electricity Bill (FPL) - no amount
+
+KEY TRANSACTIONS:
+  Largest: Couch delivery $1,382.56
+  Rent: $1,057.00 (THB 35,000)
+  Florida House transfer: $1,000.00
+  Total Paychecks: $10,059.29
+  Total Reimbursements: $947.41
+
+NEXT STEP:
+  node scripts/db/import-month.js may-2025
+
+POST-IMPORT CHECKS:
+  [ ] Verify 174 transactions imported
+  [ ] Check vendor matching
+  [ ] Validate tag counts
+  [ ] Confirm net total on dashboard
+  [ ] Verify multi-currency display
+
+REPORTS:
+  - Detailed: scripts/MAY-2025-PARSE-REPORT.md
+  - Summary: scripts/MAY-2025-PARSING-COMPLETE.md
+  - This file: scripts/MAY-2025-QUICK-SUMMARY.txt
+
+DATE: October 23, 2025
+================================================================================

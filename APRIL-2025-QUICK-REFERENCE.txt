@@ -1,0 +1,98 @@
+================================================================================
+APRIL 2025 PARSING - QUICK REFERENCE
+================================================================================
+
+STATUS: ✅ READY FOR DATABASE IMPORT
+Generated: October 24, 2025
+
+--------------------------------------------------------------------------------
+HEADLINE NUMBERS
+--------------------------------------------------------------------------------
+
+Total Transactions Parsed: 182
+  - Expense Tracker: 172 (150 expenses, 22 reimbursements)
+  - Gross Income: 4 ($13,094.69)
+  - Savings: 1 ($341.67)
+  - Florida House: 5 (after removing 1 duplicate)
+
+Currency Split:
+  - USD: 89 transactions
+  - THB: 93 transactions
+
+Transaction Types:
+  - Expenses: 156
+  - Income: 26
+
+--------------------------------------------------------------------------------
+USER-CONFIRMED CORRECTIONS (2 APPLIED)
+--------------------------------------------------------------------------------
+
+✅ Line 1988 - Madame Koh
+   Before: -THB 1,030.00 (negative)
+   After:  +THB 1,030.00 (positive)
+   Reason: Data entry error - normal expense, not refund
+
+✅ Line 1868 - Monthly Cleaning (BLISS)
+   Before: $2,782.00 USD
+   After:  THB 2,782.00
+   Reason: Currency error in CSV
+   Impact: Reduced USD expenses by ~$2,680
+
+--------------------------------------------------------------------------------
+DUPLICATE REMOVED (1)
+--------------------------------------------------------------------------------
+
+✅ Line 2095 - Xfinity Internet ($73.00)
+   Kept: Line 1967 (Expense Tracker)
+   Removed: Line 2095 (Florida House)
+
+--------------------------------------------------------------------------------
+CRITICAL VERIFICATION
+--------------------------------------------------------------------------------
+
+✅ Rent: 35,000 THB (CORRECT - not converted to USD)
+✅ Monthly Cleaning: 2,782 THB (CORRECTED from USD)
+✅ Madame Koh: 1,030 THB positive (CORRECTED from negative)
+✅ Tax Reimbursement: $3,492.06 USD (from Gross Income, offsets IRS payment)
+
+--------------------------------------------------------------------------------
+TAG DISTRIBUTION
+--------------------------------------------------------------------------------
+
+Reimbursement: 22 (from Expense Tracker only)
+Florida House: 5 (after duplicate removal)
+Savings/Investment: 1
+Business Expense: 0
+
+--------------------------------------------------------------------------------
+FILES CREATED
+--------------------------------------------------------------------------------
+
+1. scripts/april-2025-CORRECTED.json
+   → 182 transactions ready for database import
+
+2. scripts/APRIL-2025-PARSE-REPORT.md
+   → Detailed parsing results with samples
+
+3. scripts/APRIL-2025-RED-FLAGS.md (UPDATED)
+   → Both warnings resolved, 0 open issues
+
+4. scripts/APRIL-2025-IMPORT-SUMMARY.md
+   → Executive summary with all details
+
+5. scripts/parse-april-2025.js
+   → Parsing script (for reference/rerun if needed)
+
+--------------------------------------------------------------------------------
+READY FOR IMPORT
+--------------------------------------------------------------------------------
+
+All validation checks passed ✓
+No parsing errors or red flags ✓
+User-confirmed corrections applied ✓
+Rent verification passed ✓
+Currency handling correct ✓
+
+NEXT STEP: Import to database using scripts/db/import-month.js
+
+================================================================================

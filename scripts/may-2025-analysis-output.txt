@@ -1,0 +1,140 @@
+Parsing Expense Tracker...
+Expense Tracker: 167 transactions parsed
+
+Parsing Gross Income Tracker...
+Gross Income: 4 transactions parsed
+
+Parsing Personal Savings & Investments...
+Savings & Investments: 1 transactions parsed
+
+Parsing Florida House Expenses...
+Florida House: 3 transactions parsed
+
+===========================================
+🔍 DUPLICATE DETECTION REPORT
+===========================================
+Found 1 potential duplicate(s):
+
+1. Xfinity - $73.00 on 2025-05-19
+   - Expense Tracker: "FL Internet Bill" ✅ KEEPING
+   - Florida House: "FL Internet" ❌ REMOVING
+
+
+===========================================
+📊 VALIDATION REPORT
+===========================================
+Total transactions: 174
+
+Breakdown by section:
+  - Expense Tracker: 167 transactions
+  - Gross Income: 4 transactions
+  - Savings & Investments: 1 transactions
+  - Florida House: 2 transactions (after duplicate removal)
+
+Breakdown by type:
+  - Expenses: 154 transactions
+  - Income: 20 transactions
+
+Tag distribution:
+  - Reimbursement: 16 transactions
+  - Florida House: 2 transactions
+  - Savings/Investment: 1 transactions
+
+Currency breakdown:
+  - USD: 85 transactions
+  - THB: 89 transactions
+
+NET TOTAL VALIDATION:
+  - Expense Tracker Expenses: $6998.22
+  - Expense Tracker Reimbursements: $947.41
+  - NET (Expenses - Reimbursements): $6050.81
+  - CSV Grand Total: $6067.30
+  - Variance: $16.49 (0.27%)
+  - Status: ✅ PASS (≤1.5% threshold)
+
+===========================================
+📋 SAMPLE TRANSACTIONS
+===========================================
+
+First 10 transactions:
+
+1. 2025-05-01 | Work Email
+   Merchant: Google | Amount: USD 6.36
+   Type: expense | Payment: Credit Card: Chase Sapphire Reserve
+   Tags: [] | Source: Expense Tracker
+
+2. 2025-05-01 | Florida House
+   Merchant: Me | Amount: USD 1000.00
+   Type: expense | Payment: PNC: Personal
+   Tags: [] | Source: Expense Tracker
+
+3. 2025-05-01 | Semi-weekly: Gym Membership
+   Merchant: Virgin Active | Amount: USD 18.65
+   Type: expense | Payment: Credit Card: Chase Sapphire Reserve
+   Tags: [] | Source: Expense Tracker
+
+4. 2025-05-01 | Meal Plan
+   Merchant: Chef Fuji | Amount: THB 1000.00
+   Type: expense | Payment: Bangkok Bank Account
+   Tags: [] | Source: Expense Tracker
+
+5. 2025-05-01 | Wooden Sign (Desposit)
+   Merchant: Teak Wood Shop | Amount: THB 500.00
+   Type: expense | Payment: Bangkok Bank Account
+   Tags: [] | Source: Expense Tracker
+
+6. 2025-05-01 | Reimbursement: Groceries
+   Merchant: Nidnoi | Amount: THB 180.00
+   Type: income | Payment: Bangkok Bank Account
+   Tags: [Reimbursement] | Source: Expense Tracker
+
+7. 2025-05-01 | Reimbursement: Rent & Electricity
+   Merchant: Nidnoi | Amount: THB 9113.00
+   Type: income | Payment: Bangkok Bank Account
+   Tags: [Reimbursement] | Source: Expense Tracker
+
+8. 2025-05-02 | Wooden Sign (Remainder)
+   Merchant: Teak Wood Shop | Amount: THB 1000.00
+   Type: expense | Payment: Bangkok Bank Account
+   Tags: [] | Source: Expense Tracker
+
+9. 2025-05-02 | Dinner
+   Merchant: Chicken Embassy | Amount: THB 1254.00
+   Type: expense | Payment: Bangkok Bank Account
+   Tags: [] | Source: Expense Tracker
+
+10. 2025-05-02 | Drinks
+   Merchant: Christoph | Amount: THB 240.00
+   Type: expense | Payment: Bangkok Bank Account
+   Tags: [] | Source: Expense Tracker
+
+
+Last 5 transactions:
+
+170. 2025-05-27 | Freelance Income - March & April
+   Merchant: NJDA | Amount: USD 350.00
+   Type: income | Payment: PNC: Personal
+   Tags: [] | Source: Gross Income
+
+171. 2025-05-30 | Paycheck
+   Merchant: Rover | Amount: USD 3041.82
+   Type: income | Payment: PNC: Personal
+   Tags: [] | Source: Gross Income
+
+172. 2025-05-01 | Emergency Savings
+   Merchant: Vanguard | Amount: USD 341.67
+   Type: expense | Payment: PNC Bank Account
+   Tags: [Savings/Investment] | Source: Savings & Investments
+
+173. 2025-05-06 | Water Bill
+   Merchant: Englewood Water | Amount: USD 57.24
+   Type: expense | Payment: Credit Card: Chase Sapphire Reserve
+   Tags: [Florida House] | Source: Florida House
+
+174. 2025-05-14 | Gas Bill
+   Merchant: TECO | Amount: USD 36.59
+   Type: expense | Payment: PNC: House Account
+   Tags: [Florida House] | Source: Florida House
+
+
+✅ Saved 174 transactions to: /Users/dennis/Code Projects/joot-app/scripts/may-2025-CORRECTED.json

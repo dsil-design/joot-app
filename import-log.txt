@@ -1,0 +1,61 @@
+[dotenv@17.2.1] injecting env (6) from .env.local -- tip: 📡 auto-backup env with Radar: https://dotenvx.com/radar
+════════════════════════════════════════════════════════════════════════════════
+🚀 CLEAN SLATE AND IMPORT - SEPTEMBER 2025
+════════════════════════════════════════════════════════════════════════════════
+
+📦 Creating backup of current state...
+
+✅ Backup created successfully!
+   File: backups/pre-clean-slate/backup-1761209381165.json
+   Transactions: 0
+   Vendors: 1
+   Payment Methods: 0
+
+🧹 Starting clean slate process...
+
+👤 User: dennis@dsil.design (ID: a1c3caff-a5de-4898-be7d-ab4b76247ae6)
+
+1️⃣  Deleting transaction_tags relationships...
+   ℹ️  No transaction tags to delete
+
+2️⃣  Deleting all transactions...
+   ✅ Deleted 0 transactions
+
+3️⃣  Deleting all vendors...
+   ✅ Deleted 1 vendors
+
+4️⃣  Deleting all payment methods...
+   ✅ Deleted 0 payment methods
+
+5️⃣  Verifying clean slate...
+   Remaining transactions: 0 (should be 0)
+   Remaining vendors: 0 (should be 0)
+   ✅ Clean slate verified!
+
+📥 Importing September 2025...
+
+   Found 159 transactions to import
+
+   Processing 4 batches of 50 transactions...
+
+   Batch 1/4: Processing 50 transactions...
+   ❌ Error creating tag "Reimbursement": {
+  code: '23502',
+  details: 'Failing row contains (b2f55999-2c54-41ba-8103-c7b02c392a84, Reimbursement, #dbeafe, null, 2025-10-23 08:49:51.709391+00, 2025-10-23 08:49:51.709391+00).',
+  hint: null,
+  message: 'null value in column "user_id" of relation "tags" violates not-null constraint'
+}
+
+════════════════════════════════════════════════════════════════════════════════
+❌ ERROR OCCURRED
+════════════════════════════════════════════════════════════════════════════════
+
+{
+  code: '23502',
+  details: 'Failing row contains (b2f55999-2c54-41ba-8103-c7b02c392a84, Reimbursement, #dbeafe, null, 2025-10-23 08:49:51.709391+00, 2025-10-23 08:49:51.709391+00).',
+  hint: null,
+  message: 'null value in column "user_id" of relation "tags" violates not-null constraint'
+}
+
+⚠️  Database may be in an inconsistent state.
+   Consider restoring from backup if needed.

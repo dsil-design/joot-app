@@ -1,0 +1,1994 @@
+[
+  {
+    "date": "2025-01-01",
+    "description": "Work Email",
+    "merchant": "Google",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 6.36,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-01",
+    "description": "Florida House",
+    "merchant": "Me",
+    "payment_method": "PNC: Personal",
+    "amount": 1000,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-01",
+    "description": "Groceries",
+    "merchant": "Lotus’s Express",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 46.25,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-01",
+    "description": "Breakfast: Stoic Cafe",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 20.05,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-01",
+    "description": "Reimbursement",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 342,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-01",
+    "description": "Groceries",
+    "merchant": "Tops",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 9.64,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-02",
+    "description": "Laundry",
+    "merchant": "Em’s Laundry",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 329,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-02",
+    "description": "This Month’s Rent",
+    "merchant": "Pol",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 25000,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-02",
+    "description": "Annual Subscription Offset Refund: UHF",
+    "merchant": "Apple",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 0.89,
+    "currency": "USD",
+    "transaction_type": "income",
+    "tags": []
+  },
+  {
+    "date": "2025-01-02",
+    "description": "Smoothies",
+    "merchant": "Smoothie Blues",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 190,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-02",
+    "description": "Reimbursement",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 2800,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-02",
+    "description": "Reimbursement",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 95,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-03",
+    "description": "Meal Plan",
+    "merchant": "Chef Fuji",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1000,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-03",
+    "description": "Drinks",
+    "merchant": "Christoph",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 650,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-03",
+    "description": "Drinks",
+    "merchant": "Ae’s Place",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 320,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-03",
+    "description": "Drinks",
+    "merchant": "1Way",
+    "payment_method": "Cash",
+    "amount": 200,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-03",
+    "description": "Drinks",
+    "merchant": "1Way",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 575,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-04",
+    "description": "Lunch w/ Nidnoi",
+    "merchant": "Fleur",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 29.27,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-04",
+    "description": "Reimbursement",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 500,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Lunch",
+    "merchant": "Curry Place",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 16.66,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Food",
+    "merchant": "Camp Mai Mee Cheu",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 849,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Coffee and Croissant",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 240,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Groceries",
+    "merchant": "Yamazaki",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 40,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Groceries",
+    "merchant": "Rimping",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 14.07,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Green Teas",
+    "merchant": "Lazada",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 31.17,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Coffee: Third Place Coffee",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 4.02,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Gas",
+    "merchant": "PT",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 290,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Reimbursement",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 180,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Reimbursement",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 420,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Dinner w/ Nidnoi",
+    "merchant": "Sushi Umai",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 54.94,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-05",
+    "description": "Groceries",
+    "merchant": "Rimping",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 16.46,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-06",
+    "description": "Breakfast w/ Nidnoi: Stoic Cafe",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 19.81,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-06",
+    "description": "Annual Subscription: UHF",
+    "merchant": "Apple",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 9.99,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-06",
+    "description": "Coffee",
+    "merchant": "Doi Chang",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 110,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-06",
+    "description": "Cell Phone",
+    "merchant": "AIS",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 13.7,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-06",
+    "description": "Monthly Gym Membership",
+    "merchant": "Playground Fitness",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 50.97,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-06",
+    "description": "Monthly Cleaning",
+    "merchant": "BLISS",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 2782,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-06",
+    "description": "Reimbursement",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 900,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-06",
+    "description": "CNX Electricity",
+    "merchant": "PEA",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 3069.07,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-06",
+    "description": "CNX Water",
+    "merchant": "Punna 2",
+    "payment_method": "Cash",
+    "amount": 192,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-07",
+    "description": "Lunch and coffee",
+    "merchant": "Food4Thought",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 348,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-07",
+    "description": "Laundry",
+    "merchant": "Em’s Laundry",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 567,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-07",
+    "description": "Massage",
+    "merchant": "TTCM",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 13.1,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-07",
+    "description": "Dinner: Food4Thought",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 16.88,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-07",
+    "description": "Snack: Taco Bell",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 14.44,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-08",
+    "description": "Monthly Subscription: Paramount+",
+    "merchant": "CBS",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 13.77,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-08",
+    "description": "Lunch: Food4Thought",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 7.09,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-08",
+    "description": "Water Jug",
+    "merchant": "Punna 2",
+    "payment_method": "Cash",
+    "amount": 42,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-08",
+    "description": "Milkshake: Smash Daddy’s",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 5.96,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-08",
+    "description": "Dinner: Amataros",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 16.92,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-08",
+    "description": "Dessert: 7 Senses Gelato",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 11.63,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-08",
+    "description": "Snack: KFC",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 9.01,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-09",
+    "description": "Breakfast: Taste of Art",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 7.91,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-09",
+    "description": "Gas",
+    "merchant": "PT",
+    "payment_method": "Cash",
+    "amount": 170,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-09",
+    "description": "Lunch: Food4Thought",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 7.51,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-09",
+    "description": "Haircut",
+    "merchant": "The Cutler",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 600,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-09",
+    "description": "Groceries - Tops",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 14.03,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-09",
+    "description": "Dinner: Mama’s Kitchen",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 9.77,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-09",
+    "description": "Gift for Nidnoi",
+    "merchant": "Central Airport",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 60,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-09",
+    "description": "Rose for Nidnoi",
+    "merchant": "Central Airport",
+    "payment_method": "Cash",
+    "amount": 100,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-10",
+    "description": "Dinner w/ Nidnoi",
+    "merchant": "Dinky’s BBQ",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 60.56,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-10",
+    "description": "Dessert",
+    "merchant": "7 Senses Gelato",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 200,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-10",
+    "description": "Meal Plan",
+    "merchant": "Chef Fuji",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1000,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Monthly Subscription: YouTube Premium",
+    "merchant": "Apple",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 18.99,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Breakfast: Going Up Cafe 2",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 7.17,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Greens Fee & Driving Range",
+    "merchant": "Alpine",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 86.5,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Drinks",
+    "merchant": "Alpine",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1030,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Caddy Tip",
+    "merchant": "Alpine",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 400,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Reimbursement for Friday Dinner",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 770,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Drinks",
+    "merchant": "Leigh",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 140,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Dinner w/ Nidnoi",
+    "merchant": "Pizza My Heart",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1348.2,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Reimbursement for Dinner",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 674,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Drinks",
+    "merchant": "Winstons",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 240,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Drinks",
+    "merchant": "Moat House",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1325,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-11",
+    "description": "Drinks",
+    "merchant": "Home Bar",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 299,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-12",
+    "description": "Monthly Subscription: Netflix",
+    "merchant": "Netflix",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 25.95,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-12",
+    "description": "Lunch",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 250,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-12",
+    "description": "Groceries",
+    "merchant": "Tops",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 35.21,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-12",
+    "description": "Groceries",
+    "merchant": "Food stand",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 100,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-12",
+    "description": "Groceries - Tops",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 5.92,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-12",
+    "description": "Coffee Beans",
+    "merchant": "Hillkoff",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 155,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-12",
+    "description": "Dinner: Gulf",
+    "merchant": "Tuk Driver",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 787,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-12",
+    "description": "Reimbursement for Groceries",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 684,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-12",
+    "description": "Shower Shelves",
+    "merchant": "Lazada",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 14.14,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-13",
+    "description": "Monthly Subscription: Ring",
+    "merchant": "Ring",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 10.69,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-14",
+    "description": "Wedding Greeting Card",
+    "merchant": "B2S",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 4.29,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-14",
+    "description": "Lunch",
+    "merchant": "Central Festival Food Court",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 109,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-14",
+    "description": "Drink",
+    "merchant": "Central Festival Food Court",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 30,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-14",
+    "description": "Coffee",
+    "merchant": "Gravity Cafe",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 65,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-14",
+    "description": "Massage",
+    "merchant": "TTCM",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 13.03,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-14",
+    "description": "Dinner",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 700,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-15",
+    "description": "Monthly Subscription: iPhone Payment",
+    "merchant": "Citizen’s Bank",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 54.08,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-15",
+    "description": "Laundry",
+    "merchant": "Em’s Laundry`",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 490,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-15",
+    "description": "Groceries",
+    "merchant": "Rimping",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 17.95,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-15",
+    "description": "Groceries",
+    "merchant": "Yamazaki",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 88,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-15",
+    "description": "Reimbursement for Groceries",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 370,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-15",
+    "description": "Groceries - Tops",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 4.1,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-16",
+    "description": "Birthday gift: Bekky",
+    "merchant": "Lazada",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 100.12,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-16",
+    "description": "Dinner: Food4Thought",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 16.52,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-17",
+    "description": "Lunch: Hummus",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 7.92,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-17",
+    "description": "Dinner",
+    "merchant": "One Nimman",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 315,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-17",
+    "description": "Dinner",
+    "merchant": "OneNimman",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 89,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-17",
+    "description": "Wine",
+    "merchant": "Best Wine and Spirit",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1950,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-18",
+    "description": "Monthly Subscription: Claude Pro",
+    "merchant": "Apple",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 20,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-18",
+    "description": "FL Internet Bill",
+    "merchant": "Xfinity",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 73,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-18",
+    "description": "Reimbursement for Groceries",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 2002,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-18",
+    "description": "Wine",
+    "merchant": "Best Wine and Spirit",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 113.7,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-18",
+    "description": "Lunxh",
+    "merchant": "Noodle",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 265,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-18",
+    "description": "Drinks",
+    "merchant": "7-Eleven",
+    "payment_method": "Cash",
+    "amount": 400,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-18",
+    "description": "Hotel for Sawyer",
+    "merchant": "Stay with Nimman",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 395.61,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-18",
+    "description": "Breakfast: Taste of Art",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 13.09,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-18",
+    "description": "Wedding Gift",
+    "merchant": "Christoph and Nancy",
+    "payment_method": "Cash",
+    "amount": 1000,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-19",
+    "description": "Coffee: Minimal Coffee",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 2.39,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-19",
+    "description": "Breakfast: Food4Thought",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 16.06,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-19",
+    "description": "Laundry",
+    "merchant": "Em’s Laundry",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 427,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-19",
+    "description": "Groceries",
+    "merchant": "Rimping",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 15.55,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-19",
+    "description": "Coffee w/ Nidnoi",
+    "merchant": "Stories",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 175,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-19",
+    "description": "Meal Plan",
+    "merchant": "Chef Fuji",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1000,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-19",
+    "description": "Reimbursement for Groceries",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 691,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-19",
+    "description": "Dinner: Mama’s Kitchen",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 16.06,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-20",
+    "description": "Greens Fee & Driving Range",
+    "merchant": "Highlands",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 69.68,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-20",
+    "description": "Caddy Fee",
+    "merchant": "Highlands",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 400,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-20",
+    "description": "Caddy Tip",
+    "merchant": "Highlands",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 400,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-20",
+    "description": "Drinks and snacks",
+    "merchant": "Highlands",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 325,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-20",
+    "description": "Taxi to Restaurant",
+    "merchant": "Bolt",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 5.8,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-20",
+    "description": "Dinner w/ Nidnoi",
+    "merchant": "We-La-Dee",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 90.09,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-21",
+    "description": "Gas",
+    "merchant": "PT",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 175,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-21",
+    "description": "Shipment: Voter Registration Change",
+    "merchant": "DHL",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 44.2,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-21",
+    "description": "Groceries",
+    "merchant": "Rimping",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 8.8,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-21",
+    "description": "Coffee",
+    "merchant": "Starbucks",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 170,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-21",
+    "description": "Massage",
+    "merchant": "TTCM",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 13.23,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-21",
+    "description": "Dinner",
+    "merchant": "Pucinella da Stefano",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 29.99,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-22",
+    "description": "Reimbursement for Groceries",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 150,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-22",
+    "description": "Reimbursement for Dinner",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 245,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ]
+  },
+  {
+    "date": "2025-01-22",
+    "description": "Dinner",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 250,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-23",
+    "description": "Laundry",
+    "merchant": "Em’s Laundry",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 350,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-23",
+    "description": "Annual Subscription: Grab",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 2.92,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-23",
+    "description": "Taxi to North Hill",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 11.25,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-23",
+    "description": "Greens Fee (including Sawyer’s)",
+    "merchant": "North Hill",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 136.18,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-23",
+    "description": "Drinks",
+    "merchant": "North Hill",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1100,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-23",
+    "description": "Caddy Tip",
+    "merchant": "North Hill",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 500,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-23",
+    "description": "Drinks",
+    "merchant": "Leigh",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1000,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-23",
+    "description": "Drinks",
+    "merchant": "Crossroads",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1090,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-23",
+    "description": "ATM fee",
+    "merchant": "Bangkok Bank",
+    "payment_method": "PNC: Personal",
+    "amount": 200,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-24",
+    "description": "Monthly Bill: Health Insurance",
+    "merchant": "Wex Health",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 649.12,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": [
+      "Business Expense"
+    ]
+  },
+  {
+    "date": "2025-01-24",
+    "description": "Gas",
+    "merchant": "Leigh",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 600,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-24",
+    "description": "Golf Winnings",
+    "merchant": "Sawyer",
+    "payment_method": "Cash",
+    "amount": 1600,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": []
+  },
+  {
+    "date": "2025-01-24",
+    "description": "Greens Fee & Driving Range (including Sawyer’s)",
+    "merchant": "Alpine",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 173.96,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-24",
+    "description": "Drinks",
+    "merchant": "Alpine",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1030,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-24",
+    "description": "Caddy Tip",
+    "merchant": "Alpine",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 500,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-24",
+    "description": "Drinks",
+    "merchant": "7-Eleven",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 95,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-24",
+    "description": "Dinner w/ Murray: McDonald’s",
+    "merchant": "Foodpanda",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 758,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-24",
+    "description": "Beers",
+    "merchant": "Tuk Driver",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 850,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-24",
+    "description": "Taxi home",
+    "merchant": "Bolt",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 3.25,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-25",
+    "description": "Monthly Subscription: HBO Max",
+    "merchant": "Apple",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 19.17,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-25",
+    "description": "Breakfast w/ Nidnoi: Bella Goose",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 16.58,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-25",
+    "description": "Wine",
+    "merchant": "Best Wine and Spirit",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1300,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-25",
+    "description": "Gift Wrapping",
+    "merchant": "B2S",
+    "payment_method": "Cash",
+    "amount": 57,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-25",
+    "description": "Meal Plan",
+    "merchant": "Chef Fuji",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1000,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-25",
+    "description": "Pizza",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 14.4,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-26",
+    "description": "Golf Winnings",
+    "merchant": "Leigh",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1000,
+    "currency": "THB",
+    "transaction_type": "income",
+    "tags": []
+  },
+  {
+    "date": "2025-01-26",
+    "description": "CNX Internet",
+    "merchant": "3BB",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 59.87,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-26",
+    "description": "Breakfast: Taste of Art",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 9.26,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-26",
+    "description": "Groceries",
+    "merchant": "Nidnoi",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 620,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-26",
+    "description": "Dinner: Mama’s Kitchen",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 16.49,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-27",
+    "description": "Laundry",
+    "merchant": "Em’s Laundry",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 420,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-27",
+    "description": "Dish Wand",
+    "merchant": "Lazada",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 6.64,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-27",
+    "description": "Coffee Beans",
+    "merchant": "Hillkoff",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 155,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-27",
+    "description": "Groceries",
+    "merchant": "Lotus’s Express",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 99,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-27",
+    "description": "Business Insurance",
+    "merchant": "The Hartford",
+    "payment_method": "PNC: Personal",
+    "amount": 119.19,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": [
+      "Business Expense"
+    ]
+  },
+  {
+    "date": "2025-01-28",
+    "description": "Coffee w/ Nidnoi",
+    "merchant": "Artisan",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 170,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-28",
+    "description": "Monthly Subscription: Notion Plus",
+    "merchant": "Notion",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 12.72,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-28",
+    "description": "Water Jugs",
+    "merchant": "Punna 2",
+    "payment_method": "Cash",
+    "amount": 84,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-28",
+    "description": "Massage",
+    "merchant": "TTCM",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 13.41,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-28",
+    "description": "Dinner: Food4Thought",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 14.66,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-29",
+    "description": "US Cell Phone",
+    "merchant": "T-Mobile",
+    "payment_method": "PNC: Personal",
+    "amount": 70,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": [
+      "Business Expense"
+    ]
+  },
+  {
+    "date": "2025-01-29",
+    "description": "Deposit for Headshots",
+    "merchant": "Five Cats Studio",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 1500,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-30",
+    "description": "Lunch: Food4Thought",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 5.97,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-30",
+    "description": "Dinner: Healthy Junk Express",
+    "merchant": "Grab",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 14.94,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-31",
+    "description": "Transfer Fee",
+    "merchant": "Wise",
+    "payment_method": "PNC: Personal",
+    "amount": 19.04,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-31",
+    "description": "Transfer Fee",
+    "merchant": "Wise",
+    "payment_method": "Wise",
+    "amount": 44.76,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-31",
+    "description": "Transfer Fee",
+    "merchant": "Wise",
+    "payment_method": "Wise",
+    "amount": 44.76,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-31",
+    "description": "First Month’s Rent",
+    "merchant": "Landlord",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 35000,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-31",
+    "description": "Haircut",
+    "merchant": "The Cutler",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 600,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-31",
+    "description": "Laundry",
+    "merchant": "Em’s Laundry",
+    "payment_method": "Bangkok Bank Account",
+    "amount": 511,
+    "currency": "THB",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-31",
+    "description": "Dinner w/ Nidnoi",
+    "merchant": "B Samcook 16",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "amount": 65.07,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-13",
+    "description": "Personal Income: Invoice 1002",
+    "merchant": "DSIL Design",
+    "payment_method": "PNC: Personal",
+    "amount": 5400,
+    "currency": "USD",
+    "transaction_type": "income",
+    "tags": []
+  },
+  {
+    "date": "2025-01-13",
+    "description": "Personal Income: Invoice 1003",
+    "merchant": "DSIL Design",
+    "payment_method": "PNC: Personal",
+    "amount": 3000,
+    "currency": "USD",
+    "transaction_type": "income",
+    "tags": []
+  },
+  {
+    "date": "2025-01-13",
+    "description": "Business income correction - returned funds",
+    "merchant": "DSIL Design",
+    "payment_method": "PNC: Personal",
+    "amount": 602,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": []
+  },
+  {
+    "date": "2025-01-23",
+    "description": "Tripod Sale",
+    "merchant": "eBay",
+    "payment_method": "PNC: Personal",
+    "amount": 203.3,
+    "currency": "USD",
+    "transaction_type": "income",
+    "tags": []
+  },
+  {
+    "date": "2025-01-27",
+    "description": "Freelance Income - December",
+    "merchant": "NJDA",
+    "payment_method": "PNC: Personal",
+    "amount": 175,
+    "currency": "USD",
+    "transaction_type": "income",
+    "tags": []
+  },
+  {
+    "date": "2025-01-27",
+    "description": "Personal Income: Invoice 1004",
+    "merchant": "DSIL Design",
+    "payment_method": "PNC: Personal",
+    "amount": 6292,
+    "currency": "USD",
+    "transaction_type": "income",
+    "tags": []
+  },
+  {
+    "date": "2025-01-01",
+    "description": "HOA Payment",
+    "merchant": "Castle Management",
+    "payment_method": "PNC: House Account",
+    "amount": 1048.55,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": [
+      "Florida House"
+    ]
+  },
+  {
+    "date": "2025-01-10",
+    "description": "Gas Bill",
+    "merchant": "TECO",
+    "payment_method": "PNC: House Account",
+    "amount": 40.91,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": [
+      "Florida House"
+    ]
+  },
+  {
+    "date": "2025-01-29",
+    "description": "Electricity Bill",
+    "merchant": "FPL",
+    "payment_method": "PNC: House Account",
+    "amount": 33.81,
+    "currency": "USD",
+    "transaction_type": "expense",
+    "tags": [
+      "Florida House"
+    ]
+  }
+]
