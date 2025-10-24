@@ -50,17 +50,13 @@ export async function GET(request: NextRequest) {
       transactionType: (searchParams.get("transactionType") as "all" | "expense" | "income") || "all",
     }
 
-    // Build base query
+    // Build base query (without tags for now)
     let query = supabase
       .from("transactions")
       .select(`
         *,
-        vendors (id, name),
-        payment_methods (id, name),
-        transaction_tags (
-          tag_id,
-          tags (id, name, color)
-        )
+        vendors!transactions_vendor_id_fkey (id, name),
+        payment_methods!transactions_payment_method_id_fkey (id, name)
       `, { count: 'exact' })
       .eq("user_id", user.id)
 
@@ -169,6 +165,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch transactions. Please try again." }, { status: 500 })
     }
 
+    // Fetch tags by re-querying transactions with tag data only
+    // This works with RLS because we're querying from transactions table
+    const transactionIds = transactions.map((t: any) => t.id)
+    const { data: transactionsWithTags, error: tagsError } = await supabase
+      .from('transactions')
+      .select(`
+        id,
+        transaction_tags!transaction_tags_transaction_id_fkey (
+          tags!transaction_tags_tag_id_fkey (id, name, color)
+        )
+      `)
+      .in('id', transactionIds)
+      .eq('user_id', user.id)
+
+    if (tagsError) {
+      console.error('Error fetching tags:', tagsError)
+    }
+
+    // Build a map of transaction_id -> tags[]
+    const tagsMap = new Map<string, any[]>()
+    if (transactionsWithTags) {
+      transactionsWithTags.forEach((t: any) => {
+        const tags = t.transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
+        tagsMap.set(t.id, tags)
+      })
+    }
+
     // Calculate totals for the entire filtered dataset (without pagination)
     let totalsQuery = supabase
       .from("transactions")
@@ -238,7 +261,7 @@ export async function GET(request: NextRequest) {
       ...transaction,
       vendor: transaction.vendors,  // Rename vendors (plural) to vendor (singular)
       payment_method: transaction.payment_methods,  // Rename payment_methods (plural) to payment_method (singular)
-      tags: transaction.transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
+      tags: tagsMap.get(transaction.id) || []
     }))
 
     // Generate next cursor from last item

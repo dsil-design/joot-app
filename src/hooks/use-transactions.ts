@@ -43,17 +43,17 @@ export function useTransactions() {
         .from("transactions")
         .select(`
           *,
-          vendors (
+          vendors!transactions_vendor_id_fkey (
             id,
             name
           ),
-          payment_methods (
+          payment_methods!transactions_payment_method_id_fkey (
             id,
             name
           ),
-          transaction_tags (
+          transaction_tags!transaction_tags_transaction_id_fkey (
             tag_id,
-            tags (
+            tags!transaction_tags_tag_id_fkey (
               id,
               name,
               color
@@ -337,17 +337,17 @@ export function useTransactions() {
         .from("transactions")
         .select(`
           *,
-          vendors (
+          vendors!transactions_vendor_id_fkey (
             id,
             name
           ),
-          payment_methods (
+          payment_methods!transactions_payment_method_id_fkey (
             id,
             name
           ),
-          transaction_tags (
+          transaction_tags!transaction_tags_transaction_id_fkey (
             tag_id,
-            tags (
+            tags!transaction_tags_tag_id_fkey (
               id,
               name,
               color
@@ -400,17 +400,17 @@ export function useTransactions() {
         .from("transactions")
         .select(`
           *,
-          vendors (
+          vendors!transactions_vendor_id_fkey (
             id,
             name
           ),
-          payment_methods (
+          payment_methods!transactions_payment_method_id_fkey (
             id,
             name
           ),
-          transaction_tags (
+          transaction_tags!transaction_tags_transaction_id_fkey (
             tag_id,
-            tags (
+            tags!transaction_tags_tag_id_fkey (
               id,
               name,
               color
