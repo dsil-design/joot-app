@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MultiSelectComboBox } from "@/components/ui/multi-select-combobox"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 import type { DateRange } from "react-day-picker"
 
 type TransactionType = "all" | "expense" | "income"
@@ -53,6 +55,7 @@ export function AdvancedFiltersPanel({
       searchKeyword: "",
       vendorIds: [],
       paymentMethodIds: [],
+      transactionType: "all",
     })
   }
 
@@ -97,6 +100,39 @@ export function AdvancedFiltersPanel({
           {/* Filter Controls */}
           <div className="p-4 md:p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+              {/* Transaction Type */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-700">
+                  Transaction Type
+                </label>
+                <RadioGroup
+                  value={localFilters.transactionType}
+                  onValueChange={(value: TransactionType) =>
+                    setLocalFilters({ ...localFilters, transactionType: value })
+                  }
+                  className="flex flex-row gap-4 pt-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="all" id="adv-type-all" />
+                    <Label htmlFor="adv-type-all" className="text-sm font-normal cursor-pointer">
+                      All
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="expense" id="adv-type-expense" />
+                    <Label htmlFor="adv-type-expense" className="text-sm font-normal cursor-pointer">
+                      Expense
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="income" id="adv-type-income" />
+                    <Label htmlFor="adv-type-income" className="text-sm font-normal cursor-pointer">
+                      Income
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
 
               {/* Custom Date Range */}
               <div className="space-y-2">

@@ -73,9 +73,11 @@ export function useTransactions() {
         throw fetchError
       }
 
-      // Transform the data to include tags array
+      // Transform the data to include tags array and rename joined tables
       const transformedData = (data || []).map((transaction: any) => ({
         ...transaction,
+        vendor: transaction.vendors,
+        payment_method: transaction.payment_methods,
         tags: transaction.transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
       }))
 
@@ -365,9 +367,11 @@ export function useTransactions() {
         return null
       }
 
-      // Transform the data to include tags array
+      // Transform the data to include tags array and rename joined tables
       const transformed = {
         ...data,
+        vendor: (data as any).vendors,
+        payment_method: (data as any).payment_methods,
         tags: (data as any).transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
       }
 
@@ -422,9 +426,11 @@ export function useTransactions() {
         throw fetchError
       }
 
-      // Transform the data to include tags array
+      // Transform the data to include tags array and rename joined tables
       const transformedData = (data || []).map((transaction: any) => ({
         ...transaction,
+        vendor: transaction.vendors,
+        payment_method: transaction.payment_methods,
         tags: transaction.transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
       }))
 

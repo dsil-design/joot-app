@@ -44,7 +44,12 @@ export function DynamicTrendChart({ initialData, defaultPeriod = 'ytd' }: Dynami
           .gte('transaction_date', dateLimit.toISOString().split('T')[0])
           .order('transaction_date', { ascending: false })
 
-        return (data || []) as TransactionWithVendorAndPayment[]
+        // Transform to match expected type (vendors -> vendor, payment_methods -> payment_method)
+        return (data || []).map((tx: any) => ({
+          ...tx,
+          vendor: tx.vendors,
+          payment_method: tx.payment_methods
+        })) as TransactionWithVendorAndPayment[]
       }
       return []
     },

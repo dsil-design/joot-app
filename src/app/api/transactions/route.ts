@@ -23,21 +23,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Parse query parameters
+    // Parse query parameters with validation
     const searchParams = request.nextUrl.searchParams
-    const pageSize = parseInt(searchParams.get("pageSize") || "30")
+
+    // Validate and limit page size (1-100)
+    const rawPageSize = parseInt(searchParams.get("pageSize") || "30")
+    const pageSize = Math.min(Math.max(isNaN(rawPageSize) ? 30 : rawPageSize, 1), 100)
+
     const cursor = searchParams.get("cursor") // Format: "date,id"
     const sortField = searchParams.get("sortField") || "date"
-    const sortDirection = searchParams.get("sortDirection") || "desc"
 
-    // Parse filters
+    // Validate sort direction
+    const rawSortDirection = searchParams.get("sortDirection") || "desc"
+    const sortDirection = ["asc", "desc"].includes(rawSortDirection) ? rawSortDirection : "desc"
+
+    // Parse filters with validation
     const filters: TransactionFilters = {
       datePreset: searchParams.get("datePreset") || undefined,
       dateFrom: searchParams.get("dateFrom") || undefined,
       dateTo: searchParams.get("dateTo") || undefined,
-      searchKeyword: searchParams.get("searchKeyword") || undefined,
-      vendorIds: searchParams.get("vendorIds")?.split(",").filter(Boolean),
-      paymentMethodIds: searchParams.get("paymentMethodIds")?.split(",").filter(Boolean),
+      // Limit search keyword length to prevent abuse
+      searchKeyword: searchParams.get("searchKeyword")?.slice(0, 200) || undefined,
+      // Limit number of filter IDs to prevent DOS
+      vendorIds: searchParams.get("vendorIds")?.split(",").filter(Boolean).slice(0, 50),
+      paymentMethodIds: searchParams.get("paymentMethodIds")?.split(",").filter(Boolean).slice(0, 50),
       transactionType: (searchParams.get("transactionType") as "all" | "expense" | "income") || "all",
     }
 
@@ -82,14 +91,29 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply cursor pagination
-    if (cursor && sortField === "date") {
-      const [cursorDate, cursorId] = cursor.split(",")
-      if (isAscending) {
-        // For ascending: get records GREATER than cursor
-        query = query.or(`transaction_date.gt.${cursorDate},and(transaction_date.eq.${cursorDate},id.gt.${cursorId})`)
-      } else {
-        // For descending: get records LESS than cursor
-        query = query.or(`transaction_date.lt.${cursorDate},and(transaction_date.eq.${cursorDate},id.lt.${cursorId})`)
+    if (cursor) {
+      const cursorParts = cursor.split(",")
+
+      // Validate cursor format
+      if (cursorParts.length >= 2) {
+        const cursorId = cursorParts[cursorParts.length - 1] // ID is always last
+
+        if (sortField === "date") {
+          const cursorDate = cursorParts[0]
+          if (isAscending) {
+            query = query.or(`transaction_date.gt.${cursorDate},and(transaction_date.eq.${cursorDate},id.gt.${cursorId})`)
+          } else {
+            query = query.or(`transaction_date.lt.${cursorDate},and(transaction_date.eq.${cursorDate},id.lt.${cursorId})`)
+          }
+        } else {
+          // For other sort fields, use ID-only pagination as fallback
+          // This is less efficient but ensures pagination works
+          if (isAscending) {
+            query = query.gt("id", cursorId)
+          } else {
+            query = query.lt("id", cursorId)
+          }
+        }
       }
     }
 
@@ -113,17 +137,26 @@ export async function GET(request: NextRequest) {
 
     // Apply payment method filter
     if (filters.paymentMethodIds && filters.paymentMethodIds.length > 0) {
-      query = query.in("payment_method_id", filters.paymentMethodIds)
+      // Check if "none" is in the filter (transactions without payment method)
+      const hasNone = filters.paymentMethodIds.includes("none")
+      const otherIds = filters.paymentMethodIds.filter(id => id !== "none")
+
+      if (hasNone && otherIds.length > 0) {
+        // Both "none" and specific IDs: use OR logic
+        query = query.or(`payment_method_id.is.null,payment_method_id.in.(${otherIds.join(",")})`)
+      } else if (hasNone) {
+        // Only "none": transactions without payment method
+        query = query.is("payment_method_id", null)
+      } else {
+        // Only specific IDs
+        query = query.in("payment_method_id", otherIds)
+      }
     }
 
-    // Apply search keyword filter (note: this is still server-side, but limited)
+    // Apply search keyword filter (description only - vendor/payment method search not supported in joined queries)
     // For better search, consider using PostgreSQL full-text search
     if (filters.searchKeyword) {
-      query = query.or(
-        `description.ilike.%${filters.searchKeyword}%,` +
-        `vendors.name.ilike.%${filters.searchKeyword}%,` +
-        `payment_methods.name.ilike.%${filters.searchKeyword}%`
-      )
+      query = query.ilike("description", `%${filters.searchKeyword}%`)
     }
 
     // Fetch one extra to determine if there's a next page
@@ -133,16 +166,78 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Error fetching transactions:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to fetch transactions. Please try again." }, { status: 500 })
+    }
+
+    // Calculate totals for the entire filtered dataset (without pagination)
+    let totalsQuery = supabase
+      .from("transactions")
+      .select("transaction_type, amount, original_currency")
+      .eq("user_id", user.id)
+
+    // Apply the same filters as the main query (excluding cursor pagination)
+    if (filters.transactionType && filters.transactionType !== "all") {
+      totalsQuery = totalsQuery.eq("transaction_type", filters.transactionType)
+    }
+    if (filters.dateFrom && filters.datePreset !== "all-time") {
+      totalsQuery = totalsQuery.gte("transaction_date", filters.dateFrom)
+    }
+    if (filters.dateTo && filters.datePreset !== "all-time") {
+      totalsQuery = totalsQuery.lte("transaction_date", filters.dateTo)
+    }
+    if (filters.vendorIds && filters.vendorIds.length > 0) {
+      totalsQuery = totalsQuery.in("vendor_id", filters.vendorIds)
+    }
+    if (filters.paymentMethodIds && filters.paymentMethodIds.length > 0) {
+      // Check if "none" is in the filter (transactions without payment method)
+      const hasNone = filters.paymentMethodIds.includes("none")
+      const otherIds = filters.paymentMethodIds.filter(id => id !== "none")
+
+      if (hasNone && otherIds.length > 0) {
+        // Both "none" and specific IDs: use OR logic
+        totalsQuery = totalsQuery.or(`payment_method_id.is.null,payment_method_id.in.(${otherIds.join(",")})`)
+      } else if (hasNone) {
+        // Only "none": transactions without payment method
+        totalsQuery = totalsQuery.is("payment_method_id", null)
+      } else {
+        // Only specific IDs
+        totalsQuery = totalsQuery.in("payment_method_id", otherIds)
+      }
+    }
+    if (filters.searchKeyword) {
+      totalsQuery = totalsQuery.ilike("description", `%${filters.searchKeyword}%`)
+    }
+
+    const { data: totalsData, error: totalsError } = await totalsQuery
+
+    // Calculate aggregated totals by currency and transaction type
+    const totals = {
+      expenses: { USD: 0, THB: 0, VND: 0, MYR: 0, CNY: 0 },
+      income: { USD: 0, THB: 0, VND: 0, MYR: 0, CNY: 0 }
+    }
+
+    if (!totalsError && totalsData) {
+      totalsData.forEach((transaction: any) => {
+        const currency = transaction.original_currency as 'USD' | 'THB' | 'VND' | 'MYR' | 'CNY'
+        const type = transaction.transaction_type as 'expense' | 'income'
+
+        if (type === 'expense') {
+          totals.expenses[currency] = (totals.expenses[currency] || 0) + transaction.amount
+        } else if (type === 'income') {
+          totals.income[currency] = (totals.income[currency] || 0) + transaction.amount
+        }
+      })
     }
 
     // Determine if there's a next page
     const hasNextPage = transactions.length > pageSize
     const rawItems = hasNextPage ? transactions.slice(0, pageSize) : transactions
 
-    // Transform the data to include tags array
+    // Transform the data to include tags array and rename joined tables
     const items = rawItems.map((transaction: any) => ({
       ...transaction,
+      vendor: transaction.vendors,  // Rename vendors (plural) to vendor (singular)
+      payment_method: transaction.payment_methods,  // Rename payment_methods (plural) to payment_method (singular)
       tags: transaction.transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
     }))
 
@@ -159,11 +254,12 @@ export async function GET(request: NextRequest) {
       hasNextPage,
       totalCount: count || 0,
       pageSize: items.length,
+      totals, // Include aggregated totals for the entire filtered dataset
     })
   } catch (error) {
-    console.error("Unexpected error:", error)
+    console.error("Unexpected error in transactions API:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "An unexpected error occurred. Please try again." },
       { status: 500 }
     )
   }

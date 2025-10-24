@@ -40,7 +40,12 @@ export async function MonthlyKPISection() {
     .gte('transaction_date', twoMonthsAgo.toISOString().split('T')[0])
     .order('transaction_date', { ascending: false })
 
-  const transactions = (monthlyTransactions || []) as TransactionWithVendorAndPayment[]
+  // Transform to match expected type (vendors -> vendor, payment_methods -> payment_method)
+  const transactions = (monthlyTransactions || []).map((tx: any) => ({
+    ...tx,
+    vendor: tx.vendors,
+    payment_method: tx.payment_methods
+  })) as TransactionWithVendorAndPayment[]
 
   const monthlySummary = transactions.length > 0
     ? calculateEnhancedMonthlySummary(transactions, today, exchangeRate)

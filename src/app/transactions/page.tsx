@@ -109,15 +109,11 @@ interface ViewLayoutToggleProps {
   onLayoutModeChange: (mode: LayoutMode) => void
 }
 
-interface TransactionFiltersProps {
-  filters: TransactionFilters
-  onFiltersChange: (filters: TransactionFilters) => void
-  vendors: Array<{ id: string; name: string }>
-  paymentMethods: Array<{ id: string; name: string }>
-}
-
 interface TotalsFooterProps {
-  transactions: TransactionWithVendorAndPayment[]
+  totals: {
+    expenses: { USD: number; THB: number; VND: number; MYR: number; CNY: number }
+    income: { USD: number; THB: number; VND: number; MYR: number; CNY: number }
+  }
   totalsCurrency: TotalsCurrency
   onTotalsCurrencyChange: (currency: TotalsCurrency) => void
 }
@@ -513,134 +509,6 @@ function TransactionsTable({
   )
 }
 
-function TransactionFiltersComponent({ filters, onFiltersChange, vendors, paymentMethods }: TransactionFiltersProps) {
-  const hasActiveFilters = filters.dateRange || filters.searchKeyword ||
-    filters.vendorIds.length > 0 || filters.paymentMethodIds.length > 0 || filters.transactionType !== "all"
-
-  const clearAllFilters = () => {
-    onFiltersChange({
-      dateRange: undefined,
-      searchKeyword: "",
-      vendorIds: [],
-      paymentMethodIds: [],
-      transactionType: "all",
-    })
-  }
-
-  const vendorOptions = vendors.map(v => ({ value: v.id, label: v.name }))
-  const paymentMethodOptions = paymentMethods.map(pm => ({ value: pm.id, label: pm.name }))
-
-  return (
-    <div className="w-full bg-zinc-50 rounded-lg border border-zinc-200">
-      <Accordion type="single" collapsible>
-        <AccordionItem value="filters" className="border-b-0">
-          <div className="flex items-center justify-between px-4">
-            <AccordionTrigger className="hover:no-underline py-4">
-              <h3 className="text-sm font-medium text-zinc-950">Filters</h3>
-            </AccordionTrigger>
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearAllFilters}
-                className="text-zinc-600 hover:text-zinc-950 h-8"
-              >
-                <X className="h-4 w-4 mr-1" />
-                Clear all
-              </Button>
-            )}
-          </div>
-          <AccordionContent>
-            <div className="px-4 pb-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Transaction Type Filter */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">Transaction Type</label>
-          <RadioGroup
-            value={filters.transactionType}
-            onValueChange={(value: TransactionType) => onFiltersChange({ ...filters, transactionType: value })}
-            className="flex flex-row gap-4 pt-2"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="all" id="type-all" />
-              <Label htmlFor="type-all" className="text-sm font-normal cursor-pointer">
-                All
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="expense" id="type-expense" />
-              <Label htmlFor="type-expense" className="text-sm font-normal cursor-pointer">
-                Expense
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="income" id="type-income" />
-              <Label htmlFor="type-income" className="text-sm font-normal cursor-pointer">
-                Income
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-
-        {/* Date Range */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">Date Range</label>
-          <DateRangePicker
-            dateRange={filters.dateRange}
-            onDateRangeChange={(range) => onFiltersChange({ ...filters, dateRange: range })}
-            placeholder="Type or pick dates (e.g., 1/15/24 - 2/20/24)"
-          />
-        </div>
-
-        {/* Search Keyword */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">Search Description</label>
-          <Input
-            type="text"
-            placeholder="Search transactions..."
-            value={filters.searchKeyword}
-            onChange={(e) => onFiltersChange({ ...filters, searchKeyword: e.target.value })}
-            className="bg-white"
-          />
-        </div>
-
-        {/* Vendor Filter */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">Vendors</label>
-          <MultiSelectComboBox
-            options={vendorOptions}
-            values={filters.vendorIds}
-            onValuesChange={(vendorIds) => onFiltersChange({ ...filters, vendorIds })}
-            placeholder="Select vendors..."
-            searchPlaceholder="Search vendors..."
-            emptyMessage="No vendors found."
-            allowAdd={false}
-            className="bg-white"
-          />
-        </div>
-
-        {/* Payment Method Filter */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">Payment Methods</label>
-          <MultiSelectComboBox
-            options={paymentMethodOptions}
-            values={filters.paymentMethodIds}
-            onValuesChange={(paymentMethodIds) => onFiltersChange({ ...filters, paymentMethodIds })}
-            placeholder="Select payment methods..."
-            searchPlaceholder="Search payment methods..."
-            emptyMessage="No payment methods found."
-            allowAdd={false}
-            className="bg-white"
-          />
-        </div>
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </div>
-  )
-}
 
 interface ExchangeRatesToggleProps {
   showExchangeRates: boolean
@@ -694,86 +562,73 @@ function ExchangeRatesToggle({
   )
 }
 
-function TotalsFooter({ transactions, totalsCurrency, onTotalsCurrencyChange }: TotalsFooterProps) {
-  const [totals, setTotals] = React.useState<TransactionTotals>({
+function TotalsFooter({ totals, totalsCurrency, onTotalsCurrencyChange }: TotalsFooterProps) {
+  const [convertedTotals, setConvertedTotals] = React.useState<TransactionTotals>({
     totalExpenses: 0,
     totalIncome: 0,
     currency: totalsCurrency,
   })
   const [isCalculating, setIsCalculating] = React.useState(false)
 
-  // Calculate totals whenever transactions or currency changes (using batch optimization)
+  // Convert totals to the selected currency using latest exchange rates
   React.useEffect(() => {
-    const calculateTotals = async () => {
-      if (transactions.length === 0) {
-        setTotals({
-          totalExpenses: 0,
-          totalIncome: 0,
-          currency: totalsCurrency,
-        })
-        setIsCalculating(false)
-        return
-      }
-
+    const convertTotals = async () => {
       setIsCalculating(true)
 
-      // Build batch request for all needed conversions
-      const batchRequests = transactions
-        .filter(t => t.original_currency !== totalsCurrency)
-        .map(transaction => ({
-          transactionDate: transaction.transaction_date,
-          fromCurrency: transaction.original_currency,
+      // Sum up all amounts in the target currency
+      let totalExpenses = totals.expenses[totalsCurrency] || 0
+      let totalIncome = totals.income[totalsCurrency] || 0
+
+      // For currencies that need conversion, get the latest rates
+      const currenciesToConvert = (['USD', 'THB', 'VND', 'MYR', 'CNY'] as const).filter(
+        currency => currency !== totalsCurrency
+      )
+
+      // Build batch request for latest conversion rates
+      const today = new Date().toISOString().split('T')[0]
+      const batchRequests = currenciesToConvert
+        .filter(currency => {
+          // Only convert if there are amounts in that currency
+          return (totals.expenses[currency] || 0) > 0 || (totals.income[currency] || 0) > 0
+        })
+        .map(currency => ({
+          transactionDate: today,
+          fromCurrency: currency,
           toCurrency: totalsCurrency
         }))
 
-      // Fetch all conversion rates in batch
+      // Fetch conversion rates
       const rateCache = batchRequests.length > 0 ? await getBatchExchangeRates(batchRequests) : {}
 
-      let expenses = 0
-      let income = 0
+      // Convert and sum amounts from other currencies
+      currenciesToConvert.forEach(currency => {
+        const expenseAmount = totals.expenses[currency] || 0
+        const incomeAmount = totals.income[currency] || 0
 
-      // Calculate totals using cached rates
-      transactions.forEach(transaction => {
-        let amount = transaction.amount
-
-        // Convert to target currency if needed
-        if (transaction.original_currency !== totalsCurrency) {
-          const cacheKey = getCacheKey(
-            transaction.transaction_date,
-            transaction.original_currency,
-            totalsCurrency
-          )
+        if (expenseAmount > 0 || incomeAmount > 0) {
+          const cacheKey = getCacheKey(today, currency, totalsCurrency)
           const rate = rateCache[cacheKey]
 
           if (rate) {
-            amount = transaction.amount * rate
+            totalExpenses += expenseAmount * rate
+            totalIncome += incomeAmount * rate
           } else {
-            // Fallback rates
-            if (totalsCurrency === "USD" && transaction.original_currency === "THB") {
-              amount = transaction.amount * 0.028
-            } else if (totalsCurrency === "THB" && transaction.original_currency === "USD") {
-              amount = transaction.amount * 35
-            }
+            // Fallback to approximate rates if no rate available
+            console.warn(`No exchange rate found for ${currency} to ${totalsCurrency}`)
           }
-        }
-
-        if (transaction.transaction_type === "expense") {
-          expenses += amount
-        } else if (transaction.transaction_type === "income") {
-          income += amount
         }
       })
 
-      setTotals({
-        totalExpenses: expenses,
-        totalIncome: income,
+      setConvertedTotals({
+        totalExpenses,
+        totalIncome,
         currency: totalsCurrency,
       })
       setIsCalculating(false)
     }
 
-    calculateTotals()
-  }, [transactions, totalsCurrency])
+    convertTotals()
+  }, [totals, totalsCurrency])
 
   const formatTotal = (amount: number) => {
     return formatCurrency(amount, totalsCurrency)
@@ -788,23 +643,23 @@ function TotalsFooter({ transactions, totalsCurrency, onTotalsCurrencyChange }: 
             <div className="flex flex-col">
               <span className="text-xs text-zinc-500 font-medium">Total Expenses</span>
               <span className="text-lg font-semibold text-red-600">
-                {isCalculating ? "Calculating..." : formatTotal(totals.totalExpenses)}
+                {isCalculating ? "Calculating..." : formatTotal(convertedTotals.totalExpenses)}
               </span>
             </div>
 
             <div className="flex flex-col">
               <span className="text-xs text-zinc-500 font-medium">Total Income</span>
               <span className="text-lg font-semibold text-green-600">
-                {isCalculating ? "Calculating..." : formatTotal(totals.totalIncome)}
+                {isCalculating ? "Calculating..." : formatTotal(convertedTotals.totalIncome)}
               </span>
             </div>
 
             <div className="flex flex-col">
               <span className="text-xs text-zinc-500 font-medium">Net</span>
               <span className={`text-lg font-semibold ${
-                totals.totalIncome - totals.totalExpenses >= 0 ? "text-green-600" : "text-red-600"
+                convertedTotals.totalIncome - convertedTotals.totalExpenses >= 0 ? "text-green-600" : "text-red-600"
               }`}>
-                {isCalculating ? "Calculating..." : formatTotal(totals.totalIncome - totals.totalExpenses)}
+                {isCalculating ? "Calculating..." : formatTotal(convertedTotals.totalIncome - convertedTotals.totalExpenses)}
               </span>
             </div>
           </div>
@@ -900,6 +755,7 @@ export default function AllTransactionsPage() {
   const {
     allTransactions,
     totalCount,
+    totals,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -1738,7 +1594,7 @@ export default function AllTransactionsPage() {
       {/* Show totals footer when filters are active and no selection, otherwise show add transaction footer */}
       {!selectedIds.size && hasActiveFilters ? (
         <TotalsFooter
-          transactions={allTransactions}
+          totals={totals}
           totalsCurrency={totalsCurrency}
           onTotalsCurrencyChange={setTotalsCurrency}
         />

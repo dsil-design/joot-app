@@ -24,7 +24,12 @@ export async function RecentTransactionsSection() {
     .order('transaction_date', { ascending: false })
     .limit(5)
 
-  const transactions = (recentTransactions || []) as TransactionWithVendorAndPayment[]
+  // Transform to match expected type (vendors -> vendor, payment_methods -> payment_method)
+  const transactions = (recentTransactions || []).map((tx: any) => ({
+    ...tx,
+    vendor: tx.vendors,
+    payment_method: tx.payment_methods
+  })) as TransactionWithVendorAndPayment[]
 
   // Group transactions by day
   const transactionGroups: { [key: string]: TransactionWithVendorAndPayment[] } = {}

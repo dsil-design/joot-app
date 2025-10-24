@@ -12,12 +12,18 @@ interface TransactionFilters {
   transactionType?: "all" | "expense" | "income"
 }
 
+interface TransactionTotals {
+  expenses: { USD: number; THB: number; VND: number; MYR: number; CNY: number }
+  income: { USD: number; THB: number; VND: number; MYR: number; CNY: number }
+}
+
 interface PaginatedResponse {
   items: TransactionWithVendorAndPayment[]
   nextCursor: string | null
   hasNextPage: boolean
   totalCount: number
   pageSize: number
+  totals: TransactionTotals
 }
 
 interface UsePaginatedTransactionsOptions {
@@ -82,10 +88,17 @@ export function usePaginatedTransactions({
   // Get total count from first page
   const totalCount = query.data?.pages[0]?.totalCount ?? 0
 
+  // Get aggregated totals from first page (same for all pages)
+  const totals = query.data?.pages[0]?.totals ?? {
+    expenses: { USD: 0, THB: 0, VND: 0, MYR: 0, CNY: 0 },
+    income: { USD: 0, THB: 0, VND: 0, MYR: 0, CNY: 0 }
+  }
+
   return {
     // Data
     allTransactions,
     totalCount,
+    totals,
 
     // Pagination
     fetchNextPage: query.fetchNextPage,

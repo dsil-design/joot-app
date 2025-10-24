@@ -37,7 +37,12 @@ export async function YTDKPISection() {
     .gte('transaction_date', yearStart)
     .order('transaction_date', { ascending: false })
 
-  const transactions = (ytdTransactions || []) as TransactionWithVendorAndPayment[]
+  // Transform to match expected type (vendors -> vendor, payment_methods -> payment_method)
+  const transactions = (ytdTransactions || []).map((tx: any) => ({
+    ...tx,
+    vendor: tx.vendors,
+    payment_method: tx.payment_methods
+  })) as TransactionWithVendorAndPayment[]
 
   const ytdSummary = transactions.length > 0
     ? calculateYTDSummary(transactions, exchangeRate)

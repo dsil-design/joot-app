@@ -37,7 +37,12 @@ export async function TopVendorsSection() {
     .eq('transaction_type', 'expense')  // Only expenses for vendors
     .gte('transaction_date', yearStart)
 
-  const transactions = (vendorTransactions || []) as TransactionWithVendorAndPayment[]
+  // Transform to match expected type (vendors -> vendor, payment_methods -> payment_method)
+  const transactions = (vendorTransactions || []).map((tx: any) => ({
+    ...tx,
+    vendor: tx.vendors,
+    payment_method: tx.payment_methods
+  })) as TransactionWithVendorAndPayment[]
 
   if (transactions.length === 0) {
     return null
