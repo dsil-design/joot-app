@@ -423,7 +423,7 @@ export function calculateTopVendors(
 
   expenseTransactions.forEach(transaction => {
     const vendorId = transaction.vendor_id || 'no-vendor'
-    const vendorName = transaction.vendors?.name || 'Uncategorized'
+    const vendorName = transaction.vendor?.name || 'Uncategorized'
 
     const amountUSD = convertToUSD(transaction, exchangeRate)
 

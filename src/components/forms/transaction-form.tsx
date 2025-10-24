@@ -458,18 +458,7 @@ export function TransactionForm({
 
           {/* Currency Field - Dynamic Radio/Dropdown */}
           <div className="flex flex-col gap-1 items-start justify-start">
-            <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium text-zinc-950">Currency</Label>
-              {!showCurrencyDropdown && (
-                <button
-                  type="button"
-                  onClick={() => setShowCurrencyDropdown(true)}
-                  className="text-sm text-blue-600 hover:text-blue-700 underline"
-                >
-                  Other
-                </button>
-              )}
-            </div>
+            <Label className="text-sm font-medium text-zinc-950">Currency</Label>
 
             {showCurrencyDropdown ? (
               <Select
@@ -488,24 +477,33 @@ export function TransactionForm({
                 </SelectContent>
               </Select>
             ) : (
-              <RadioGroup
-                value={currency}
-                onValueChange={(value: CurrencyType) => setCurrency(value)}
-                className="flex gap-6 h-10 items-center justify-start"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="THB" id="thb" className="border-blue-600" />
-                  <Label htmlFor="thb" className="text-sm font-medium text-zinc-950">
-                    THB
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="USD" id="usd" className="border-blue-600" />
-                  <Label htmlFor="usd" className="text-sm font-medium text-zinc-950">
-                    USD
-                  </Label>
-                </div>
-              </RadioGroup>
+              <div className="flex gap-4 h-10 items-center justify-start">
+                <RadioGroup
+                  value={currency}
+                  onValueChange={(value: CurrencyType) => setCurrency(value)}
+                  className="flex gap-6 items-center justify-start"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="THB" id="thb" className="border-blue-600" />
+                    <Label htmlFor="thb" className="text-sm font-medium text-zinc-950">
+                      THB
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="USD" id="usd" className="border-blue-600" />
+                    <Label htmlFor="usd" className="text-sm font-medium text-zinc-950">
+                      USD
+                    </Label>
+                  </div>
+                </RadioGroup>
+                <button
+                  type="button"
+                  onClick={() => setShowCurrencyDropdown(true)}
+                  className="text-sm text-blue-600 hover:text-blue-700 underline whitespace-nowrap"
+                >
+                  Other
+                </button>
+              </div>
             )}
           </div>
         </div>

@@ -134,7 +134,7 @@ export const TransactionCard = React.memo(function TransactionCard({
   // Determine values to use (from transaction or props)
   const amount = transaction ? amounts.primary : (propAmount || '')
   const calculatedAmount = transaction ? amounts.secondary : propCalculatedAmount
-  const vendor = transaction ? (transaction.vendors?.name || 'Unknown Vendor') : (propVendor || '')
+  const vendor = transaction ? (transaction.vendor?.name || 'Unknown Vendor') : (propVendor || '')
   const description = transaction ? (transaction.description || 'No description') : (propDescription || '')
 
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {

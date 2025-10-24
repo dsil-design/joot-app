@@ -320,13 +320,13 @@ export default function ViewTransactionPage() {
             label="Description" 
             value={transaction.description || "No description"} 
           />
-          <FieldValuePair 
-            label="Vendor" 
-            value={transaction.vendors?.name || "Unknown"} 
+          <FieldValuePair
+            label="Vendor"
+            value={transaction.vendor?.name || "Unknown"}
           />
           <FieldValuePair
             label="Payment method"
-            value={transaction.payment_methods?.name || "Unknown"}
+            value={transaction.payment_method?.name || "Unknown"}
           />
           <div className="content-stretch flex gap-6 items-start justify-start relative shrink-0 w-full">
             <div className="flex-1">

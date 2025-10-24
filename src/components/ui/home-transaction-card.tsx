@@ -60,7 +60,7 @@ export function HomeTransactionCard({ transaction }: HomeTransactionCardProps) {
     <TransactionCard
       amount={amounts.primary}
       calculatedAmount={amounts.secondary || undefined}
-      vendor={transaction.vendors?.name || 'Unknown Vendor'}
+      vendor={transaction.vendor?.name || 'Unknown Vendor'}
       description={transaction.description || 'No description'}
     />
   )

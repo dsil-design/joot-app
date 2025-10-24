@@ -15,6 +15,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
+// Detect mobile/touch devices
+function isMobile(): boolean {
+  if (typeof window === 'undefined') return false
+  return (
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    window.matchMedia('(pointer: coarse)').matches
+  )
+}
+
 function formatDate(date: Date | undefined, formatStr: string = "PPP"): string {
   if (!date) return ""
   return format(date, formatStr)
@@ -102,18 +112,19 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
     const [value, setValue] = React.useState(formatDate(date, formatStr))
     const [month, setMonth] = React.useState<Date | undefined>(date)
     const inputRef = React.useRef<HTMLInputElement>(null)
+    const calendarRef = React.useRef<HTMLDivElement>(null)
+
+    // Generate placeholder showing today's date
+    const defaultPlaceholder = React.useMemo(() => {
+      return placeholder === "Pick a date"
+        ? formatDate(new Date(), formatStr)
+        : placeholder
+    }, [placeholder, formatStr])
 
     // Update input value when date prop changes
     React.useEffect(() => {
       setValue(formatDate(date, formatStr))
     }, [date, formatStr])
-
-    // Restore focus to input when calendar opens
-    React.useEffect(() => {
-      if (open && inputRef.current) {
-        inputRef.current.focus()
-      }
-    }, [open])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const inputValue = e.target.value
@@ -160,13 +171,51 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
     }
 
     const handleCalendarIconClick = () => {
-      setOpen(!open)
+      const willOpen = !open
+      setOpen(willOpen)
+
+      if (willOpen) {
+        // Focus the calendar so keyboard navigation works immediately
+        setTimeout(() => {
+          // If we have a selected date, focus it
+          if (date && value.trim()) {
+            const selectedDayButton = calendarRef.current?.querySelector('button[data-selected-single="true"]')
+            if (selectedDayButton instanceof HTMLElement) {
+              selectedDayButton.focus()
+              return
+            }
+          }
+
+          // Otherwise, focus today's date (soft highlight only, not selected)
+          const todayButton = calendarRef.current?.querySelector('button[data-today="true"]')
+          if (todayButton instanceof HTMLElement) {
+            todayButton.focus()
+            return
+          }
+
+          // Fall back to first available day
+          const firstDayButton = calendarRef.current?.querySelector('[role="gridcell"]:not([aria-disabled="true"]) button')
+          if (firstDayButton instanceof HTMLElement) {
+            firstDayButton.focus()
+          }
+        }, 100)
+      }
     }
 
     const handleInputFocus = () => {
-      // Open calendar when input receives focus
-      // Using onFocus instead of onClick allows cursor positioning to happen first
-      setOpen(true)
+      // Mobile: Open calendar on focus
+      if (isMobile()) {
+        setOpen(true)
+      }
+      // Desktop: Just focus the field for text editing, no calendar popup
+    }
+
+    const handleInputClick = (e: React.MouseEvent<HTMLInputElement>) => {
+      // Mobile: Ensure calendar opens and stays open
+      if (isMobile() && !open) {
+        setOpen(true)
+      }
+      // Desktop: Allow normal cursor positioning (no action needed)
     }
 
     return (
@@ -176,35 +225,60 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
             <Input
               ref={inputRef}
               value={value}
-              placeholder={placeholder}
+              placeholder={defaultPlaceholder}
               className="bg-background pr-10"
               onChange={handleInputChange}
               onBlur={handleInputBlur}
               onFocus={handleInputFocus}
+              onClick={handleInputClick}
               onKeyDown={handleKeyDown}
               disabled={disabled}
               aria-label={label || "Select date"}
+              aria-describedby="date-instructions"
             />
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={handleCalendarIconClick}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleCalendarIconClick()
+                }}
                 disabled={disabled}
                 aria-label="Open calendar"
+                aria-haspopup="dialog"
                 type="button"
               >
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               </Button>
             </PopoverTrigger>
+            <span id="date-instructions" className="sr-only">
+              Enter date or press down arrow to open calendar
+            </span>
           </div>
           <PopoverContent
+            id="calendar-popup"
+            ref={calendarRef}
             className="w-auto p-0"
             align="end"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Choose date from calendar"
             onOpenAutoFocus={(e) => {
-              // Prevent popover from stealing focus from input
+              // Allow calendar to receive focus when opened via icon click
+              // The setTimeout in handleCalendarIconClick handles the focus
+              if (isMobile()) {
+                // On mobile, prevent input from stealing focus back
+                e.preventDefault()
+              }
+            }}
+            onCloseAutoFocus={(e) => {
+              // Return focus to input when calendar closes
               e.preventDefault()
+              setTimeout(() => {
+                inputRef.current?.focus()
+              }, 0)
             }}
           >
             <Calendar

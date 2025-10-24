@@ -464,10 +464,10 @@ function TransactionsTable({
                     {transaction.description || "No description"}
                   </TableCell>
                   <TableCell className="max-w-[150px] truncate">
-                    {transaction.vendors?.name || "Unknown"}
+                    {transaction.vendor?.name || "Unknown"}
                   </TableCell>
                   <TableCell className="max-w-[150px] truncate">
-                    {transaction.payment_methods?.name || "Unknown"}
+                    {transaction.payment_method?.name || "Unknown"}
                   </TableCell>
                   <TableCell className="font-medium whitespace-nowrap">
                     {formatAmount(transaction)}
@@ -1247,17 +1247,17 @@ export default function AllTransactionsPage() {
     const paymentMethodMap = new Map<string, { id: string; name: string }>()
 
     allTransactions.forEach((transaction) => {
-      if (transaction.vendors && !vendorMap.has(transaction.vendors.id)) {
-        vendorMap.set(transaction.vendors.id, {
-          id: transaction.vendors.id,
-          name: transaction.vendors.name,
+      if (transaction.vendor && !vendorMap.has(transaction.vendor.id)) {
+        vendorMap.set(transaction.vendor.id, {
+          id: transaction.vendor.id,
+          name: transaction.vendor.name,
         })
       }
 
-      if (transaction.payment_methods && !paymentMethodMap.has(transaction.payment_methods.id)) {
-        paymentMethodMap.set(transaction.payment_methods.id, {
-          id: transaction.payment_methods.id,
-          name: transaction.payment_methods.name,
+      if (transaction.payment_method && !paymentMethodMap.has(transaction.payment_method.id)) {
+        paymentMethodMap.set(transaction.payment_method.id, {
+          id: transaction.payment_method.id,
+          name: transaction.payment_method.name,
         })
       }
     })
