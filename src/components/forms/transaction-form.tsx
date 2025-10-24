@@ -10,6 +10,13 @@ import { SearchableComboBox } from "@/components/ui/searchable-combobox"
 import { ComboBox } from "@/components/ui/combobox"
 import { MultiSelectComboBox } from "@/components/ui/multi-select-combobox"
 import { DatePicker } from "@/components/ui/date-picker"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useVendorSearch } from "@/hooks/use-vendor-search"
 import { usePaymentMethodOptions, useTagOptions } from "@/hooks"
 import { toast } from "sonner"
@@ -77,13 +84,52 @@ export function TransactionForm({
 
   // Custom hooks for search-based selection
   const { searchVendors, getVendorById, createVendor } = useVendorSearch()
-  const { options: paymentOptions, addCustomOption: addPaymentMethod, loading: paymentsLoading } = usePaymentMethodOptions()
+  const { options: paymentOptions, paymentMethods, addCustomOption: addPaymentMethod, loading: paymentsLoading } = usePaymentMethodOptions()
   const { options: tagOptions, addCustomOption: addTag, loading: tagsLoading } = useTagOptions()
+
+  // State for dynamic currency field
+  const [showCurrencyDropdown, setShowCurrencyDropdown] = React.useState(false)
+  const [availableCurrencies, setAvailableCurrencies] = React.useState<Array<{ code: string; symbol: string; name: string }>>([])
+
+  // Load available currencies on mount
+  React.useEffect(() => {
+    const loadCurrencies = async () => {
+      const supabase = (await import('@/lib/supabase/client')).createClient()
+      const { data } = await supabase
+        .from('currency_configuration')
+        .select('currency_code, currency_symbol, display_name')
+        .eq('is_tracked', true)
+        .order('currency_code', { ascending: true })
+
+      if (data) {
+        setAvailableCurrencies(
+          data
+            .filter(c => c.currency_symbol !== null)
+            .map(c => ({ code: c.currency_code, symbol: c.currency_symbol!, name: c.display_name }))
+        )
+      }
+    }
+    loadCurrencies()
+  }, [])
 
   // State to track display labels for searchable fields
   const [vendorLabel, setVendorLabel] = React.useState("")
 
-  // Load vendor name in edit mode
+  // Sync form state when initialData changes (important for edit mode)
+  React.useEffect(() => {
+    if (initialData) {
+      if (initialData.currency) setCurrency(initialData.currency)
+      if (initialData.transactionType) setTransactionType(initialData.transactionType)
+      if (initialData.vendor !== undefined) setVendor(initialData.vendor)
+      if (initialData.paymentMethod !== undefined) setPaymentMethod(initialData.paymentMethod)
+      if (initialData.tags !== undefined) setTags(initialData.tags)
+      if (initialData.description !== undefined) setDescription(initialData.description)
+      if (initialData.amount !== undefined) setAmount(initialData.amount)
+      if (initialData.transactionDate) setTransactionDate(initialData.transactionDate)
+    }
+  }, [initialData])
+
+  // Load vendor name in edit mode and check if currency dropdown should be shown
   React.useEffect(() => {
     const loadLabels = async () => {
       if (mode === 'edit' && initialData?.vendor) {
@@ -92,10 +138,33 @@ export function TransactionForm({
           setVendorLabel(vendorData.name)
         }
       }
+
+      // In edit mode, show dropdown if currency is not THB or USD
+      if (mode === 'edit' && initialData?.currency && !['THB', 'USD'].includes(initialData.currency)) {
+        setShowCurrencyDropdown(true)
+      }
     }
 
     loadLabels()
-  }, [mode, initialData?.vendor, getVendorById])
+  }, [mode, initialData?.vendor, initialData?.currency, getVendorById])
+
+  // Auto-select currency when payment method changes
+  React.useEffect(() => {
+    if (!paymentMethod) return
+
+    const selectedPaymentMethod = paymentMethods.find(pm => pm.id === paymentMethod)
+    if (!selectedPaymentMethod?.preferred_currency) return
+
+    const preferredCurrency = selectedPaymentMethod.preferred_currency as CurrencyType
+
+    // If preferred currency is not THB or USD, switch to dropdown
+    if (!['THB', 'USD'].includes(preferredCurrency)) {
+      setShowCurrencyDropdown(true)
+    }
+
+    // Set the currency to the preferred currency
+    setCurrency(preferredCurrency)
+  }, [paymentMethod, paymentMethods])
 
   // Auto-focus description field on mount
   React.useEffect(() => {
@@ -387,27 +456,57 @@ export function TransactionForm({
             )}
           </div>
 
-          {/* Currency Radio Group */}
+          {/* Currency Field - Dynamic Radio/Dropdown */}
           <div className="flex flex-col gap-1 items-start justify-start">
-            <Label className="text-sm font-medium text-zinc-950">Currency</Label>
-            <RadioGroup
-              value={currency}
-              onValueChange={(value: CurrencyType) => setCurrency(value)}
-              className="flex gap-6 h-10 items-center justify-start"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="THB" id="thb" className="border-blue-600" />
-                <Label htmlFor="thb" className="text-sm font-medium text-zinc-950">
-                  THB
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="USD" id="usd" className="border-blue-600" />
-                <Label htmlFor="usd" className="text-sm font-medium text-zinc-950">
-                  USD
-                </Label>
-              </div>
-            </RadioGroup>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium text-zinc-950">Currency</Label>
+              {!showCurrencyDropdown && (
+                <button
+                  type="button"
+                  onClick={() => setShowCurrencyDropdown(true)}
+                  className="text-sm text-blue-600 hover:text-blue-700 underline"
+                >
+                  Other
+                </button>
+              )}
+            </div>
+
+            {showCurrencyDropdown ? (
+              <Select
+                value={currency}
+                onValueChange={(value: CurrencyType) => setCurrency(value)}
+              >
+                <SelectTrigger className="w-full h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCurrencies.map((curr) => (
+                    <SelectItem key={curr.code} value={curr.code}>
+                      {curr.symbol} {curr.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <RadioGroup
+                value={currency}
+                onValueChange={(value: CurrencyType) => setCurrency(value)}
+                className="flex gap-6 h-10 items-center justify-start"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="THB" id="thb" className="border-blue-600" />
+                  <Label htmlFor="thb" className="text-sm font-medium text-zinc-950">
+                    THB
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="USD" id="usd" className="border-blue-600" />
+                  <Label htmlFor="usd" className="text-sm font-medium text-zinc-950">
+                    USD
+                  </Label>
+                </div>
+              </RadioGroup>
+            )}
           </div>
         </div>
 

@@ -24,6 +24,7 @@ export interface ComboBoxOption {
   value: string
   label: string
   disabled?: boolean
+  labelSuffix?: string // Optional suffix to render in muted color (e.g., currency code)
 }
 
 const comboBoxVariants = cva(
@@ -130,7 +131,16 @@ const ComboBox = React.forwardRef<HTMLButtonElement, ComboBoxProps>(
             {...props}
           >
             <span className="truncate">
-              {selectedOption ? selectedOption.label : placeholder}
+              {selectedOption ? (
+                <>
+                  {selectedOption.label}
+                  {selectedOption.labelSuffix && (
+                    <span className="text-zinc-500"> ({selectedOption.labelSuffix})</span>
+                  )}
+                </>
+              ) : (
+                placeholder
+              )}
             </span>
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
@@ -164,7 +174,12 @@ const ComboBox = React.forwardRef<HTMLButtonElement, ComboBoxProps>(
                           value === option.value ? "opacity-100" : "opacity-0"
                         )}
                       />
-                      <span className="truncate">{option.label}</span>
+                      <span className="truncate">
+                        {option.label}
+                        {option.labelSuffix && (
+                          <span className="text-zinc-500"> ({option.labelSuffix})</span>
+                        )}
+                      </span>
                     </CommandItem>
                   ))}
                 </CommandGroup>

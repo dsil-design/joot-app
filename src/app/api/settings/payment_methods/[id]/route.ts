@@ -16,7 +16,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name } = await request.json()
+    const { name, preferred_currency } = await request.json()
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
@@ -53,7 +53,10 @@ export async function PATCH(
     // Update payment method
     const { data, error } = await supabase
       .from('payment_methods')
-      .update({ name: name.trim() })
+      .update({
+        name: name.trim(),
+        preferred_currency: preferred_currency || null,
+      })
       .eq('id', id)
       .eq('user_id', user.id)
       .select()

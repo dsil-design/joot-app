@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Edit2, Trash2, GitMerge, GripVertical, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, Edit2, Trash2, GitMerge, GripVertical, ChevronUp, ChevronDown, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -51,15 +51,23 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 
+interface Currency {
+  currency_code: string
+  display_name: string
+  currency_symbol: string
+}
+
 interface PaymentMethod {
   id: string
   name: string
   transactionCount: number
   sort_order: number
+  preferred_currency?: string | null
 }
 
 interface PaymentMethodsSettingsProps {
   paymentMethods: PaymentMethod[]
+  currencies: Currency[]
 }
 
 type DialogMode = 'create' | 'rename' | 'merge' | null
@@ -115,7 +123,12 @@ function SortableItem({ item, index, totalItems, onRename, onMerge, onDelete, on
 
       {/* Content */}
       <div className="flex flex-col flex-1">
-        <span className="text-sm font-medium text-zinc-950">{item.name}</span>
+        <span className="text-sm font-medium text-zinc-950">
+          {item.name}
+          {item.preferred_currency && (
+            <span className="text-zinc-500 font-normal"> ({item.preferred_currency})</span>
+          )}
+        </span>
         <span className="text-xs text-zinc-500">
           {item.transactionCount} {item.transactionCount === 1 ? 'transaction' : 'transactions'}
         </span>
@@ -188,13 +201,14 @@ function SortableItem({ item, index, totalItems, onRename, onMerge, onDelete, on
   )
 }
 
-export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods }: PaymentMethodsSettingsProps) {
+export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, currencies }: PaymentMethodsSettingsProps) {
   const router = useRouter()
   const [paymentMethods, setPaymentMethods] = useState(initialPaymentMethods)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<DialogMode>(null)
   const [selectedItem, setSelectedItem] = useState<PaymentMethod | null>(null)
   const [inputValue, setInputValue] = useState('')
+  const [preferredCurrency, setPreferredCurrency] = useState<string>('')
   const [mergeTargetId, setMergeTargetId] = useState<string>('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<PaymentMethod | null>(null)
@@ -210,6 +224,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods }
   const handleCreate = () => {
     setDialogMode('create')
     setInputValue('')
+    setPreferredCurrency('')
     setDialogOpen(true)
   }
 
@@ -217,6 +232,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods }
     setDialogMode('rename')
     setSelectedItem(item)
     setInputValue(item.name)
+    setPreferredCurrency(item.preferred_currency || '')
     setDialogOpen(true)
   }
 
@@ -329,7 +345,10 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods }
         const response = await fetch('/api/settings/payment_methods', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: inputValue.trim() }),
+          body: JSON.stringify({
+            name: inputValue.trim(),
+            preferred_currency: preferredCurrency || null,
+          }),
         })
 
         if (!response.ok) {
@@ -342,7 +361,10 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods }
         const response = await fetch(`/api/settings/payment_methods/${selectedItem.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: inputValue.trim() }),
+          body: JSON.stringify({
+            name: inputValue.trim(),
+            preferred_currency: preferredCurrency || null,
+          }),
         })
 
         if (!response.ok) {
@@ -370,6 +392,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods }
       setDialogMode(null)
       setSelectedItem(null)
       setInputValue('')
+      setPreferredCurrency('')
       setMergeTargetId('')
       router.refresh()
     } catch (error) {
@@ -449,15 +472,45 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods }
 
           <div className="flex flex-col gap-4 py-4">
             {dialogMode !== 'merge' ? (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Enter payment method name"
-                />
-              </div>
+              <>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="Enter payment method name"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="preferred-currency">
+                    Preferred Currency (Optional)
+                  </Label>
+                  <Select
+                    value={preferredCurrency || 'none'}
+                    onValueChange={(val) => setPreferredCurrency(val === 'none' ? '' : val)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {currencies.map((currency) => (
+                        <SelectItem key={currency.currency_code} value={currency.currency_code}>
+                          {currency.currency_symbol} {currency.currency_code} - {currency.display_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-start gap-2 mt-1">
+                    <Info className="h-3.5 w-3.5 text-zinc-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-xs text-zinc-500 leading-relaxed">
+                      Auto-selects this currency when adding transactions with this payment method
+                    </span>
+                  </div>
+                </div>
+              </>
             ) : (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="target">

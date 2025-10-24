@@ -138,7 +138,13 @@ export async function GET(request: NextRequest) {
 
     // Determine if there's a next page
     const hasNextPage = transactions.length > pageSize
-    const items = hasNextPage ? transactions.slice(0, pageSize) : transactions
+    const rawItems = hasNextPage ? transactions.slice(0, pageSize) : transactions
+
+    // Transform the data to include tags array
+    const items = rawItems.map((transaction: any) => ({
+      ...transaction,
+      tags: transaction.transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
+    }))
 
     // Generate next cursor from last item
     let nextCursor: string | null = null

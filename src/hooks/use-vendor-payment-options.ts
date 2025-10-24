@@ -8,6 +8,7 @@ export interface VendorPaymentOption {
   value: string
   label: string
   disabled?: boolean
+  labelSuffix?: string
 }
 
 // Legacy localStorage-based payment options (kept as fallback)
@@ -99,10 +100,11 @@ export function useVendorOptions() {
 // Updated payment method options hook that uses database payment_methods
 export function usePaymentMethodOptions() {
   const { paymentMethods, loading, error, createPaymentMethod } = usePaymentMethods()
-  
+
   const options: VendorPaymentOption[] = paymentMethods.map(paymentMethod => ({
     value: paymentMethod.id,
     label: paymentMethod.name,
+    labelSuffix: paymentMethod.preferred_currency || undefined,
     disabled: false
   }))
 
@@ -111,8 +113,10 @@ export function usePaymentMethodOptions() {
     return newPaymentMethod ? newPaymentMethod.id : null
   }
 
+  // Also return payment methods with their metadata for auto-selection logic
   return {
     options,
+    paymentMethods,
     addCustomOption,
     loading,
     error

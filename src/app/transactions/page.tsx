@@ -1080,11 +1080,14 @@ export default function AllTransactionsPage() {
 
       if (success) {
         // Update tags separately
-        if (formData.tags) {
-          await updateTransactionTags(editingTransaction.id, formData.tags)
+        const tagsUpdated = await updateTransactionTags(editingTransaction.id, formData.tags || [])
+
+        if (!tagsUpdated) {
+          toast.error("Transaction updated but failed to update tags")
+        } else {
+          toast.success("Transaction updated successfully!")
         }
 
-        toast.success("Transaction updated successfully!")
         setIsEditModalOpen(false)
         setEditingTransaction(null)
 

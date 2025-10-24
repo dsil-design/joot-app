@@ -77,9 +77,7 @@ export function SearchableComboBox({
 
   // Update display label when selectedLabel prop changes
   React.useEffect(() => {
-    if (selectedLabel) {
-      setDisplayLabel(selectedLabel)
-    }
+    setDisplayLabel(selectedLabel || "")
   }, [selectedLabel])
 
   const handleSelect = (itemId: string, itemName: string) => {
