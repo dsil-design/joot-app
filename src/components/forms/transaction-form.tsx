@@ -477,21 +477,21 @@ export function TransactionForm({
                 </SelectContent>
               </Select>
             ) : (
-              <div className="flex gap-4 h-10 items-center justify-start">
+              <div className="flex gap-2 min-h-[44px] items-center justify-start">
                 <RadioGroup
                   value={currency}
                   onValueChange={(value: CurrencyType) => setCurrency(value)}
-                  className="flex gap-6 items-center justify-start"
+                  className="flex gap-8 items-center justify-start"
                 >
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2.5">
                     <RadioGroupItem value="THB" id="thb" className="border-blue-600" />
-                    <Label htmlFor="thb" className="text-sm font-medium text-zinc-950">
+                    <Label htmlFor="thb" className="text-sm font-medium text-zinc-950 cursor-pointer">
                       THB
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2.5">
                     <RadioGroupItem value="USD" id="usd" className="border-blue-600" />
-                    <Label htmlFor="usd" className="text-sm font-medium text-zinc-950">
+                    <Label htmlFor="usd" className="text-sm font-medium text-zinc-950 cursor-pointer">
                       USD
                     </Label>
                   </div>
@@ -499,7 +499,7 @@ export function TransactionForm({
                 <button
                   type="button"
                   onClick={() => setShowCurrencyDropdown(true)}
-                  className="text-sm text-blue-600 hover:text-blue-700 underline whitespace-nowrap"
+                  className="text-sm text-blue-600 hover:text-blue-700 underline whitespace-nowrap ml-2 min-h-[44px] flex items-center"
                 >
                   Other
                 </button>
@@ -531,7 +531,7 @@ export function TransactionForm({
       </div>
 
       {/* Actions */}
-      <div className="flex flex-col gap-3 items-start justify-start w-full md:relative md:static sticky bottom-0 bg-white pt-4 pb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:pt-0 md:pb-0 border-t md:border-t-0 border-zinc-200 safe-area-bottom">
+      <div className="flex flex-col gap-3 items-start justify-start w-full md:relative md:static sticky bottom-0 left-0 right-0 bg-white pt-4 pb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:pt-0 md:pb-0 border-t md:border-t-0 border-zinc-200 safe-area-bottom">
         <Button
           onClick={handleSubmit}
           disabled={saving || !isFormValid}

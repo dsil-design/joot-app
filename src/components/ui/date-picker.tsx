@@ -220,14 +220,15 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
 
     return (
       <div ref={ref} className={cn(datePickerVariants({ size }), className)} {...props}>
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover open={open} onOpenChange={setOpen} modal={false}>
           <div className="relative flex gap-2">
             <Input
               ref={inputRef}
               value={value}
               placeholder={defaultPlaceholder}
-              className={cn("bg-background pr-10", isMobile() && "select-none")}
+              className={cn("bg-background pr-10", isMobile() && "select-none cursor-pointer")}
               readOnly={isMobile()}
+              inputMode={isMobile() ? "none" : undefined}
               onChange={handleInputChange}
               onBlur={handleInputBlur}
               onFocus={handleInputFocus}
@@ -264,7 +265,6 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
             className="w-auto p-0"
             align="end"
             role="dialog"
-            aria-modal="true"
             aria-label="Choose date from calendar"
             onOpenAutoFocus={(e) => {
               // Allow calendar to receive focus when opened via icon click
@@ -277,9 +277,17 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
             onCloseAutoFocus={(e) => {
               // Return focus to input when calendar closes
               e.preventDefault()
-              setTimeout(() => {
-                inputRef.current?.focus()
-              }, 0)
+              if (!isMobile()) {
+                setTimeout(() => {
+                  inputRef.current?.focus()
+                }, 0)
+              }
+            }}
+            onInteractOutside={(e) => {
+              // Allow clicking outside to close on mobile
+              if (isMobile()) {
+                setOpen(false)
+              }
             }}
           >
             <Calendar
