@@ -296,8 +296,8 @@ export function TransactionForm({
     description.trim() && amount && parseFloat(amount) > 0
 
   return (
-    <div className="flex flex-col gap-8 items-start justify-start w-full">
-      <div className="flex flex-col gap-6 items-start justify-start w-full">
+    <div className="flex flex-col gap-6 md:gap-8 items-start justify-start w-full">
+      <div className="flex flex-col gap-4 md:gap-6 items-start justify-start w-full">
         {/* Transaction Type Toggle */}
         <div className="flex gap-3 sm:gap-2 items-start justify-start">
           <Button
@@ -383,6 +383,7 @@ export function TransactionForm({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
+            className="h-12 md:h-10 text-base md:text-sm"
           />
         </div>
 
@@ -426,46 +427,46 @@ export function TransactionForm({
           />
         </div>
 
-        {/* Amount and Currency Row */}
-        <div className="flex gap-6 items-center justify-start w-full">
-          {/* Amount Input */}
-          <div className="flex flex-col gap-1 items-start justify-start flex-1">
-            <Label htmlFor="amount" className="text-sm font-medium text-zinc-950">
-              Amount
-            </Label>
-            {useStandardAmountInput ? (
-              <Input
-                id="amount"
-                type="number"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                step="0.01"
-                min="0"
-                required
-              />
-            ) : (
-              <CurrencyInput
-                id="amount"
-                currency={currency}
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-              />
-            )}
-          </div>
+        {/* Amount and Currency - Integrated Row */}
+        <div className="flex flex-col gap-1 items-start justify-start w-full">
+          <Label htmlFor="amount" className="text-sm font-medium text-zinc-950">
+            Amount
+          </Label>
+          <div className="flex gap-2 md:gap-3 items-stretch justify-start w-full">
+            {/* Amount Input - Flexible width */}
+            <div className="flex-1 min-w-0">
+              {useStandardAmountInput ? (
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  step="0.01"
+                  min="0"
+                  required
+                  className="h-12 md:h-10 text-base md:text-sm"
+                />
+              ) : (
+                <CurrencyInput
+                  id="amount"
+                  currency={currency}
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  required
+                  className="h-12 md:h-10 text-base md:text-sm"
+                />
+              )}
+            </div>
 
-          {/* Currency Field - Dynamic Radio/Dropdown */}
-          <div className="flex flex-col gap-1 items-start justify-start">
-            <Label className="text-sm font-medium text-zinc-950">Currency</Label>
-
+            {/* Currency Selector - Compact */}
             {showCurrencyDropdown ? (
               <Select
                 value={currency}
                 onValueChange={(value: CurrencyType) => setCurrency(value)}
               >
-                <SelectTrigger className="w-full h-10">
+                <SelectTrigger className="w-[110px] md:w-[100px] h-12 md:h-10 shrink-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -477,31 +478,38 @@ export function TransactionForm({
                 </SelectContent>
               </Select>
             ) : (
-              <div className="flex gap-2 min-h-[44px] items-center justify-start">
-                <RadioGroup
-                  value={currency}
-                  onValueChange={(value: CurrencyType) => setCurrency(value)}
-                  className="flex gap-8 items-center justify-start"
+              <div className="flex gap-1 items-center shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrency("THB")}
+                  className={`h-12 md:h-10 px-3 md:px-2.5 rounded-md border transition-colors font-medium text-sm ${
+                    currency === "THB"
+                      ? "bg-blue-50 border-blue-600 text-blue-700"
+                      : "bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                  }`}
+                  aria-label="Select THB currency"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <RadioGroupItem value="THB" id="thb" className="border-blue-600" />
-                    <Label htmlFor="thb" className="text-sm font-medium text-zinc-950 cursor-pointer">
-                      THB
-                    </Label>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <RadioGroupItem value="USD" id="usd" className="border-blue-600" />
-                    <Label htmlFor="usd" className="text-sm font-medium text-zinc-950 cursor-pointer">
-                      USD
-                    </Label>
-                  </div>
-                </RadioGroup>
+                  THB
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrency("USD")}
+                  className={`h-12 md:h-10 px-3 md:px-2.5 rounded-md border transition-colors font-medium text-sm ${
+                    currency === "USD"
+                      ? "bg-blue-50 border-blue-600 text-blue-700"
+                      : "bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                  }`}
+                  aria-label="Select USD currency"
+                >
+                  USD
+                </button>
                 <button
                   type="button"
                   onClick={() => setShowCurrencyDropdown(true)}
-                  className="text-sm text-blue-600 hover:text-blue-700 underline whitespace-nowrap ml-2 min-h-[44px] flex items-center"
+                  className="h-12 md:h-10 px-3 md:px-2.5 rounded-md border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors font-medium text-sm"
+                  aria-label="Select other currency"
                 >
-                  Other
+                  •••
                 </button>
               </div>
             )}
@@ -530,13 +538,13 @@ export function TransactionForm({
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-col gap-3 items-start justify-start w-full md:relative md:static sticky bottom-0 left-0 right-0 bg-white pt-4 pb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:pt-0 md:pb-0 border-t md:border-t-0 border-zinc-200 safe-area-bottom">
+      {/* Actions - Sticky footer with full-width bleed on mobile */}
+      <div className="flex flex-col gap-2.5 items-start justify-start w-full md:gap-3 md:relative md:static sticky bottom-0 left-0 right-0 bg-white pt-3 pb-4 md:pt-0 md:pb-0 border-t md:border-t-0 border-zinc-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] md:shadow-none transaction-form-footer">
         <Button
           onClick={handleSubmit}
           disabled={saving || !isFormValid}
           size="lg"
-          className="w-full"
+          className="w-full h-12 md:h-10"
         >
           {saving
             ? "Saving..."
@@ -548,7 +556,7 @@ export function TransactionForm({
             onClick={handleSubmitAndAddAnother}
             disabled={saving || !isFormValid}
             size="lg"
-            className="w-full"
+            className="w-full h-12 md:h-10"
           >
             {saving ? "Saving..." : "Save & Add Another"}
           </Button>
@@ -558,7 +566,7 @@ export function TransactionForm({
           onClick={onCancel}
           disabled={saving}
           size="lg"
-          className="w-full"
+          className="w-full h-12 md:h-10"
         >
           {cancelButtonLabel || (mode === "edit" ? "Discard" : "Cancel")}
         </Button>

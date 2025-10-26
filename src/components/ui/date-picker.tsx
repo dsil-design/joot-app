@@ -14,6 +14,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer"
 
 // Detect mobile/touch devices
 function isMobile(): boolean {
@@ -218,88 +224,123 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       // Desktop: Allow normal cursor positioning (no action needed)
     }
 
+    const isDeviceMobile = isMobile()
+
+    // Calendar component used in both drawer and popover
+    const calendarComponent = (
+      <Calendar
+        mode="single"
+        selected={date}
+        onSelect={handleSelect}
+        month={month}
+        onMonthChange={setMonth}
+        disabled={disabled}
+      />
+    )
+
     return (
       <div ref={ref} className={cn(datePickerVariants({ size }), className)} {...props}>
-        <Popover open={open} onOpenChange={setOpen} modal={false}>
-          <div className="relative flex gap-2">
-            <Input
-              ref={inputRef}
-              value={value}
-              placeholder={defaultPlaceholder}
-              className={cn("bg-background pr-10", isMobile() && "select-none cursor-pointer")}
-              readOnly={isMobile()}
-              inputMode={isMobile() ? "none" : undefined}
-              onChange={handleInputChange}
-              onBlur={handleInputBlur}
-              onFocus={handleInputFocus}
-              onClick={handleInputClick}
-              onKeyDown={handleKeyDown}
-              disabled={disabled}
-              aria-label={label || "Select date"}
-              aria-describedby="date-instructions"
-            />
-            <PopoverTrigger asChild>
+        {isDeviceMobile ? (
+          // Mobile: Use Drawer (bottom sheet)
+          <Drawer open={open} onOpenChange={setOpen}>
+            <div className="relative flex gap-2">
+              <Input
+                ref={inputRef}
+                value={value}
+                placeholder={defaultPlaceholder}
+                className="bg-background pr-10 select-none cursor-pointer h-12 md:h-10 text-base md:text-sm"
+                readOnly
+                inputMode="none"
+                onClick={() => setOpen(true)}
+                disabled={disabled}
+                aria-label={label || "Select date"}
+              />
               <Button
                 variant="ghost"
                 size="icon"
                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleCalendarIconClick()
+                  setOpen(true)
                 }}
                 disabled={disabled}
                 aria-label="Open calendar"
-                aria-haspopup="dialog"
                 type="button"
               >
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               </Button>
-            </PopoverTrigger>
-            <span id="date-instructions" className="sr-only">
-              Enter date or press down arrow to open calendar
-            </span>
-          </div>
-          <PopoverContent
-            id="calendar-popup"
-            ref={calendarRef}
-            className="w-auto p-0"
-            align="end"
-            role="dialog"
-            aria-label="Choose date from calendar"
-            onOpenAutoFocus={(e) => {
-              // Allow calendar to receive focus when opened via icon click
-              // The setTimeout in handleCalendarIconClick handles the focus
-              if (isMobile()) {
-                // On mobile, prevent input from stealing focus back
+            </div>
+            <DrawerContent>
+              <DrawerHeader>
+                <DrawerTitle>Select date</DrawerTitle>
+              </DrawerHeader>
+              <div className="px-4 pb-8 flex justify-center">
+                {calendarComponent}
+              </div>
+            </DrawerContent>
+          </Drawer>
+        ) : (
+          // Desktop: Use Popover
+          <Popover open={open} onOpenChange={setOpen} modal={false}>
+            <div className="relative flex gap-2">
+              <Input
+                ref={inputRef}
+                value={value}
+                placeholder={defaultPlaceholder}
+                className="bg-background pr-10 h-12 md:h-10 text-base md:text-sm"
+                onChange={handleInputChange}
+                onBlur={handleInputBlur}
+                onFocus={handleInputFocus}
+                onClick={handleInputClick}
+                onKeyDown={handleKeyDown}
+                disabled={disabled}
+                aria-label={label || "Select date"}
+                aria-describedby="date-instructions"
+              />
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleCalendarIconClick()
+                  }}
+                  disabled={disabled}
+                  aria-label="Open calendar"
+                  aria-haspopup="dialog"
+                  type="button"
+                >
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <span id="date-instructions" className="sr-only">
+                Enter date or press down arrow to open calendar
+              </span>
+            </div>
+            <PopoverContent
+              id="calendar-popup"
+              ref={calendarRef}
+              className="w-auto p-0"
+              align="end"
+              role="dialog"
+              aria-label="Choose date from calendar"
+              onOpenAutoFocus={(e) => {
+                // Allow calendar to receive focus when opened via icon click
+                // The setTimeout in handleCalendarIconClick handles the focus
+              }}
+              onCloseAutoFocus={(e) => {
+                // Return focus to input when calendar closes
                 e.preventDefault()
-              }
-            }}
-            onCloseAutoFocus={(e) => {
-              // Return focus to input when calendar closes
-              e.preventDefault()
-              if (!isMobile()) {
                 setTimeout(() => {
                   inputRef.current?.focus()
                 }, 0)
-              }
-            }}
-            onInteractOutside={(e) => {
-              // Allow clicking outside to close on mobile
-              if (isMobile()) {
-                setOpen(false)
-              }
-            }}
-          >
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={handleSelect}
-              month={month}
-              onMonthChange={setMonth}
-              disabled={disabled}
-            />
-          </PopoverContent>
-        </Popover>
+              }}
+            >
+              {calendarComponent}
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
     )
   }
