@@ -275,4 +275,25 @@
 body {
   @apply bg-background text-foreground;
 }
+
+/* iOS Safari optimizations */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, textarea, select, button {
+  touch-action: manipulation;
+}
+
+body {
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe area insets for iOS notch/home indicator */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+}
 }

@@ -167,7 +167,7 @@ const MultiSelectComboBox = React.forwardRef<HTMLButtonElement, MultiSelectCombo
                     <span
                       role="button"
                       tabIndex={0}
-                      className="ml-0.5 ring-offset-background rounded-sm hover:bg-zinc-900/10 cursor-pointer"
+                      className="ml-0.5 ring-offset-background rounded-sm hover:bg-zinc-900/10 cursor-pointer p-1 -m-1"
                       onMouseDown={(e) => handleRemove(option.value, e)}
                       onClick={(e) => {
                         e.preventDefault()
@@ -204,7 +204,7 @@ const MultiSelectComboBox = React.forwardRef<HTMLButtonElement, MultiSelectCombo
                       <span
                         role="button"
                         tabIndex={0}
-                        className="ml-0.5 ring-offset-background rounded-sm hover:bg-zinc-900/10 cursor-pointer"
+                        className="ml-0.5 ring-offset-background rounded-sm hover:bg-zinc-900/10 cursor-pointer p-1 -m-1"
                         onMouseDown={(e) => handleRemove(option.value, e)}
                         onClick={(e) => {
                           e.preventDefault()
@@ -230,7 +230,7 @@ const MultiSelectComboBox = React.forwardRef<HTMLButtonElement, MultiSelectCombo
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
+        <PopoverContent className="w-full p-0" align="start" sideOffset={4} collisionPadding={16}>
           <Command shouldFilter={false}>
             <CommandInput
               placeholder={searchPlaceholder}

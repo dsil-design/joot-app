@@ -80,9 +80,9 @@ export default function AddTransactionPage() {
   }
 
   return (
-    <div className="bg-white flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 min-h-screen w-full">
+    <div className="bg-white flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-4 sm:px-6 md:px-10 min-h-screen w-full">
       {/* Page Header */}
-      <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
+      <h1 className="text-2xl sm:text-[30px] md:text-[36px] font-medium text-foreground leading-tight">
         Add transaction
       </h1>
 

@@ -299,7 +299,7 @@ export function TransactionForm({
     <div className="flex flex-col gap-8 items-start justify-start w-full">
       <div className="flex flex-col gap-6 items-start justify-start w-full">
         {/* Transaction Type Toggle */}
-        <div className="flex gap-2 items-start justify-start">
+        <div className="flex gap-3 sm:gap-2 items-start justify-start">
           <Button
             variant={transactionType === "expense" ? "default" : "ghost"}
             size="sm"
@@ -531,7 +531,7 @@ export function TransactionForm({
       </div>
 
       {/* Actions */}
-      <div className="flex flex-col gap-3 items-start justify-start w-full">
+      <div className="flex flex-col gap-3 items-start justify-start w-full md:relative md:static sticky bottom-0 bg-white pt-4 pb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:pt-0 md:pb-0 border-t md:border-t-0 border-zinc-200 safe-area-bottom">
         <Button
           onClick={handleSubmit}
           disabled={saving || !isFormValid}
