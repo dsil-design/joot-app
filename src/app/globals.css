@@ -319,19 +319,17 @@ body {
   /* Position from left edge of viewport */
   left: 0;
   right: 0;
-}
 
-/* Padding for buttons inside the footer */
-.transaction-form-footer > * {
-  margin-left: max(1rem, env(safe-area-inset-left));
-  margin-right: max(1rem, env(safe-area-inset-right));
+  /* Padding on container instead of margin on children to prevent overflow */
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
 }
 
 /* Adjust for sm breakpoint */
 @media (min-width: 640px) {
-  .transaction-form-footer > * {
-    margin-left: max(1.5rem, env(safe-area-inset-left));
-    margin-right: max(1.5rem, env(safe-area-inset-right));
+  .transaction-form-footer {
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
   }
 }
 
@@ -341,11 +339,8 @@ body {
     width: 100%;
     max-width: 100%;
     position: relative;
-  }
-
-  .transaction-form-footer > * {
-    margin-left: 0;
-    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
