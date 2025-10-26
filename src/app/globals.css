@@ -312,10 +312,6 @@ body {
 
 /* Full-width fixed footer for transaction form */
 .transaction-form-footer {
-  /* Full viewport width with proper padding */
-  padding-left: 1rem; /* 16px = px-4 */
-  padding-right: 1rem;
-
   /* Ensure true full width - no gaps on either side */
   width: 100vw;
   max-width: 100vw;
@@ -323,18 +319,19 @@ body {
   /* Position from left edge of viewport */
   left: 0;
   right: 0;
+}
 
-  /* Safe area inset support for devices with notches */
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+/* Padding for buttons inside the footer */
+.transaction-form-footer > * {
+  margin-left: max(1rem, env(safe-area-inset-left));
+  margin-right: max(1rem, env(safe-area-inset-right));
 }
 
 /* Adjust for sm breakpoint */
 @media (min-width: 640px) {
-  .transaction-form-footer {
-    padding-left: max(1.5rem, env(safe-area-inset-left)); /* 24px = sm:px-6 */
-    padding-right: max(1.5rem, env(safe-area-inset-right));
+  .transaction-form-footer > * {
+    margin-left: max(1.5rem, env(safe-area-inset-left));
+    margin-right: max(1.5rem, env(safe-area-inset-right));
   }
 }
 
@@ -343,10 +340,12 @@ body {
   .transaction-form-footer {
     width: 100%;
     max-width: 100%;
-    padding-left: 0;
-    padding-right: 0;
-    padding-bottom: 0;
     position: relative;
+  }
+
+  .transaction-form-footer > * {
+    margin-left: 0;
+    margin-right: 0;
   }
 }
 

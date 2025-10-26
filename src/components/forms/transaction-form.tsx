@@ -541,7 +541,7 @@ export function TransactionForm({
       </div>
 
       {/* Actions - Compact fixed footer on mobile */}
-      <div className="flex flex-col gap-2.5 items-start justify-start w-full md:gap-3 md:relative md:static fixed bottom-0 left-0 right-0 bg-white pt-3 px-4 md:pt-4 md:px-0 [padding-bottom:max(1rem,calc(1rem+env(safe-area-inset-bottom)))] md:pb-0 border-t md:border-t-0 border-zinc-200 shadow-[0_-1px_3px_0_rgb(0_0_0_/0.05)] md:shadow-none z-50 transaction-form-footer">
+      <div className="flex flex-col gap-2.5 items-start justify-start w-full md:gap-3 md:relative md:static fixed bottom-0 left-0 right-0 bg-white pt-3 md:pt-4 [padding-bottom:max(1rem,calc(1rem+env(safe-area-inset-bottom)))] md:pb-0 border-t md:border-t-0 border-zinc-200 shadow-[0_-1px_3px_0_rgb(0_0_0_/0.05)] md:shadow-none z-50 transaction-form-footer">
         <Button
           onClick={handleSubmit}
           disabled={saving || !isFormValid}
