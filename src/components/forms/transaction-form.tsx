@@ -337,7 +337,7 @@ export function TransactionForm({
                 date={transactionDate}
                 onDateChange={(date) => date && setTransactionDate(date)}
                 placeholder="March 13, 2024"
-                className="flex-1"
+                className="flex-1 h-12 md:h-10"
                 formatStr="MMMM d, yyyy"
               />
               <Button
@@ -364,7 +364,7 @@ export function TransactionForm({
               date={transactionDate}
               onDateChange={(date) => date && setTransactionDate(date)}
               placeholder="March 13, 2024"
-              className="w-full"
+              className="w-full h-12 md:h-10"
               formatStr="MMMM d, yyyy"
             />
           )}
@@ -402,7 +402,7 @@ export function TransactionForm({
             searchPlaceholder="Type to search..."
             emptyMessage="No vendors found."
             label="Search or add a vendor"
-            className="w-full"
+            className="w-full h-12 md:h-10"
           />
         </div>
 
@@ -423,7 +423,7 @@ export function TransactionForm({
             addNewLabel="Add payment method"
             label="Select or add a payment method"
             disabled={paymentsLoading}
-            className="w-full"
+            className="w-full h-12 md:h-10"
           />
         </div>
 
@@ -535,7 +535,7 @@ export function TransactionForm({
             addNewLabel="Add tag"
             label="Select or add tags"
             disabled={tagsLoading}
-            className="w-full"
+            className="w-full h-12 md:h-10"
           />
         </div>
       </div>
