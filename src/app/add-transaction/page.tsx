@@ -86,8 +86,8 @@ export default function AddTransactionPage() {
         Add transaction
       </h1>
 
-      {/* Form - Container with padding bottom for sticky footer */}
-      <div className="w-full pb-[180px] md:pb-0">
+      {/* Form - No extra padding needed, static footer handles spacing */}
+      <div className="w-full">
         <TransactionForm
           mode="add"
           onSave={handleSave}

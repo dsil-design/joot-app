@@ -59,8 +59,14 @@ export function TransactionForm({
   showDateStepper = false,
   useStandardAmountInput = false,
 }: TransactionFormProps) {
-  // Ref for auto-focus
+  // Refs for auto-focus and intersection observer
   const descriptionRef = React.useRef<HTMLInputElement>(null)
+  const staticFooterRef = React.useRef<HTMLDivElement>(null)
+  const formContainerRef = React.useRef<HTMLDivElement>(null)
+
+  // State for sticky footer visibility
+  const [showStickyFooter, setShowStickyFooter] = React.useState(true)
+  const [isFormShort, setIsFormShort] = React.useState(false)
 
   // Form state
   const [currency, setCurrency] = React.useState<CurrencyType>(
@@ -170,6 +176,49 @@ export function TransactionForm({
   React.useEffect(() => {
     descriptionRef.current?.focus()
   }, [])
+
+  // Check if form is short (doesn't require scrolling)
+  React.useEffect(() => {
+    const checkFormHeight = () => {
+      if (formContainerRef.current) {
+        const formHeight = formContainerRef.current.scrollHeight
+        const viewportHeight = window.innerHeight
+        // If form + padding is shorter than viewport, it's a short form
+        setIsFormShort(formHeight + 200 < viewportHeight)
+      }
+    }
+
+    // Check on mount and when window resizes
+    checkFormHeight()
+    window.addEventListener('resize', checkFormHeight)
+    return () => window.removeEventListener('resize', checkFormHeight)
+  }, [])
+
+  // IntersectionObserver to detect when static footer is visible
+  React.useEffect(() => {
+    if (!staticFooterRef.current || isFormShort) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // When static footer is visible, hide sticky footer
+          // When static footer is not visible, show sticky footer
+          setShowStickyFooter(!entry.isIntersecting)
+        })
+      },
+      {
+        root: null, // viewport
+        rootMargin: '0px',
+        threshold: 0.1, // Trigger when 10% of static footer is visible
+      }
+    )
+
+    observer.observe(staticFooterRef.current)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [isFormShort])
 
   // Reset form (keeping date and currency)
   const resetForm = () => {
@@ -296,7 +345,7 @@ export function TransactionForm({
     description.trim() && amount && parseFloat(amount) > 0
 
   return (
-    <div className="flex flex-col gap-6 md:gap-8 items-start justify-start w-full">
+    <div ref={formContainerRef} className="flex flex-col gap-6 md:gap-8 items-start justify-start w-full">
       <div className="flex flex-col gap-4 md:gap-6 items-start justify-start w-full">
         {/* Transaction Type Toggle */}
         <div className="flex gap-3 sm:gap-2 items-start justify-start">
@@ -540,8 +589,11 @@ export function TransactionForm({
         </div>
       </div>
 
-      {/* Actions - Compact fixed footer on mobile */}
-      <div className="flex flex-col gap-2.5 items-start justify-start w-full md:gap-3 md:relative md:static fixed bottom-0 left-0 right-0 bg-white pt-3 md:pt-4 [padding-bottom:max(1rem,calc(1rem+env(safe-area-inset-bottom)))] md:pb-0 border-t md:border-t-0 border-zinc-200 shadow-[0_-1px_3px_0_rgb(0_0_0_/0.05)] md:shadow-none z-50 transaction-form-footer">
+      {/* Static Footer - Below form fields with all buttons (mobile only, hidden on desktop) */}
+      <div
+        ref={staticFooterRef}
+        className="flex flex-col gap-2.5 items-start justify-start w-full md:gap-3 md:relative md:static pb-20 md:pb-0"
+      >
         <Button
           onClick={handleSubmit}
           disabled={saving || !isFormValid}
@@ -576,6 +628,28 @@ export function TransactionForm({
           {cancelButtonLabel || (mode === "edit" ? "Discard" : "Cancel")}
         </Button>
       </div>
+
+      {/* Sticky Footer - Only Save button, shows when static footer is out of view */}
+      {/* Hide on desktop (md+) and on short forms */}
+      {!isFormShort && (
+        <div
+          className={`flex flex-col gap-2.5 items-start justify-start w-full md:hidden fixed bottom-0 left-0 right-0 bg-white pt-3 [padding-bottom:max(1rem,calc(1rem+env(safe-area-inset-bottom)))] border-t border-zinc-200 shadow-[0_-1px_3px_0_rgb(0_0_0_/0.05)] z-50 transaction-form-footer transition-opacity duration-200 ease-in-out ${
+            showStickyFooter ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <Button
+            onClick={handleSubmit}
+            disabled={saving || !isFormValid}
+            size="lg"
+            className="w-full h-11 text-base font-medium"
+            aria-label="Save transaction"
+          >
+            {saving
+              ? "Saving..."
+              : saveButtonLabel || (mode === "edit" ? "Save changes" : "Save")}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
