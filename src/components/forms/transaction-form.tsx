@@ -540,13 +540,14 @@ export function TransactionForm({
         </div>
       </div>
 
-      {/* Actions - Sticky footer with full-width bleed on mobile */}
-      <div className="flex flex-col gap-2.5 items-start justify-start w-full md:gap-3 md:relative md:static sticky bottom-0 left-0 right-0 bg-white pt-3 pb-4 md:pt-0 md:pb-0 border-t md:border-t-0 border-zinc-200 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] md:shadow-none transaction-form-footer">
+      {/* Actions - Compact fixed footer on mobile */}
+      <div className="flex flex-col gap-2.5 items-start justify-start w-full md:gap-3 md:relative md:static fixed bottom-0 left-0 right-0 bg-white pt-3 px-4 md:pt-4 md:px-0 [padding-bottom:max(1rem,calc(1rem+env(safe-area-inset-bottom)))] md:pb-0 border-t md:border-t-0 border-zinc-200 shadow-[0_-1px_3px_0_rgb(0_0_0_/0.05)] md:shadow-none z-50 transaction-form-footer">
         <Button
           onClick={handleSubmit}
           disabled={saving || !isFormValid}
           size="lg"
-          className="w-full h-12 md:h-10"
+          className="w-full h-11 text-base font-medium"
+          aria-label="Save transaction"
         >
           {saving
             ? "Saving..."
@@ -558,9 +559,10 @@ export function TransactionForm({
             onClick={handleSubmitAndAddAnother}
             disabled={saving || !isFormValid}
             size="lg"
-            className="w-full h-12 md:h-10"
+            className="w-full h-11 text-base font-medium"
+            aria-label="Save transaction and add another"
           >
-            {saving ? "Saving..." : "Save & Add Another"}
+            {saving ? "Saving..." : "Save & New"}
           </Button>
         )}
         <Button
@@ -568,7 +570,8 @@ export function TransactionForm({
           onClick={onCancel}
           disabled={saving}
           size="lg"
-          className="w-full h-12 md:h-10"
+          className="w-full h-11 text-base font-medium"
+          aria-label="Discard changes"
         >
           {cancelButtonLabel || (mode === "edit" ? "Discard" : "Cancel")}
         </Button>

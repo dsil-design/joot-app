@@ -50,6 +50,16 @@ export function SearchableComboBox({
   const [searchResults, setSearchResults] = React.useState<Array<{ id: string; name: string }>>([])
   const [loading, setLoading] = React.useState(false)
   const [displayLabel, setDisplayLabel] = React.useState(selectedLabel || "")
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  // Auto-focus input when dropdown opens
+  React.useEffect(() => {
+    if (open && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 50)
+    }
+  }, [open])
 
   // Debounced search
   React.useEffect(() => {
@@ -122,15 +132,24 @@ export function SearchableComboBox({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start" sideOffset={4} collisionPadding={16}>
+      <PopoverContent
+        className="w-[min(calc(100vw-2rem),var(--radix-popover-trigger-width))] p-0"
+        align="start"
+        sideOffset={6}
+        collisionPadding={16}
+        style={{
+          maxHeight: 'min(400px, calc(100vh - 100px))',
+        }}
+      >
         <Command shouldFilter={false}>
           <CommandInput
+            ref={inputRef as any}
             placeholder={searchPlaceholder}
             value={searchValue}
             onValueChange={setSearchValue}
-            className="h-9"
+            className="h-11 md:h-9"
           />
-          <CommandList>
+          <CommandList className="max-h-[min(300px,calc(100vh-200px))]">
             {loading && (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
@@ -156,15 +175,15 @@ export function SearchableComboBox({
                     key={result.id}
                     value={result.id}
                     onSelect={() => handleSelect(result.id, result.name)}
-                    className="cursor-pointer"
+                    className="cursor-pointer min-h-[44px] flex items-center px-3"
                   >
                     <Check
                       className={cn(
-                        "mr-2 h-4 w-4",
+                        "mr-2 h-4 w-4 shrink-0",
                         value === result.id ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    <span className="truncate">{result.name}</span>
+                    <span className="truncate flex-1">{result.name}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -175,10 +194,10 @@ export function SearchableComboBox({
                 <CommandItem
                   value={`add-new-${searchValue}`}
                   onSelect={handleAddNew}
-                  className="cursor-pointer text-primary"
+                  className="cursor-pointer text-primary min-h-[44px] flex items-center px-3"
                 >
-                  <Plus className="mr-2 h-4 w-4" />
-                  <span className="truncate">
+                  <Plus className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="truncate flex-1">
                     Add "{searchValue}"
                   </span>
                 </CommandItem>

@@ -87,6 +87,17 @@ const ComboBox = React.forwardRef<HTMLButtonElement, ComboBoxProps>(
   ) => {
     const [open, setOpen] = React.useState(false)
     const [searchValue, setSearchValue] = React.useState("")
+    const inputRef = React.useRef<HTMLInputElement>(null)
+
+    // Auto-focus input when dropdown opens
+    React.useEffect(() => {
+      if (open && inputRef.current) {
+        // Small delay to ensure the popover is fully rendered
+        setTimeout(() => {
+          inputRef.current?.focus()
+        }, 50)
+      }
+    }, [open])
 
     // Find the selected option
     const selectedOption = options.find((option) => option.value === value)
@@ -145,19 +156,28 @@ const ComboBox = React.forwardRef<HTMLButtonElement, ComboBoxProps>(
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start" sideOffset={4} collisionPadding={16}>
+        <PopoverContent
+          className="w-[min(calc(100vw-2rem),var(--radix-popover-trigger-width))] p-0"
+          align="start"
+          sideOffset={6}
+          collisionPadding={16}
+          style={{
+            maxHeight: 'min(400px, calc(100vh - 100px))',
+          }}
+        >
           <Command shouldFilter={false}>
             <CommandInput
+              ref={inputRef as any}
               placeholder={searchPlaceholder}
               value={searchValue}
               onValueChange={setSearchValue}
-              className="h-9"
+              className="h-11 md:h-9"
             />
-            <CommandList>
+            <CommandList className="max-h-[min(300px,calc(100vh-200px))]">
               {filteredOptions.length === 0 && !showAddNew && (
                 <CommandEmpty>{emptyMessage}</CommandEmpty>
               )}
-              
+
               {filteredOptions.length > 0 && (
                 <CommandGroup>
                   {filteredOptions.map((option) => (
@@ -166,15 +186,15 @@ const ComboBox = React.forwardRef<HTMLButtonElement, ComboBoxProps>(
                       value={option.value}
                       disabled={option.disabled}
                       onSelect={() => handleSelect(option.value)}
-                      className="cursor-pointer"
+                      className="cursor-pointer min-h-[44px] flex items-center px-3"
                     >
                       <Check
                         className={cn(
-                          "mr-2 h-4 w-4",
+                          "mr-2 h-4 w-4 shrink-0",
                           value === option.value ? "opacity-100" : "opacity-0"
                         )}
                       />
-                      <span className="truncate">
+                      <span className="truncate flex-1">
                         {option.label}
                         {option.labelSuffix && (
                           <span className="text-zinc-500"> ({option.labelSuffix})</span>
@@ -184,16 +204,16 @@ const ComboBox = React.forwardRef<HTMLButtonElement, ComboBoxProps>(
                   ))}
                 </CommandGroup>
               )}
-              
+
               {showAddNew && (
                 <CommandGroup>
                   <CommandItem
                     value={`add-new-${searchValue}`}
                     onSelect={handleAddNew}
-                    className="cursor-pointer text-primary"
+                    className="cursor-pointer text-primary min-h-[44px] flex items-center px-3"
                   >
-                    <Plus className="mr-2 h-4 w-4" />
-                    <span className="truncate">
+                    <Plus className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate flex-1">
                       {addNewLabel} "{searchValue}"
                     </span>
                   </CommandItem>
