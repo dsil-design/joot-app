@@ -305,8 +305,8 @@ export function TransactionForm({
             size="sm"
             className={`h-9 gap-2 px-2.5 py-0 rounded-md ${
               transactionType === "expense"
-                ? "bg-zinc-100 text-zinc-950 hover:bg-zinc-200"
-                : "bg-transparent text-zinc-950 hover:bg-zinc-100"
+                ? "bg-accent text-accent-foreground hover:bg-accent/80"
+                : "bg-transparent text-foreground hover:bg-accent"
             }`}
             onClick={() => setTransactionType("expense")}
           >
@@ -318,8 +318,8 @@ export function TransactionForm({
             size="sm"
             className={`h-9 gap-2 px-2.5 py-0 rounded-md ${
               transactionType === "income"
-                ? "bg-zinc-100 text-zinc-950 hover:bg-zinc-200"
-                : "bg-transparent text-zinc-950 hover:bg-zinc-100"
+                ? "bg-accent text-accent-foreground hover:bg-accent/80"
+                : "bg-transparent text-foreground hover:bg-accent"
             }`}
             onClick={() => setTransactionType("income")}
           >
@@ -330,7 +330,7 @@ export function TransactionForm({
 
         {/* Date Field */}
         <div className="flex flex-col gap-1 items-start justify-start w-full">
-          <Label className="text-sm font-medium text-zinc-950">Date</Label>
+          <Label className="text-sm font-medium text-foreground">Date</Label>
           {showDateStepper ? (
             <div className="flex gap-2 items-center w-full">
               <DatePicker
@@ -372,7 +372,7 @@ export function TransactionForm({
 
         {/* Description Input */}
         <div className="flex flex-col gap-1 items-start justify-start w-full">
-          <Label htmlFor="description" className="text-sm font-medium text-zinc-950">
+          <Label htmlFor="description" className="text-sm font-medium text-foreground">
             Description
           </Label>
           <Input
@@ -389,7 +389,7 @@ export function TransactionForm({
 
         {/* Vendor SearchableComboBox */}
         <div className="flex flex-col gap-1 items-start justify-start w-full">
-          <Label htmlFor="vendor" className="text-sm font-medium text-zinc-950">
+          <Label htmlFor="vendor" className="text-sm font-medium text-foreground">
             Vendor
           </Label>
           <SearchableComboBox
@@ -408,7 +408,7 @@ export function TransactionForm({
 
         {/* Payment Method ComboBox */}
         <div className="flex flex-col gap-1 items-start justify-start w-full">
-          <Label htmlFor="payment-method" className="text-sm font-medium text-zinc-950">
+          <Label htmlFor="payment-method" className="text-sm font-medium text-foreground">
             Payment Method
           </Label>
           <ComboBox
@@ -429,7 +429,7 @@ export function TransactionForm({
 
         {/* Amount and Currency - Integrated Row */}
         <div className="flex flex-col gap-1 items-start justify-start w-full">
-          <Label htmlFor="amount" className="text-sm font-medium text-zinc-950">
+          <Label htmlFor="amount" className="text-sm font-medium text-foreground">
             Amount
           </Label>
           <div className="flex gap-2 md:gap-3 items-stretch justify-start w-full">
@@ -482,31 +482,33 @@ export function TransactionForm({
                 <button
                   type="button"
                   onClick={() => setCurrency("THB")}
-                  className={`h-12 md:h-10 px-3 md:px-2.5 rounded-md border transition-colors font-medium text-sm ${
+                  className={`h-12 md:h-10 px-3 md:px-2.5 rounded-md border transition-colors font-medium text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     currency === "THB"
                       ? "bg-blue-50 border-blue-600 text-blue-700"
-                      : "bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                      : "bg-background border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   }`}
                   aria-label="Select THB currency"
+                  aria-pressed={currency === "THB"}
                 >
                   THB
                 </button>
                 <button
                   type="button"
                   onClick={() => setCurrency("USD")}
-                  className={`h-12 md:h-10 px-3 md:px-2.5 rounded-md border transition-colors font-medium text-sm ${
+                  className={`h-12 md:h-10 px-3 md:px-2.5 rounded-md border transition-colors font-medium text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     currency === "USD"
                       ? "bg-blue-50 border-blue-600 text-blue-700"
-                      : "bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                      : "bg-background border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   }`}
                   aria-label="Select USD currency"
+                  aria-pressed={currency === "USD"}
                 >
                   USD
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCurrencyDropdown(true)}
-                  className="h-12 md:h-10 px-3 md:px-2.5 rounded-md border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors font-medium text-sm"
+                  className="h-12 md:h-10 px-3 md:px-2.5 rounded-md border border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors font-medium text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   aria-label="Select other currency"
                 >
                   •••
@@ -518,7 +520,7 @@ export function TransactionForm({
 
         {/* Tags Multi-Select */}
         <div className="flex flex-col gap-1 items-start justify-start w-full">
-          <Label htmlFor="tags" className="text-sm font-medium text-zinc-950">
+          <Label htmlFor="tags" className="text-sm font-medium text-foreground">
             Tags
           </Label>
           <MultiSelectComboBox

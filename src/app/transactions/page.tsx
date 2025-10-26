@@ -135,21 +135,21 @@ function ViewController({ viewMode, onViewModeChange }: ViewControllerProps) {
   return (
     <div className="content-stretch flex flex-col items-start justify-start relative shrink-0 w-[161px]">
       <Select value={viewMode} onValueChange={(value: ViewMode) => onViewModeChange(value)}>
-        <SelectTrigger className="bg-white box-border content-stretch flex h-10 items-center justify-between px-3 py-2 relative rounded-[6px] shrink-0 w-full border border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
+        <SelectTrigger className="bg-background shadow-xs">
           <SelectValue>
-            <div className="font-normal text-[14px] text-zinc-950">
+            <div className="font-normal text-sm text-foreground">
               <p className="leading-[20px]">{getDisplayText(viewMode)}</p>
             </div>
           </SelectValue>
         </SelectTrigger>
-        <SelectContent className="bg-white border border-zinc-200 rounded-[6px] shadow-[0px_4px_8px_0px_rgba(0,0,0,0.1)]">
-          <SelectItem value="recorded" className="font-normal text-[14px] text-zinc-950">
+        <SelectContent>
+          <SelectItem value="recorded" className="font-normal text-sm">
             Recorded cost
           </SelectItem>
-          <SelectItem value="all-usd" className="font-normal text-[14px] text-zinc-950">
+          <SelectItem value="all-usd" className="font-normal text-sm">
             All USD
           </SelectItem>
-          <SelectItem value="all-thb" className="font-normal text-[14px] text-zinc-950">
+          <SelectItem value="all-thb" className="font-normal text-sm">
             All THB
           </SelectItem>
         </SelectContent>
@@ -173,14 +173,14 @@ function ViewLayoutToggle({ layoutMode, onLayoutModeChange }: ViewLayoutTogglePr
         <ToggleGroupItem
           value="table"
           aria-label="Table view"
-          className="h-10 px-3"
+          className="h-9 px-3"
         >
           <TableIcon className="h-4 w-4" />
         </ToggleGroupItem>
         <ToggleGroupItem
           value="cards"
           aria-label="Card view"
-          className="h-10 px-3"
+          className="h-9 px-3"
         >
           <LayoutGrid className="h-4 w-4" />
         </ToggleGroupItem>
@@ -364,8 +364,9 @@ function TransactionsTable({
         <Button
           variant="ghost"
           size="sm"
-          className="-ml-3 h-8 data-[state=open]:bg-accent font-medium text-zinc-950 hover:bg-zinc-100"
+          className="-ml-3 h-8 data-[state=open]:bg-accent font-medium text-foreground hover:bg-accent"
           onClick={() => onSort(field)}
+          aria-sort={sortField === field ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
         >
           {children}
           <Icon className="ml-2 h-4 w-4" />
@@ -375,10 +376,10 @@ function TransactionsTable({
   }
 
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-zinc-200">
+    <div className="w-full overflow-x-auto rounded-lg border border-border">
       <Table>
         <TableHeader>
-          <TableRow className="bg-zinc-50">
+          <TableRow className="bg-muted">
             <TableHead className="w-[40px]">
               <Checkbox
                 checked={allSelected}
@@ -388,25 +389,25 @@ function TransactionsTable({
               />
             </TableHead>
             <TableHead className="w-[100px]"></TableHead>
-            <TableHead className="font-medium text-zinc-950">Type</TableHead>
+            <TableHead className="font-medium text-foreground">Type</TableHead>
             <SortableHeader field="date">Date</SortableHeader>
             <SortableHeader field="description">Description</SortableHeader>
             <SortableHeader field="vendor">Vendor</SortableHeader>
-            <TableHead className="font-medium text-zinc-950">Payment Method</TableHead>
+            <TableHead className="font-medium text-foreground">Payment Method</TableHead>
             <SortableHeader field="amount">Amount</SortableHeader>
             {showExchangeRates && (
               <>
-                <TableHead className="font-medium text-zinc-950">Exchange Rate</TableHead>
-                <TableHead className="font-medium text-zinc-950">Converted Amount</TableHead>
+                <TableHead className="font-medium text-foreground">Exchange Rate</TableHead>
+                <TableHead className="font-medium text-foreground">Converted Amount</TableHead>
               </>
             )}
-            <TableHead className="font-medium text-zinc-950">Tags</TableHead>
+            <TableHead className="font-medium text-foreground">Tags</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {transactions.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={totalColumns + 1} className="text-center text-zinc-500 py-8">
+              <TableCell colSpan={totalColumns + 1} className="text-center text-muted-foreground py-8">
                 No transactions found matching the filters.
               </TableCell>
             </TableRow>
@@ -416,7 +417,7 @@ function TransactionsTable({
               return (
                 <TableRow
                   key={transaction.id}
-                  className={`cursor-pointer hover:bg-zinc-50 ${
+                  className={`cursor-pointer hover:bg-accent/50 ${
                     isSelected ? "bg-blue-50 hover:bg-blue-100" : ""
                   }`}
                   onClick={(e) => handleRowClick(transaction, e)}
@@ -437,7 +438,7 @@ function TransactionsTable({
                         onClick={() => onEditTransaction(transaction)}
                         aria-label="Edit transaction"
                       >
-                        <Edit2 className="h-4 w-4 text-zinc-600" />
+                        <Edit2 className="h-4 w-4 text-muted-foreground" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -446,7 +447,7 @@ function TransactionsTable({
                         onClick={() => onDeleteTransaction(transaction.id)}
                         aria-label="Delete transaction"
                       >
-                        <Trash2 className="h-4 w-4 text-red-600" />
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   </TableCell>
@@ -470,10 +471,10 @@ function TransactionsTable({
                   </TableCell>
                   {showExchangeRates && (
                     <>
-                      <TableCell className="text-sm text-zinc-600 whitespace-nowrap">
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                         {formatExchangeRate(transaction)}
                       </TableCell>
-                      <TableCell className="font-medium text-sm text-zinc-900 whitespace-nowrap">
+                      <TableCell className="font-medium text-sm text-foreground whitespace-nowrap">
                         {formatConvertedAmount(transaction)}
                       </TableCell>
                     </>
@@ -496,7 +497,7 @@ function TransactionsTable({
                         ))}
                       </div>
                     ) : (
-                      <span className="text-zinc-400 text-sm">—</span>
+                      <span className="text-muted-foreground text-sm">—</span>
                     )}
                   </TableCell>
                 </TableRow>
@@ -529,14 +530,13 @@ function ExchangeRatesToggle({
         <Button
           variant="outline"
           onClick={onToggle}
-          className="bg-white border-zinc-200 hover:bg-zinc-50 h-10 px-4"
         >
           {showExchangeRates ? "Hide Exchange Rates" : "Show Exchange Rates"}
         </Button>
 
         {showExchangeRates && (
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-zinc-700">Convert to:</span>
+            <span className="text-sm font-medium text-muted-foreground">Convert to:</span>
             <RadioGroup
               value={conversionCurrency}
               onValueChange={(value: ConversionCurrency) => onConversionCurrencyChange(value)}
@@ -635,27 +635,27 @@ function TotalsFooter({ totals, totalsCurrency, onTotalsCurrencyChange }: Totals
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 lg:left-[240px] bg-white border-t border-zinc-200 shadow-[0px_-2px_8px_0px_rgba(0,0,0,0.08)] z-40">
+    <div className="fixed bottom-0 left-0 right-0 lg:left-[240px] bg-background border-t border-border shadow-footer z-40">
       <div className="w-full max-w-md md:max-w-none mx-auto px-6 md:px-8 py-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           {/* Totals Display */}
           <div className="flex items-center gap-6 flex-wrap">
             <div className="flex flex-col">
-              <span className="text-xs text-zinc-500 font-medium">Total Expenses</span>
+              <span className="text-xs text-muted-foreground font-medium">Total Expenses</span>
               <span className="text-lg font-semibold text-red-600">
                 {isCalculating ? "Calculating..." : formatTotal(convertedTotals.totalExpenses)}
               </span>
             </div>
 
             <div className="flex flex-col">
-              <span className="text-xs text-zinc-500 font-medium">Total Income</span>
+              <span className="text-xs text-muted-foreground font-medium">Total Income</span>
               <span className="text-lg font-semibold text-green-600">
                 {isCalculating ? "Calculating..." : formatTotal(convertedTotals.totalIncome)}
               </span>
             </div>
 
             <div className="flex flex-col">
-              <span className="text-xs text-zinc-500 font-medium">Net</span>
+              <span className="text-xs text-muted-foreground font-medium">Net</span>
               <span className={`text-lg font-semibold ${
                 convertedTotals.totalIncome - convertedTotals.totalExpenses >= 0 ? "text-green-600" : "text-red-600"
               }`}>
@@ -666,7 +666,7 @@ function TotalsFooter({ totals, totalsCurrency, onTotalsCurrencyChange }: Totals
 
           {/* Currency Toggle */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500 font-medium">Currency:</span>
+            <span className="text-xs text-muted-foreground font-medium">Currency:</span>
             <ToggleGroup
               type="single"
               value={totalsCurrency}
@@ -1079,12 +1079,32 @@ export default function AllTransactionsPage() {
   // Check if there are transactions without payment methods (for "None" option)
   const [hasNoneTransactions, setHasNoneTransactions] = React.useState(false)
 
-  // Query database for accurate count of transactions without payment methods
+  // Fetch ALL payment methods and vendors for filter dropdowns (not just from visible transactions)
+  const [allPaymentMethods, setAllPaymentMethods] = React.useState<Array<{ id: string; name: string }>>([])
+  const [allVendors, setAllVendors] = React.useState<Array<{ id: string; name: string }>>([])
+
+  // Query database for ALL payment methods and vendors
   React.useEffect(() => {
-    const checkForNoneTransactions = async () => {
+    const fetchFilterOptions = async () => {
       if (!user) return
 
       const supabase = createClient()
+
+      // Fetch all payment methods
+      const { data: paymentMethodsData } = await supabase
+        .from('payment_methods')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .order('name')
+
+      // Fetch all vendors
+      const { data: vendorsData } = await supabase
+        .from('vendors')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .order('name')
+
+      // Check for transactions without payment methods
       const { count } = await supabase
         .from('transactions')
         .select('*', { count: 'exact', head: true })
@@ -1092,9 +1112,17 @@ export default function AllTransactionsPage() {
         .eq('user_id', user.id)
 
       setHasNoneTransactions((count ?? 0) > 0)
+
+      // Set payment methods with optional "None"
+      const paymentMethods = paymentMethodsData || []
+      if ((count ?? 0) > 0) {
+        paymentMethods.unshift({ id: "none", name: "None" })
+      }
+      setAllPaymentMethods(paymentMethods)
+      setAllVendors(vendorsData || [])
     }
 
-    checkForNoneTransactions()
+    fetchFilterOptions()
   }, [user])
 
   // Extract unique vendors and payment methods
@@ -1483,8 +1511,8 @@ export default function AllTransactionsPage() {
           onClose={() => setShowAdvancedFilters(false)}
           filters={filters}
           onApplyFilters={handleApplyAdvancedFilters}
-          vendors={uniqueVendors}
-          paymentMethods={uniquePaymentMethods}
+          vendors={allVendors}
+          paymentMethods={allPaymentMethods}
         />
 
         {/* Custom Date Range Modal */}
