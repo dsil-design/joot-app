@@ -11,8 +11,8 @@ import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
-  PopoverTrigger,
 } from "@/components/ui/popover"
 
 export interface DateRangePickerProps {
@@ -141,6 +141,7 @@ export function DateRangePicker({
   const [inputValue, setInputValue] = React.useState(() => formatDateRangeForInput(dateRange))
   const [isEditing, setIsEditing] = React.useState(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const buttonRef = React.useRef<HTMLButtonElement>(null)
 
   // Sync input value with dateRange prop when not editing
   React.useEffect(() => {
@@ -257,19 +258,56 @@ export function DateRangePicker({
             </Button>
           )}
           <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
+            <PopoverAnchor asChild>
               <Button
+                ref={buttonRef}
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
                 disabled={disabled}
                 aria-label="Open calendar"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setOpen(!open)
+                }}
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                }}
               >
                 <CalendarIcon className="h-4 w-4" />
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            </PopoverAnchor>
+            <PopoverContent
+              className="w-auto p-0"
+              align="end"
+              onOpenAutoFocus={(e) => {
+                // Prevent the popover from stealing focus from parent dialog
+                e.preventDefault()
+              }}
+              onPointerDownOutside={(e) => {
+                // Don't close if clicking within the dialog that contains this picker or on the trigger button
+                const target = e.target as HTMLElement
+                if (target.closest('[data-slot="dialog-content"]') ||
+                    target === buttonRef.current ||
+                    buttonRef.current?.contains(target)) {
+                  e.preventDefault()
+                }
+              }}
+              onInteractOutside={(e) => {
+                // Don't close if clicking within the dialog that contains this picker or on the trigger button
+                const target = e.target as HTMLElement
+                if (target.closest('[data-slot="dialog-content"]') ||
+                    target === buttonRef.current ||
+                    buttonRef.current?.contains(target)) {
+                  e.preventDefault()
+                }
+              }}
+            >
               <Calendar
                 mode="range"
                 selected={dateRange}

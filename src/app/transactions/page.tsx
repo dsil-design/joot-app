@@ -74,6 +74,7 @@ import { createClient } from "@/lib/supabase/client"
 import { QuickFilterBar } from "@/components/page-specific/quick-filter-bar"
 import { ActiveFilterChips } from "@/components/page-specific/active-filter-chips"
 import { AdvancedFiltersPanel } from "@/components/page-specific/advanced-filters-panel"
+import { CustomDateRangeDialog } from "@/components/page-specific/custom-date-range-dialog"
 import { getPresetRange, type DatePresetKey } from "@/lib/utils/date-filters"
 
 type ViewMode = "recorded" | "all-usd" | "all-thb"
@@ -1516,31 +1517,30 @@ export default function AllTransactionsPage() {
         />
 
         {/* Custom Date Range Modal */}
-        {showCustomDateRange && (
-          <Dialog open={showCustomDateRange} onOpenChange={setShowCustomDateRange}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-medium text-zinc-950">
-                  Select Custom Date Range
-                </DialogTitle>
-              </DialogHeader>
-              <div className="py-4">
-                <DateRangePicker
-                  dateRange={filters.dateRange}
-                  onDateRangeChange={(range) => {
-                    setFilters({
-                      ...filters,
-                      dateRange: range,
-                      datePreset: 'custom'
-                    })
-                    setShowCustomDateRange(false)
-                  }}
-                  placeholder="Pick a custom date range..."
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+        <Dialog
+          open={showCustomDateRange}
+          onOpenChange={setShowCustomDateRange}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-medium text-zinc-950">
+                Select Custom Date Range
+              </DialogTitle>
+            </DialogHeader>
+            <CustomDateRangeDialog
+              initialRange={filters.dateRange}
+              onSubmit={(range) => {
+                setFilters({
+                  ...filters,
+                  dateRange: range,
+                  datePreset: 'custom'
+                })
+                setShowCustomDateRange(false)
+              }}
+              onCancel={() => setShowCustomDateRange(false)}
+            />
+          </DialogContent>
+        </Dialog>
 
         {/* Show exchange rates toggle only in table view */}
         {layoutMode === "table" && (
