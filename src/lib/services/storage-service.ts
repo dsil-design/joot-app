@@ -56,7 +56,7 @@ export async function uploadDocument(
     // Read file as buffer
     const arrayBuffer = await file.arrayBuffer()
     let fileBuffer = Buffer.from(arrayBuffer)
-    let originalSize = file.size
+    const originalSize = file.size
     let compressedSize = file.size
 
     // Get file extension
