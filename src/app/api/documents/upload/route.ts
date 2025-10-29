@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadDocument } from '@/lib/services/storage-service'
+import { enqueueJob, JOB_TYPES } from '@/lib/services/job-queue-service'
 
 export const dynamic = 'force-dynamic'
 
@@ -115,6 +116,21 @@ export async function POST(request: NextRequest) {
         { error: 'Database error', message: 'Failed to create document record' },
         { status: 500 }
       )
+    }
+
+    // Enqueue OCR processing job (async, non-blocking)
+    // Only process images and PDFs (skip emails for now)
+    if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+      try {
+        await enqueueJob(JOB_TYPES.PROCESS_OCR, {
+          documentId: documentId,
+          userId: user.id,
+        })
+        console.log(`Enqueued OCR job for document: ${documentId}`)
+      } catch (error) {
+        // Don't fail the upload if job enqueueing fails
+        console.error('Failed to enqueue OCR job:', error)
+      }
     }
 
     // Return success response
