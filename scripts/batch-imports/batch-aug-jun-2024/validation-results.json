@@ -1,0 +1,419 @@
+{
+  "june": {
+    "month": "June",
+    "year": "2024",
+    "counts": {
+      "expected": 98,
+      "actual": 98,
+      "variance": 0,
+      "pass": true
+    },
+    "currency": {
+      "usd": {
+        "count": 94,
+        "percent": "95.92"
+      },
+      "thb": {
+        "count": 4,
+        "percent": "4.08"
+      },
+      "vnd": {
+        "count": 0,
+        "percent": "0.00"
+      }
+    },
+    "expenses": {
+      "count": 90,
+      "total": 38926.920000000006
+    },
+    "income": {
+      "count": 8,
+      "total": 10172.38
+    },
+    "tags": {
+      "Reimbursement": 2,
+      "Savings/Investment": 1
+    },
+    "critical": {
+      "tested": 3,
+      "found": 3,
+      "missing": 0,
+      "pass": true,
+      "details": [
+        {
+          "expected": {
+            "description": "Monthly Fee: Gym",
+            "merchant": "Planet Fitness",
+            "amount": 10,
+            "date": "2024-06-17",
+            "currency": "USD"
+          },
+          "found": true,
+          "match": {
+            "id": "3b2b3648-f5a1-4436-aa41-566ce879ce0f",
+            "transaction_date": "2024-06-17",
+            "description": "Monthly Fee: Gym",
+            "amount": 10,
+            "original_currency": "USD",
+            "transaction_type": "expense",
+            "vendor": {
+              "name": "Planet Fitness"
+            },
+            "transaction_tags": []
+          },
+          "multipleMatches": false,
+          "count": 1
+        },
+        {
+          "expected": {
+            "description": "This Month's Rent",
+            "merchant": "Pol",
+            "amount": 25000,
+            "date": "2024-06-04",
+            "currency": "THB"
+          },
+          "found": true,
+          "match": {
+            "id": "8785a757-dc23-4f11-87de-9a89b75cd826",
+            "transaction_date": "2024-06-04",
+            "description": "This Month’s Rent",
+            "amount": 25000,
+            "original_currency": "THB",
+            "transaction_type": "expense",
+            "vendor": {
+              "name": "Pol"
+            },
+            "transaction_tags": []
+          },
+          "multipleMatches": false,
+          "count": 1
+        },
+        {
+          "expected": {
+            "description": "Monthly Cleaning",
+            "merchant": "BLISS",
+            "amount": 2782,
+            "date": "2024-06-04",
+            "currency": "THB"
+          },
+          "found": true,
+          "match": {
+            "id": "69549c32-8002-41d8-acd3-0200154f3836",
+            "transaction_date": "2024-06-04",
+            "description": "Monthly Cleaning",
+            "amount": 2782,
+            "original_currency": "THB",
+            "transaction_type": "expense",
+            "vendor": {
+              "name": "BLISS"
+            },
+            "transaction_tags": []
+          },
+          "multipleMatches": false,
+          "count": 1
+        }
+      ]
+    },
+    "special": {
+      "pass": true,
+      "notes": []
+    },
+    "overallPass": true
+  },
+  "july": {
+    "month": "July",
+    "year": "2024",
+    "counts": {
+      "expected": 186,
+      "actual": 186,
+      "variance": 0,
+      "pass": true
+    },
+    "currency": {
+      "usd": {
+        "count": 130,
+        "percent": "69.89"
+      },
+      "thb": {
+        "count": 56,
+        "percent": "30.11"
+      },
+      "vnd": {
+        "count": 0,
+        "percent": "0.00"
+      }
+    },
+    "expenses": {
+      "count": 177,
+      "total": 74734.07999999994
+    },
+    "income": {
+      "count": 9,
+      "total": 13444.4
+    },
+    "tags": {
+      "Savings/Investment": 1,
+      "Reimbursement": 2,
+      "Florida House": 1
+    },
+    "critical": {
+      "tested": 6,
+      "found": 6,
+      "missing": 0,
+      "pass": true,
+      "details": [
+        {
+          "expected": {
+            "description": "Internet Bill",
+            "merchant": "3BB",
+            "amount": 20.62,
+            "date": "2024-07-10",
+            "currency": "USD"
+          },
+          "found": true,
+          "match": {
+            "id": "5a4eee5a-91e7-4079-9e62-952f83374f33",
+            "transaction_date": "2024-07-10",
+            "description": "Internet Bill",
+            "amount": 20.62,
+            "original_currency": "USD",
+            "transaction_type": "expense",
+            "vendor": {
+              "name": "3BB"
+            },
+            "transaction_tags": []
+          },
+          "multipleMatches": false,
+          "count": 1
+        },
+        {
+          "expected": {
+            "description": "CNX Internet",
+            "merchant": "3BB",
+            "amount": 20.78,
+            "date": "2024-07-22",
+            "currency": "USD"
+          },
+          "found": true,
+          "match": {
+            "id": "26f96278-1ebb-4d4f-9982-530a16d753fb",
+            "transaction_date": "2024-07-22",
+            "description": "CNX Internet",
+            "amount": 20.78,
+            "original_currency": "USD",
+            "transaction_type": "expense",
+            "vendor": {
+              "name": "3BB"
+            },
+            "transaction_tags": []
+          },
+          "multipleMatches": false,
+          "count": 1
+        },
+        {
+          "expected": {
+            "description": "Homeowner's Insurance",
+            "merchant": "Dee's Insurance",
+            "amount": 1461,
+            "date": "2024-07-21",
+            "currency": "USD"
+          },
+          "found": true,
+          "match": {
+            "id": "dad8f4b2-5869-4c4f-b911-c5f09928ff0d",
+            "transaction_date": "2024-07-21",
+            "description": "Homeowner’s Insurance",
+            "amount": 1461,
+            "original_currency": "USD",
+            "transaction_type": "expense",
+            "vendor": {
+              "name": "Dee’s Insurance"
+            },
+            "transaction_tags": []
+          },
+          "multipleMatches": false,
+          "count": 1
+        },
+        {
+          "expected": {
+            "description": "Uhaul move, Home Insurance, Inspection, movers",
+            "merchant": "Me",
+            "amount": 4580.41,
+            "date": "2024-07-22",
+            "currency": "USD",
+            "type": "income"
+          },
+          "found": true,
+          "match": {
+            "id": "d4028d9f-e6e7-418b-8e65-97e2dfc13994",
+            "transaction_date": "2024-07-22",
+            "description": "Uhaul move, Home Insurance, Inspection, movers",
+            "amount": 4580.41,
+            "original_currency": "USD",
+            "transaction_type": "income",
+            "vendor": {
+              "name": "Me"
+            },
+            "transaction_tags": []
+          },
+          "multipleMatches": false,
+          "count": 1
+        },
+        {
+          "expected": {
+            "description": "This Month's Rent",
+            "merchant": "Pol",
+            "amount": 25000,
+            "date": "2024-07-03",
+            "currency": "THB"
+          },
+          "found": true,
+          "match": {
+            "id": "577aa19c-59a2-4fef-abf9-64f26fc59f4c",
+            "transaction_date": "2024-07-03",
+            "description": "This Month’s Rent",
+            "amount": 25000,
+            "original_currency": "THB",
+            "transaction_type": "expense",
+            "vendor": {
+              "name": "Pol"
+            },
+            "transaction_tags": []
+          },
+          "multipleMatches": false,
+          "count": 1
+        },
+        {
+          "expected": {
+            "description": "Monthly Cleaning",
+            "merchant": "BLISS",
+            "amount": 3477.5,
+            "date": "2024-07-03",
+            "currency": "THB"
+          },
+          "found": true,
+          "match": {
+            "id": "ffcbdf04-895b-4bb2-bdfe-c8cfcc3099f8",
+            "transaction_date": "2024-07-03",
+            "description": "Monthly Cleaning",
+            "amount": 3477.5,
+            "original_currency": "THB",
+            "transaction_type": "expense",
+            "vendor": {
+              "name": "BLISS"
+            },
+            "transaction_tags": []
+          },
+          "multipleMatches": false,
+          "count": 1
+        }
+      ]
+    },
+    "special": {
+      "pass": true,
+      "notes": [
+        "Insurance and reimbursement correctly separated"
+      ]
+    },
+    "overallPass": true
+  },
+  "august": {
+    "month": "August",
+    "year": "2024",
+    "counts": {
+      "expected": 214,
+      "actual": 214,
+      "variance": 0,
+      "pass": true
+    },
+    "currency": {
+      "usd": {
+        "count": 136,
+        "percent": "63.55"
+      },
+      "thb": {
+        "count": 77,
+        "percent": "35.98"
+      },
+      "vnd": {
+        "count": 1,
+        "percent": "0.47"
+      }
+    },
+    "expenses": {
+      "count": 207,
+      "total": 132807.69000000003
+    },
+    "income": {
+      "count": 7,
+      "total": 7181.07
+    },
+    "tags": {
+      "Savings/Investment": 1,
+      "Reimbursement": 3
+    },
+    "critical": {
+      "tested": 2,
+      "found": 2,
+      "missing": 0,
+      "pass": true,
+      "details": [
+        {
+          "expected": {
+            "description": "This Month's Rent",
+            "merchant": "Pol",
+            "amount": 25000,
+            "date": "2024-08-05",
+            "currency": "THB"
+          },
+          "found": true,
+          "match": {
+            "id": "6bfe1cf9-d6e0-4627-8313-d396ab75f026",
+            "transaction_date": "2024-08-05",
+            "description": "This Month’s Rent",
+            "amount": 25000,
+            "original_currency": "THB",
+            "transaction_type": "expense",
+            "vendor": {
+              "name": "Pol"
+            },
+            "transaction_tags": []
+          },
+          "multipleMatches": false,
+          "count": 1
+        },
+        {
+          "expected": {
+            "description": "Monthly Cleaning",
+            "merchant": "BLISS",
+            "amount": 2782,
+            "date": "2024-08-06",
+            "currency": "THB"
+          },
+          "found": true,
+          "match": {
+            "id": "83603237-0be9-4d96-b408-ae501a0e83eb",
+            "transaction_date": "2024-08-06",
+            "description": "Monthly Cleaning",
+            "amount": 2782,
+            "original_currency": "THB",
+            "transaction_type": "expense",
+            "vendor": {
+              "name": "BLISS"
+            },
+            "transaction_tags": []
+          },
+          "multipleMatches": false,
+          "count": 1
+        }
+      ]
+    },
+    "special": {
+      "pass": false,
+      "notes": [
+        "Zero-dollar transaction incorrectly included"
+      ]
+    },
+    "overallPass": false
+  }
+}

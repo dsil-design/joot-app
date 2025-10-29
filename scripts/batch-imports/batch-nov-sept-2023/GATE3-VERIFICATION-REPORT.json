@@ -1,0 +1,52 @@
+[
+  {
+    "monthKey": "november-2023",
+    "month": "2023-11",
+    "jsonCount": 75,
+    "dbCount": 75,
+    "matched": 75,
+    "missingInDb": [],
+    "missingInJson": [],
+    "fieldMismatches": [],
+    "duplicates": []
+  },
+  {
+    "monthKey": "october-2023",
+    "month": "2023-10",
+    "jsonCount": 114,
+    "dbCount": 114,
+    "matched": 114,
+    "missingInDb": [],
+    "missingInJson": [],
+    "fieldMismatches": [],
+    "duplicates": []
+  },
+  {
+    "monthKey": "september-2023",
+    "month": "2023-09",
+    "jsonCount": 178,
+    "dbCount": 178,
+    "matched": 178,
+    "missingInDb": [],
+    "missingInJson": [],
+    "fieldMismatches": [
+      {
+        "date": "2023-09-16",
+        "description": "Drinks",
+        "amount": 200,
+        "mismatches": [
+          "vendor: \"Stardome\" vs \"Home Bar\""
+        ]
+      },
+      {
+        "date": "2023-09-16",
+        "description": "Drinks",
+        "amount": 200,
+        "mismatches": [
+          "vendor: \"Home Bar\" vs \"Stardome\""
+        ]
+      }
+    ],
+    "duplicates": []
+  }
+]

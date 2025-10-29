@@ -1,0 +1,117 @@
+{
+  "February 2024": {
+    "expenseCount": 248,
+    "incomeCount": 5,
+    "savingsCount": 2,
+    "totalCount": 255,
+    "thbCount": 110,
+    "usdCount": 108,
+    "thbPercentage": "43.1",
+    "usdPercentage": "56.9",
+    "reimbursementCount": 0,
+    "subscriptionCount": 8,
+    "rentTransaction": "This Month’s Rent - THB 25000.00",
+    "largeTransactions": [
+      "This Month’s Rent - THB 25000.00"
+    ],
+    "flightTransactions": [
+      "Flights: BKK - PHL - American Airlines - \"$\t1",
+      "Flights: London - CNX - Singapore Airlines - \"$\t1",
+      "Flight: BKK - CNX - AirAsia - $\t68.32",
+      "Flight: CNX - BKK - AirAsia - $\t88.90"
+    ],
+    "redFlags": [
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Security Deposit - $\t(500.00)"
+      },
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Rent Partial Refund - $\t(383.00)"
+      },
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Refund: Dinner - $\t(7.24)"
+      }
+    ]
+  },
+  "January 2024": {
+    "expenseCount": 199,
+    "incomeCount": 3,
+    "savingsCount": 2,
+    "totalCount": 204,
+    "thbCount": 49,
+    "usdCount": 114,
+    "thbPercentage": "24.0",
+    "usdPercentage": "76.0",
+    "reimbursementCount": 1,
+    "subscriptionCount": 8,
+    "rentTransaction": "This Month’s Rent - THB 25000.00",
+    "largeTransactions": [
+      "This Month’s Rent - THB 25000.00"
+    ],
+    "flightTransactions": [
+      "Flights: CNX - BKK - Vietjet Air - $\t237.39"
+    ],
+    "redFlags": [
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Refund: Singapore Hotel - $\t(143.68)"
+      },
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Car Insurance Refund - $\t(89.00)"
+      },
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Refund: PAX Screens - $\t(37.09)"
+      }
+    ]
+  },
+  "December 2023": {
+    "expenseCount": 113,
+    "incomeCount": 6,
+    "savingsCount": 5,
+    "totalCount": 124,
+    "thbCount": 2,
+    "usdCount": 78,
+    "thbPercentage": "1.6",
+    "usdPercentage": "98.4",
+    "reimbursementCount": 4,
+    "subscriptionCount": 7,
+    "rentTransaction": "This Month’s Rent - THB 25000.00",
+    "largeTransactions": [
+      "This Month’s Rent - THB 25000.00"
+    ],
+    "flightTransactions": [
+      "Flight: EWR to CNX - Singapore Airlines - \"$\t1",
+      "Flight: CNX - DAD - AirAsia - $\t57.36"
+    ],
+    "redFlags": [
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Refund: Sonic Game - $\t(66.00)"
+      },
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Reimbursement Dinner - $\t(45.00)"
+      },
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Poker Winnings - $\t(6.30)"
+      },
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Reimbursement for Dinners - $\t(35.50)"
+      },
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Poker Winnings - $\t(12.41)"
+      },
+      {
+        "severity": "MEDIUM",
+        "message": "Negative amount in expenses: Reimbursement from drinks - $\t(4.00)"
+      }
+    ]
+  }
+}

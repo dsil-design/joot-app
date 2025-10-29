@@ -73,12 +73,14 @@ async function getOrCreateVendor(vendorName, userId, vendorCache) {
   }
 
   // Check database
-  const { data: existing } = await supabase
+  const { data: existingRows } = await supabase
     .from('vendors')
     .select('id, name')
     .eq('user_id', userId)
     .ilike('name', normalized)
-    .maybeSingle();
+    .limit(1);
+
+  const existing = existingRows?.[0] || null;
 
   if (existing) {
     vendorCache.set(cacheKey, existing.id);
@@ -93,6 +95,23 @@ async function getOrCreateVendor(vendorName, userId, vendorCache) {
     .single();
 
   if (error) {
+    // Handle duplicate key violation (vendor was created by another process/import)
+    if (error.code === '23505') {
+      // Retry the lookup
+      const { data: retryRows } = await supabase
+        .from('vendors')
+        .select('id, name')
+        .eq('user_id', userId)
+        .ilike('name', normalized)
+        .limit(1);
+
+      const retryExisting = retryRows?.[0] || null;
+
+      if (retryExisting) {
+        vendorCache.set(cacheKey, retryExisting.id);
+        return retryExisting.id;
+      }
+    }
     console.error(`   ❌ Error creating vendor "${normalized}":`, error);
     throw error;
   }
@@ -146,6 +165,21 @@ async function getOrCreatePaymentMethod(methodName, userId, pmCache) {
     .single();
 
   if (error) {
+    // Handle duplicate key violation (payment method was created by another process/import)
+    if (error.code === '23505') {
+      // Retry the lookup
+      const { data: retryExisting } = await supabase
+        .from('payment_methods')
+        .select('id, name')
+        .eq('user_id', userId)
+        .ilike('name', normalized)
+        .maybeSingle();
+
+      if (retryExisting) {
+        pmCache.set(cacheKey, retryExisting.id);
+        return retryExisting.id;
+      }
+    }
     console.error(`   ❌ Error creating payment method "${normalized}":`, error);
     throw error;
   }
@@ -192,6 +226,21 @@ async function getOrCreateTag(tagName, userId, tagCache) {
     .single();
 
   if (error) {
+    // Handle duplicate key violation (tag was created by another process/import)
+    if (error.code === '23505') {
+      // Retry the lookup
+      const { data: retryExisting } = await supabase
+        .from('tags')
+        .select('id, name')
+        .eq('user_id', userId)
+        .ilike('name', tagName)
+        .maybeSingle();
+
+      if (retryExisting) {
+        tagCache.set(cacheKey, retryExisting.id);
+        return retryExisting.id;
+      }
+    }
     console.error(`   ❌ Error creating tag "${tagName}":`, error);
     throw error;
   }
@@ -304,9 +353,12 @@ async function importMonth() {
         newPaymentMethods.add(txn.payment_method);
       }
 
+      // Get transaction date (support both field names)
+      const txnDate = txn.transaction_date || txn.date;
+
       // Check for duplicate (same date, description, amount, vendor)
       const isDuplicate = existingTxns?.some(existing =>
-        existing.transaction_date === txn.date &&
+        existing.transaction_date === txnDate &&
         existing.description === txn.description &&
         existing.amount === txn.amount &&
         existing.vendor_id === vendorId
@@ -327,7 +379,7 @@ async function importMonth() {
         amount: txn.amount,
         original_currency: originalCurrency,
         transaction_type: txn.transaction_type,
-        transaction_date: txn.date,
+        transaction_date: txnDate,
         vendor_id: vendorId,
         payment_method_id: paymentMethodId
       };

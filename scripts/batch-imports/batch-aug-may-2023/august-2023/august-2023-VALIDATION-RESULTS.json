@@ -1,0 +1,58 @@
+{
+  "level1": {
+    "passed": true,
+    "details": {
+      "expenseTrackerTHB": 71413,
+      "expenseTrackerUSD": 2936.2,
+      "grossIncome": 6126.74
+    }
+  },
+  "level2": {
+    "passed": true,
+    "details": {
+      "expected": 184,
+      "actual": 188,
+      "variance": 4,
+      "variancePercent": 2.2
+    }
+  },
+  "level3": {
+    "passed": true,
+    "details": {
+      "usaRent": {
+        "amount": 987,
+        "correct": true
+      },
+      "thailandRent": {
+        "amount": 25000,
+        "correct": true
+      }
+    }
+  },
+  "level4": {
+    "passed": true,
+    "details": {
+      "negativeCount": 0,
+      "negativeTransactions": []
+    }
+  },
+  "level5": {
+    "passed": true,
+    "details": {
+      "totalTags": 2,
+      "reimbursementTags": 1,
+      "expectedReimbursement": 1
+    }
+  },
+  "level6": {
+    "passed": true,
+    "details": {
+      "thbCount": 99,
+      "usdCount": 89,
+      "thbPercentage": 52.7,
+      "usdPercentage": 47.3,
+      "expectedThbPercentage": 53.8,
+      "variance": 1.0999999999999943
+    }
+  }
+}

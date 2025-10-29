@@ -1,0 +1,116 @@
+{
+  "month": "June 2024",
+  "phase": "Phase 1: Pre-Flight Analysis",
+  "protocol": "MONTHLY-TRANSACTION-IMPORT-PROTOCOL-v3.6.md",
+  "timestamp": "2025-10-27T05:18:09.457Z",
+  "lineRanges": {
+    "expenseTracker": "4872-5030",
+    "grossIncome": "5030-5043",
+    "savings": "5043-5058",
+    "floridaHouse": "N/A"
+  },
+  "transactionCounts": {
+    "expenseTracker": 90,
+    "grossIncome": 6,
+    "savings": 1,
+    "floridaHouse": 0,
+    "total": 97,
+    "expected": 132,
+    "variance": -35,
+    "variancePercent": "-26.5"
+  },
+  "pdfGrandTotals": {
+    "expenseTracker": "$8,382.00",
+    "grossIncome": "$10,081.00",
+    "savings": "$342.00",
+    "floridaHouse": "N/A"
+  },
+  "csvGrandTotal": "$8,381.98",
+  "verifications": {
+    "negativeAmounts": 2,
+    "typoReimbursements": 0,
+    "planetFitnessFound": true,
+    "column3Items": 3,
+    "column4Items": 0
+  },
+  "tagCounts": {
+    "reimbursements": 1,
+    "businessExpenses": 0,
+    "floridaHouse": 0,
+    "savingsInvestment": 1
+  },
+  "currencyDistribution": {
+    "usd": 86,
+    "usdPercent": "95.6",
+    "thb": 4,
+    "thbPercent": "4.4",
+    "expectedRange": "8-12% THB",
+    "withinRange": false
+  },
+  "decision": {
+    "canAutoProceed": false,
+    "checks": {
+      "lineRangesConfirmed": true,
+      "transactionCountVariance": 26.515151515151516,
+      "planetFitnessFound": true,
+      "matchesGate1": false,
+      "currencyWithinRange": false,
+      "noNewCriticalIssues": true
+    },
+    "nextPhase": "Manual Review Required"
+  },
+  "details": {
+    "negativeAmounts": [
+      {
+        "line": 4880,
+        "description": "Reimbursement for Dinner",
+        "merchant": "Jordan",
+        "amount": "-$50.00"
+      },
+      {
+        "line": 4976,
+        "description": "Reimbusement: Lunch at Craig’s Rehearsal",
+        "merchant": "Kyle Martin",
+        "amount": "-$41.00"
+      }
+    ],
+    "typos": [],
+    "planetFitness": [
+      {
+        "line": 4960,
+        "date": "Monday, June 17, 2024,,,,,,,,,\r",
+        "description": "Monthly Fee: Gym",
+        "merchant": "Planet Fitness",
+        "amount": "$\t10.00"
+      }
+    ],
+    "reimbursements": [
+      {
+        "line": 4880,
+        "description": "Reimbursement for Dinner",
+        "merchant": "Jordan",
+        "amount": "-$50.00"
+      }
+    ],
+    "flights": [
+      {
+        "line": 4970,
+        "description": "Flights: JFK-CNX",
+        "merchant": "Singapore Airlines",
+        "amount": "$1514.30"
+      },
+      {
+        "line": 4971,
+        "description": "Flight: RSW-JFK",
+        "merchant": "Delta",
+        "amount": "$348.47"
+      },
+      {
+        "line": 4972,
+        "description": "Flights: BKK-PHL",
+        "merchant": "American Airlines",
+        "amount": "$1216.70"
+      }
+    ]
+  }
+}

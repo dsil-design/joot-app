@@ -1,0 +1,425 @@
+{
+  "level1": {
+    "expenseTracker": {
+      "actual": 5961.433763999997,
+      "expected": 5851.28,
+      "variance": {
+        "diff": 110.15376399999695,
+        "percentDiff": 1.8825584145690681
+      },
+      "pass": true,
+      "transactionCount": 249
+    },
+    "floridaHouse": {
+      "actual": 251.07,
+      "expected": 251.07,
+      "variance": {
+        "diff": 0,
+        "percentDiff": 0
+      },
+      "pass": true,
+      "transactionCount": 5
+    },
+    "savings": {
+      "actual": 0,
+      "expected": 0,
+      "pass": true,
+      "transactionCount": 0
+    },
+    "grossIncome": {
+      "actual": 8001.84,
+      "expected": 8001.84,
+      "pass": true,
+      "transactionCount": 5,
+      "transactions": [
+        {
+          "description": "Reimbursement: Health Insurance",
+          "merchant": "DSIL Design",
+          "amount": 619.42,
+          "tags": []
+        },
+        {
+          "description": "Reimbursement: Cyber Security Insurance",
+          "merchant": "DSIL Design",
+          "amount": 2088,
+          "tags": []
+        },
+        {
+          "description": "Personal Income: Invoice 1001",
+          "merchant": "DSIL Design",
+          "amount": 4500,
+          "tags": []
+        },
+        {
+          "description": "Reimbursement: Health Insurance (Oct)",
+          "merchant": "DSIL Design",
+          "amount": 619.42,
+          "tags": []
+        },
+        {
+          "description": "Freelance Income - November",
+          "merchant": "NJDA",
+          "amount": 175,
+          "tags": []
+        }
+      ]
+    }
+  },
+  "level2": {
+    "comparisons": [
+      {
+        "date": "2024-12-01",
+        "dbTotal": "$111.91",
+        "pdfTotal": "$111.91",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-02",
+        "dbTotal": "$125.40",
+        "pdfTotal": "$125.40",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-03",
+        "dbTotal": "$-10.44",
+        "pdfTotal": "$-10.44",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-04",
+        "dbTotal": "$86.38",
+        "pdfTotal": "$86.38",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-05",
+        "dbTotal": "$795.34",
+        "pdfTotal": "$795.34",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-06",
+        "dbTotal": "$122.02",
+        "pdfTotal": "$122.02",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-07",
+        "dbTotal": "$256.98",
+        "pdfTotal": "$168.17",
+        "difference": "$88.81",
+        "status": "❌"
+      },
+      {
+        "date": "2024-12-08",
+        "dbTotal": "$67.50",
+        "pdfTotal": "$67.50",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-09",
+        "dbTotal": "$373.46",
+        "pdfTotal": "$373.46",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-10",
+        "dbTotal": "$37.20",
+        "pdfTotal": "$15.85",
+        "difference": "$21.35",
+        "status": "❌"
+      },
+      {
+        "date": "2024-12-11",
+        "dbTotal": "$64.41",
+        "pdfTotal": "$64.41",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-12",
+        "dbTotal": "$267.70",
+        "pdfTotal": "$267.70",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-13",
+        "dbTotal": "$153.40",
+        "pdfTotal": "$153.40",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-14",
+        "dbTotal": "$113.07",
+        "pdfTotal": "$113.07",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-15",
+        "dbTotal": "$100.27",
+        "pdfTotal": "$100.27",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-16",
+        "dbTotal": "$0.27",
+        "pdfTotal": "$0.27",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-17",
+        "dbTotal": "$294.31",
+        "pdfTotal": "$294.31",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-18",
+        "dbTotal": "$-199.76",
+        "pdfTotal": "$-199.76",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-19",
+        "dbTotal": "$3.93",
+        "pdfTotal": "$3.93",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-20",
+        "dbTotal": "$95.86",
+        "pdfTotal": "$95.86",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-21",
+        "dbTotal": "$215.25",
+        "pdfTotal": "$215.25",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-22",
+        "dbTotal": "$198.67",
+        "pdfTotal": "$198.67",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-23",
+        "dbTotal": "$30.60",
+        "pdfTotal": "$30.60",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-24",
+        "dbTotal": "$666.95",
+        "pdfTotal": "$666.95",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-25",
+        "dbTotal": "$41.05",
+        "pdfTotal": "$41.05",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-26",
+        "dbTotal": "$76.68",
+        "pdfTotal": "$76.68",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-27",
+        "dbTotal": "$256.68",
+        "pdfTotal": "$256.68",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-28",
+        "dbTotal": "$1337.08",
+        "pdfTotal": "$1337.08",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-29",
+        "dbTotal": "$50.21",
+        "pdfTotal": "$50.21",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-30",
+        "dbTotal": "$282.96",
+        "pdfTotal": "$282.96",
+        "difference": "$0.00",
+        "status": "✅"
+      },
+      {
+        "date": "2024-12-31",
+        "dbTotal": "$-53.89",
+        "pdfTotal": "$-53.89",
+        "difference": "$0.00",
+        "status": "✅"
+      }
+    ],
+    "within1": 29,
+    "within5": 0,
+    "over5": 2,
+    "over100": 0,
+    "within1Percent": 93.54838709677419,
+    "pass": true
+  },
+  "level3": {
+    "actual": {
+      "total": 259,
+      "expenses": 229,
+      "income": 30,
+      "usd": 144,
+      "thb": 115
+    },
+    "expected": {
+      "total": 259,
+      "expenses": 229,
+      "income": 30,
+      "usd": 144,
+      "thb": 115
+    },
+    "pass": true
+  },
+  "level4": {
+    "actual": {
+      "reimbursement": 18,
+      "floridaHouse": 5,
+      "businessExpense": 9,
+      "savings": 0
+    },
+    "expected": {
+      "reimbursement": 18,
+      "floridaHouse": 5,
+      "businessExpense": 9,
+      "savings": 0
+    },
+    "pass": true,
+    "totalTags": 32
+  },
+  "level5": {
+    "checks": [
+      {
+        "name": "Rent transaction",
+        "pass": true
+      },
+      {
+        "name": "DSIL Design: Reimbursement: Health Insurance",
+        "pass": true
+      },
+      {
+        "name": "DSIL Design: Reimbursement: Cyber Security Insurance",
+        "pass": true
+      },
+      {
+        "name": "DSIL Design: Personal Income: Invoice 1001",
+        "pass": true
+      },
+      {
+        "name": "DSIL Design: Reimbursement: Health Insurance (Oct)",
+        "pass": true
+      },
+      {
+        "name": "Florida House count",
+        "pass": true
+      },
+      {
+        "name": "Refund: Refund: Eufy camera",
+        "pass": true
+      },
+      {
+        "name": "Refund: Refund: Gag Gifts",
+        "pass": true
+      },
+      {
+        "name": "Refund: Compensation",
+        "pass": true
+      },
+      {
+        "name": "Refund: Payout: Class Action Settlement",
+        "pass": true
+      },
+      {
+        "name": "Refund: Trade-in: Apple Watch",
+        "pass": true
+      },
+      {
+        "name": "Refund: Refund: Auto Insurance",
+        "pass": true
+      },
+      {
+        "name": "Refund: Travel Credit Total",
+        "pass": true
+      },
+      {
+        "name": "Comma amount: Florida House",
+        "pass": true
+      },
+      {
+        "name": "Comma amount: Personal Income: Invoice 1001",
+        "pass": true
+      },
+      {
+        "name": "Comma amount: Reimbursement: Cyber Security Insurance",
+        "pass": true
+      },
+      {
+        "name": "Christmas Dinner - no Business tag",
+        "pass": true
+      },
+      {
+        "name": "Pest Treatment - no tags",
+        "pass": true
+      },
+      {
+        "name": "Largest THB is rent",
+        "pass": true
+      },
+      {
+        "name": "Largest USD is Invoice 1001",
+        "pass": true
+      }
+    ],
+    "pass": true
+  },
+  "redFlags": [],
+  "warnings": [],
+  "passed": [
+    "Level 1: Expense Tracker grand total within variance",
+    "Level 1: Florida House grand total within variance",
+    "Level 1: Savings grand total exact match",
+    "Level 1: Gross Income grand total exact match",
+    "Level 2: Daily subtotals meet acceptance criteria",
+    "Level 3: All transaction counts exact match",
+    "Level 4: All tag distributions exact match",
+    "Level 5: All critical transactions verified"
+  ]
+}

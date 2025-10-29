@@ -1,0 +1,122 @@
+{
+  "metadata": {
+    "month": "September 2024",
+    "csvFile": "fullImport_20251017.csv",
+    "analysisDate": "2025-10-27T02:55:32.187Z",
+    "lineRanges": {
+      "expenseTracker": "3978-4251",
+      "grossIncome": "4253-4262",
+      "savings": "4264-4267",
+      "floridaHouse": "4279-4286"
+    }
+  },
+  "stats": {
+    "transactionCounts": {
+      "expenseTracker": 211,
+      "grossIncome": 4,
+      "savings": 2,
+      "floridaHouse": 3,
+      "totalBeforeDedup": 220
+    },
+    "currencyBreakdown": {
+      "usd": 133,
+      "thb": 75,
+      "mixed": 3
+    },
+    "tagCounts": {
+      "reimbursement": 1,
+      "businessExpense": 0,
+      "reimbursable": 0,
+      "floridaHouse": 3,
+      "savingsInvestment": 2
+    }
+  },
+  "duplicates": [],
+  "redFlags": {
+    "negativeAmounts": [
+      {
+        "line": 4041,
+        "date": "Friday, September 6, 2024",
+        "description": "Reimbursement",
+        "merchant": "Nisbo",
+        "amount": "-THB 2000.00",
+        "section": "Expense Tracker"
+      },
+      {
+        "line": 4123,
+        "date": "Sunday, September 15, 2024",
+        "description": "Partial Refund: Smoothie",
+        "merchant": "Grab",
+        "amount": "$\t(4.53)",
+        "section": "Expense Tracker"
+      },
+      {
+        "line": 4228,
+        "date": "Saturday, September 28, 2024",
+        "description": "Exchange from Jakody",
+        "merchant": "Jakody",
+        "amount": "$\t(520.00)",
+        "section": "Expense Tracker"
+      }
+    ],
+    "commaFormattedAmounts": [
+      {
+        "line": 3983,
+        "date": "Sunday, September 1, 2024",
+        "description": "Florida House",
+        "merchant": "Me",
+        "thb": "",
+        "usd": "$\t1,000.00",
+        "subtotal": "$1000.00",
+        "section": "Expense Tracker"
+      },
+      {
+        "line": 4136,
+        "date": "Tuesday, September 17, 2024",
+        "description": "Payment for half of moving costs",
+        "merchant": "Me",
+        "thb": "",
+        "usd": "$\t1,259.41",
+        "subtotal": "$1259.41",
+        "section": "Expense Tracker"
+      },
+      {
+        "line": 4255,
+        "date": "Friday, September 13, 2024",
+        "description": "Paycheck",
+        "merchant": "e2open",
+        "amount": "$3,189.73",
+        "section": "Gross Income"
+      },
+      {
+        "line": 4256,
+        "date": "Monday, September 30, 2024",
+        "description": "Paycheck",
+        "merchant": "e2open",
+        "amount": "$3,184.32",
+        "section": "Gross Income"
+      }
+    ],
+    "typoReimbursements": [
+      {
+        "line": 4041,
+        "date": "Friday, September 6, 2024",
+        "description": "Reimbursement",
+        "merchant": "Nisbo",
+        "section": "Expense Tracker"
+      }
+    ],
+    "dsilReimbursements": [],
+    "unusualTransactions": [
+      {
+        "line": 4136,
+        "date": "Tuesday, September 17, 2024",
+        "description": "Payment for half of moving costs",
+        "merchant": "Me",
+        "amount": 1259.41,
+        "section": "Expense Tracker"
+      }
+    ],
+    "zeroAmounts": []
+  }
+}

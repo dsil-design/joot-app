@@ -1,0 +1,386 @@
+# Monthly Transaction Import Protocol - September 2024
+
+🎯 **Mission:** Import September 2024 historical transaction data using the established 4-Phase Import Protocol v3.6 with 100% comprehensive validation and red flag logging.
+
+---
+
+## 📚 Knowledge Base - Current Status
+
+### Completed Imports
+
+✅ **14 months imported** (~2,471 transactions total):
+
+1. October 2024 - 240 transactions, 57.1% THB, 7 reimbursements ✅ **JUST COMPLETED**
+2. November 2024 - 118 transactions, 5.1% THB, 0 reimbursements (USA travel)
+3. December 2024 - 259 transactions (HIGHEST count)
+4. January 2025 - 195 transactions
+5. February 2025 - 211 transactions
+6. March 2025 - 253 transactions
+7. April 2025 - 182 transactions
+8. May 2025 - 174 transactions
+9. June 2025 - 190 transactions
+10. July 2025 - 177 transactions
+11. August 2025 - 194 transactions
+12. September 2025 - 159 transactions
+13. October 2025 - 119 transactions
+
+**Next Target:** September 2024 (15th import - continuing backwards into 2024)
+
+### Current Database State
+
+- **Total transactions:** ~2,471 (14 months)
+- **Vendors:** 624+ (124 new from October 2024)
+- **Payment methods:** 55+ (9 new from October 2024)
+- **Tags:** 4 (Reimbursement, Florida House, Business Expense, Savings/Investment)
+- **User:** dennis@dsil.design
+
+---
+
+## 📁 Reference Files for September 2024
+
+### Primary Sources
+
+**PDF:** `/csv_imports/Master Reference PDFs/Budget for Import-page14.pdf` (September 2024)
+- **Page Number Calculation:** October 2025 = page 1, September 2024 = 13 months back = page 14
+- **Reference:** See `PDF-MONTH-MAPPING.md` for complete page number pattern
+- ⚠️ **CRITICAL:** Always verify PDF contains September 2024 data BEFORE starting (STEP 0)
+
+**CSV:** `/csv_imports/fullImport_20251017.csv`
+- **Expected lines:** BEFORE October 2024 (before line 3403)
+- **Estimated range:** ~3000-3402 (to be confirmed in pre-flight)
+
+**Parsing Script:** `/scripts/parse-september-2024.js`
+- **STATUS:** Does NOT exist - will need to be created
+- **Template:** Use `parse-october-2024.js` as reference (most recent)
+
+**Import Script:** `/scripts/db/import-month.js`
+- ✅ Verified working from 14 previous imports
+
+### Supporting Documents
+
+- `scripts/FINAL_PARSING_RULES.md` - Complete parsing specification
+- `PDF-MONTH-MAPPING.md` - PDF page number reference
+- `scripts/OCTOBER-2024-IMPORT-SUMMARY.md` - Most recent import lessons
+- `scripts/MONTHLY-TRANSACTION-IMPORT-PROTOCOL-v3.6.md` - Full protocol
+
+---
+
+## 🚨 Critical Lessons from October 2024 (Most Recent)
+
+### Issue #1: Missing Merchants/Payment Methods
+- **Problem:** 7 transactions had no merchant or payment method in CSV
+- **Solution:** Default to "Unknown" for both merchant AND payment method (UPDATED: payment method changed from "Bangkok Bank Account")
+- **Lesson:** Flag missing merchants/payment methods early, use consistent "Unknown" default
+- **Status:** ✅ Strategy updated (both now use "Unknown")
+- **Impact:** September 2024 may have similar pattern - flag and apply "Unknown" defaults
+
+### Issue #2: Zero-Dollar Transactions
+- **Problem:** 1 transaction with $0.00 amount (massage)
+- **Solution:** User confirmed to skip entirely
+- **Lesson:** Always flag $0.00 transactions for exclusion
+- **Status:** ✅ Established pattern
+- **Impact:** Skip any $0.00 transactions in September 2024
+
+### Issue #3: High Reimbursement Count
+- **Problem:** October 2024 had 7 reimbursements (vs November 2024's 0)
+- **Solution:** All correctly detected and converted to positive income
+- **Lesson:** Reimbursement counts can vary significantly by month based on location/activities
+- **Status:** ✅ Expected pattern
+- **Impact:** September 2024 reimbursement count may be high if user was in Thailand
+
+### Issue #4: Healthy THB Percentage
+- **Problem:** October 2024 had 57.1% THB (vs November 2024's 5.1% USA travel)
+- **Solution:** Confirmed user was in Thailand during October 2024
+- **Lesson:** THB percentage indicates user location (Thailand vs USA)
+- **Status:** ✅ Expected pattern
+- **Impact:** September 2024 THB % will indicate if user was in Thailand or USA
+
+### Issue #5: PDF Formula Errors
+- **Problem:** Florida House PDF total showed $1,108.10 but transactions summed to $1,213.87
+- **Solution:** Confirmed database is correct, PDF has spreadsheet formula error
+- **Lesson:** Database is source of truth, not PDF grand totals
+- **Status:** ✅ Expected behavior
+- **Impact:** Focus on transaction-by-transaction validation, not just grand totals
+
+---
+
+## 🔧 4-Phase Import Process
+
+### PHASE 1: Pre-Flight Analysis
+
+**Agent:** Task tool → subagent_type=data-engineer
+
+**Objective:** Analyze CSV and PDF to understand data structure, identify issues, and set expectations BEFORE parsing.
+
+**Critical Steps:**
+
+**STEP 0 - PDF VERIFICATION (MUST DO FIRST):**
+1. Read: `csv_imports/Master Reference PDFs/Budget for Import-page14.pdf`
+2. Find first transaction date in "Expense Tracker" section
+3. Verify it shows "September 2024" (e.g., "Tuesday, September 1, 2024")
+4. If PDF shows ANY other month, STOP IMMEDIATELY and report error
+5. Only proceed if PDF contains September 2024 data
+
+**Tasks:**
+1. Find line numbers for all 4 sections in CSV (before October 2024's line 3403)
+2. Count transactions per section (raw count before deduplication)
+3. Extract GRAND TOTALS from PDF (source of truth)
+4. Calculate expected total: Expense Tracker NET + Florida House + Savings
+5. Detect potential duplicates between sections
+6. Count tag conditions (reimbursements, business expenses, etc.)
+7. Identify currency distribution (USD vs THB - location indicator)
+8. Verify parsing script status (needs creation)
+9. Compare to other months (flag significant differences)
+10. Identify anomalies (negative amounts, comma amounts, missing merchants, typos, unusual transactions)
+
+**Output Files:**
+- `scripts/SEPTEMBER-2024-PREFLIGHT-REPORT.md`
+- `scripts/SEPTEMBER-2024-RED-FLAGS.md`
+
+**Human Checkpoint:** ⏸️ Review pre-flight, address critical issues, provide guidance on unusual transactions, approve parsing strategy.
+
+---
+
+### PHASE 2: Parse & Prepare
+
+**Agent:** Task tool → subagent_type=data-engineer
+
+**Objective:** Parse CSV data following FINAL_PARSING_RULES.md exactly, producing clean JSON for import.
+
+**Prerequisites:**
+- ✅ Pre-flight report reviewed and approved
+- ✅ PDF verified as September 2024
+- ✅ Line ranges identified
+- ✅ User guidance provided for any unusual transactions
+
+**Critical Requirements:**
+
+1. **Currency Handling:** Use Column 6 for THB, Column 7/9 for USD, NEVER Column 8
+2. **Negative Amounts:** Convert ALL negative expenses to positive income
+3. **Comma-Formatted Amounts:** Clean $, commas, quotes, tabs, parentheses
+4. **Reimbursement Detection:** Use regex `/^Re(im|mi|m)?burs[e]?ment:?/i`
+5. **Florida House Dates:** Default to `2024-09-30` if missing
+6. **Missing Merchants:** Default to "Unknown"
+7. **Missing Payment Methods:** Default to "Unknown" (UPDATED: changed from "Bangkok Bank Account" per user request)
+8. **Zero Amounts:** Skip entirely (per October 2024 lesson)
+
+**Output Files:**
+- `scripts/parse-september-2024.js`
+- `scripts/september-2024-CORRECTED.json`
+- `scripts/SEPTEMBER-2024-PARSE-REPORT.md`
+- `scripts/SEPTEMBER-2024-RED-FLAGS.md` (updated)
+
+**Human Checkpoint:** ⏸️ Verify rent amount, no negative amounts, user corrections applied, approve for import.
+
+---
+
+### PHASE 3: Database Import
+
+**Execution:** Direct command (no agent needed)
+
+**Prerequisites:**
+- ✅ Parse report reviewed and approved
+- ✅ Rent transaction verified (THB amount, not USD)
+- ✅ No negative amounts in JSON
+- ✅ Currency split verified
+- ✅ User corrections verified as applied
+
+**Command:**
+```bash
+node scripts/db/import-month.js --file=scripts/september-2024-CORRECTED.json --month=2024-09
+```
+
+**Critical Post-Import Verification:**
+
+1. **Tag Application Check:**
+```bash
+node scripts/check-september-tags.js
+```
+
+2. **Tag Mapping Check:**
+```bash
+node scripts/verify-september-tag-mapping.js
+```
+
+**Expected Tag IDs (verify mapping):**
+- Reimbursement: `205d99a2-cf0a-44e0-92f3-e2b9eae1bf72`
+- Florida House: `178739fd-1712-4356-b21a-8936b6d0a461`
+- Business Expense: `973433bd-bf9f-469f-9b9f-20128def8726`
+- Savings/Investment: `c0928dfe-1544-4569-bbad-77fea7d7e5aa`
+
+**Human Checkpoint:** ⏸️ Verify import summary matches parse report, verify tags applied and mapped correctly.
+
+---
+
+### PHASE 4: Comprehensive Validation
+
+**Agent:** Task tool → subagent_type=data-scientist
+
+**Objective:** Validate imported data against PDF source of truth using comprehensive multi-level verification with 100% transaction coverage.
+
+**Prerequisites:**
+- ✅ Database import completed
+- ✅ Import summary reviewed
+- ✅ Tags verified as applied
+- ✅ Tags verified as mapped to existing IDs
+
+**Validation Levels:**
+
+1. **Level 1: Section Grand Totals** - Compare DB to PDF totals
+2. **Level 2: Daily Subtotals** - Compare daily totals (≥50% within $1.00)
+3. **Level 3: Transaction Count** - Exact match to import summary
+4. **Level 4: Tag Distribution** - Exact match to parse report
+5. **Level 5: Critical Transactions** - Spot check rent, reimbursements, refunds
+6. **Level 6: 100% PDF Coverage** - Every transaction verified both directions
+
+**Output Files:**
+- `scripts/SEPTEMBER-2024-VALIDATION-REPORT.md`
+- `scripts/SEPTEMBER-2024-COMPREHENSIVE-VALIDATION.md`
+- `scripts/SEPTEMBER-2024-RED-FLAGS.md` (final update)
+
+**Human Checkpoint:** ⏸️ Review validation report, accept/reject import based on results.
+
+---
+
+## 📊 Expected Results for September 2024
+
+**Based on Historical Patterns:**
+
+| Metric | Expected Range | Notes |
+|--------|----------------|-------|
+| **Transaction Count** | 118-260 | Wide range seen historically |
+| **THB Percentage** | 5%-70% | Depends on user location |
+| **Reimbursements** | 0-32 | Varies by month/location |
+| **Business Expenses** | 0-13 | Typical range |
+| **Florida House** | 2-6 | Consistent across months |
+
+**Critical Transaction:**
+- **Rent:** THB 25,000-35,000 (verify actual amount from PDF)
+
+**Special Considerations:**
+- September 2024 is 2nd earliest month (after October 2024)
+- May show early establishment patterns
+- User location unknown - THB % will indicate (Thailand vs USA)
+
+---
+
+## ✅ Success Criteria
+
+**Must Pass (All Required):**
+
+- ✅ Pre-flight analysis completed with no critical blockers
+- ✅ PDF verified as September 2024 (STEP 0)
+- ✅ User consultation completed for any unusual transactions
+- ✅ Parsing script created with all lessons from October 2024
+- ✅ Rent transaction = correct THB amount (NOT USD conversion)
+- ✅ All transactions stored in original currency (THB or USD)
+- ✅ NO negative amounts in database (all converted per rules)
+- ✅ All comma-formatted amounts parsed correctly
+- ✅ All reimbursements detected (including typos)
+- ✅ All missing merchants → "Unknown"
+- ✅ All missing payment methods → "Bangkok Bank Account"
+- ✅ All $0.00 transactions → SKIPPED
+- ✅ Import completes without errors
+- ✅ Tags verified as applied (>0 count)
+- ✅ Tags verified as mapped to existing IDs (not duplicates)
+- ✅ Transaction count matches parse report
+- ✅ Tag distribution matches parse report
+- ✅ All section grand totals within acceptable variance
+- ✅ No daily variance >$100
+- ✅ 100% of PDF transactions found in database
+- ✅ 100% of database transactions found in PDF
+- ✅ Critical transactions verified against PDF
+
+---
+
+## 🚨 Red Flags - Stop and Investigate
+
+**Parsing Issues:**
+- ❌ Rent transaction ≠ THB amount (showing USD instead)
+- ❌ Any negative amounts in JSON output
+- ❌ Comma-formatted amounts not parsed
+- ❌ Reimbursements not detected
+- ❌ Null dates in Florida House
+- ❌ Missing merchants not defaulted to "Unknown"
+- ❌ $0.00 transactions not skipped
+
+**Import Issues:**
+- ❌ Transaction count doesn't match parse report
+- ❌ Tags count = 0
+- ❌ Tags not applied correctly
+- ❌ New tags created (should use existing IDs)
+- ❌ Database constraint violation
+
+**Validation Issues:**
+- ❌ Variance >5% on any section grand total
+- ❌ Daily variance >$100 on any day
+- ❌ Transaction count mismatch
+- ❌ Tag count mismatch
+- ❌ Tags mapped to wrong IDs
+- ❌ Critical transactions not found
+- ❌ Any PDF transaction not found in database
+- ❌ Any database transaction not found in PDF
+
+---
+
+## 📝 Key Improvements from October 2024
+
+1. ✅ **Missing Merchant Strategy:** Established "Unknown" default
+2. ✅ **Missing Payment Method Strategy:** Established "Bangkok Bank Account" default
+3. ✅ **Zero-Dollar Transaction Handling:** Skip entirely
+4. ✅ **PDF Formula Error Awareness:** Database is source of truth
+5. ✅ **Location Indicator:** THB % indicates user location
+
+---
+
+## 🚀 Ready to Execute
+
+**Current Status:** ✅ Ready to begin Phase 1 (Pre-Flight Analysis) for September 2024
+
+**Next Action:** Launch data-engineer agent with Phase 1 prompt
+
+**Expected Timeline:**
+- Phase 1: 10-15 minutes
+- Phase 2: 10-15 minutes
+- Phase 3: 2-3 minutes + Tag Verification: 2 minutes
+- Phase 4: 15-20 minutes
+- **Total: 50-80 minutes**
+
+---
+
+**Protocol Version:** 3.6
+**Last Updated:** 2025-10-26 (after October 2024 completion)
+**Created By:** Human + Claude Code collaboration
+**Status:** APPROVED FOR PRODUCTION USE
+
+---
+
+## 📋 Quick Reference
+
+**PDF Path:** `csv_imports/Master Reference PDFs/Budget for Import-page14.pdf`
+**CSV Path:** `csv_imports/fullImport_20251017.csv`
+**Expected Lines:** Before line 3403 (October 2024 start)
+**Target Month:** 2024-09
+**Exchange Rate:** Calculate from rent transaction in PDF
+
+**Critical Parsing Rules:**
+- Column 6 = THB amounts (USE THIS)
+- Column 7/9 = USD amounts (USE THIS)
+- Column 8 = NEVER USE (conversion column)
+- Negative expenses → positive income
+- Comma amounts → clean and parse
+- Missing merchants → "Unknown"
+- Missing payment methods → "Unknown" (UPDATED: changed from "Bangkok Bank Account")
+- $0.00 amounts → SKIP
+- Florida House dates → default to 2024-09-30 if missing
+- Reimbursements → flexible regex detection
+
+**Expected Tag IDs:**
+- Reimbursement: `205d99a2-cf0a-44e0-92f3-e2b9eae1bf72`
+- Florida House: `178739fd-1712-4356-b21a-8936b6d0a461`
+- Business Expense: `973433bd-bf9f-469f-9b9f-20128def8726`
+- Savings/Investment: `c0928dfe-1544-4569-bbad-77fea7d7e5aa`
+
+---
+
+**Ready to begin?** Launch Phase 1 Pre-Flight Analysis when ready.

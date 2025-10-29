@@ -1,0 +1,292 @@
+{
+  "sectionTotals": {
+    "passed": false,
+    "details": {
+      "expenseTrackerTHB": 71413,
+      "expenseTrackerUSD": 2936.2,
+      "grossIncome": 6126.74,
+      "grossIncomeVariance": 8.449999999999818
+    }
+  },
+  "criticalTransactions": {
+    "passed": true,
+    "details": [
+      {
+        "check": {
+          "description": "This Month's Rent, Storage, Internet, PECO (Conshy)",
+          "merchant": "Jordan",
+          "amount": 987,
+          "currency": "USD",
+          "type": "expense",
+          "date": "2023-08-01"
+        },
+        "status": "PASS",
+        "match": {
+          "id": "a7dca594-2abc-4a95-aa38-bf71a065ce1f",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "This Month’s Rent, Storage, Internet, PECO (Conshy)",
+          "original_currency": "USD",
+          "transaction_type": "expense",
+          "transaction_date": "2023-08-01",
+          "created_at": "2025-10-29T09:16:19.997869+00:00",
+          "updated_at": "2025-10-29T09:16:19.997869+00:00",
+          "vendor_id": "12139c48-dc2a-4b4e-9ddf-0c4cc8d613c2",
+          "payment_method_id": "c61fdc4d-307d-4f52-84b6-36d08b9cf3b5",
+          "amount": 987,
+          "vendors": {
+            "name": "Jordan"
+          }
+        }
+      },
+      {
+        "check": {
+          "description": "This Month's Rent",
+          "merchant": "Pol",
+          "amount": 25000,
+          "currency": "THB",
+          "type": "expense",
+          "date": "2023-08-05"
+        },
+        "status": "PASS",
+        "match": {
+          "id": "07a6c69e-0dce-4f41-ad87-c52b8a7086cd",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "This Month’s Rent",
+          "original_currency": "THB",
+          "transaction_type": "expense",
+          "transaction_date": "2023-08-05",
+          "created_at": "2025-10-29T09:16:19.997869+00:00",
+          "updated_at": "2025-10-29T09:16:19.997869+00:00",
+          "vendor_id": "a8a6a1d6-e799-4f3e-bb8a-85530ea0331d",
+          "payment_method_id": "bd798d93-fa54-4520-ba09-367f96e5a94f",
+          "amount": 25000,
+          "vendors": {
+            "name": "Pol"
+          }
+        }
+      },
+      {
+        "check": {
+          "description": "Reimbursement: Gummies",
+          "merchant": "Matt",
+          "amount": 857,
+          "currency": "THB",
+          "type": "income",
+          "date": "2023-08-05",
+          "note": "Originally -THB 857.00 in PDF, should be positive income"
+        },
+        "status": "PASS",
+        "match": {
+          "id": "82b01a42-0dca-42ef-95e7-75aa8d66f4c6",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "Reimbursement: Gummies",
+          "original_currency": "THB",
+          "transaction_type": "income",
+          "transaction_date": "2023-08-05",
+          "created_at": "2025-10-29T09:16:19.997869+00:00",
+          "updated_at": "2025-10-29T09:16:19.997869+00:00",
+          "vendor_id": "c3c434d2-6cea-4963-8915-8d27699ad1f9",
+          "payment_method_id": "bd798d93-fa54-4520-ba09-367f96e5a94f",
+          "amount": 857,
+          "vendors": {
+            "name": "Matt"
+          }
+        }
+      },
+      {
+        "check": {
+          "description": "Refund",
+          "merchant": "Grab",
+          "amount": 8.45,
+          "currency": "USD",
+          "type": "income",
+          "date": "2023-08-21",
+          "note": "Originally $(8.45) in PDF, should be positive income"
+        },
+        "status": "PASS",
+        "match": {
+          "id": "5398cf07-2330-410c-b3bd-81c8faa46c97",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "Refund",
+          "original_currency": "USD",
+          "transaction_type": "income",
+          "transaction_date": "2023-08-21",
+          "created_at": "2025-10-29T09:16:26.117155+00:00",
+          "updated_at": "2025-10-29T09:16:26.117155+00:00",
+          "vendor_id": "661c6b11-973e-4c1f-b29a-6472d54f93b0",
+          "payment_method_id": "8b3957e3-317f-4945-a468-dadefc15d52a",
+          "amount": 8.45,
+          "vendors": {
+            "name": "Grab"
+          }
+        }
+      },
+      {
+        "check": {
+          "description": "Paycheck",
+          "merchant": "e2open",
+          "amount": 2971.65,
+          "currency": "USD",
+          "type": "income",
+          "date": "2023-08-15"
+        },
+        "status": "PASS",
+        "match": {
+          "id": "44fd58ae-65ff-4f4b-a9ff-5b576495f172",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "Paycheck",
+          "original_currency": "USD",
+          "transaction_type": "income",
+          "transaction_date": "2023-08-15",
+          "created_at": "2025-10-29T09:16:27.417932+00:00",
+          "updated_at": "2025-10-29T09:16:27.417932+00:00",
+          "vendor_id": "3e95c4df-3558-4452-9045-a08885a4d655",
+          "payment_method_id": "57f4f921-b663-4810-8b38-b2c8f6ce0d99",
+          "amount": 2971.65,
+          "vendors": {
+            "name": "e2open"
+          }
+        }
+      },
+      {
+        "check": {
+          "description": "Freelance Income - August",
+          "merchant": "NJDA",
+          "amount": 175,
+          "currency": "USD",
+          "type": "income",
+          "date": "2023-08-24"
+        },
+        "status": "PASS",
+        "match": {
+          "id": "5c43c6fd-b6c0-4925-a383-57bec182769b",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "Freelance Income - August",
+          "original_currency": "USD",
+          "transaction_type": "income",
+          "transaction_date": "2023-08-24",
+          "created_at": "2025-10-29T09:16:27.417932+00:00",
+          "updated_at": "2025-10-29T09:16:27.417932+00:00",
+          "vendor_id": "d4768e71-3040-4968-9c52-ae2647cf5e54",
+          "payment_method_id": "57f4f921-b663-4810-8b38-b2c8f6ce0d99",
+          "amount": 175,
+          "vendors": {
+            "name": "NJDA"
+          }
+        }
+      },
+      {
+        "check": {
+          "description": "Paycheck",
+          "merchant": "e2open",
+          "amount": 2971.64,
+          "currency": "USD",
+          "type": "income",
+          "date": "2023-08-31"
+        },
+        "status": "PASS",
+        "match": {
+          "id": "1c678373-f8da-4947-947c-8b98712f1668",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "Paycheck",
+          "original_currency": "USD",
+          "transaction_type": "income",
+          "transaction_date": "2023-08-31",
+          "created_at": "2025-10-29T09:16:27.417932+00:00",
+          "updated_at": "2025-10-29T09:16:27.417932+00:00",
+          "vendor_id": "3e95c4df-3558-4452-9045-a08885a4d655",
+          "payment_method_id": "57f4f921-b663-4810-8b38-b2c8f6ce0d99",
+          "amount": 2971.64,
+          "vendors": {
+            "name": "e2open"
+          }
+        }
+      },
+      {
+        "check": {
+          "description": "Emergency Savings",
+          "merchant": "Vanguard",
+          "amount": 341.67,
+          "currency": "USD",
+          "type": "expense",
+          "date": "2023-08-31"
+        },
+        "status": "PASS",
+        "match": {
+          "id": "cd1a4e17-3a29-41e6-ada2-1d23ba9cc8b4",
+          "user_id": "a1c3caff-a5de-4898-be7d-ab4b76247ae6",
+          "description": "Emergency Savings",
+          "original_currency": "USD",
+          "transaction_type": "expense",
+          "transaction_date": "2023-08-31",
+          "created_at": "2025-10-29T09:16:27.417932+00:00",
+          "updated_at": "2025-10-29T09:16:27.417932+00:00",
+          "vendor_id": "f72d4d2e-8b8f-4aac-9c3e-0cdd20eccc45",
+          "payment_method_id": "956efe78-5ff7-4870-a37f-d02f010b55e8",
+          "amount": 341.67,
+          "vendors": {
+            "name": "Vanguard"
+          }
+        }
+      }
+    ]
+  },
+  "spotChecks": {
+    "passed": true,
+    "details": [
+      {
+        "spot": {
+          "description": "Work Email",
+          "merchant": "Google",
+          "amount": 6.36,
+          "currency": "USD",
+          "date": "2023-08-01"
+        },
+        "status": "PASS"
+      },
+      {
+        "spot": {
+          "description": "Coffee",
+          "merchant": "Gravity Cafe",
+          "amount": 60,
+          "currency": "THB",
+          "date": "2023-08-01"
+        },
+        "status": "PASS"
+      },
+      {
+        "spot": {
+          "description": "Massage",
+          "merchant": "TTCM",
+          "amount": 13.21,
+          "currency": "USD",
+          "date": "2023-08-01"
+        },
+        "status": "PASS"
+      },
+      {
+        "spot": {
+          "description": "Vietnam Flight",
+          "merchant": "VietJet",
+          "amount": 91.41,
+          "currency": "USD",
+          "date": "2023-08-17"
+        },
+        "status": "PASS"
+      },
+      {
+        "spot": {
+          "description": "Cell Phone",
+          "merchant": "T-Mobile",
+          "amount": 70,
+          "currency": "USD",
+          "date": "2023-08-29"
+        },
+        "status": "PASS"
+      }
+    ]
+  },
+  "summary": {
+    "passed": false
+  }
+}

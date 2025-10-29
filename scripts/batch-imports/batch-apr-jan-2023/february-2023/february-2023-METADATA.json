@@ -1,0 +1,20 @@
+{
+  "month": "February 2023",
+  "parsing_date": "2025-10-29T10:39:37.385Z",
+  "total_transactions": 180,
+  "currency_distribution": {
+    "thb": 144,
+    "usd": 36,
+    "thb_percentage": 80
+  },
+  "red_flags": {
+    "negative_conversions": 3,
+    "typo_reimbursements": 1,
+    "comma_formatted": 0,
+    "zero_skipped": 3
+  },
+  "tag_distribution": {
+    "Reimbursement": 2
+  },
+  "dual_residence_verified": false
+}
