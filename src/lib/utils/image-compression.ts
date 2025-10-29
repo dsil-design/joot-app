@@ -5,7 +5,7 @@
  * Uses Sharp for high-performance image processing
  */
 
-import sharp from 'sharp'
+import * as sharp from 'sharp'
 
 export interface CompressionOptions {
   quality?: number // 1-100, default 80
