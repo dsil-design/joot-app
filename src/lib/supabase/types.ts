@@ -629,6 +629,490 @@ export type Database = {
           },
         ]
       }
+      documents: {
+        Row: {
+          id: string
+          user_id: string
+          file_name: string
+          file_type: string
+          file_size_bytes: number
+          mime_type: string
+          storage_path: string
+          thumbnail_path: string | null
+          processing_status: string
+          processing_error: string | null
+          ocr_confidence: number | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          file_name: string
+          file_type: string
+          file_size_bytes: number
+          mime_type: string
+          storage_path: string
+          thumbnail_path?: string | null
+          processing_status?: string
+          processing_error?: string | null
+          ocr_confidence?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          file_name?: string
+          file_type?: string
+          file_size_bytes?: number
+          mime_type?: string
+          storage_path?: string
+          thumbnail_path?: string | null
+          processing_status?: string
+          processing_error?: string | null
+          ocr_confidence?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_extractions: {
+        Row: {
+          id: string
+          document_id: string
+          user_id: string
+          raw_text: string | null
+          merchant_name: string | null
+          merchant_name_normalized: string | null
+          amount: number | null
+          currency: string | null
+          transaction_date: string | null
+          merchant_confidence: number | null
+          amount_confidence: number | null
+          date_confidence: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          document_id: string
+          user_id: string
+          raw_text?: string | null
+          merchant_name?: string | null
+          merchant_name_normalized?: string | null
+          amount?: number | null
+          currency?: string | null
+          transaction_date?: string | null
+          merchant_confidence?: number | null
+          amount_confidence?: number | null
+          date_confidence?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          document_id?: string
+          user_id?: string
+          raw_text?: string | null
+          merchant_name?: string | null
+          merchant_name_normalized?: string | null
+          amount?: number | null
+          currency?: string | null
+          transaction_date?: string | null
+          merchant_confidence?: number | null
+          amount_confidence?: number | null
+          date_confidence?: number | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_extractions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_extractions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_document_matches: {
+        Row: {
+          id: string
+          user_id: string
+          document_id: string
+          transaction_id: string | null
+          match_confidence: number
+          match_score_breakdown: Json | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          document_id: string
+          transaction_id?: string | null
+          match_confidence: number
+          match_score_breakdown?: Json | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          document_id?: string
+          transaction_id?: string | null
+          match_confidence?: number
+          match_score_breakdown?: Json | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_document_matches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_document_matches_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_document_matches_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_document_matches_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_queue: {
+        Row: {
+          id: string
+          user_id: string
+          document_id: string
+          priority: number
+          queue_status: string
+          suggested_matches: Json | null
+          completed_at: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          document_id: string
+          priority?: number
+          queue_status?: string
+          suggested_matches?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          document_id?: string
+          priority?: number
+          queue_status?: string
+          suggested_matches?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_queue_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_queue_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_profiles: {
+        Row: {
+          id: string
+          vendor_id: string
+          user_id: string
+          display_name: string | null
+          logo_url: string | null
+          brand_color: string | null
+          business_category: string | null
+          website_domain: string | null
+          last_enriched_at: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          vendor_id: string
+          user_id: string
+          display_name?: string | null
+          logo_url?: string | null
+          brand_color?: string | null
+          business_category?: string | null
+          website_domain?: string | null
+          last_enriched_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          vendor_id?: string
+          user_id?: string
+          display_name?: string | null
+          logo_url?: string | null
+          brand_color?: string | null
+          business_category?: string | null
+          website_domain?: string | null
+          last_enriched_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_profiles_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_enrichment_jobs: {
+        Row: {
+          id: string
+          vendor_id: string
+          user_id: string
+          job_status: string
+          job_type: string
+          attempt_count: number
+          last_attempt_at: string | null
+          error_message: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          vendor_id: string
+          user_id: string
+          job_status?: string
+          job_type?: string
+          attempt_count?: number
+          last_attempt_at?: string | null
+          error_message?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          vendor_id?: string
+          user_id?: string
+          job_status?: string
+          job_type?: string
+          attempt_count?: number
+          last_attempt_at?: string | null
+          error_message?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_enrichment_jobs_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_enrichment_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_audit_log: {
+        Row: {
+          id: string
+          user_id: string
+          document_id: string | null
+          transaction_id: string | null
+          match_id: string | null
+          action_type: string
+          action_metadata: Json | null
+          performed_at: string | null
+          performed_by: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          document_id?: string | null
+          transaction_id?: string | null
+          match_id?: string | null
+          action_type: string
+          action_metadata?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          document_id?: string | null
+          transaction_id?: string | null
+          match_id?: string | null
+          action_type?: string
+          action_metadata?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_audit_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_audit_log_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_audit_log_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_audit_log_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_document_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_audit_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      processing_jobs: {
+        Row: {
+          id: string
+          user_id: string
+          document_id: string | null
+          job_type: string
+          job_status: string
+          pg_boss_job_id: string | null
+          retry_count: number
+          max_retries: number
+          result_data: Json | null
+          error_data: Json | null
+          queued_at: string | null
+          started_at: string | null
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          document_id?: string | null
+          job_type: string
+          job_status?: string
+          pg_boss_job_id?: string | null
+          retry_count?: number
+          max_retries?: number
+          result_data?: Json | null
+          error_data?: Json | null
+          queued_at?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          document_id?: string | null
+          job_type?: string
+          job_status?: string
+          pg_boss_job_id?: string | null
+          retry_count?: number
+          max_retries?: number
+          result_data?: Json | null
+          error_data?: Json | null
+          queued_at?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processing_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processing_jobs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       available_currency_pairs: {
@@ -955,6 +1439,32 @@ export type UserUpdate = TablesUpdate<"users">
 export type ExchangeRate = Tables<"exchange_rates">
 export type ExchangeRateInsert = TablesInsert<"exchange_rates">
 
+// Document management types
+export type Document = Tables<"documents">
+export type DocumentInsert = TablesInsert<"documents">
+export type DocumentUpdate = TablesUpdate<"documents">
+export type DocumentExtraction = Tables<"document_extractions">
+export type DocumentExtractionInsert = TablesInsert<"document_extractions">
+export type DocumentExtractionUpdate = TablesUpdate<"document_extractions">
+export type TransactionDocumentMatch = Tables<"transaction_document_matches">
+export type TransactionDocumentMatchInsert = TablesInsert<"transaction_document_matches">
+export type TransactionDocumentMatchUpdate = TablesUpdate<"transaction_document_matches">
+export type ReconciliationQueue = Tables<"reconciliation_queue">
+export type ReconciliationQueueInsert = TablesInsert<"reconciliation_queue">
+export type ReconciliationQueueUpdate = TablesUpdate<"reconciliation_queue">
+export type VendorProfile = Tables<"vendor_profiles">
+export type VendorProfileInsert = TablesInsert<"vendor_profiles">
+export type VendorProfileUpdate = TablesUpdate<"vendor_profiles">
+export type VendorEnrichmentJob = Tables<"vendor_enrichment_jobs">
+export type VendorEnrichmentJobInsert = TablesInsert<"vendor_enrichment_jobs">
+export type VendorEnrichmentJobUpdate = TablesUpdate<"vendor_enrichment_jobs">
+export type ReconciliationAuditLog = Tables<"reconciliation_audit_log">
+export type ReconciliationAuditLogInsert = TablesInsert<"reconciliation_audit_log">
+export type ReconciliationAuditLogUpdate = TablesUpdate<"reconciliation_audit_log">
+export type ProcessingJob = Tables<"processing_jobs">
+export type ProcessingJobInsert = TablesInsert<"processing_jobs">
+export type ProcessingJobUpdate = TablesUpdate<"processing_jobs">
+
 // Enum types
 export type CurrencyType = Database["public"]["Enums"]["currency_type"]
 export type TransactionType = Database["public"]["Enums"]["transaction_type"]
@@ -964,4 +1474,17 @@ export type TransactionWithVendorAndPayment = Transaction & {
   vendor?: Vendor | null
   payment_method?: PaymentMethod | null
   tags?: Tag[]
+}
+
+// Document with extraction and matches
+export type DocumentWithExtraction = Document & {
+  extraction?: DocumentExtraction | null
+  matches?: TransactionDocumentMatch[]
+}
+
+// Transaction with matched document
+export type TransactionWithDocument = Transaction & {
+  document?: Document | null
+  vendor?: Vendor | null
+  payment_method?: PaymentMethod | null
 }
