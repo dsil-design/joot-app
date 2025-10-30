@@ -19,6 +19,7 @@ import {
   isOCRResultValid,
 } from '@/lib/services/ocr-service'
 import { getDocumentUrl } from '@/lib/services/storage-service'
+import { enqueueJob, JOB_TYPES } from '@/lib/services/job-queue-service'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60 // 60 seconds for OCR processing
@@ -146,14 +147,29 @@ export async function POST(
         throw new Error('Failed to save extraction results')
       }
 
-      // Update document status
+      // Update document status to processing (AI extraction will update to completed)
       await supabase
         .from('documents')
         .update({
-          processing_status: isValid ? 'completed' : 'failed',
+          processing_status: isValid ? 'processing' : 'failed',
           ocr_confidence: ocrResult.confidence,
         })
         .eq('id', documentId)
+
+      // Enqueue AI extraction job if OCR was successful
+      if (isValid) {
+        try {
+          await enqueueJob(JOB_TYPES.EXTRACT_DATA, {
+            documentId: documentId,
+            userId: user.id,
+            extractionId: extraction.id,
+          })
+          console.log(`Enqueued AI extraction job for document: ${documentId}`)
+        } catch (error) {
+          // Don't fail OCR if job enqueueing fails
+          console.error('Failed to enqueue AI extraction job:', error)
+        }
+      }
 
       // Return success
       return NextResponse.json({

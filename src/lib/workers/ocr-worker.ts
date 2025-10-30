@@ -69,19 +69,25 @@ export async function initializeOCRWorker(): Promise<void> {
  * Start OCR worker as standalone process
  *
  * This can be run in a separate Node.js process for dedicated job processing
+ * Now also includes AI extraction worker
  *
  * Usage:
  * ```bash
- * node -r @swc-node/register src/lib/workers/ocr-worker.ts
+ * npm run worker:ocr
  * ```
  */
 export async function startOCRWorker(): Promise<void> {
-  console.log('Starting OCR worker process...')
+  console.log('Starting document processing workers...')
 
   try {
+    // Initialize OCR worker
     await initializeOCRWorker()
 
-    console.log('OCR worker is running. Press Ctrl+C to stop.')
+    // Initialize AI extraction worker
+    const { initializeAIExtractionWorker } = await import('./ai-extraction-worker')
+    await initializeAIExtractionWorker()
+
+    console.log('All workers running. Press Ctrl+C to stop.')
 
     // Keep process alive
     process.on('SIGINT', async () => {
