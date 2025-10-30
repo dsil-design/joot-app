@@ -52,7 +52,6 @@ async function getBoss(): Promise<PgBoss> {
       connectionString,
       schema: 'pgboss', // Use separate schema for pg-boss tables
       max: 2, // Small connection pool
-      noScheduling: false, // Enable scheduled jobs
     })
 
     await bossInstance.start()
@@ -154,18 +153,17 @@ export async function registerJobHandler<T extends JobData>(
 
   await boss.work(
     jobType,
-    {
-      teamSize: 2, // Process up to 2 jobs concurrently
-      teamConcurrency: 1, // Each worker processes 1 job at a time
-    },
-    async (job) => {
-      console.log(`Processing job: ${jobType} (ID: ${job.id})`)
-      try {
-        await handler(job as PgBoss.Job<T>)
-        console.log(`Completed job: ${jobType} (ID: ${job.id})`)
-      } catch (error) {
-        console.error(`Job failed: ${jobType} (ID: ${job.id})`, error)
-        throw error // pg-boss will handle retries
+    async (jobs) => {
+      const jobArray = Array.isArray(jobs) ? jobs : [jobs]
+      for (const job of jobArray) {
+        console.log(`Processing job: ${jobType} (ID: ${job.id})`)
+        try {
+          await handler(job as PgBoss.Job<T>)
+          console.log(`Completed job: ${jobType} (ID: ${job.id})`)
+        } catch (error) {
+          console.error(`Job failed: ${jobType} (ID: ${job.id})`, error)
+          throw error // pg-boss will handle retries
+        }
       }
     }
   )
@@ -179,11 +177,11 @@ export async function registerJobHandler<T extends JobData>(
  * @param jobId - Job ID
  * @returns Job details or null if not found
  */
-export async function getJobStatus(jobId: string): Promise<PgBoss.JobWithMetadata | null> {
+export async function getJobStatus(jobId: string): Promise<PgBoss.JobWithMetadata<object> | null> {
   try {
     const boss = await getBoss()
-    const job = await boss.getJobById(jobId)
-    return job
+    const job = await boss.getJobById(jobId, 'document-processing')
+    return job as PgBoss.JobWithMetadata<object> | null
   } catch (error) {
     console.error(`Failed to get job status for ${jobId}:`, error)
     return null

@@ -365,10 +365,10 @@ async function verifyPDF1to1() {
       if (dbTxn.transaction_type !== pdfTxn.type) return false;
 
       // Description should match (allow some flexibility)
-      // Normalize apostrophes: ' (U+2019) to ' (U+0027)
-      const normalizeApostrophes = (str) => str.replace(/[\u2018\u2019]/g, "'");
-      const pdfDesc = normalizeApostrophes(pdfTxn.description.toLowerCase().trim());
-      const dbDesc = normalizeApostrophes(dbTxn.description.toLowerCase().trim());
+      // Normalize quotes: ' (U+2019) to ', " (U+201C/U+201D) to "
+      const normalizeQuotes = (str) => str.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
+      const pdfDesc = normalizeQuotes(pdfTxn.description.toLowerCase().trim());
+      const dbDesc = normalizeQuotes(dbTxn.description.toLowerCase().trim());
       if (pdfDesc !== dbDesc) {
         // Check if one contains the other (partial match)
         if (!pdfDesc.includes(dbDesc) && !dbDesc.includes(pdfDesc)) {

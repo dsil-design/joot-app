@@ -48,10 +48,10 @@ export async function GET(request: NextRequest) {
           name: job.name,
           state: job.state,
           data: job.data,
-          retryCount: job.retrycount,
-          createdOn: job.createdon,
-          startedOn: job.startedon,
-          completedOn: job.completedon,
+          retryCount: job.retryCount,
+          createdOn: job.createdOn,
+          startedOn: job.startedOn,
+          completedOn: job.completedOn,
         },
       })
     }
