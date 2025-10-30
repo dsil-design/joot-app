@@ -703,10 +703,9 @@ if (require.main === module) {
 // EXPORTS
 // ============================================================================
 
-export {
-  TokenEstimator,
-  CostCalculator,
-  CostOptimizer,
-  BudgetManager,
-  PricingTierCalculator,
-};
+// Note: All classes are already exported inline above
+// TokenEstimator (line 69)
+// CostCalculator (line 137)
+// CostOptimizer (line 293)
+// BudgetManager (line 430)
+// PricingTierCalculator (line 654)
