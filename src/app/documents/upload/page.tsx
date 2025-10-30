@@ -27,6 +27,15 @@ interface UploadState {
     percentSaved: number
   }
   documentId?: string
+  processingStep?: string
+  processingMessage?: string
+  extractedData?: {
+    vendor?: string
+    amount?: number
+    currency?: string
+    date?: string
+  }
+  matchCount?: number
 }
 
 export default function DocumentUploadPage() {
@@ -72,43 +81,114 @@ export default function DocumentUploadPage() {
     }))
 
     try {
-      // Create form data
+      // ============================================
+      // STEP 1: Upload file to storage
+      // ============================================
       const formData = new FormData()
       formData.append('file', uploadState.file)
 
-      // Simulate progress (since we can't track actual upload progress with fetch)
-      const progressInterval = setInterval(() => {
-        setUploadState((prev) => ({
-          ...prev,
-          progress: Math.min(prev.progress + 10, 90),
-        }))
-      }, 200)
+      setUploadState((prev) => ({
+        ...prev,
+        processingStep: 'upload',
+        processingMessage: 'Uploading file...',
+        progress: 10,
+      }))
 
-      // Upload to API
-      const response = await fetch('/api/documents/upload', {
+      const uploadResponse = await fetch('/api/documents/upload', {
         method: 'POST',
         body: formData,
       })
 
-      // Clear progress interval
-      clearInterval(progressInterval)
-
-      if (!response.ok) {
-        const errorData = await response.json()
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json()
         throw new Error(errorData.message || 'Upload failed')
       }
 
-      const data = await response.json()
+      const uploadData = await uploadResponse.json()
+      const documentId = uploadData.document.id
 
-      // Set processing state briefly
+      setUploadState((prev) => ({
+        ...prev,
+        documentId,
+        compressionInfo: uploadData.uploadMetadata,
+        progress: 20,
+      }))
+
+      // ============================================
+      // STEP 2: Process document (OCR + AI + Matching)
+      // ============================================
       setUploadState((prev) => ({
         ...prev,
         status: 'processing',
-        progress: 95,
+        processingStep: 'processing',
+        processingMessage: 'Starting document processing...',
+        progress: 25,
       }))
 
-      // Simulate processing delay
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      // Call streaming endpoint
+      const processResponse = await fetch(`/api/documents/${documentId}/process-complete`, {
+        method: 'POST',
+      })
+
+      if (!processResponse.ok) {
+        throw new Error('Processing failed')
+      }
+
+      // Read streaming response
+      const reader = processResponse.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        throw new Error('No response stream')
+      }
+
+      let extractedData: any = {}
+      let matchCount = 0
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n').filter((line) => line.trim())
+
+        for (const line of lines) {
+          try {
+            const update = JSON.parse(line)
+
+            if (update.error) {
+              throw new Error(update.error)
+            }
+
+            // Update progress based on step
+            let progress = 25
+            if (update.step === 'ocr') progress = 40
+            else if (update.step === 'ai_extraction') progress = 60
+            else if (update.step === 'matching') progress = 80
+            else if (update.step === 'vendor_enrichment') progress = 90
+            else if (update.step === 'completed') progress = 100
+
+            setUploadState((prev) => ({
+              ...prev,
+              processingStep: update.step,
+              processingMessage: update.message || '',
+              progress,
+            }))
+
+            // Capture extracted data
+            if (update.data) {
+              extractedData = update.data
+            }
+
+            // Capture match count
+            if (update.matchCount !== undefined) {
+              matchCount = update.matchCount
+            }
+          } catch (e) {
+            // Ignore JSON parse errors (partial chunks)
+          }
+        }
+      }
 
       // Success state
       setUploadState((prev) => ({
@@ -116,8 +196,9 @@ export default function DocumentUploadPage() {
         uploading: false,
         status: 'success',
         progress: 100,
-        compressionInfo: data.uploadMetadata,
-        documentId: data.document.id,
+        extractedData,
+        matchCount,
+        processingMessage: 'Document processed successfully!',
       }))
 
       // Redirect to documents list after 2 seconds
@@ -216,6 +297,10 @@ export default function DocumentUploadPage() {
                 status={uploadState.status}
                 error={uploadState.error || undefined}
                 compressionInfo={uploadState.compressionInfo}
+                processingStep={uploadState.processingStep}
+                processingMessage={uploadState.processingMessage}
+                extractedData={uploadState.extractedData}
+                matchCount={uploadState.matchCount}
                 onCancel={uploadState.status === 'uploading' ? handleCancel : undefined}
                 onRetry={uploadState.status === 'error' ? handleRetry : undefined}
               />

@@ -19,6 +19,15 @@ export interface UploadProgressProps {
     compressedSize: number
     percentSaved: number
   }
+  processingStep?: string
+  processingMessage?: string
+  extractedData?: {
+    vendor?: string
+    amount?: number
+    currency?: string
+    date?: string
+  }
+  matchCount?: number
   onCancel?: () => void
   onRetry?: () => void
   className?: string
@@ -30,6 +39,10 @@ export function UploadProgress({
   status,
   error,
   compressionInfo,
+  processingStep,
+  processingMessage,
+  extractedData,
+  matchCount,
   onCancel,
   onRetry,
   className = '',
@@ -133,7 +146,7 @@ export function UploadProgress({
 
         {/* Progress bar */}
         {isInProgress && (
-          <div className="space-y-1">
+          <div className="space-y-2">
             <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-600 dark:bg-blue-500 transition-all duration-300 ease-out"
@@ -142,43 +155,106 @@ export function UploadProgress({
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-gray-600 dark:text-gray-400">
-                {status === 'uploading' ? 'Uploading...' : 'Processing...'}
+                {processingMessage || (status === 'uploading' ? 'Uploading...' : 'Processing...')}
               </span>
               <span className="font-medium text-gray-700 dark:text-gray-300">
                 {progress}%
               </span>
             </div>
+
+            {/* Processing steps indicator */}
+            {status === 'processing' && processingStep && (
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 pt-1">
+                {processingStep === 'ocr' && (
+                  <>
+                    <div className="w-3 h-3 rounded-full bg-blue-600 dark:bg-blue-500 animate-pulse" />
+                    <span>Reading text from document...</span>
+                  </>
+                )}
+                {processingStep === 'ai_extraction' && (
+                  <>
+                    <div className="w-3 h-3 rounded-full bg-purple-600 dark:bg-purple-500 animate-pulse" />
+                    <span>Extracting data with AI...</span>
+                  </>
+                )}
+                {processingStep === 'matching' && (
+                  <>
+                    <div className="w-3 h-3 rounded-full bg-green-600 dark:bg-green-500 animate-pulse" />
+                    <span>Matching to transactions...</span>
+                  </>
+                )}
+                {processingStep === 'vendor_enrichment' && (
+                  <>
+                    <div className="w-3 h-3 rounded-full bg-yellow-600 dark:bg-yellow-500 animate-pulse" />
+                    <span>Finding vendor info...</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Success state with compression info */}
-        {isComplete && compressionInfo && (
-          <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-400">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span>
-              Upload complete • Saved {compressionInfo.percentSaved}% space
-              ({formatFileSize(compressionInfo.originalSize - compressionInfo.compressedSize)})
-            </span>
-          </div>
-        )}
+        {/* Success state */}
+        {isComplete && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-400">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span>{processingMessage || 'Processing complete!'}</span>
+            </div>
 
-        {/* Success state without compression info */}
-        {isComplete && !compressionInfo && (
-          <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-400">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span>Upload complete</span>
+            {/* Extracted data */}
+            {extractedData && (
+              <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Extracted Information:
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {extractedData.vendor && (
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Vendor:</span>
+                      <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">
+                        {extractedData.vendor}
+                      </span>
+                    </div>
+                  )}
+                  {extractedData.amount && (
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Amount:</span>
+                      <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">
+                        {extractedData.amount} {extractedData.currency || 'USD'}
+                      </span>
+                    </div>
+                  )}
+                  {extractedData.date && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500 dark:text-gray-400">Date:</span>
+                      <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">
+                        {new Date(extractedData.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {matchCount !== undefined && (
+                  <div className="text-xs text-gray-600 dark:text-gray-400 pt-1">
+                    {matchCount > 0 ? (
+                      <span className="text-green-600 dark:text-green-400">
+                        ✓ Found {matchCount} matching transaction{matchCount !== 1 ? 's' : ''}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500 dark:text-gray-400">
+                        No matching transactions found
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
