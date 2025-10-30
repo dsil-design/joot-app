@@ -87,6 +87,10 @@ export async function startOCRWorker(): Promise<void> {
     const { initializeAIExtractionWorker } = await import('./ai-extraction-worker')
     await initializeAIExtractionWorker()
 
+    // Initialize transaction matching worker
+    const { initializeMatchingWorker } = await import('./matching-worker')
+    await initializeMatchingWorker()
+
     console.log('All workers running. Press Ctrl+C to stop.')
 
     // Keep process alive

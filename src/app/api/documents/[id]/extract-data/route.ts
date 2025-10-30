@@ -17,6 +17,7 @@ import {
   calculateExtractionQuality,
   isExtractionValid,
 } from '@/lib/services/ai-extraction-service'
+import { enqueueJob, JOB_TYPES } from '@/lib/services/job-queue-service'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60 // 60 seconds for AI processing
@@ -130,14 +131,28 @@ export async function POST(
         throw new Error('Failed to save extraction results')
       }
 
-      // Update document status based on extraction quality
-      const newStatus = isValid ? 'completed' : 'failed'
+      // Update document status to processing (matching will update to completed)
+      const newStatus = isValid ? 'processing' : 'failed'
       await supabase
         .from('documents')
         .update({
           processing_status: newStatus,
         })
         .eq('id', documentId)
+
+      // Enqueue transaction matching job if extraction was successful
+      if (isValid) {
+        try {
+          await enqueueJob(JOB_TYPES.MATCH_TRANSACTION, {
+            documentId: documentId,
+            userId: user.id,
+          })
+          console.log(`Enqueued matching job for document: ${documentId}`)
+        } catch (error) {
+          // Don't fail extraction if job enqueueing fails
+          console.error('Failed to enqueue matching job:', error)
+        }
+      }
 
       // Return success
       return NextResponse.json({
