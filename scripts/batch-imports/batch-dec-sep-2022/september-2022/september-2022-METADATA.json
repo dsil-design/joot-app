@@ -1,0 +1,18 @@
+{
+  "month": "September 2022",
+  "parsing_date": "2025-10-29T13:22:43.044Z",
+  "total_transactions": 54,
+  "currency_distribution": {
+    "thb": 0,
+    "usd": 54,
+    "thb_percentage": 0
+  },
+  "red_flags": {
+    "negative_conversions": 0,
+    "typo_reimbursements": 0,
+    "comma_formatted": 0,
+    "zero_skipped": 135
+  },
+  "tag_distribution": {},
+  "dual_residence_verified": true
+}

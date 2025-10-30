@@ -1,0 +1,21 @@
+{
+  "month": "July 2022",
+  "parsing_date": "2025-10-30T03:34:08.477Z",
+  "total_transactions": 132,
+  "currency_distribution": {
+    "thb": 18,
+    "usd": 114,
+    "thb_percentage": 13.6
+  },
+  "red_flags": {
+    "negative_conversions": 6,
+    "typo_reimbursements": 1,
+    "comma_formatted": 1,
+    "zero_skipped": 1
+  },
+  "tag_distribution": {
+    "Reimbursement": 3
+  },
+  "dual_residence_verified": true,
+  "corrections": []
+}

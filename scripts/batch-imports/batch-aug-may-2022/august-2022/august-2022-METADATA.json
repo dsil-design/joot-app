@@ -1,0 +1,21 @@
+{
+  "month": "August 2022",
+  "parsing_date": "2025-10-30T03:20:30.919Z",
+  "total_transactions": 226,
+  "currency_distribution": {
+    "thb": 138,
+    "usd": 88,
+    "thb_percentage": 61.1
+  },
+  "red_flags": {
+    "negative_conversions": 5,
+    "typo_reimbursements": 1,
+    "comma_formatted": 1,
+    "zero_skipped": 12
+  },
+  "tag_distribution": {
+    "Reimbursement": 3
+  },
+  "dual_residence_verified": true,
+  "corrections": []
+}
