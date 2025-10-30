@@ -844,11 +844,10 @@ async function exampleUsage() {
 // EXPORTS
 // ============================================================================
 
-export {
-  DocumentClassifier,
-  OCRService,
-  DataExtractor,
-  TransactionMatcher,
-  VendorEnrichmentService,
-  DocumentProcessor,
-};
+// Note: All classes are already exported inline above
+// DocumentClassifier (line 134)
+// OCRService (line 203)
+// DataExtractor (line 259)
+// TransactionMatcher (line 375)
+// VendorEnrichmentService (line 547)
+// DocumentProcessor (line 652)
