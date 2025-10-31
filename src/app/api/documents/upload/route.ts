@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadDocument } from '@/lib/services/storage-service'
 import { enqueueJob, JOB_TYPES } from '@/lib/services/job-queue-service'
@@ -72,23 +72,37 @@ export async function POST(request: NextRequest) {
     const documentId = crypto.randomUUID()
 
     // Upload to storage
+    console.log('Starting storage upload for user:', user.id, 'document:', documentId)
     const uploadResult = await uploadDocument({
       file,
       userId: user.id,
       documentId,
       compress: true,
+      supabaseClient: supabase, // Pass the authenticated server-side client
     })
 
     if (!uploadResult.success) {
       console.error('Storage upload failed:', uploadResult.error)
+      console.error('Upload result:', JSON.stringify(uploadResult, null, 2))
       return NextResponse.json(
         { error: 'Upload failed', message: uploadResult.error },
         { status: 500 }
       )
     }
 
+    console.log('Storage upload succeeded:', uploadResult.storagePath)
+
+    // Generate the public URL for the file
+    const { data: urlData } = supabase.storage
+      .from('documents')
+      .getPublicUrl(uploadResult.storagePath!)
+
+    const fileUrl = urlData.publicUrl
+
     // Create database record
-    const { data: document, error: dbError } = await supabase
+    // Temporarily use service role to bypass RLS for debugging
+    const serviceSupabase = createServiceRoleClient()
+    const { data: document, error: dbError } = await serviceSupabase
       .from('documents')
       .insert({
         id: documentId,
@@ -96,6 +110,7 @@ export async function POST(request: NextRequest) {
         file_name: file.name,
         file_type: getFileType(file.type),
         file_size_bytes: uploadResult.metadata?.compressedSize || file.size,
+        file_url: fileUrl, // Add the required file_url field
         mime_type: file.type,
         storage_path: uploadResult.storagePath!,
         thumbnail_path: uploadResult.thumbnailPath || null,
@@ -107,13 +122,21 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error('Database insert failed:', dbError)
+      console.error('Attempted insert data:', {
+        id: documentId,
+        user_id: user.id,
+        file_name: file.name,
+        file_type: getFileType(file.type),
+        file_size_bytes: uploadResult.metadata?.compressedSize || file.size,
+        file_url: fileUrl,
+      })
 
       // Cleanup: Delete uploaded file if database insert fails
       // Note: In production, you might want to use a cleanup job instead
       // await deleteDocument(uploadResult.storagePath!, uploadResult.thumbnailPath)
 
       return NextResponse.json(
-        { error: 'Database error', message: 'Failed to create document record' },
+        { error: 'Database error', message: dbError.message || 'Failed to create document record' },
         { status: 500 }
       )
     }

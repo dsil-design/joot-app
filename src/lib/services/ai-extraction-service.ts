@@ -108,7 +108,7 @@ function parseGeminiResponse(responseText: string): ExtractedData {
       extraction_confidence: confidence,
       metadata: {
         raw_response: responseText,
-        model_used: 'gemini-1.5-flash',
+        model_used: 'gemini-2.0-flash',
       },
     }
   } catch (error) {
@@ -124,7 +124,7 @@ function parseGeminiResponse(responseText: string): ExtractedData {
       extraction_confidence: 0,
       metadata: {
         raw_response: responseText,
-        model_used: 'gemini-1.5-flash',
+        model_used: 'gemini-2.0-flash',
       },
     }
   }
@@ -201,7 +201,8 @@ export async function extractDataFromText(
 
     // Initialize Gemini
     const genAI = getGeminiClient()
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    // Use gemini-2.0-flash (stable model available in v1beta API)
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     // Create prompt
     const prompt = createExtractionPrompt(ocrText)

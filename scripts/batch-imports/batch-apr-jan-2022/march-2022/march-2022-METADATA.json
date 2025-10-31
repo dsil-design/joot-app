@@ -1,0 +1,19 @@
+{
+  "month": "March 2022",
+  "parsing_date": "2025-10-31T03:55:49.215Z",
+  "total_transactions": 175,
+  "currency_distribution": {
+    "thb": 111,
+    "usd": 64,
+    "thb_percentage": 63.4
+  },
+  "red_flags": {
+    "negative_conversions": 1,
+    "typo_reimbursements": 0,
+    "comma_formatted": 0,
+    "zero_skipped": 0
+  },
+  "tag_distribution": {},
+  "dual_residence_verified": true,
+  "corrections": []
+}

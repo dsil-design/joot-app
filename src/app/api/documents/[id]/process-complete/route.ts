@@ -12,9 +12,9 @@
  * Returns streaming response with progress updates
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextRequest } from 'next/server'
-import { processOCR } from '@/lib/services/ocr-service'
+import { extractTextFromDocument } from '@/lib/services/ocr-service'
 import { extractDataFromText, isExtractionValid } from '@/lib/services/ai-extraction-service'
 import { findMatchingTransactions } from '@/lib/services/matching-service'
 import { enrichVendor } from '@/lib/services/vendor-enrichment-service'
@@ -73,10 +73,25 @@ export async function POST(request: NextRequest, context: RouteContext) {
           return
         }
 
+        // Clear existing matches and extraction if reprocessing
+        // This prevents duplicate matches when rerunning processing
+        await supabase
+          .from('transaction_document_matches')
+          .delete()
+          .eq('document_id', documentId)
+
+        await supabase
+          .from('reconciliation_queue')
+          .delete()
+          .eq('document_id', documentId)
+
         // Update status to processing
         await supabase
           .from('documents')
-          .update({ processing_status: 'processing' })
+          .update({
+            processing_status: 'processing',
+            processing_error: null
+          })
           .eq('id', documentId)
 
         send({ step: 'started', message: 'Starting document processing...' })
@@ -87,33 +102,62 @@ export async function POST(request: NextRequest, context: RouteContext) {
         send({ step: 'ocr', progress: 0, message: 'Running OCR...' })
 
         try {
-          const ocrResult = await processOCR(document.file_url)
+          // Generate signed URL and fetch file
+          const serviceRoleClient = createServiceRoleClient()
+          const { data: urlData, error: urlError } = await serviceRoleClient.storage
+            .from('documents')
+            .createSignedUrl(document.storage_path, 60)
+
+          if (urlError || !urlData?.signedUrl) {
+            throw new Error('Failed to generate file URL')
+          }
+
+          // Fetch the file content
+          const fileResponse = await fetch(urlData.signedUrl)
+          if (!fileResponse.ok) {
+            throw new Error('Failed to download file for processing')
+          }
+
+          const arrayBuffer = await fileResponse.arrayBuffer()
+          const fileBuffer = Buffer.from(arrayBuffer)
+
+          // Run OCR
+          const ocrResult = await extractTextFromDocument(
+            fileBuffer,
+            document.mime_type
+          )
 
           if (!ocrResult.success || !ocrResult.text) {
             throw new Error(ocrResult.error || 'OCR failed')
           }
 
           // Save OCR results
+          // Use onConflict to specify which field to use for upsert conflict resolution
           const { error: ocrSaveError } = await supabase
             .from('document_extractions')
             .upsert({
               document_id: documentId,
+              user_id: user.id,
               raw_text: ocrResult.text,
-              ocr_confidence: ocrResult.quality?.confidence || 0,
+              ocr_confidence: ocrResult.confidence || 0,
               metadata: {
-                ocr_quality: ocrResult.quality,
+                ocr_language: ocrResult.language,
+                processing_time: ocrResult.processingTime,
               },
+            }, {
+              onConflict: 'document_id'
             })
 
           if (ocrSaveError) {
-            throw new Error('Failed to save OCR results')
+            console.error('OCR save error:', ocrSaveError)
+            throw new Error(`Failed to save OCR results: ${ocrSaveError.message}`)
           }
 
           send({
             step: 'ocr',
             progress: 100,
             message: 'OCR complete',
-            confidence: ocrResult.quality?.confidence,
+            confidence: ocrResult.confidence,
           })
         } catch (error) {
           send({
@@ -122,7 +166,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
           })
           await supabase
             .from('documents')
-            .update({ processing_status: 'failed' })
+            .update({
+              processing_status: 'failed',
+              processing_error: error instanceof Error ? error.message : 'OCR failed'
+            })
             .eq('id', documentId)
           controller.close()
           return
@@ -156,10 +203,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
           const isValid = isExtractionValid(extractedData)
 
           // Update extraction record
+          // Note: document_extractions table uses 'merchant_name' not 'vendor_name'
           await supabase
             .from('document_extractions')
             .update({
-              vendor_name: extractedData.vendor_name,
+              merchant_name: extractedData.vendor_name || extractedData.merchant_name,
               amount: extractedData.amount,
               currency: extractedData.currency,
               transaction_date: extractedData.transaction_date,
@@ -194,7 +242,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
           })
           await supabase
             .from('documents')
-            .update({ processing_status: 'failed' })
+            .update({
+              processing_status: 'failed',
+              processing_error: error instanceof Error ? error.message : 'AI extraction failed'
+            })
             .eq('id', documentId)
           controller.close()
           return
@@ -217,18 +268,32 @@ export async function POST(request: NextRequest, context: RouteContext) {
             throw new Error('No extraction data found')
           }
 
-          // Run matching
+          console.log('[PROCESS] Starting matching with extraction data:', {
+            merchant: extraction.merchant_name,
+            amount: extraction.amount,
+            currency: extraction.currency,
+            date: extraction.transaction_date
+          })
+
+          // Run matching - pass supabase client to avoid cookies() issues
           const matchResult = await findMatchingTransactions(
             {
-              vendorName: extraction.vendor_name || '',
+              vendorName: extraction.merchant_name || '',
               amount: extraction.amount || 0,
               currency: extraction.currency || 'USD',
               transactionDate: extraction.transaction_date || undefined,
             },
             user.id,
             50, // Min confidence
-            5 // Max results
+            5, // Max results
+            supabase // Pass the existing supabase client
           )
+
+          console.log('[PROCESS] Matching complete:', {
+            success: matchResult.success,
+            matchCount: matchResult.matches.length,
+            error: matchResult.error
+          })
 
           // Save match records
           if (matchResult.matches.length > 0) {
@@ -294,12 +359,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
         try {
           const { data: extraction } = await supabase
             .from('document_extractions')
-            .select('vendor_name')
+            .select('merchant_name')
             .eq('document_id', documentId)
             .single()
 
-          if (extraction?.vendor_name) {
-            const enrichmentResult = await enrichVendor(extraction.vendor_name, user.id)
+          if (extraction?.merchant_name) {
+            const enrichmentResult = await enrichVendor(extraction.merchant_name, user.id)
 
             send({
               step: 'vendor_enrichment',

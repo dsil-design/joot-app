@@ -12,6 +12,14 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { formatFileSize } from '@/lib/utils/file-validation'
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 
 interface QueueItem {
   id: string
@@ -41,7 +49,7 @@ interface QueueItem {
 export default function ReconciliationQueuePage() {
   const [queueItems, setQueueItems] = useState<QueueItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress'>('pending')
+  const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('pending')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -56,7 +64,10 @@ export default function ReconciliationQueuePage() {
       // Build query params
       const params = new URLSearchParams()
       if (filter !== 'all') {
-        params.set('status', filter === 'pending' ? 'pending_review' : 'in_progress')
+        let status = 'pending_review'
+        if (filter === 'in_progress') status = 'in_progress'
+        if (filter === 'completed') status = 'completed'
+        params.set('status', status)
       }
 
       // Fetch queue items
@@ -108,17 +119,32 @@ export default function ReconciliationQueuePage() {
     if (filter === 'all') return true
     if (filter === 'pending') return item.status === 'pending_review'
     if (filter === 'in_progress') return item.status === 'in_progress'
+    if (filter === 'completed') return item.status === 'completed'
     return true
   })
 
   const pendingCount = queueItems.filter((i) => i.status === 'pending_review').length
   const inProgressCount = queueItems.filter((i) => i.status === 'in_progress').length
+  const completedCount = queueItems.filter((i) => i.status === 'completed').length
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Breadcrumbs */}
+          <Breadcrumb className="mb-4">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/home">Home</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Reconciliation</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -188,6 +214,16 @@ export default function ReconciliationQueuePage() {
             >
               In Progress ({inProgressCount})
             </button>
+            <button
+              onClick={() => setFilter('completed')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === 'completed'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              Completed ({completedCount})
+            </button>
           </div>
         </div>
       </div>
@@ -235,7 +271,7 @@ export default function ReconciliationQueuePage() {
               All documents have been reviewed or there are no pending items
             </p>
             <Link
-              href="/documents/upload"
+              href="/documents/upload?from=reconciliation"
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
             >
               <svg

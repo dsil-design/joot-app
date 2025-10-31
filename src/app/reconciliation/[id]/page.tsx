@@ -15,6 +15,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatFileSize } from '@/lib/utils/file-validation'
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 
 interface DocumentData {
   id: string
@@ -54,6 +62,14 @@ interface TransactionMatch {
     currency: string
     date: string
     category: string | null
+    vendor?: {
+      id: string
+      name: string
+    } | null
+    payment_method?: {
+      id: string
+      name: string
+    } | null
   }
 }
 
@@ -240,6 +256,23 @@ export default function ReconciliationDetailPage({
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Breadcrumbs */}
+          <Breadcrumb className="mb-4">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/home">Home</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/reconciliation">Reconciliation</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Review</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
           <div className="flex items-center gap-4 mb-4">
             <Link
               href="/reconciliation"
@@ -399,9 +432,17 @@ export default function ReconciliationDetailPage({
                           <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
                             {match.transaction.description}
                           </div>
+                          {match.transaction.vendor && (
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                              {match.transaction.vendor.name}
+                            </div>
+                          )}
                           <div className="text-sm text-gray-500 dark:text-gray-400">
                             {new Date(match.transaction.date).toLocaleDateString()} •{' '}
                             {match.transaction.amount} {match.transaction.currency}
+                            {match.transaction.payment_method && (
+                              <> • {match.transaction.payment_method.name}</>
+                            )}
                           </div>
                         </div>
                         <span

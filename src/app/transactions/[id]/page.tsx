@@ -90,6 +90,97 @@ function FieldTags({ label, tags }: FieldTagsProps) {
   )
 }
 
+interface AttachedDocument {
+  id: string
+  file_name: string
+  file_size_bytes: number
+  file_type: string
+  created_at: string
+  confidence_score: number
+  match_created_at: string
+  extraction?: {
+    merchant_name: string | null
+    amount: number | null
+    currency: string | null
+    transaction_date: string | null
+  } | null
+}
+
+interface FieldAttachedDocumentsProps {
+  label: string
+  documents: AttachedDocument[] | undefined
+}
+
+function FieldAttachedDocuments({ label, documents }: FieldAttachedDocumentsProps) {
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  return (
+    <div className="content-stretch flex flex-col gap-2 items-start justify-start relative shrink-0 w-full">
+      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-950">
+        <p className="leading-[20px] whitespace-pre">{label}</p>
+      </div>
+      {documents && documents.length > 0 ? (
+        <div className="flex flex-col gap-3 w-full">
+          {documents.map((doc) => (
+            <a
+              key={doc.id}
+              href={`/documents/${doc.id}`}
+              className="flex items-start gap-3 p-3 border border-zinc-200 rounded-lg hover:border-zinc-300 hover:bg-zinc-50 transition-colors w-full"
+            >
+              {/* Document icon */}
+              <div className="shrink-0 w-10 h-10 bg-zinc-100 rounded flex items-center justify-center">
+                <svg className="w-5 h-5 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+
+              {/* Document info */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-zinc-900 truncate">
+                  {doc.file_name}
+                </p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  {formatFileSize(doc.file_size_bytes)} • Uploaded {formatDate(doc.created_at)}
+                </p>
+                {doc.extraction && (
+                  <div className="mt-2 text-xs text-zinc-600">
+                    {doc.extraction.merchant_name && (
+                      <p>Merchant: {doc.extraction.merchant_name}</p>
+                    )}
+                    <p className="text-zinc-500">Match confidence: {doc.confidence_score}%</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Status badge */}
+              <Badge variant="default" className="shrink-0 bg-green-600 text-white">
+                ✓ Verified
+              </Badge>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-6 px-4 border border-dashed border-zinc-200 rounded-lg w-full">
+          <p className="text-sm text-zinc-500 mb-2">No documents attached</p>
+          <p className="text-xs text-zinc-400">Upload a receipt or invoice to link it to this transaction</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ViewTransactionPage() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -347,6 +438,10 @@ export default function ViewTransactionPage() {
           <FieldTags
             label="Tags"
             tags={transaction.tags}
+          />
+          <FieldAttachedDocuments
+            label="Attached Documents"
+            documents={(transaction as any).attached_documents}
           />
         </div>
         <div className="h-10 shrink-0 w-full" />

@@ -14,6 +14,15 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUpload } from '@/components/documents/FileUpload'
 import { UploadProgress } from '@/components/documents/UploadProgress'
+import { useDocumentFlow } from '@/hooks/useDocumentFlow'
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 
 interface UploadState {
   file: File | null
@@ -40,6 +49,7 @@ interface UploadState {
 
 export default function DocumentUploadPage() {
   const router = useRouter()
+  const { navigateBack, navigateToDocuments, isPending } = useDocumentFlow()
   const [uploadState, setUploadState] = useState<UploadState>({
     file: null,
     uploading: false,
@@ -200,11 +210,6 @@ export default function DocumentUploadPage() {
         matchCount,
         processingMessage: 'Document processed successfully!',
       }))
-
-      // Redirect to documents list after 2 seconds
-      setTimeout(() => {
-        router.push('/documents')
-      }, 2000)
     } catch (error) {
       console.error('Upload error:', error)
       setUploadState((prev) => ({
@@ -232,9 +237,15 @@ export default function DocumentUploadPage() {
     })
   }
 
-  // Handle going back to documents list
-  const handleGoBack = () => {
-    router.push('/documents')
+  // Handle uploading another document
+  const handleUploadAnother = () => {
+    setUploadState({
+      file: null,
+      uploading: false,
+      progress: 0,
+      status: 'idle',
+      error: null,
+    })
   }
 
   const canUpload = uploadState.file && !uploadState.uploading && uploadState.status !== 'success'
@@ -244,10 +255,28 @@ export default function DocumentUploadPage() {
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Breadcrumbs */}
+          <Breadcrumb className="mb-4">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/home">Home</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/documents">Documents</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Upload</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
           <div className="flex items-center gap-4">
             <button
-              onClick={handleGoBack}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
+              onClick={navigateBack}
+              disabled={isPending || uploadState.uploading}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-50"
               aria-label="Go back"
             >
               <svg
@@ -321,6 +350,27 @@ export default function DocumentUploadPage() {
                     className="px-6 py-3 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors"
                   >
                     Cancel
+                  </button>
+                </div>
+              )}
+
+              {/* Success actions (shown after successful upload) */}
+              {uploadState.status === 'success' && (
+                <div className="flex gap-3 mt-4">
+                  <button
+                    type="button"
+                    onClick={navigateToDocuments}
+                    disabled={isPending}
+                    className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    View Documents
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUploadAnother}
+                    className="px-6 py-3 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors"
+                  >
+                    Upload Another
                   </button>
                 </div>
               )}

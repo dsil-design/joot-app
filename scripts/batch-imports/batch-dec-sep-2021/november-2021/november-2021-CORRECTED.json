@@ -1,0 +1,1702 @@
+[
+  {
+    "transaction_date": "2021-11-01",
+    "description": "Work Email",
+    "merchant": "Google",
+    "amount": 6.36,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12713,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "This Month’s Rent",
+    "merchant": "Jatu (Landlord)",
+    "amount": 19500,
+    "currency": "THB",
+    "payment_method": "Bangkok Bank Account",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12714,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "Electricity Bill",
+    "merchant": "Jatu (Landlord)",
+    "amount": 1115,
+    "currency": "THB",
+    "payment_method": "Bangkok Bank Account",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12715,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "Desk Mat",
+    "merchant": "Grovemade",
+    "amount": 100.7,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12716,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "iPhone Stand",
+    "merchant": "Amazon",
+    "amount": 13.77,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12717,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "iPad Stand",
+    "merchant": "Amazon",
+    "amount": 17.11,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12718,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "Laptop Holder",
+    "merchant": "Amazon",
+    "amount": 18.01,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12719,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "iPad Picture Frame",
+    "merchant": "Etsy",
+    "amount": 68.9,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12720,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "Bar Stools",
+    "merchant": "Wayfair",
+    "amount": 108.11,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12721,
+      "reimbursable": true,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "End Table",
+    "merchant": "Wayfair",
+    "amount": 72.07,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12722,
+      "reimbursable": true,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "Reimbursement: Jordan’s Hamper",
+    "merchant": "Jordan",
+    "amount": 31.79,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12723,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "Reimbursement: Bar Stools",
+    "merchant": "Jordan",
+    "amount": 54,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12724,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "Reimbursement: End table",
+    "merchant": "Jordan",
+    "amount": 36,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12725,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "Train Fair",
+    "merchant": "SEPTA",
+    "amount": 10,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12726,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "Reimbursement: Cannabis",
+    "merchant": "Jordan",
+    "amount": 60,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12727,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-01",
+    "description": "Despetch Webcam",
+    "merchant": "Amazon",
+    "amount": 63.06,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12728,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-02",
+    "description": "Bed Sheets",
+    "merchant": "Amazon",
+    "amount": 38.07,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12731,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-02",
+    "description": "Bed Blanket",
+    "merchant": "Amazon",
+    "amount": 28.61,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12732,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-02",
+    "description": "SF Bay Coffee Beans",
+    "merchant": "Amazon",
+    "amount": 18.99,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12733,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-03",
+    "description": "Laptop Stand",
+    "merchant": "Amazon",
+    "amount": 18.01,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12736,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-03",
+    "description": "Parking",
+    "merchant": "ParkMobile",
+    "amount": 0.95,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12737,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-03",
+    "description": "Haircut",
+    "merchant": "Tough Nickel",
+    "amount": 60,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12738,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-03",
+    "description": "WD-40",
+    "merchant": "Amazon",
+    "amount": 3.15,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12739,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-04",
+    "description": "Sweatpants",
+    "merchant": "Amazon",
+    "amount": 14.99,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12742,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-04",
+    "description": "Gym shirts and shorts",
+    "merchant": "Amazon",
+    "amount": 53.99,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12743,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-04",
+    "description": "Mouthwash Dispenser",
+    "merchant": "Amazon",
+    "amount": 29.68,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12744,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-04",
+    "description": "Throw Blanket: Olive Green",
+    "merchant": "Amazon",
+    "amount": 26.49,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12745,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-04",
+    "description": "Throw Pillow Covers",
+    "merchant": "Amazon",
+    "amount": 15.89,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12746,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-05",
+    "description": "Groceries",
+    "merchant": "Giant",
+    "amount": 48.02,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12749,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-05",
+    "description": "Lunch",
+    "merchant": "Wawa",
+    "amount": 7.78,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12750,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-05",
+    "description": "Beer",
+    "merchant": "Giant",
+    "amount": 10.49,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12751,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-06",
+    "description": "Museum Tickets w/ Eileen",
+    "merchant": "Philadelphia Museum of Art",
+    "amount": 50,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12754,
+      "reimbursable": true,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-06",
+    "description": "Taxi to Bar",
+    "merchant": "Lyft",
+    "amount": 14.99,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12755,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-06",
+    "description": "Taxi to Apartment",
+    "merchant": "Lyft",
+    "amount": 55.7,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12756,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-06",
+    "description": "Train Ticket",
+    "merchant": "SEPTA",
+    "amount": 5.25,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12757,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-06",
+    "description": "Dinner w/ Eileen",
+    "merchant": "Fette Sau",
+    "amount": 38.86,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12758,
+      "reimbursable": true,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-06",
+    "description": "Coffee",
+    "merchant": "Au Bon Pain",
+    "amount": 2.48,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12759,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-06",
+    "description": "Tokens",
+    "merchant": "Barcade",
+    "amount": 10,
+    "currency": "USD",
+    "payment_method": "Cash",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12762,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-06",
+    "description": "Coffees",
+    "merchant": "Art Museum Cafe",
+    "amount": 10.8,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12763,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-07",
+    "description": "Gas",
+    "merchant": "Getty",
+    "amount": 55.5,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12766,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-07",
+    "description": "Dinner",
+    "merchant": "Tony & Joes",
+    "amount": 20.3,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12767,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-07",
+    "description": "Picture Frames, Throw Pillows",
+    "merchant": "Amazon",
+    "amount": 36.23,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12768,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-08",
+    "description": "Monthly Subscription: Paramount+",
+    "merchant": "CBS",
+    "amount": 5.99,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12771,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-08",
+    "description": "USB C Hub",
+    "merchant": "Amazon",
+    "amount": 63.59,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12772,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-08",
+    "description": "Logitech Keyboard",
+    "merchant": "Amazon",
+    "amount": 105.84,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12773,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-08",
+    "description": "HDMI cable, USB-C Extension cable, Cable clips",
+    "merchant": "Amazon",
+    "amount": 28.39,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12774,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-09",
+    "description": "Dinner: ChiangMai",
+    "merchant": "DoorDash",
+    "amount": 28.48,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12777,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-10",
+    "description": "CNX Internet",
+    "merchant": "AIS",
+    "amount": 28.73,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12780,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-10",
+    "description": "CNX Cell Phone",
+    "merchant": "AIS",
+    "amount": 45.73,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12781,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-10",
+    "description": "Reimbursement: DoorDash",
+    "merchant": "DoorDash",
+    "amount": 28.48,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "income",
+    "tags": [
+      "Reimbursement"
+    ],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12782,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-11",
+    "description": "Monthly Subscription: YouTube Premium",
+    "merchant": "Apple iTunes",
+    "amount": 16.95,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12785,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-11",
+    "description": "Cannabis",
+    "merchant": "Apothecarium",
+    "amount": 100,
+    "currency": "USD",
+    "payment_method": "Cash",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12786,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-11",
+    "description": "Groceries",
+    "merchant": "Whole Foods",
+    "amount": 28.7,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12787,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-11",
+    "description": "Lunch",
+    "merchant": "Vic Sushi",
+    "amount": 19.15,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12788,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-11",
+    "description": "Upgraded Cruise Rooms",
+    "merchant": "Dad",
+    "amount": 200,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12789,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-12",
+    "description": "Monthly Subscription: Netflix",
+    "merchant": "Netflix",
+    "amount": 19.07,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12792,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-12",
+    "description": "Train Into City",
+    "merchant": "SEPTA",
+    "amount": 5.75,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12793,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-12",
+    "description": "Breakfast",
+    "merchant": "K'Far Cafe",
+    "amount": 13.85,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12794,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-12",
+    "description": "Coffee",
+    "merchant": "La Colombe",
+    "amount": 4.51,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12795,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-12",
+    "description": "Lunch",
+    "merchant": "Vic Sushi",
+    "amount": 19.15,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12796,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-12",
+    "description": "Coffee",
+    "merchant": "K'Far Cafe",
+    "amount": 3.56,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12797,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-12",
+    "description": "Xfinity",
+    "merchant": "Jordan",
+    "amount": 89.71,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12798,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-12",
+    "description": "Storage Unit - November",
+    "merchant": "Jordan",
+    "amount": 50,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12799,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-12",
+    "description": "Cards",
+    "merchant": "Craig",
+    "amount": 32,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12800,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-12",
+    "description": "Train to Apartment",
+    "merchant": "SEPTA",
+    "amount": 5.75,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12801,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-13",
+    "description": "Cancelled Lyft",
+    "merchant": "Lyft",
+    "amount": 5,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12804,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-13",
+    "description": "Taxi to Bar",
+    "merchant": "Lyft",
+    "amount": 15.29,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12805,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-13",
+    "description": "Taxi to Apartment",
+    "merchant": "Lyft",
+    "amount": 10.77,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12806,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-13",
+    "description": "Griddle",
+    "merchant": "Burlington",
+    "amount": 13.77,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12807,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-13",
+    "description": "Bath mats, throw pillows, coasters, bathroom glass",
+    "merchant": "IKEA",
+    "amount": 64.56,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12808,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-13",
+    "description": "Driving Range",
+    "merchant": "Tee’s",
+    "amount": 12,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12809,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-13",
+    "description": "Drinks",
+    "merchant": "Lucky Dog",
+    "amount": 23.5,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12810,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-13",
+    "description": "Drinks",
+    "merchant": "Lucky Dog",
+    "amount": 7.5,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12811,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-13",
+    "description": "Groceries",
+    "merchant": "Aldi",
+    "amount": 28.5,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12812,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-14",
+    "description": "Breakfast",
+    "merchant": "Wawa",
+    "amount": 13.76,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12815,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-14",
+    "description": "Driving Range & Driving Range",
+    "merchant": "Glen Mills",
+    "amount": 80,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12816,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-15",
+    "description": "Wings from Friday",
+    "merchant": "Jordan",
+    "amount": 20.57,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12819,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-15",
+    "description": "Refund for Jordan’s First Hamper",
+    "merchant": "Amazon",
+    "amount": 19.07,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "income",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12820,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-15",
+    "description": "Auto Insurance",
+    "merchant": "Travelers",
+    "amount": 562,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12821,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-16",
+    "description": "Bar from Saturday",
+    "merchant": "Jordan",
+    "amount": 20,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12824,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-16",
+    "description": "Refund for Jordan: Hamper",
+    "merchant": "Jordan",
+    "amount": 19.07,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12825,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-16",
+    "description": "Sunscreen, Swimsuit, Sink Caddy, Cetaphil, Wrinkle spray",
+    "merchant": "Amazon",
+    "amount": 58.57,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12826,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-17",
+    "description": "Coffee",
+    "merchant": "Panera",
+    "amount": 2.53,
+    "currency": "USD",
+    "payment_method": "American Express",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12829,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-17",
+    "description": "Electricity",
+    "merchant": "Jordan",
+    "amount": 8.88,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12830,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-17",
+    "description": "Annual Domain Renewal: dennissiller.com",
+    "merchant": "GoDaddy",
+    "amount": 19.17,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12831,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-18",
+    "description": "Bicycle Cards",
+    "merchant": "Amazon",
+    "amount": 7.17,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12834,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-19",
+    "description": "Poker Winnings",
+    "merchant": "Omi & Eric",
+    "amount": 6,
+    "currency": "USD",
+    "payment_method": "Venmo",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12837,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-19",
+    "description": "Snacks & Drinks",
+    "merchant": "Giant",
+    "amount": 10.58,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12838,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-19",
+    "description": "Whiskey",
+    "merchant": "Wine & Spirits",
+    "amount": 33.47,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12839,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-22",
+    "description": "Coffee",
+    "merchant": "Roatan",
+    "amount": 11,
+    "currency": "USD",
+    "payment_method": "Cash",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12848,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-22",
+    "description": "Shotglass",
+    "merchant": "Roatan",
+    "amount": 8,
+    "currency": "USD",
+    "payment_method": "Cash",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12849,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-23",
+    "description": "Shotglass",
+    "merchant": "Belize",
+    "amount": 8,
+    "currency": "USD",
+    "payment_method": "Cash",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12852,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-24",
+    "description": "Monthly Subscription: iCloud",
+    "merchant": "Apple iTunes",
+    "amount": 9.99,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12855,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-25",
+    "description": "Monthly Subscription: HBO NOW",
+    "merchant": "Apple",
+    "amount": 15.89,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12858,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-25",
+    "description": "Shotglass & lighter",
+    "merchant": "Cozumel",
+    "amount": 6,
+    "currency": "USD",
+    "payment_method": "Cash",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12859,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-27",
+    "description": "Room Bill (WiFi,Arcades with Austin, Austin shirt)",
+    "merchant": "NCL",
+    "amount": 199.41,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12865,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-27",
+    "description": "Dinner (also Mom)",
+    "merchant": "El Limon",
+    "amount": 38.05,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12866,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-28",
+    "description": "Groceries",
+    "merchant": "Giant",
+    "amount": 60.78,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12869,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-28",
+    "description": "Groceries",
+    "merchant": "Lee’s Produce",
+    "amount": 41.64,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12870,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-29",
+    "description": "Cell Phone",
+    "merchant": "T-Mobile",
+    "amount": 70,
+    "currency": "USD",
+    "payment_method": "Credit Card: Chase Sapphire Reserve",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12873,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-30",
+    "description": "Gambling",
+    "merchant": "Myself",
+    "amount": 785,
+    "currency": "USD",
+    "payment_method": "Cash",
+    "transaction_type": "expense",
+    "tags": [],
+    "metadata": {
+      "source": "Expense Tracker",
+      "line_number": 12876,
+      "reimbursable": false,
+      "business_expense_marker": false
+    }
+  },
+  {
+    "transaction_date": "2021-11-11",
+    "description": "Freelance Income - October",
+    "merchant": "NJDA",
+    "amount": 175,
+    "currency": "USD",
+    "payment_method": "Direct Deposit",
+    "transaction_type": "income",
+    "tags": [],
+    "metadata": {
+      "source": "Gross Income",
+      "line_number": 12885
+    }
+  },
+  {
+    "transaction_date": "2021-11-15",
+    "description": "Paycheck",
+    "merchant": "BluJay",
+    "amount": 2770.1,
+    "currency": "USD",
+    "payment_method": "Direct Deposit",
+    "transaction_type": "income",
+    "tags": [],
+    "metadata": {
+      "source": "Gross Income",
+      "line_number": 12886
+    }
+  },
+  {
+    "transaction_date": "2021-11-30",
+    "description": "Paycheck",
+    "merchant": "BluJay",
+    "amount": 2770.2,
+    "currency": "USD",
+    "payment_method": "Direct Deposit",
+    "transaction_type": "income",
+    "tags": [],
+    "metadata": {
+      "source": "Gross Income",
+      "line_number": 12887
+    }
+  },
+  {
+    "transaction_date": "2021-11-30",
+    "description": "Monthly IRA Contribution",
+    "merchant": "Vanguard",
+    "amount": 83.33,
+    "currency": "USD",
+    "payment_method": "PNC Bank Account",
+    "transaction_type": "expense",
+    "tags": [
+      "Savings/Investment"
+    ],
+    "metadata": {
+      "source": "Personal Savings & Investments",
+      "line_number": 12895
+    }
+  },
+  {
+    "transaction_date": "2021-11-30",
+    "description": "Emergency Savings",
+    "merchant": "Vanguard",
+    "amount": 716.67,
+    "currency": "USD",
+    "payment_method": "PNC Bank Account",
+    "transaction_type": "expense",
+    "tags": [
+      "Savings/Investment"
+    ],
+    "metadata": {
+      "source": "Personal Savings & Investments",
+      "line_number": 12896
+    }
+  }
+]

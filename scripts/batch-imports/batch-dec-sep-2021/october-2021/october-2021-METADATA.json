@@ -1,0 +1,21 @@
+{
+  "month": "October 2021",
+  "parsing_date": "2025-10-31T05:52:05.057Z",
+  "total_transactions": 137,
+  "currency_distribution": {
+    "thb": 3,
+    "usd": 134,
+    "thb_percentage": 2.2
+  },
+  "red_flags": {
+    "negative_conversions": 8,
+    "typo_reimbursements": 0,
+    "comma_formatted": 2,
+    "zero_skipped": 0
+  },
+  "tag_distribution": {
+    "Reimbursement": 6
+  },
+  "dual_residence_verified": true,
+  "corrections": []
+}

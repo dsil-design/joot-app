@@ -87,30 +87,39 @@ function calculateStringSimilarity(str1: string, str2: string): number {
  */
 function calculateVendorScore(
   extractedVendor: string | null,
-  transaction: Transaction
+  transaction: any // Using any since vendor is joined data
 ): number {
   if (!extractedVendor) return 0
 
   const vendor = extractedVendor.toLowerCase().trim()
   const description = (transaction.description || '').toLowerCase().trim()
-  const transactionVendor = (transaction.vendor || '').toLowerCase().trim()
+  const transactionVendorName = (transaction.vendor?.name || '').toLowerCase().trim()
+  const paymentMethodName = (transaction.payment_method?.name || '').toLowerCase().trim()
 
-  // Direct match bonus
+  // Direct match bonus - check description, vendor name, and payment method
   if (description.includes(vendor) || vendor.includes(description)) {
     return 100
   }
 
-  if (transactionVendor && (transactionVendor.includes(vendor) || vendor.includes(transactionVendor))) {
+  if (transactionVendorName && (transactionVendorName.includes(vendor) || vendor.includes(transactionVendorName))) {
     return 100
+  }
+
+  // Check if extracted vendor is actually the payment method
+  if (paymentMethodName && (paymentMethodName.includes(vendor) || vendor.includes(paymentMethodName))) {
+    return 90 // High score but not 100 since it's not the actual vendor
   }
 
   // Fuzzy match
   const descriptionSimilarity = calculateStringSimilarity(vendor, description)
-  const vendorSimilarity = transactionVendor
-    ? calculateStringSimilarity(vendor, transactionVendor)
+  const vendorSimilarity = transactionVendorName
+    ? calculateStringSimilarity(vendor, transactionVendorName)
+    : 0
+  const paymentMethodSimilarity = paymentMethodName
+    ? calculateStringSimilarity(vendor, paymentMethodName)
     : 0
 
-  return Math.max(descriptionSimilarity, vendorSimilarity)
+  return Math.max(descriptionSimilarity, vendorSimilarity, paymentMethodSimilarity * 0.9)
 }
 
 /**
@@ -125,7 +134,8 @@ function calculateAmountScore(
 ): number {
   if (!extractedAmount) return 0
 
-  const transactionAmount = Math.abs(transaction.amount)
+  // Transactions are stored as positive values for expenses
+  const transactionAmount = transaction.amount
   const difference = Math.abs(extractedAmount - transactionAmount)
   const percentDiff = difference / transactionAmount
 
@@ -245,18 +255,28 @@ export async function findMatchingTransactions(
   criteria: MatchingCriteria,
   userId: string,
   minConfidence: number = 50,
-  maxResults: number = 5
+  maxResults: number = 5,
+  supabaseClient?: any // Optional client to avoid cookies() issues
 ): Promise<MatchResult> {
   try {
-    const supabase = await createClient()
+    console.log('[MATCHING] Starting transaction matching...')
+    console.log('[MATCHING] Criteria:', JSON.stringify(criteria, null, 2))
+    console.log('[MATCHING] User ID:', userId)
+    console.log('[MATCHING] Min confidence:', minConfidence)
+
+    const supabase = supabaseClient || await createClient()
 
     // Build query to fetch candidate transactions
     // Look for transactions within ±30 days if date is provided
     let query = supabase
       .from('transactions')
-      .select('*')
+      .select(`
+        *,
+        vendor:vendors(id, name),
+        payment_method:payment_methods(id, name)
+      `)
       .eq('user_id', userId)
-      .order('date', { ascending: false })
+      .order('transaction_date', { ascending: false })
 
     // Date range filter if date provided
     if (criteria.transactionDate) {
@@ -266,28 +286,39 @@ export async function findMatchingTransactions(
       const endDate = new Date(docDate)
       endDate.setDate(endDate.getDate() + 30)
 
+      console.log('[MATCHING] Date range:', {
+        docDate: docDate.toISOString(),
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      })
+
       query = query
-        .gte('date', startDate.toISOString().split('T')[0])
-        .lte('date', endDate.toISOString().split('T')[0])
+        .gte('transaction_date', startDate.toISOString().split('T')[0])
+        .lte('transaction_date', endDate.toISOString().split('T')[0])
     } else {
       // If no date, just look at recent transactions (last 90 days)
       const ninetyDaysAgo = new Date()
       ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
-      query = query.gte('date', ninetyDaysAgo.toISOString().split('T')[0])
+      console.log('[MATCHING] No date provided, using 90-day window from:', ninetyDaysAgo.toISOString().split('T')[0])
+      query = query.gte('transaction_date', ninetyDaysAgo.toISOString().split('T')[0])
     }
 
     // Amount range filter if amount provided
     if (criteria.amount) {
       const tolerance = criteria.amount * 0.1 // 10% tolerance for initial filter
+      const minAmount = criteria.amount - tolerance
+      const maxAmount = criteria.amount + tolerance
+      console.log('[MATCHING] Amount range:', { minAmount, maxAmount, tolerance })
       query = query
-        .gte('amount', -(criteria.amount + tolerance))
-        .lte('amount', -(criteria.amount - tolerance))
+        .gte('amount', minAmount)
+        .lte('amount', maxAmount)
     }
 
+    console.log('[MATCHING] Executing query...')
     const { data: transactions, error } = await query.limit(50) // Get more candidates for scoring
 
     if (error) {
-      console.error('Failed to fetch transactions:', error)
+      console.error('[MATCHING] Query failed:', error)
       return {
         success: false,
         matches: [],
@@ -296,7 +327,13 @@ export async function findMatchingTransactions(
       }
     }
 
+    console.log('[MATCHING] Query returned', transactions?.length || 0, 'transactions')
+    if (transactions && transactions.length > 0) {
+      console.log('[MATCHING] First transaction sample:', JSON.stringify(transactions[0], null, 2))
+    }
+
     if (!transactions || transactions.length === 0) {
+      console.log('[MATCHING] No transactions found in database query')
       return {
         success: true,
         matches: [],
@@ -305,28 +342,52 @@ export async function findMatchingTransactions(
     }
 
     // Score each transaction
-    const candidates: MatchCandidate[] = transactions
-      .map((transaction) => {
-        const vendorScore = calculateVendorScore(criteria.vendorName, transaction)
-        const amountScore = calculateAmountScore(criteria.amount, transaction)
-        const dateScore = calculateDateScore(criteria.transactionDate, transaction)
-        const overallScore = calculateOverallConfidence({ vendorScore, amountScore, dateScore })
+    console.log('[MATCHING] Scoring', transactions.length, 'candidate transactions...')
+    const allScored = transactions.map((transaction, idx) => {
+      const vendorScore = calculateVendorScore(criteria.vendorName, transaction)
+      const amountScore = calculateAmountScore(criteria.amount, transaction)
+      const dateScore = calculateDateScore(criteria.transactionDate, transaction)
+      const overallScore = calculateOverallConfidence({ vendorScore, amountScore, dateScore })
 
-        return {
-          transaction,
-          confidence: overallScore,
-          matchReasons: generateMatchReasons({ vendorScore, amountScore, dateScore }),
-          scores: {
-            vendorScore,
-            amountScore,
-            dateScore,
-            overallScore,
-          },
-        }
-      })
+      if (idx < 3) { // Log first 3 for debugging
+        console.log(`[MATCHING] Transaction ${idx + 1}:`, {
+          id: transaction.id,
+          description: transaction.description,
+          amount: transaction.amount,
+          date: transaction.transaction_date,
+          vendor: transaction.vendor?.name,
+          paymentMethod: transaction.payment_method?.name,
+          scores: { vendorScore, amountScore, dateScore, overallScore }
+        })
+      }
+
+      return {
+        transaction,
+        confidence: overallScore,
+        matchReasons: generateMatchReasons({ vendorScore, amountScore, dateScore }),
+        scores: {
+          vendorScore,
+          amountScore,
+          dateScore,
+          overallScore,
+        },
+      }
+    })
+
+    console.log('[MATCHING] Filtering by min confidence:', minConfidence)
+    const candidates: MatchCandidate[] = allScored
       .filter((candidate) => candidate.confidence >= minConfidence)
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, maxResults)
+
+    console.log('[MATCHING] After filtering:', candidates.length, 'matches above threshold')
+    if (candidates.length > 0) {
+      console.log('[MATCHING] Best match:', {
+        confidence: candidates[0].confidence,
+        description: candidates[0].transaction.description,
+        scores: candidates[0].scores
+      })
+    }
 
     const bestMatch = candidates.length > 0 ? candidates[0] : null
 

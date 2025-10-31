@@ -68,11 +68,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     // Get extraction data
+    // Note: document_extractions uses 'merchant_name' not 'vendor_name'
     const { data: extraction, error: extractionError } = await supabase
       .from('document_extractions')
       .select(
         `
-        vendor_name,
+        merchant_name,
         amount,
         currency,
         transaction_date,
@@ -101,9 +102,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
           id,
           description,
           amount,
-          currency,
-          date,
-          category
+          original_currency,
+          transaction_date,
+          vendor:vendors(id, name),
+          payment_method:payment_methods(id, name)
         )
       `
       )
@@ -136,9 +138,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
             id: transaction.id,
             description: transaction.description,
             amount: transaction.amount,
-            currency: transaction.currency,
-            date: transaction.date,
-            category: transaction.category,
+            currency: transaction.original_currency,
+            date: transaction.transaction_date,
+            category: null,
+            vendor: transaction.vendor || null,
+            payment_method: transaction.payment_method || null,
           },
         }
       }) || []
@@ -159,7 +163,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
           file_url: document.file_url,
           created_at: document.created_at,
         },
-        extraction: extraction || {
+        extraction: extraction ? {
+          vendor_name: extraction.merchant_name,
+          amount: extraction.amount,
+          currency: extraction.currency,
+          transaction_date: extraction.transaction_date,
+          extraction_confidence: extraction.extraction_confidence,
+        } : {
           vendor_name: null,
           amount: null,
           currency: null,

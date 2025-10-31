@@ -85,24 +85,32 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .single()
 
     if (existingMatch) {
-      // Update existing match to manual
+      // Update existing match to manual and approve it
       await supabase
         .from('transaction_document_matches')
         .update({
+          user_id: user.id,
           match_type: 'manual',
           matched_at: new Date().toISOString(),
           matched_by: user.id,
+          approved: true,
+          approved_at: new Date().toISOString(),
+          approved_by: user.id,
         })
         .eq('id', existingMatch.id)
     } else {
       // Create new manual match
       await supabase.from('transaction_document_matches').insert({
+        user_id: user.id,
         document_id: queueItem.document_id,
         transaction_id: body.transactionId,
         confidence_score: 100, // Manual match is 100% confidence
         match_type: 'manual',
         matched_at: new Date().toISOString(),
         matched_by: user.id,
+        approved: true,
+        approved_at: new Date().toISOString(),
+        approved_by: user.id,
         metadata: {
           manual_review: true,
           reviewed_by: user.id,

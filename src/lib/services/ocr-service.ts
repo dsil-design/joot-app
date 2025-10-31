@@ -160,11 +160,86 @@ export async function extractTextFromDocument(
     return extractTextFromPDF(fileBuffer, options)
   }
 
+  // Handle email files (.eml)
+  if (mimeType === 'message/rfc822') {
+    return extractTextFromEmail(fileBuffer)
+  }
+
   return {
     success: false,
     text: '',
     confidence: 0,
     error: `Unsupported file type for OCR: ${mimeType}`,
+  }
+}
+
+/**
+ * Extract text from email files (.eml)
+ *
+ * Email files are plain text format, so we just need to parse them
+ * to extract the body content
+ *
+ * @param fileBuffer - Email file buffer
+ * @returns OCR result with extracted email text
+ */
+async function extractTextFromEmail(fileBuffer: Buffer): Promise<OCRResult> {
+  try {
+    const startTime = Date.now()
+
+    // Convert buffer to string
+    const emailContent = fileBuffer.toString('utf-8')
+
+    // Simple email parsing - extract body after headers
+    // Headers end with a blank line (double newline)
+    const headerEndIndex = emailContent.indexOf('\n\n')
+    const bodyStartIndex = headerEndIndex !== -1 ? headerEndIndex + 2 : 0
+
+    // Extract subject line for better context
+    const subjectMatch = emailContent.match(/^Subject: (.+)$/m)
+    const subject = subjectMatch ? subjectMatch[1] : ''
+
+    // Extract from line
+    const fromMatch = emailContent.match(/^From: (.+)$/m)
+    const from = fromMatch ? fromMatch[1] : ''
+
+    // Extract date
+    const dateMatch = emailContent.match(/^Date: (.+)$/m)
+    const date = dateMatch ? dateMatch[1] : ''
+
+    // Get body content
+    let body = emailContent.substring(bodyStartIndex)
+
+    // Clean up common email artifacts
+    body = body
+      .replace(/=\r?\n/g, '') // Remove soft line breaks
+      .replace(/=([0-9A-F]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16))) // Decode quoted-printable
+      .trim()
+
+    // Combine extracted parts
+    const extractedText = [
+      subject && `Subject: ${subject}`,
+      from && `From: ${from}`,
+      date && `Date: ${date}`,
+      '',
+      body
+    ].filter(Boolean).join('\n')
+
+    const processingTime = Date.now() - startTime
+
+    return {
+      success: true,
+      text: extractedText,
+      confidence: 100, // Email is plain text, so confidence is 100%
+      processingTime,
+      language: 'eng'
+    }
+  } catch (error) {
+    return {
+      success: false,
+      text: '',
+      confidence: 0,
+      error: error instanceof Error ? error.message : 'Failed to parse email'
+    }
   }
 }
 

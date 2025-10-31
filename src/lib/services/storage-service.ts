@@ -7,12 +7,14 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { compressImage, generateThumbnail, getImageMetadata } from '@/lib/utils/image-compression'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface UploadDocumentOptions {
   file: File
   userId: string
   documentId: string
   compress?: boolean // Default true for images
+  supabaseClient?: SupabaseClient // Optional: pass authenticated client for server-side
 }
 
 export interface UploadResult {
@@ -49,8 +51,8 @@ export interface UploadResult {
 export async function uploadDocument(
   options: UploadDocumentOptions
 ): Promise<UploadResult> {
-  const { file, userId, documentId, compress = true } = options
-  const supabase = createClient()
+  const { file, userId, documentId, compress = true, supabaseClient } = options
+  const supabase = supabaseClient || createClient()
 
   try {
     // Read file as buffer

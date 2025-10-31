@@ -1,0 +1,19 @@
+{
+  "month": "January 2021",
+  "parsing_date": "2025-10-31T10:17:08.384Z",
+  "total_transactions": 161,
+  "currency_distribution": {
+    "thb": 124,
+    "usd": 37,
+    "thb_percentage": 77
+  },
+  "red_flags": {
+    "negative_conversions": 0,
+    "typo_reimbursements": 0,
+    "comma_formatted": 0,
+    "zero_skipped": 0
+  },
+  "tag_distribution": {},
+  "dual_residence_verified": true,
+  "corrections": []
+}
