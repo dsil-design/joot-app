@@ -179,7 +179,10 @@
       "Bash(do cp verify-may-1to1.js verify-$month-1to1.js)",
       "Bash(git reset:*)",
       "Bash(host:*)",
-      "Bash(nslookup:*)"
+      "Bash(nslookup:*)",
+      "Bash(git checkout 9abd313 -- src/app/documents src/app/reconciliation src/app/api/documents src/app/api/reconciliation src/components/documents src/lib/services/ocr-service.ts src/lib/services/ai-extraction-service.ts src/lib/services/transaction-matching-service.ts src/lib/services/vendor-enrichment-service.ts)",
+      "Bash(cd /Users/dennis/Code\\ Projects/joot-app && git checkout:*)",
+      "Bash(git checkout 9abd313 -- src/lib/services/)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
