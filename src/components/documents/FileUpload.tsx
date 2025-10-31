@@ -7,7 +7,7 @@
  * Supports PDF, JPEG, PNG, and EML files up to 10MB
  */
 
-import { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import {
   validateFile,
   formatFileSize,

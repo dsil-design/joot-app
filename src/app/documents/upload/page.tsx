@@ -10,7 +10,7 @@
  * - Automatic compression for images
  */
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUpload } from '@/components/documents/FileUpload'
 import { UploadProgress } from '@/components/documents/UploadProgress'
