@@ -10,7 +10,7 @@
  * - Automatic compression for images
  */
 
-import React, { useState } from 'react'
+import React, { useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUpload } from '@/components/documents/FileUpload'
 import { UploadProgress } from '@/components/documents/UploadProgress'
@@ -47,7 +47,7 @@ interface UploadState {
   matchCount?: number
 }
 
-export default function DocumentUploadPage() {
+function DocumentUploadContent() {
   const router = useRouter()
   const { navigateBack, navigateToDocuments, isPending } = useDocumentFlow()
   const [uploadState, setUploadState] = useState<UploadState>({
@@ -465,5 +465,20 @@ export default function DocumentUploadPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function DocumentUploadPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <DocumentUploadContent />
+    </Suspense>
   )
 }
