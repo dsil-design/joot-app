@@ -72,7 +72,7 @@ export class ECBFullSyncService {
   private syncHistoryId?: string;
   private configuration?: SyncConfiguration;
   private abortController?: AbortController;
-  private readonly SYNC_TIMEOUT_MS = 4.5 * 60 * 1000; // 4.5 minutes (Vercel has 5min limit)
+  private readonly SYNC_TIMEOUT_MS = 14 * 60 * 1000; // 14 minutes (Vercel has 15min limit)
 
   /**
    * Execute a full sync of ECB exchange rates with timeout protection
@@ -382,19 +382,39 @@ export class ECBFullSyncService {
 
   /**
    * Calculate differences between XML data and database
+   * OPTIMIZED: Single bulk query instead of per-date queries
    */
   private async calculateDiffs(ecbRates: ECBRate[]): Promise<RateDiff[]> {
     const phase = SyncPhase.DIFF;
     const startTime = Date.now();
-    
+
     try {
       await this.log(LogLevel.INFO, phase, 'Calculating differences with database');
-      
+
       const diffs: RateDiff[] = [];
       const { startDate } = this.configuration!;
       const endDate = new Date().toISOString().split('T')[0];
-      
-      // Group ECB rates by date for efficient processing
+
+      // OPTIMIZATION: Fetch ALL existing rates in one query instead of per-date
+      await this.log(LogLevel.DEBUG, phase, 'Fetching existing rates from database (bulk query)');
+      const supabase = createServiceRoleClient();
+      const { data: existingRates } = await supabase.from('exchange_rates')
+        .select('id, from_currency, to_currency, rate, date')
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+      // Create lookup map for existing rates
+      const existingMap = new Map<string, any>();
+      if (existingRates) {
+        for (const existing of existingRates) {
+          const key = `${existing.from_currency}-${existing.to_currency}-${existing.date}`;
+          existingMap.set(key, existing);
+        }
+      }
+
+      await this.log(LogLevel.DEBUG, phase, `Loaded ${existingMap.size} existing rates`);
+
+      // Group ECB rates by date for processing
       const ratesByDate = new Map<string, ECBRate[]>();
       for (const rate of ecbRates) {
         if (!ratesByDate.has(rate.date)) {
@@ -404,30 +424,16 @@ export class ECBFullSyncService {
       }
 
       // Process each date
+      let processedDates = 0;
       for (const [date, rates] of ratesByDate) {
         // Generate all currency pairs for this date
         const processedRates = this.generateCurrencyPairs(rates, date);
-        
-        // Get existing rates from database for this date
-        const supabase = createServiceRoleClient();
-        const { data: existingRates } = await supabase.from('exchange_rates')
-          .select('id, from_currency, to_currency, rate, date')
-          .eq('date', date);
-        
-        // Create lookup map for existing rates
-        const existingMap = new Map<string, any>();
-        if (existingRates) {
-          for (const existing of existingRates) {
-            const key = `${existing.from_currency}-${existing.to_currency}-${existing.date}`;
-            existingMap.set(key, existing);
-          }
-        }
 
         // Compare and generate diffs
         for (const newRate of processedRates) {
           const key = `${newRate.from_currency}-${newRate.to_currency}-${newRate.date}`;
           const existing = existingMap.get(key);
-          
+
           if (!existing) {
             // New rate
             diffs.push({
@@ -463,20 +469,22 @@ export class ECBFullSyncService {
           }
         }
 
-        // Any remaining in existingMap should be deleted (no longer in ECB data)
-        for (const [key, existing] of existingMap) {
-          // Only delete if within our configured date range
-          if (existing.date >= startDate && existing.date <= endDate) {
-            diffs.push({
-              type: 'delete',
-              fromCurrency: existing.from_currency,
-              toCurrency: existing.to_currency,
-              date: existing.date,
-              oldRate: existing.rate,
-              rateId: existing.id
-            });
-          }
+        processedDates++;
+        if (processedDates % 100 === 0) {
+          await this.log(LogLevel.DEBUG, phase, `Processed ${processedDates}/${ratesByDate.size} dates`);
         }
+      }
+
+      // Any remaining in existingMap should be deleted (no longer in ECB data)
+      for (const [key, existing] of existingMap) {
+        diffs.push({
+          type: 'delete',
+          fromCurrency: existing.from_currency,
+          toCurrency: existing.to_currency,
+          date: existing.date,
+          oldRate: existing.rate,
+          rateId: existing.id
+        });
       }
 
       const diffTime = Date.now() - startTime;
