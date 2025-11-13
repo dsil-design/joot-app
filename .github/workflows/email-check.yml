@@ -1,0 +1,151 @@
+name: Check Email for Attachments
+
+on:
+  schedule:
+    # Run every 15 minutes
+    # Note: GitHub Actions may delay execution during high load
+    - cron: '*/15 * * * *'
+
+  workflow_dispatch:
+    # Allow manual trigger for testing
+    inputs:
+      debug_mode:
+        description: 'Enable debug logging'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+# Cancel in-progress runs when a new run is triggered
+concurrency:
+  group: email-check
+  cancel-in-progress: true
+
+jobs:
+  trigger-email-check:
+    name: Trigger Email Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Generate Request ID
+        id: request
+        run: |
+          echo "request_id=$(uuidgen)" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
+      - name: Trigger Vercel Email Check
+        id: email_check
+        run: |
+          # Prepare request body
+          REQUEST_BODY=$(cat <<EOF
+          {
+            "source": "github-actions",
+            "requestId": "${{ steps.request.outputs.request_id }}",
+            "timestamp": "${{ steps.request.outputs.timestamp }}",
+            "debug": ${{ inputs.debug_mode || 'false' }}
+          }
+          EOF
+          )
+
+          # Make API request with timeout
+          response=$(curl -X POST \
+            --max-time 30 \
+            -H "Content-Type: application/json" \
+            -H "X-Webhook-Secret: ${{ secrets.EMAIL_WEBHOOK_SECRET }}" \
+            -d "$REQUEST_BODY" \
+            -w "\n%{http_code}" \
+            -s \
+            ${{ secrets.VERCEL_EMAIL_ENDPOINT }})
+
+          # Parse response
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          # Store outputs
+          echo "http_code=$http_code" >> $GITHUB_OUTPUT
+          echo "response_body=$body" >> $GITHUB_OUTPUT
+
+          # Log response
+          echo "## Response Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status Code**: $http_code" >> $GITHUB_STEP_SUMMARY
+          echo "- **Request ID**: ${{ steps.request.outputs.request_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: ${{ steps.request.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ inputs.debug_mode }}" = "true" ]; then
+            echo "### Response Body" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            echo "$body" | jq '.' 2>/dev/null || echo "$body" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check for success
+          if [ "$http_code" -ne "200" ] && [ "$http_code" -ne "202" ]; then
+            echo "Email check failed with status $http_code"
+            echo "Response: $body"
+            exit 1
+          fi
+
+      - name: Parse Results
+        if: success()
+        run: |
+          response='${{ steps.email_check.outputs.response_body }}'
+
+          # Try to parse JSON response
+          if echo "$response" | jq -e . >/dev/null 2>&1; then
+            processed=$(echo "$response" | jq -r '.processed // 0')
+            success=$(echo "$response" | jq -r '.success // false')
+
+            echo "## Email Check Results" >> $GITHUB_STEP_SUMMARY
+            echo "- **Status**: $( [ "$success" = "true" ] && echo "✅ Success" || echo "⚠️ Partial Success" )" >> $GITHUB_STEP_SUMMARY
+            echo "- **Emails Processed**: $processed" >> $GITHUB_STEP_SUMMARY
+
+            # Log processed emails if available
+            if echo "$response" | jq -e '.emails[]' >/dev/null 2>&1; then
+              echo "### Processed Emails" >> $GITHUB_STEP_SUMMARY
+              echo "$response" | jq -r '.emails[] | "- \(.subject) (\(.attachmentCount) attachments)"' >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "Could not parse JSON response"
+          fi
+
+      - name: Report Failure
+        if: failure()
+        run: |
+          echo "## ❌ Email Check Failed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time**: ${{ steps.request.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **HTTP Code**: ${{ steps.email_check.outputs.http_code }}" >> $GITHUB_STEP_SUMMARY
+
+          # Optional: Send notification (e.g., to Slack, Discord, etc.)
+          # Uncomment and configure if needed
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"Email check failed at ${{ steps.request.outputs.timestamp }}"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Optional: Monitoring job that runs periodically to check system health
+  monitor-health:
+    name: Monitor Email System Health
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    needs: trigger-email-check
+
+    steps:
+      - name: Check System Status
+        run: |
+          # Check the status endpoint
+          status_response=$(curl -s ${{ secrets.VERCEL_EMAIL_ENDPOINT }}/status)
+
+          echo "## System Health Check" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          echo "$status_response" | jq '.' 2>/dev/null || echo "$status_response" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Generate Metrics
+        run: |
+          # This could be extended to push metrics to a monitoring service
+          echo "## Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Time**: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow**: ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Number**: ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
