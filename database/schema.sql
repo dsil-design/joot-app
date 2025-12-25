@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 DO $$ BEGIN
     CREATE TYPE currency_type AS ENUM (
       'USD', 'THB', 'EUR', 'GBP', 'SGD', 'VND', 'MYR',
-      'BTC', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD', 'SEK', 'NOK'
+      'BTC', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD', 'SEK', 'NOK', 'CNY'
     );
 EXCEPTION
     WHEN duplicate_object THEN null;
