@@ -16,6 +16,7 @@ import { format, parseISO } from "date-fns"
 import { formatInTimeZone } from "date-fns-tz"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { MainLayout } from "@/components/layouts/MainLayout"
 import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
 import { formatCurrency } from "@/lib/utils"
 
@@ -323,30 +324,58 @@ export default function ViewTransactionPage() {
 
   if (loading) {
     return (
-      <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
-        <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-          <Button
-            onClick={handleBackClick}
-            disabled={isPending}
-            variant="outline"
-            size="icon"
-            className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
-          >
-            <ArrowLeft className="size-5 text-zinc-800" strokeWidth={1.5} />
-          </Button>
+      <MainLayout showSidebar={true} showMobileNav={false}>
+        <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
+          <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
+            <Button
+              onClick={handleBackClick}
+              disabled={isPending}
+              variant="outline"
+              size="icon"
+              className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
+            >
+              <ArrowLeft className="size-5 text-zinc-800" strokeWidth={1.5} />
+            </Button>
+          </div>
+          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
+            <p className="leading-[36px] whitespace-pre">View transaction</p>
+          </div>
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-2 border-zinc-200 border-t-zinc-950 rounded-full animate-spin"></div>
+          </div>
         </div>
-        <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
-          <p className="leading-[36px] whitespace-pre">View transaction</p>
-        </div>
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-zinc-200 border-t-zinc-950 rounded-full animate-spin"></div>
-        </div>
-      </div>
+      </MainLayout>
     )
   }
 
   if (error || !transaction) {
     return (
+      <MainLayout showSidebar={true} showMobileNav={false}>
+        <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
+          <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
+            <Button
+              onClick={handleBackClick}
+              disabled={isPending}
+              variant="outline"
+              size="icon"
+              className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
+            >
+              <ArrowLeft className="size-5 text-zinc-800" strokeWidth={1.5} />
+            </Button>
+          </div>
+          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
+            <p className="leading-[36px] whitespace-pre">View transaction</p>
+          </div>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-sm text-zinc-500">{error || "Transaction not found"}</p>
+          </div>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  return (
+    <MainLayout showSidebar={true} showMobileNav={false}>
       <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
         <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
           <Button
@@ -358,94 +387,72 @@ export default function ViewTransactionPage() {
           >
             <ArrowLeft className="size-5 text-zinc-800" strokeWidth={1.5} />
           </Button>
+          <Button
+            onClick={handleEditClick}
+            disabled={isPending}
+            variant="secondary"
+            size="sm"
+            className="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 gap-1.5 items-center"
+          >
+            <div className="relative shrink-0 size-4 flex items-center justify-center">
+              <EditIcon />
+            </div>
+            Edit
+          </Button>
         </div>
         <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
           <p className="leading-[36px] whitespace-pre">View transaction</p>
         </div>
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-sm text-zinc-500">{error || "Transaction not found"}</p>
+        <div className="content-stretch flex flex-col gap-8 items-start justify-start relative shrink-0 w-full">
+          <div className="content-stretch flex flex-col gap-6 items-start justify-start relative shrink-0 w-full">
+            <FieldValuePair
+              label="Type"
+              value={transaction.transaction_type === "expense" ? "Expense" : "Income"}
+            />
+            <FieldValuePair
+              label="Date"
+              value={formatDate(transaction.transaction_date)}
+            />
+            <FieldValuePair
+              label="Description"
+              value={transaction.description || "No description"}
+            />
+            <FieldValuePair
+              label="Vendor"
+              value={transaction.vendor?.name || "Unknown"}
+            />
+            <FieldValuePair
+              label="Payment method"
+              value={transaction.payment_method?.name || "Unknown"}
+            />
+            <div className="content-stretch flex gap-6 items-start justify-start relative shrink-0 w-full">
+              <div className="flex-1">
+                <FieldValuePair
+                  label="Amount"
+                  value={formatAmount(transaction)}
+                />
+              </div>
+              <div className="flex-1">
+                <FieldValuePair
+                  label="Exchange rate"
+                  value={formatExchangeRate(transaction, exchangeRate)}
+                  secondaryText={formatExchangeRateTimestamp(exchangeRateTimestamp, isUsingLatestRate, fallbackRateDate)}
+                  showAsterisk={isUsingLatestRate || !!fallbackRateDate}
+                />
+              </div>
+            </div>
+            <FieldTags
+              label="Tags"
+              tags={transaction.tags}
+            />
+            <FieldAttachedDocuments
+              label="Attached Documents"
+              documents={(transaction as any).attached_documents}
+            />
+          </div>
+          <div className="h-10 shrink-0 w-full" />
         </div>
       </div>
-    )
-  }
-
-  return (
-    <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
-      <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-        <Button
-          onClick={handleBackClick}
-          disabled={isPending}
-          variant="outline"
-          size="icon"
-          className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
-        >
-          <ArrowLeft className="size-5 text-zinc-800" strokeWidth={1.5} />
-        </Button>
-        <Button
-          onClick={handleEditClick}
-          disabled={isPending}
-          variant="secondary"
-          size="sm"
-          className="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 gap-1.5 items-center"
-        >
-          <div className="relative shrink-0 size-4 flex items-center justify-center">
-            <EditIcon />
-          </div>
-          Edit
-        </Button>
-      </div>
-      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
-        <p className="leading-[36px] whitespace-pre">View transaction</p>
-      </div>
-      <div className="content-stretch flex flex-col gap-8 items-start justify-start relative shrink-0 w-full">
-        <div className="content-stretch flex flex-col gap-6 items-start justify-start relative shrink-0 w-full">
-          <FieldValuePair 
-            label="Type" 
-            value={transaction.transaction_type === "expense" ? "Expense" : "Income"} 
-          />
-          <FieldValuePair 
-            label="Date" 
-            value={formatDate(transaction.transaction_date)} 
-          />
-          <FieldValuePair 
-            label="Description" 
-            value={transaction.description || "No description"} 
-          />
-          <FieldValuePair
-            label="Vendor"
-            value={transaction.vendor?.name || "Unknown"}
-          />
-          <FieldValuePair
-            label="Payment method"
-            value={transaction.payment_method?.name || "Unknown"}
-          />
-          <div className="content-stretch flex gap-6 items-start justify-start relative shrink-0 w-full">
-            <div className="flex-1">
-              <FieldValuePair
-                label="Amount"
-                value={formatAmount(transaction)}
-              />
-            </div>
-            <div className="flex-1">
-              <FieldValuePair
-                label="Exchange rate"
-                value={formatExchangeRate(transaction, exchangeRate)}
-                secondaryText={formatExchangeRateTimestamp(exchangeRateTimestamp, isUsingLatestRate, fallbackRateDate)}
-                showAsterisk={isUsingLatestRate || !!fallbackRateDate}
-              />
-            </div>
-          </div>
-          <FieldTags
-            label="Tags"
-            tags={transaction.tags}
-          />
-          <FieldAttachedDocuments
-            label="Attached Documents"
-            documents={(transaction as any).attached_documents}
-          />
-        </div>
-        <div className="h-10 shrink-0 w-full" />
-      </div>
-    </div>
+    </MainLayout>
   )
 }

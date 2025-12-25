@@ -9,6 +9,7 @@
 import * as React from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { MainLayout } from "@/components/layouts/MainLayout"
 import { TransactionForm, type TransactionFormData } from "@/components/forms/transaction-form"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks"
@@ -100,34 +101,38 @@ export default function EditTransactionPage() {
 
   if (loading) {
     return (
-      <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-4 sm:px-6 md:px-10 relative min-h-screen w-full">
-        <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-2xl sm:text-[26px] md:text-[30px] text-nowrap text-zinc-950">
-          <p className="leading-tight whitespace-pre">Edit transaction</p>
+      <MainLayout showSidebar={true} showMobileNav={false}>
+        <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-4 sm:px-6 md:px-10 relative min-h-screen w-full">
+          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-2xl sm:text-[26px] md:text-[30px] text-nowrap text-zinc-950">
+            <p className="leading-tight whitespace-pre">Edit transaction</p>
+          </div>
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-2 border-zinc-200 border-t-zinc-950 rounded-full animate-spin"></div>
+          </div>
         </div>
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-zinc-200 border-t-zinc-950 rounded-full animate-spin"></div>
-        </div>
-      </div>
+      </MainLayout>
     )
   }
 
   if (error || !transaction) {
     return (
-      <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-4 sm:px-6 md:px-10 relative min-h-screen w-full">
-        <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-2xl sm:text-[26px] md:text-[30px] text-nowrap text-zinc-950">
-          <p className="leading-tight whitespace-pre">Edit transaction</p>
+      <MainLayout showSidebar={true} showMobileNav={false}>
+        <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-4 sm:px-6 md:px-10 relative min-h-screen w-full">
+          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-2xl sm:text-[26px] md:text-[30px] text-nowrap text-zinc-950">
+            <p className="leading-tight whitespace-pre">Edit transaction</p>
+          </div>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-sm text-zinc-500">{error || "Transaction not found"}</p>
+            <Button
+              onClick={navigateBack}
+              variant="outline"
+              className="mt-4"
+            >
+              Go Back
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-sm text-zinc-500">{error || "Transaction not found"}</p>
-          <Button
-            onClick={navigateBack}
-            variant="outline"
-            className="mt-4"
-          >
-            Go Back
-          </Button>
-        </div>
-      </div>
+      </MainLayout>
     )
   }
 
@@ -146,20 +151,22 @@ export default function EditTransactionPage() {
   }
 
   return (
-    <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-4 sm:px-6 md:px-10 relative min-h-screen w-full">
-      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
-        <p className="leading-[36px] whitespace-pre">Edit transaction</p>
-      </div>
+    <MainLayout showSidebar={true} showMobileNav={false}>
+      <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-4 sm:px-6 md:px-10 relative min-h-screen w-full">
+        <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
+          <p className="leading-[36px] whitespace-pre">Edit transaction</p>
+        </div>
 
-      <TransactionForm
-        mode="edit"
-        initialData={initialFormData}
-        onSave={handleSave}
-        onCancel={handleCancel}
-        saving={saving || navigationPending}
-        showDateStepper={false}
-        useStandardAmountInput={true}
-      />
-    </div>
+        <TransactionForm
+          mode="edit"
+          initialData={initialFormData}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          saving={saving || navigationPending}
+          showDateStepper={false}
+          useStandardAmountInput={true}
+        />
+      </div>
+    </MainLayout>
   )
 }

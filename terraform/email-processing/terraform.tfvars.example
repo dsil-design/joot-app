@@ -1,0 +1,26 @@
+# Example Terraform variables file
+# Copy this file to terraform.tfvars and fill in your values
+
+# GitHub Configuration
+github_token      = "ghp_YOUR_GITHUB_PERSONAL_ACCESS_TOKEN"
+github_owner      = "your-github-username"
+github_repository = "joot-app"
+
+# Vercel Configuration
+vercel_api_token    = "YOUR_VERCEL_API_TOKEN"
+vercel_project_name = "joot-app"
+
+# iCloud Configuration
+icloud_email        = "your-email@icloud.com"
+icloud_app_password = "xxxx-xxxx-xxxx-xxxx" # App-specific password from appleid.apple.com
+
+# Email Processing Configuration
+allowed_email_senders = "receipts@company1.com,invoices@company2.com" # Leave empty to allow all
+
+# Supabase Configuration
+supabase_url         = "https://your-project.supabase.co"
+supabase_anon_key    = "your-anon-key"
+supabase_service_key = "your-service-key"
+
+# Database Configuration (for pg-boss)
+database_url = "postgresql://user:password@host:5432/database"

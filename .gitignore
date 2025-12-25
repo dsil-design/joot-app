@@ -66,3 +66,4 @@ verification-output/
 
 # One-off scripts in root
 check-migrations.js
+.env*.local

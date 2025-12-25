@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Receipt, Settings, BookOpen, LogOut, FileText, GitCompare } from 'lucide-react'
+import { Home, Receipt, Settings, LogOut } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -32,16 +32,6 @@ const navigationItems = [
     name: 'All Transactions',
     href: '/transactions',
     icon: Receipt,
-  },
-  {
-    name: 'Documents',
-    href: '/documents',
-    icon: FileText,
-  },
-  {
-    name: 'Reconciliation',
-    href: '/reconciliation',
-    icon: GitCompare,
   },
 ]
 
@@ -118,10 +108,6 @@ export function SidebarNavigation({ user }: SidebarNavigationProps) {
             <DropdownMenuItem onClick={() => router.push('/settings')}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/docs')}>
-              <BookOpen className="mr-2 h-4 w-4" />
-              <span>Design System Documentation</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} variant="destructive">
