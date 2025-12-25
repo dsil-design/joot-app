@@ -3,7 +3,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create custom types (only if they don't exist)
 DO $$ BEGIN
-    CREATE TYPE currency_type AS ENUM ('USD', 'THB');
+    CREATE TYPE currency_type AS ENUM (
+      'USD', 'THB', 'EUR', 'GBP', 'SGD', 'VND', 'MYR',
+      'BTC', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD', 'SEK', 'NOK'
+    );
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -89,6 +92,20 @@ CREATE TABLE public.transaction_tags (
   UNIQUE(transaction_id, tag_id)
 );
 
+-- Currency configuration table (defines supported currencies)
+CREATE TABLE public.currency_configuration (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  currency_code TEXT NOT NULL UNIQUE,
+  currency_symbol TEXT,
+  display_name TEXT NOT NULL,
+  decimal_places INTEGER DEFAULT 2,
+  is_crypto BOOLEAN DEFAULT FALSE,
+  is_tracked BOOLEAN DEFAULT TRUE,
+  source TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Exchange rates table (for historical tracking)
 CREATE TABLE public.exchange_rates (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -96,6 +113,9 @@ CREATE TABLE public.exchange_rates (
   to_currency currency_type NOT NULL,
   rate DECIMAL(10, 4) NOT NULL,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
+  source TEXT,
+  is_interpolated BOOLEAN DEFAULT FALSE,
+  interpolated_from_date DATE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
   -- Constraints
@@ -135,6 +155,8 @@ CREATE INDEX idx_exchange_rates_date ON public.exchange_rates(date DESC);
 CREATE INDEX idx_exchange_rates_currencies ON public.exchange_rates(from_currency, to_currency);
 CREATE INDEX idx_tags_user_id ON public.tags(user_id);
 CREATE INDEX idx_tags_name ON public.tags(name);
+CREATE INDEX idx_currency_configuration_code ON public.currency_configuration(currency_code);
+CREATE INDEX idx_currency_configuration_tracked ON public.currency_configuration(is_tracked);
 CREATE INDEX idx_transaction_tags_transaction_id ON public.transaction_tags(transaction_id);
 CREATE INDEX idx_transaction_tags_tag_id ON public.transaction_tags(tag_id);
 CREATE INDEX idx_vendor_duplicates_user_id ON public.vendor_duplicate_suggestions(user_id);
@@ -148,6 +170,7 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_methods ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.currency_configuration ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.exchange_rates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transaction_tags ENABLE ROW LEVEL SECURITY;
@@ -201,6 +224,10 @@ CREATE POLICY "Users can update own vendors" ON public.vendors
 
 CREATE POLICY "Users can delete own vendors" ON public.vendors
   FOR DELETE USING (auth.uid() = user_id);
+
+-- RLS Policies for currency_configuration table (read-only for all authenticated users)
+CREATE POLICY "Authenticated users can view currency configuration" ON public.currency_configuration
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 -- RLS Policies for exchange_rates table (read-only for all authenticated users)
 CREATE POLICY "Authenticated users can view exchange rates" ON public.exchange_rates
@@ -291,6 +318,9 @@ CREATE TRIGGER update_vendors_updated_at BEFORE UPDATE ON public.vendors
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_tags_updated_at BEFORE UPDATE ON public.tags
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_currency_configuration_updated_at BEFORE UPDATE ON public.currency_configuration
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Function to handle vendor_duplicate_suggestions updates

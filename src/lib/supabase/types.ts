@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       currency_configuration: {
@@ -53,6 +78,506 @@ export type Database = {
         }
         Relationships: []
       }
+      document_extractions: {
+        Row: {
+          amount: number | null
+          category: string | null
+          confidence_score: number | null
+          created_at: string | null
+          currency: string | null
+          document_id: string
+          extraction_confidence: number | null
+          id: string
+          merchant_name: string | null
+          merchant_name_normalized: string | null
+          metadata: Json | null
+          notes: string | null
+          ocr_confidence: number | null
+          raw_text: string | null
+          transaction_date: string | null
+          updated_at: string | null
+          user_id: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          amount?: number | null
+          category?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          currency?: string | null
+          document_id: string
+          extraction_confidence?: number | null
+          id?: string
+          merchant_name?: string | null
+          merchant_name_normalized?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          ocr_confidence?: number | null
+          raw_text?: string | null
+          transaction_date?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number | null
+          category?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          currency?: string | null
+          document_id?: string
+          extraction_confidence?: number | null
+          id?: string
+          merchant_name?: string | null
+          merchant_name_normalized?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          ocr_confidence?: number | null
+          raw_text?: string | null
+          transaction_date?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_extractions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          classification_confidence: number | null
+          created_at: string | null
+          document_type: string | null
+          file_name: string
+          file_size_bytes: number
+          file_type: string
+          file_url: string
+          id: string
+          is_multi_transaction: boolean | null
+          mime_type: string | null
+          ocr_confidence: number | null
+          processing_error: string | null
+          processing_status: string
+          storage_path: string | null
+          thumbnail_path: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          classification_confidence?: number | null
+          created_at?: string | null
+          document_type?: string | null
+          file_name: string
+          file_size_bytes: number
+          file_type: string
+          file_url: string
+          id?: string
+          is_multi_transaction?: boolean | null
+          mime_type?: string | null
+          ocr_confidence?: number | null
+          processing_error?: string | null
+          processing_status?: string
+          storage_path?: string | null
+          thumbnail_path?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          classification_confidence?: number | null
+          created_at?: string | null
+          document_type?: string | null
+          file_name?: string
+          file_size_bytes?: number
+          file_type?: string
+          file_url?: string
+          id?: string
+          is_multi_transaction?: boolean | null
+          mime_type?: string | null
+          ocr_confidence?: number | null
+          processing_error?: string | null
+          processing_status?: string
+          storage_path?: string | null
+          thumbnail_path?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      email_accounts: {
+        Row: {
+          connection_status: string
+          created_at: string
+          email_address: string
+          encryption_iv: string
+          folder_config: Json | null
+          id: string
+          imap_host: string
+          imap_password_encrypted: string
+          imap_port: number
+          last_connection_test_at: string | null
+          last_sync_at: string | null
+          metadata: Json | null
+          monitored_folders: string[] | null
+          provider: string
+          selected_folder_name: string | null
+          sync_enabled: boolean
+          total_emails_synced: number
+          total_receipts_found: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connection_status?: string
+          created_at?: string
+          email_address: string
+          encryption_iv: string
+          folder_config?: Json | null
+          id?: string
+          imap_host: string
+          imap_password_encrypted: string
+          imap_port?: number
+          last_connection_test_at?: string | null
+          last_sync_at?: string | null
+          metadata?: Json | null
+          monitored_folders?: string[] | null
+          provider: string
+          selected_folder_name?: string | null
+          sync_enabled?: boolean
+          total_emails_synced?: number
+          total_receipts_found?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connection_status?: string
+          created_at?: string
+          email_address?: string
+          encryption_iv?: string
+          folder_config?: Json | null
+          id?: string
+          imap_host?: string
+          imap_password_encrypted?: string
+          imap_port?: number
+          last_connection_test_at?: string | null
+          last_sync_at?: string | null
+          metadata?: Json | null
+          monitored_folders?: string[] | null
+          provider?: string
+          selected_folder_name?: string | null
+          sync_enabled?: boolean
+          total_emails_synced?: number
+          total_receipts_found?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_actions_log: {
+        Row: {
+          action_data: Json | null
+          action_type: string
+          email_message_id: string | null
+          id: string
+          ip_address: unknown
+          performed_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action_data?: Json | null
+          action_type: string
+          email_message_id?: string | null
+          id?: string
+          ip_address?: unknown
+          performed_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action_data?: Json | null
+          action_type?: string
+          email_message_id?: string | null
+          id?: string
+          ip_address?: unknown
+          performed_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_actions_log_email_message_id_fkey"
+            columns: ["email_message_id"]
+            isOneToOne: false
+            referencedRelation: "email_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_actions_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_messages: {
+        Row: {
+          amount_extracted: number | null
+          attachment_count: number
+          created_at: string
+          currency_extracted: string | null
+          detection_score: number | null
+          email_account_id: string
+          email_hash: string
+          extracted_amount: number | null
+          extracted_at: string | null
+          extracted_currency: string | null
+          extracted_date: string | null
+          extracted_vendor: string | null
+          extraction_confidence: number | null
+          extraction_error: string | null
+          extraction_metadata: Json | null
+          extraction_status: string | null
+          has_attachments: boolean
+          html_content_path: string | null
+          id: string
+          is_receipt_candidate: boolean
+          match_alternatives: Json | null
+          match_confidence: number | null
+          match_reasons: Json | null
+          match_status: string
+          matched_transaction_id: string | null
+          message_uid: string
+          processing_error: string | null
+          processing_status: string
+          raw_text_content: string | null
+          received_date: string
+          sender_domain: string
+          sender_email: string
+          sender_name: string | null
+          storage_path: string
+          subject: string
+          transaction_date_extracted: string | null
+          updated_at: string
+          user_id: string
+          vendor_name_extracted: string | null
+          vendor_name_normalized: string | null
+        }
+        Insert: {
+          amount_extracted?: number | null
+          attachment_count?: number
+          created_at?: string
+          currency_extracted?: string | null
+          detection_score?: number | null
+          email_account_id: string
+          email_hash: string
+          extracted_amount?: number | null
+          extracted_at?: string | null
+          extracted_currency?: string | null
+          extracted_date?: string | null
+          extracted_vendor?: string | null
+          extraction_confidence?: number | null
+          extraction_error?: string | null
+          extraction_metadata?: Json | null
+          extraction_status?: string | null
+          has_attachments?: boolean
+          html_content_path?: string | null
+          id?: string
+          is_receipt_candidate?: boolean
+          match_alternatives?: Json | null
+          match_confidence?: number | null
+          match_reasons?: Json | null
+          match_status?: string
+          matched_transaction_id?: string | null
+          message_uid: string
+          processing_error?: string | null
+          processing_status?: string
+          raw_text_content?: string | null
+          received_date: string
+          sender_domain: string
+          sender_email: string
+          sender_name?: string | null
+          storage_path: string
+          subject: string
+          transaction_date_extracted?: string | null
+          updated_at?: string
+          user_id: string
+          vendor_name_extracted?: string | null
+          vendor_name_normalized?: string | null
+        }
+        Update: {
+          amount_extracted?: number | null
+          attachment_count?: number
+          created_at?: string
+          currency_extracted?: string | null
+          detection_score?: number | null
+          email_account_id?: string
+          email_hash?: string
+          extracted_amount?: number | null
+          extracted_at?: string | null
+          extracted_currency?: string | null
+          extracted_date?: string | null
+          extracted_vendor?: string | null
+          extraction_confidence?: number | null
+          extraction_error?: string | null
+          extraction_metadata?: Json | null
+          extraction_status?: string | null
+          has_attachments?: boolean
+          html_content_path?: string | null
+          id?: string
+          is_receipt_candidate?: boolean
+          match_alternatives?: Json | null
+          match_confidence?: number | null
+          match_reasons?: Json | null
+          match_status?: string
+          matched_transaction_id?: string | null
+          message_uid?: string
+          processing_error?: string | null
+          processing_status?: string
+          raw_text_content?: string | null
+          received_date?: string
+          sender_domain?: string
+          sender_email?: string
+          sender_name?: string | null
+          storage_path?: string
+          subject?: string
+          transaction_date_extracted?: string | null
+          updated_at?: string
+          user_id?: string
+          vendor_name_extracted?: string | null
+          vendor_name_normalized?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_messages_email_account_id_fkey"
+            columns: ["email_account_id"]
+            isOneToOne: false
+            referencedRelation: "email_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_messages_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_sync_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_seconds: number | null
+          email_account_id: string
+          emails_indexed: number
+          emails_skipped: number
+          end_uid: string | null
+          error_details: Json | null
+          error_message: string | null
+          folder_name: string
+          id: string
+          job_status: string
+          pg_boss_job_id: string | null
+          progress_current: number
+          progress_percentage: number | null
+          progress_total: number | null
+          receipts_detected: number
+          retry_count: number
+          start_uid: string | null
+          started_at: string | null
+          sync_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          email_account_id: string
+          emails_indexed?: number
+          emails_skipped?: number
+          end_uid?: string | null
+          error_details?: Json | null
+          error_message?: string | null
+          folder_name: string
+          id?: string
+          job_status?: string
+          pg_boss_job_id?: string | null
+          progress_current?: number
+          progress_percentage?: number | null
+          progress_total?: number | null
+          receipts_detected?: number
+          retry_count?: number
+          start_uid?: string | null
+          started_at?: string | null
+          sync_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          email_account_id?: string
+          emails_indexed?: number
+          emails_skipped?: number
+          end_uid?: string | null
+          error_details?: Json | null
+          error_message?: string | null
+          folder_name?: string
+          id?: string
+          job_status?: string
+          pg_boss_job_id?: string | null
+          progress_current?: number
+          progress_percentage?: number | null
+          progress_total?: number | null
+          receipts_detected?: number
+          retry_count?: number
+          start_uid?: string | null
+          started_at?: string | null
+          sync_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sync_jobs_email_account_id_fkey"
+            columns: ["email_account_id"]
+            isOneToOne: false
+            referencedRelation: "email_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_sync_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exchange_rates: {
         Row: {
           created_at: string | null
@@ -88,6 +613,195 @@ export type Database = {
           to_currency?: Database["public"]["Enums"]["currency_type"]
         }
         Relationships: []
+      }
+      expected_transaction_tags: {
+        Row: {
+          created_at: string | null
+          expected_transaction_id: string
+          id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expected_transaction_id: string
+          id?: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expected_transaction_id?: string
+          id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expected_transaction_tags_expected_transaction_id_fkey"
+            columns: ["expected_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "expected_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expected_transaction_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expected_transactions: {
+        Row: {
+          actual_amount: number | null
+          created_at: string | null
+          description: string
+          expected_amount: number
+          expected_date: string
+          id: string
+          matched_at: string | null
+          matched_transaction_id: string | null
+          month_plan_id: string
+          notes: string | null
+          original_currency: Database["public"]["Enums"]["currency_type"]
+          payment_method_id: string | null
+          status: string
+          template_id: string | null
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string | null
+          user_id: string
+          variance_amount: number | null
+          variance_percentage: number | null
+          vendor_id: string | null
+        }
+        Insert: {
+          actual_amount?: number | null
+          created_at?: string | null
+          description: string
+          expected_amount: number
+          expected_date: string
+          id?: string
+          matched_at?: string | null
+          matched_transaction_id?: string | null
+          month_plan_id: string
+          notes?: string | null
+          original_currency: Database["public"]["Enums"]["currency_type"]
+          payment_method_id?: string | null
+          status?: string
+          template_id?: string | null
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          user_id: string
+          variance_amount?: number | null
+          variance_percentage?: number | null
+          vendor_id?: string | null
+        }
+        Update: {
+          actual_amount?: number | null
+          created_at?: string | null
+          description?: string
+          expected_amount?: number
+          expected_date?: string
+          id?: string
+          matched_at?: string | null
+          matched_transaction_id?: string | null
+          month_plan_id?: string
+          notes?: string | null
+          original_currency?: Database["public"]["Enums"]["currency_type"]
+          payment_method_id?: string | null
+          status?: string
+          template_id?: string | null
+          transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          user_id?: string
+          variance_amount?: number | null
+          variance_percentage?: number | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expected_transactions_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expected_transactions_month_plan_id_fkey"
+            columns: ["month_plan_id"]
+            isOneToOne: false
+            referencedRelation: "month_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expected_transactions_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expected_transactions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expected_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expected_transactions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      month_plans: {
+        Row: {
+          closed_at: string | null
+          created_at: string | null
+          id: string
+          month_year: string
+          notes: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string | null
+          id?: string
+          month_year: string
+          notes?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string | null
+          id?: string
+          month_year?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "month_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_methods: {
         Row: {
@@ -148,6 +862,62 @@ export type Database = {
           },
         ]
       }
+      processing_jobs: {
+        Row: {
+          completed_at: string | null
+          document_id: string | null
+          error_data: Json | null
+          id: string
+          job_status: string
+          job_type: string
+          max_retries: number | null
+          pg_boss_job_id: string | null
+          queued_at: string | null
+          result_data: Json | null
+          retry_count: number | null
+          started_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          document_id?: string | null
+          error_data?: Json | null
+          id?: string
+          job_status?: string
+          job_type: string
+          max_retries?: number | null
+          pg_boss_job_id?: string | null
+          queued_at?: string | null
+          result_data?: Json | null
+          retry_count?: number | null
+          started_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          document_id?: string | null
+          error_data?: Json | null
+          id?: string
+          job_status?: string
+          job_type?: string
+          max_retries?: number | null
+          pg_boss_job_id?: string | null
+          queued_at?: string | null
+          result_data?: Json | null
+          retry_count?: number | null
+          started_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processing_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_changes: {
         Row: {
           change_type: string
@@ -198,6 +968,287 @@ export type Database = {
             columns: ["sync_history_id"]
             isOneToOne: false
             referencedRelation: "sync_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          document_id: string
+          id: string
+          metadata: Json | null
+          performed_by: string
+          queue_item_id: string
+          transaction_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          document_id: string
+          id?: string
+          metadata?: Json | null
+          performed_by: string
+          queue_item_id: string
+          transaction_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          document_id?: string
+          id?: string
+          metadata?: Json | null
+          performed_by?: string
+          queue_item_id?: string
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_audit_log_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_audit_log_queue_item_id_fkey"
+            columns: ["queue_item_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_audit_log_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_queue: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string | null
+          document_id: string
+          id: string
+          metadata: Json | null
+          priority: string
+          queue_status: string | null
+          status: string
+          suggested_matches: Json | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          document_id: string
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          queue_status?: string | null
+          status?: string
+          suggested_matches?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          document_id?: string
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          queue_status?: string | null
+          status?: string
+          suggested_matches?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_queue_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statement_metadata: {
+        Row: {
+          account_number_masked: string | null
+          account_type: string | null
+          beginning_balance: number | null
+          created_at: string | null
+          document_id: string
+          ending_balance: number | null
+          extraction_confidence: number | null
+          id: string
+          institution_name: string | null
+          statement_end_date: string | null
+          statement_start_date: string | null
+          total_credits: number | null
+          total_debits: number | null
+          transaction_count: number | null
+          updated_at: string | null
+          user_id: string
+          validation_errors: Json | null
+          validation_status: string | null
+        }
+        Insert: {
+          account_number_masked?: string | null
+          account_type?: string | null
+          beginning_balance?: number | null
+          created_at?: string | null
+          document_id: string
+          ending_balance?: number | null
+          extraction_confidence?: number | null
+          id?: string
+          institution_name?: string | null
+          statement_end_date?: string | null
+          statement_start_date?: string | null
+          total_credits?: number | null
+          total_debits?: number | null
+          transaction_count?: number | null
+          updated_at?: string | null
+          user_id: string
+          validation_errors?: Json | null
+          validation_status?: string | null
+        }
+        Update: {
+          account_number_masked?: string | null
+          account_type?: string | null
+          beginning_balance?: number | null
+          created_at?: string | null
+          document_id?: string
+          ending_balance?: number | null
+          extraction_confidence?: number | null
+          id?: string
+          institution_name?: string | null
+          statement_end_date?: string | null
+          statement_start_date?: string | null
+          total_credits?: number | null
+          total_debits?: number | null
+          transaction_count?: number | null
+          updated_at?: string | null
+          user_id?: string
+          validation_errors?: Json | null
+          validation_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_metadata_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_metadata_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statement_transactions: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string | null
+          description: string
+          document_id: string
+          id: string
+          match_confidence: number | null
+          match_metadata: Json | null
+          match_status: string | null
+          matched_transaction_id: string | null
+          reviewed_at: string | null
+          running_balance: number | null
+          statement_metadata_id: string
+          transaction_date: string
+          transaction_index: number
+          transaction_type: string | null
+          updated_at: string | null
+          user_action: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string | null
+          description: string
+          document_id: string
+          id?: string
+          match_confidence?: number | null
+          match_metadata?: Json | null
+          match_status?: string | null
+          matched_transaction_id?: string | null
+          reviewed_at?: string | null
+          running_balance?: number | null
+          statement_metadata_id: string
+          transaction_date: string
+          transaction_index: number
+          transaction_type?: string | null
+          updated_at?: string | null
+          user_action?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string | null
+          description?: string
+          document_id?: string
+          id?: string
+          match_confidence?: number | null
+          match_metadata?: Json | null
+          match_status?: string | null
+          matched_transaction_id?: string | null
+          reviewed_at?: string | null
+          running_balance?: number | null
+          statement_metadata_id?: string
+          transaction_date?: string
+          transaction_index?: number
+          transaction_type?: string | null
+          updated_at?: string | null
+          user_action?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_transactions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_transactions_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_transactions_statement_metadata_id_fkey"
+            columns: ["statement_metadata_id"]
+            isOneToOne: false
+            referencedRelation: "statement_metadata"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -403,6 +1454,114 @@ export type Database = {
           },
         ]
       }
+      template_tags: {
+        Row: {
+          created_at: string | null
+          id: string
+          tag_id: string
+          template_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          tag_id: string
+          template_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          tag_id?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_tags_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_document_matches: {
+        Row: {
+          approved: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          confidence_score: number
+          created_at: string | null
+          document_id: string
+          id: string
+          match_confidence: number | null
+          match_score_breakdown: Json | null
+          match_type: string
+          matched_at: string | null
+          matched_by: string | null
+          metadata: Json | null
+          transaction_id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          confidence_score: number
+          created_at?: string | null
+          document_id: string
+          id?: string
+          match_confidence?: number | null
+          match_score_breakdown?: Json | null
+          match_type: string
+          matched_at?: string | null
+          matched_by?: string | null
+          metadata?: Json | null
+          transaction_id: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          confidence_score?: number
+          created_at?: string | null
+          document_id?: string
+          id?: string
+          match_confidence?: number | null
+          match_score_breakdown?: Json | null
+          match_type?: string
+          matched_at?: string | null
+          matched_by?: string | null
+          metadata?: Json | null
+          transaction_id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_document_matches_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_document_matches_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transaction_tags: {
         Row: {
           created_at: string | null
@@ -439,14 +1598,101 @@ export type Database = {
           },
         ]
       }
+      transaction_templates: {
+        Row: {
+          amount: number
+          created_at: string | null
+          day_of_month: number | null
+          day_of_week: number | null
+          description: string | null
+          end_date: string | null
+          frequency: string
+          frequency_interval: number | null
+          id: string
+          is_active: boolean
+          name: string
+          original_currency: Database["public"]["Enums"]["currency_type"]
+          payment_method_id: string | null
+          start_date: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string | null
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description?: string | null
+          end_date?: string | null
+          frequency: string
+          frequency_interval?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          original_currency: Database["public"]["Enums"]["currency_type"]
+          payment_method_id?: string | null
+          start_date: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description?: string | null
+          end_date?: string | null
+          frequency?: string
+          frequency_interval?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          original_currency?: Database["public"]["Enums"]["currency_type"]
+          payment_method_id?: string | null
+          start_date?: string
+          transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_templates_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_templates_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
           created_at: string | null
           description: string | null
+          expected_transaction_id: string | null
           id: string
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id: string | null
+          source_type: string | null
           transaction_date: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string | null
@@ -457,9 +1703,11 @@ export type Database = {
           amount: number
           created_at?: string | null
           description?: string | null
+          expected_transaction_id?: string | null
           id?: string
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
+          source_type?: string | null
           transaction_date?: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string | null
@@ -470,9 +1718,11 @@ export type Database = {
           amount?: number
           created_at?: string | null
           description?: string | null
+          expected_transaction_id?: string | null
           id?: string
           original_currency?: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
+          source_type?: string | null
           transaction_date?: string
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string | null
@@ -480,6 +1730,13 @@ export type Database = {
           vendor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_expected_transaction_id_fkey"
+            columns: ["expected_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "expected_transactions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_payment_method_id_fkey"
             columns: ["payment_method_id"]
@@ -597,6 +1854,111 @@ export type Database = {
           },
         ]
       }
+      vendor_enrichment_jobs: {
+        Row: {
+          attempt_count: number | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          job_status: string
+          job_type: string
+          last_attempt_at: string | null
+          updated_at: string | null
+          user_id: string
+          vendor_id: string
+        }
+        Insert: {
+          attempt_count?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          job_status?: string
+          job_type?: string
+          last_attempt_at?: string | null
+          updated_at?: string | null
+          user_id: string
+          vendor_id: string
+        }
+        Update: {
+          attempt_count?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          job_status?: string
+          job_type?: string
+          last_attempt_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_enrichment_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_enrichment_jobs_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_profiles: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          domain: string | null
+          id: string
+          logo_url: string | null
+          metadata: Json | null
+          name: string
+          normalized_name: string
+          transaction_count: number | null
+          updated_at: string | null
+          user_id: string
+          vendor_name: string | null
+          vendor_name_normalized: string | null
+          website: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          domain?: string | null
+          id?: string
+          logo_url?: string | null
+          metadata?: Json | null
+          name: string
+          normalized_name: string
+          transaction_count?: number | null
+          updated_at?: string | null
+          user_id: string
+          vendor_name?: string | null
+          vendor_name_normalized?: string | null
+          website?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          domain?: string | null
+          id?: string
+          logo_url?: string | null
+          metadata?: Json | null
+          name?: string
+          normalized_name?: string
+          transaction_count?: number | null
+          updated_at?: string | null
+          user_id?: string
+          vendor_name?: string | null
+          vendor_name_normalized?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           created_at: string | null
@@ -629,490 +1991,6 @@ export type Database = {
           },
         ]
       }
-      documents: {
-        Row: {
-          id: string
-          user_id: string
-          file_name: string
-          file_type: string
-          file_size_bytes: number
-          mime_type: string
-          storage_path: string
-          thumbnail_path: string | null
-          processing_status: string
-          processing_error: string | null
-          ocr_confidence: number | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          file_name: string
-          file_type: string
-          file_size_bytes: number
-          mime_type: string
-          storage_path: string
-          thumbnail_path?: string | null
-          processing_status?: string
-          processing_error?: string | null
-          ocr_confidence?: number | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          file_name?: string
-          file_type?: string
-          file_size_bytes?: number
-          mime_type?: string
-          storage_path?: string
-          thumbnail_path?: string | null
-          processing_status?: string
-          processing_error?: string | null
-          ocr_confidence?: number | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "documents_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      document_extractions: {
-        Row: {
-          id: string
-          document_id: string
-          user_id: string
-          raw_text: string | null
-          merchant_name: string | null
-          merchant_name_normalized: string | null
-          amount: number | null
-          currency: string | null
-          transaction_date: string | null
-          merchant_confidence: number | null
-          amount_confidence: number | null
-          date_confidence: number | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          document_id: string
-          user_id: string
-          raw_text?: string | null
-          merchant_name?: string | null
-          merchant_name_normalized?: string | null
-          amount?: number | null
-          currency?: string | null
-          transaction_date?: string | null
-          merchant_confidence?: number | null
-          amount_confidence?: number | null
-          date_confidence?: number | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          document_id?: string
-          user_id?: string
-          raw_text?: string | null
-          merchant_name?: string | null
-          merchant_name_normalized?: string | null
-          amount?: number | null
-          currency?: string | null
-          transaction_date?: string | null
-          merchant_confidence?: number | null
-          amount_confidence?: number | null
-          date_confidence?: number | null
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "document_extractions_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: true
-            referencedRelation: "documents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "document_extractions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      transaction_document_matches: {
-        Row: {
-          id: string
-          user_id: string
-          document_id: string
-          transaction_id: string | null
-          match_confidence: number
-          match_score_breakdown: Json | null
-          review_status: string
-          reviewed_at: string | null
-          reviewed_by: string | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          document_id: string
-          transaction_id?: string | null
-          match_confidence: number
-          match_score_breakdown?: Json | null
-          review_status?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          document_id?: string
-          transaction_id?: string | null
-          match_confidence?: number
-          match_score_breakdown?: Json | null
-          review_status?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transaction_document_matches_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transaction_document_matches_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "documents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transaction_document_matches_transaction_id_fkey"
-            columns: ["transaction_id"]
-            isOneToOne: false
-            referencedRelation: "transactions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transaction_document_matches_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      reconciliation_queue: {
-        Row: {
-          id: string
-          user_id: string
-          document_id: string
-          priority: number
-          queue_status: string
-          suggested_matches: Json | null
-          completed_at: string | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          document_id: string
-          priority?: number
-          queue_status?: string
-          suggested_matches?: Json | null
-          completed_at?: string | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          document_id?: string
-          priority?: number
-          queue_status?: string
-          suggested_matches?: Json | null
-          completed_at?: string | null
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reconciliation_queue_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reconciliation_queue_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: true
-            referencedRelation: "documents"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vendor_profiles: {
-        Row: {
-          id: string
-          vendor_id: string
-          user_id: string
-          display_name: string | null
-          logo_url: string | null
-          brand_color: string | null
-          business_category: string | null
-          website_domain: string | null
-          last_enriched_at: string | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          vendor_id: string
-          user_id: string
-          display_name?: string | null
-          logo_url?: string | null
-          brand_color?: string | null
-          business_category?: string | null
-          website_domain?: string | null
-          last_enriched_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          vendor_id?: string
-          user_id?: string
-          display_name?: string | null
-          logo_url?: string | null
-          brand_color?: string | null
-          business_category?: string | null
-          website_domain?: string | null
-          last_enriched_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vendor_profiles_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: true
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendor_profiles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vendor_enrichment_jobs: {
-        Row: {
-          id: string
-          vendor_id: string
-          user_id: string
-          job_status: string
-          job_type: string
-          attempt_count: number
-          last_attempt_at: string | null
-          error_message: string | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          vendor_id: string
-          user_id: string
-          job_status?: string
-          job_type?: string
-          attempt_count?: number
-          last_attempt_at?: string | null
-          error_message?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          vendor_id?: string
-          user_id?: string
-          job_status?: string
-          job_type?: string
-          attempt_count?: number
-          last_attempt_at?: string | null
-          error_message?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vendor_enrichment_jobs_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendor_enrichment_jobs_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      reconciliation_audit_log: {
-        Row: {
-          id: string
-          user_id: string
-          document_id: string | null
-          transaction_id: string | null
-          match_id: string | null
-          action_type: string
-          action_metadata: Json | null
-          performed_at: string | null
-          performed_by: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          document_id?: string | null
-          transaction_id?: string | null
-          match_id?: string | null
-          action_type: string
-          action_metadata?: Json | null
-          performed_at?: string | null
-          performed_by?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          document_id?: string | null
-          transaction_id?: string | null
-          match_id?: string | null
-          action_type?: string
-          action_metadata?: Json | null
-          performed_at?: string | null
-          performed_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reconciliation_audit_log_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reconciliation_audit_log_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "documents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reconciliation_audit_log_transaction_id_fkey"
-            columns: ["transaction_id"]
-            isOneToOne: false
-            referencedRelation: "transactions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reconciliation_audit_log_match_id_fkey"
-            columns: ["match_id"]
-            isOneToOne: false
-            referencedRelation: "transaction_document_matches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reconciliation_audit_log_performed_by_fkey"
-            columns: ["performed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      processing_jobs: {
-        Row: {
-          id: string
-          user_id: string
-          document_id: string | null
-          job_type: string
-          job_status: string
-          pg_boss_job_id: string | null
-          retry_count: number
-          max_retries: number
-          result_data: Json | null
-          error_data: Json | null
-          queued_at: string | null
-          started_at: string | null
-          completed_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          document_id?: string | null
-          job_type: string
-          job_status?: string
-          pg_boss_job_id?: string | null
-          retry_count?: number
-          max_retries?: number
-          result_data?: Json | null
-          error_data?: Json | null
-          queued_at?: string | null
-          started_at?: string | null
-          completed_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          document_id?: string | null
-          job_type?: string
-          job_status?: string
-          pg_boss_job_id?: string | null
-          retry_count?: number
-          max_retries?: number
-          result_data?: Json | null
-          error_data?: Json | null
-          queued_at?: string | null
-          started_at?: string | null
-          completed_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "processing_jobs_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "processing_jobs_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "documents"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       available_currency_pairs: {
@@ -1126,6 +2004,46 @@ export type Database = {
       }
     }
     Functions: {
+      get_document_storage_path: {
+        Args: {
+          p_document_id: string
+          p_file_extension: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      get_email_receipt_stats: {
+        Args: { p_user_id: string }
+        Returns: {
+          average_detection_score: number
+          average_match_confidence: number
+          last_sync_date: string
+          receipts_approved: number
+          receipts_matched: number
+          receipts_unmatched: number
+          total_accounts: number
+          total_emails_indexed: number
+          total_receipts_detected: number
+        }[]
+      }
+      get_email_reconciliation_queue: {
+        Args: { p_limit?: number; p_user_id: string }
+        Returns: {
+          amount: number
+          created_at: string
+          currency: string
+          email_id: string
+          match_confidence: number
+          match_reasons: Json
+          matched_transaction_id: string
+          received_date: string
+          sender_email: string
+          sender_name: string
+          subject: string
+          transaction_date: string
+          vendor_name: string
+        }[]
+      }
       get_exchange_rate_with_fallback: {
         Args: {
           p_date: string
@@ -1157,6 +2075,33 @@ export type Database = {
         }[]
       }
       get_next_tag_color: { Args: { p_user_id: string }; Returns: string }
+      get_reconciliation_queue: {
+        Args: { p_limit?: number; p_user_id: string }
+        Returns: {
+          amount: number
+          created_at: string
+          document_id: string
+          file_name: string
+          merchant_name: string
+          priority: number
+          queue_id: string
+          suggested_matches: Json
+          transaction_date: string
+        }[]
+      }
+      get_statement_transactions: {
+        Args: { p_document_id: string }
+        Returns: {
+          amount: number
+          description: string
+          match_status: string
+          matched_transaction_id: string
+          running_balance: number
+          transaction_date: string
+          transaction_id: string
+          transaction_index: number
+        }[]
+      }
       get_sync_configuration: {
         Args: never
         Returns: {
@@ -1181,6 +2126,10 @@ export type Database = {
           total_syncs: number
         }[]
       }
+      get_thumbnail_storage_path: {
+        Args: { p_document_id: string; p_user_id: string }
+        Returns: string
+      }
       get_tracked_currencies: {
         Args: never
         Returns: {
@@ -1191,7 +2140,35 @@ export type Database = {
           source: string
         }[]
       }
+      get_unmatched_documents: {
+        Args: { p_user_id: string }
+        Returns: {
+          amount: number
+          created_at: string
+          document_id: string
+          file_name: string
+          merchant_name: string
+          transaction_date: string
+        }[]
+      }
+      get_unmatched_statement_transactions: {
+        Args: { p_limit?: number; p_user_id: string }
+        Returns: {
+          amount: number
+          description: string
+          document_id: string
+          match_confidence: number
+          statement_date: string
+          suggested_match_id: string
+          transaction_id: string
+        }[]
+      }
+      get_vendor_logo_path: {
+        Args: { p_file_extension?: string; p_vendor_id: string }
+        Returns: string
+      }
       is_admin: { Args: never; Returns: boolean }
+      update_overdue_expected_transactions: { Args: never; Returns: number }
       update_sync_configuration: {
         Args: {
           p_auto_sync_enabled?: boolean
@@ -1207,6 +2184,15 @@ export type Database = {
           message: string
           removed_rates: number
           success: boolean
+        }[]
+      }
+      validate_statement_balances: {
+        Args: { p_statement_metadata_id: string }
+        Returns: {
+          calculated_ending_balance: number
+          difference: number
+          expected_ending_balance: number
+          is_valid: boolean
         }[]
       }
     }
@@ -1375,6 +2361,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       currency_type: [
@@ -1420,71 +2409,3 @@ export const Constants = {
     },
   },
 } as const
-
-// ===== CUSTOM TYPE EXPORTS =====
-// These are helper types that are not generated by Supabase but are used throughout the app
-
-// Basic table types
-export type Transaction = Tables<"transactions">
-export type TransactionInsert = TablesInsert<"transactions">
-export type TransactionUpdate = TablesUpdate<"transactions">
-export type Vendor = Tables<"vendors">
-export type VendorInsert = TablesInsert<"vendors">
-export type PaymentMethod = Tables<"payment_methods">
-export type PaymentMethodInsert = TablesInsert<"payment_methods">
-export type Tag = Tables<"tags">
-export type TagInsert = TablesInsert<"tags">
-export type User = Tables<"users">
-export type UserUpdate = TablesUpdate<"users">
-export type ExchangeRate = Tables<"exchange_rates">
-export type ExchangeRateInsert = TablesInsert<"exchange_rates">
-
-// Document management types
-export type Document = Tables<"documents">
-export type DocumentInsert = TablesInsert<"documents">
-export type DocumentUpdate = TablesUpdate<"documents">
-export type DocumentExtraction = Tables<"document_extractions">
-export type DocumentExtractionInsert = TablesInsert<"document_extractions">
-export type DocumentExtractionUpdate = TablesUpdate<"document_extractions">
-export type TransactionDocumentMatch = Tables<"transaction_document_matches">
-export type TransactionDocumentMatchInsert = TablesInsert<"transaction_document_matches">
-export type TransactionDocumentMatchUpdate = TablesUpdate<"transaction_document_matches">
-export type ReconciliationQueue = Tables<"reconciliation_queue">
-export type ReconciliationQueueInsert = TablesInsert<"reconciliation_queue">
-export type ReconciliationQueueUpdate = TablesUpdate<"reconciliation_queue">
-export type VendorProfile = Tables<"vendor_profiles">
-export type VendorProfileInsert = TablesInsert<"vendor_profiles">
-export type VendorProfileUpdate = TablesUpdate<"vendor_profiles">
-export type VendorEnrichmentJob = Tables<"vendor_enrichment_jobs">
-export type VendorEnrichmentJobInsert = TablesInsert<"vendor_enrichment_jobs">
-export type VendorEnrichmentJobUpdate = TablesUpdate<"vendor_enrichment_jobs">
-export type ReconciliationAuditLog = Tables<"reconciliation_audit_log">
-export type ReconciliationAuditLogInsert = TablesInsert<"reconciliation_audit_log">
-export type ReconciliationAuditLogUpdate = TablesUpdate<"reconciliation_audit_log">
-export type ProcessingJob = Tables<"processing_jobs">
-export type ProcessingJobInsert = TablesInsert<"processing_jobs">
-export type ProcessingJobUpdate = TablesUpdate<"processing_jobs">
-
-// Enum types
-export type CurrencyType = Database["public"]["Enums"]["currency_type"]
-export type TransactionType = Database["public"]["Enums"]["transaction_type"]
-
-// Complex joined types
-export type TransactionWithVendorAndPayment = Transaction & {
-  vendor?: Vendor | null
-  payment_method?: PaymentMethod | null
-  tags?: Tag[]
-}
-
-// Document with extraction and matches
-export type DocumentWithExtraction = Document & {
-  extraction?: DocumentExtraction | null
-  matches?: TransactionDocumentMatch[]
-}
-
-// Transaction with matched document
-export type TransactionWithDocument = Transaction & {
-  document?: Document | null
-  vendor?: Vendor | null
-  payment_method?: PaymentMethod | null
-}

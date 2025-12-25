@@ -334,7 +334,8 @@
       "Bash(src/lib/utils/encryption.ts )",
       "Bash(src/lib/utils/file-validation.ts )",
       "Bash(src/app/home/page-original.tsx)",
-      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npm run typecheck:*)"
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-key SUPABASE_SERVICE_ROLE_KEY=dummy-service-key NODE_ENV=test npm run typecheck:*)",
+      "Bash(./database/new-migration.sh:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
