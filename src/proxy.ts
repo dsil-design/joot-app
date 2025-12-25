@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -112,7 +112,7 @@ export async function middleware(request: NextRequest) {
 
     return supabaseResponse
   } catch {
-    // Middleware auth error - redirect to login for security
+    // Proxy auth error - redirect to login for security
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('error', 'auth_failed')
