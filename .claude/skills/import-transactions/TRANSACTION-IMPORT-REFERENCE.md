@@ -16,10 +16,12 @@ This document captures learned patterns, vendor mappings, and preferences for im
 |----------------|-----|----------|-------|
 | Chase Sapphire Reserve | `43937623-48b3-45ea-a59c-7ee9c4a4020b` | USD | Primary credit card |
 | Kasikorn Bank (K PLUS) | `0aaeb6c8-6052-47c9-b377-bc27d3231d4f` | THB | Thai bank account, bill payments & transfers |
+| Bangkok Bank (Bualuang) | *(look up during import)* | THB | Thai bank account, bill payments & transfers |
 
 ### Currency Rules
 - **Chase credit card**: Always USD, even for Thai merchants
 - **Kasikorn bank transfers**: Always THB
+- **Bangkok Bank transfers**: Always THB
 - **Grab/Lazada receipts**: May show THB but charged to Chase in USD (use credit card amount)
 
 ---
@@ -56,28 +58,70 @@ Grab charges need to be categorized by service type:
 - $8-15 → Could be either, check context
 - > $15 → GrabFood (Food Delivery)
 
-### Bank Transfer Recipient → Vendor
+### Bolt Rides
 
-These are Thai individuals/businesses paid via K PLUS bank transfers:
+| Vendor | ID | Notes |
+|--------|-----|-------|
+| Bolt | *(look up during import)* | Taxi/ride service, similar to Grab Taxi |
 
-| Recipient Name | Vendor Name | Vendor ID | Typical Description |
-|----------------|-------------|-----------|---------------------|
+**Payment**: Bolt rides are charged to Chase (USD), like Grab. Cross-reference THB email amounts with USD credit card charges using ~34 THB/USD rate.
+
+### K PLUS Address Book
+
+This address book maps recipient names (as they appear in K PLUS emails) to vendors and typical descriptions. Names may appear in different formats (Thai, English, abbreviated) across different transfer types.
+
+#### Individuals (Funds Transfer / PromptPay)
+
+| Email Recipient Name | Vendor Name | Vendor ID | Typical Descriptions |
+|---------------------|-------------|-----------|----------------------|
 | Kittitach | Chef Fuji | `8f42f382-dd9a-49c8-8984-eea40169ec20` | Meal Plan |
 | Chaiyut | Leigh's Van Driver | `24e01082-dd4f-4292-afd8-5b13c7177cc1` | Wedding Transport |
 | Patcharin | At Nata Resort | `1d45930f-7a7d-4c00-a2fb-8e3fff8d1426` | Drink |
-| Kunchai Cha Yen | ZigarLab | `dbdaff3f-0a4a-4bbd-8a90-76e61fa70ce5` | Vapes |
-| Tang Shop | Grab Driver | `37ce0024-75dd-45f4-a3ad-3b7f0ddf1df6` | Delivery Fee |
-| Supaporn Kidkla | Nidnoi | `c39ea16b-7df9-4a51-a561-d38e0ead1f59` | Coffee |
+| Tang Shop | Grab Driver | `fda28045-cd65-49bf-9ba4-0f333ccfec89` | Delivery Fee |
 | Wassana Jamsri | All Time Pickleball | `4a5a1340-7613-479f-8d37-f5a85eae85c7` | Pickleball Tournament |
-| Chayaphorn Bu | Pee Tik | `9bd673d9-d0c0-4184-99de-bcaffa7cacc4` | Massage |
+| MS. SUPAPORN KIDKLA, Supaporn Kidkla, น.ส. สุภาภรณ์ คิดกล้า | Nidnoi | `504c68c7-9a78-4e84-aa35-255918fdc5bb` | Coffee |
+| CHAYAPHORN BU, Chayaphorn Bu, นางสาว ชยภร บัวเสน | Pee Tik | `9bd673d9-d0c0-4184-99de-bcaffa7cacc4` | Massage |
 
-### Bill Payment Companies
+#### Companies (Bill Payment)
 
-| Company Name | Vendor Name | Vendor ID |
-|--------------|-------------|-----------|
-| MK Restaurant | MK Restaurant | `f4e14e17-41c4-46bc-b19e-3fc5a25f1fb7` |
-| Minimal Coffee | Minimal Coffee | `8fa29bc3-bc68-4c8d-a0ad-70c2c3d02b5d` |
-| Liquor Shop | Liquor Shop | `c49f435b-18c4-4f6d-8e4b-12b9f721e20d` |
+| Email Company Name | Vendor Name | Vendor ID | Typical Descriptions |
+|-------------------|-------------|-----------|----------------------|
+| Kunchai cha yen | Zigarlab | `f22be1ef-2cec-4c8c-9978-d6316147a51d` | Vapes |
+| MK Restaurant | MK Restaurant | `47a9df0f-7813-44a8-8849-d9119a957057` | (ask user) |
+| Minimal Coffee | Minimal Coffee | `8d4f8c89-0329-49ea-bccb-d88d70a74efc` | Coffee |
+| Liquor Shop | Liquor Shop | `c49f435b-18c4-4f6d-8e4b-12b9f721e20d` | (ask user) |
+
+### Bangkok Bank (Bualuang) Address Book
+
+This address book maps recipient names from Bangkok Bank (Bualuang mBanking) emails to vendors. Similar to K PLUS, recipients may appear in Thai or English across different transfer types.
+
+**Skip Rules**: Self-transfers (e.g., to own bank accounts or own wallets) should be skipped - these are internal fund movements, not expenses.
+
+#### Individuals (PromptPay to Mobile)
+
+| Email Recipient Name | Vendor Name | Vendor ID | Typical Descriptions |
+|---------------------|-------------|-----------|----------------------|
+| 004xx-xxx-xxx-9197 | Chef Fuji | `8f42f382-dd9a-49c8-8984-eea40169ec20` | Meal Plan |
+| SUPAPORN KID | Nidnoi | `504c68c7-9a78-4e84-aa35-255918fdc5bb` | Coffee |
+
+#### Individuals (Funds Transfer)
+
+| Email Recipient Name | Vendor Name | Vendor ID | Typical Descriptions |
+|---------------------|-------------|-----------|----------------------|
+| บจ. บลิส คลีน แอนด์ แคร์ | Bliss Clean Care | `2056927d-a36a-4328-b878-e59f3d3ff8fd` | Monthly: Cleaning Service |
+
+#### Companies (Payments / Bill Payment)
+
+| Email Company Name | Vendor Name | Vendor ID | Typical Descriptions |
+|-------------------|-------------|-----------|----------------------|
+| บริษัท ม่อนพญาพรหม จำกัด | Highlands | `308791b3-c439-44a8-848a-2511539ea105` | Golf |
+| บริษัท เฮลธ์ลิ้งค์ จำกัด | Alpine Golf Club | `a07811f5-de1a-49d1-8ec5-352137551174` | Golf |
+| NA VANA | Vanaa | `d6ee061e-e861-451d-bcc7-4edb384552f8` | Drinks |
+| M SPORT COMPLEX | MSport | `a7ac24a7-7966-4a07-8ac2-a63b69ca5cff` | Sports/Recreation |
+| SCB มณี SHOP (ALL TIME PICKLEBALL) | All Time Pickleball | `4a5a1340-7613-479f-8d37-f5a85eae85c7` | Pickleball |
+| คุณชายชาเย็น | Zigarlab | `f22be1ef-2cec-4c8c-9978-d6316147a51d` | Vapes |
+| ร้านถุงเงิน (นอร์ธฮิลล์ กอล์ฟ คลับ) | North Hill | `4df2d271-cc02-4c9b-92e7-cb9d665795f5` | Golf |
+| Janjira Photo | Janjira Photo | `08ab6daf-e47c-4756-96ee-4c09ccd7876d` | Photography |
 
 ---
 
@@ -133,12 +177,225 @@ These are Thai individuals/businesses paid via K PLUS bank transfers:
 - Pending vs Posted sections
 
 ### K PLUS Bank Transfers
-- PDF receipts: "Bill Payment Success" or "Funds Transfer Success"
+- Email receipts from `KPLUS@kasikornbank.com`
+- Contains: Date, Recipient name, Amount in THB, Transaction number
+- Bilingual format (Thai + English) - use English section for parsing
+
+### Bangkok Bank (Bualuang) Transfers
+- Email receipts from `BualuangmBanking@bangkokbank.com`
 - Contains: Date, Recipient name, Amount in THB, Reference number
+- Base64-encoded HTML, bilingual format
+- Skip self-transfers (to own accounts)
 
 ### Grab/Lazada Receipts
 - Email PDFs showing THB amounts
 - Cross-reference with USD credit card charges using ~34 THB/USD rate
+
+### Grab Email Receipt Patterns
+
+Grab sends different email formats for each service type. Use these patterns to identify the service:
+
+| Email Subject | Body Indicator | Service Type | Vendor |
+|---------------|----------------|--------------|--------|
+| `Your Grab E-Receipt` | Contains "GrabFood" | Food delivery | GrabFood |
+| `Your Grab E-Receipt` | Contains "GrabMart" | Shopping/groceries | GrabMart |
+| `Your Grab E-Receipt` | Contains "Hope you enjoyed your ride!" | Taxi/ride | Grab Taxi |
+| `Your GrabExpress Receipt` | Vehicle type: GrabExpress/GrabAssistant | Delivery service | GrabExpress |
+
+#### GrabFood Description Format
+**Pattern**: `[Food Type]: [Restaurant Name]`
+
+Food type is inferred from BOTH time of day AND restaurant type:
+
+| Restaurant Type | Food Type | Examples |
+|-----------------|-----------|----------|
+| Ice cream, dessert shops | Dessert | Dairy Queen, Swensen's |
+| Cafés, coffee shops | Coffee | Starbucks, Ristr8to |
+| Light fare, snack shops | Snack | 7-Eleven, convenience stores |
+| Regular restaurants | Time-based | See below |
+
+**Time-based food types (for regular restaurants):**
+- Morning (before 11am): Breakfast
+- Midday (11am-3pm): Lunch
+- Evening (after 5pm): Dinner
+
+**Example**: Dairy Queen at 8:40 PM → "Dessert: Dairy Queen" (restaurant type overrides time)
+
+#### GrabMart Description Format
+**Pattern**: `Groceries - [Store Name]`
+
+**Example**: Order from 7-Eleven → "Groceries - 7-Eleven"
+
+#### GrabTaxi Description Format
+**Pattern**: `Taxi to [Destination]`
+
+Common destinations: Home, Hotel, Bar, Airport, Mall
+
+**Example**: Ride to a hotel → "Taxi to Hotel"
+
+#### GrabExpress/GrabAssistant Description Format
+**Pattern**: `Delivery: [Purpose]`
+
+Purpose may be unclear from receipt - ask user or leave blank if unknown.
+
+**Example**: Package delivery → "Delivery: Package pickup"
+
+#### Key Email Fields to Extract
+- **Date**: From email header (Date field in +0700 timezone)
+- **Amount (THB)**: From receipt body (for cross-referencing with USD charge)
+- **Order/Booking ID**: For notes/reference (format: A-XXXXXXXXXXXX)
+- **Restaurant/Store Name**: For GrabFood/GrabMart descriptions
+
+### K PLUS Email Receipt Patterns
+
+K PLUS (Kasikorn Bank) sends email confirmations for transfers and payments. All emails:
+- Come from `KPLUS@kasikornbank.com`
+- Are bilingual (Thai section first, then English)
+- Use +0700 timezone
+- Include transaction reference numbers
+
+#### Email Type Identification
+
+| Subject Line | Transfer Type | Recipient Field |
+|--------------|---------------|-----------------|
+| `Result of Bill Payment (Success)` | Bill payment to merchant/company | Company Name |
+| `Result of Funds Transfer (Success)` | Bank-to-bank transfer | Account Name |
+| `Result of PromptPay Funds Transfer (Success)` | PromptPay transfer | Received Name |
+
+#### Key Fields to Extract (from English section)
+
+**Bill Payment:**
+```
+Transaction Date: DD/MM/YYYY  HH:MM:SS
+Transaction Number: XXXXXXXXXXXXXXXXXXXXXX
+Company Name: [Recipient - use for vendor lookup]
+Amount (THB): X,XXX.XX
+```
+
+**Funds Transfer:**
+```
+Transaction Date: DD/MM/YYYY  HH:MM:SS
+Transaction Number: XXXXXXXXXXXXXXXXXXXXXX
+To Bank: [Bank name]
+To Account: XXX-X-XXXXX-X
+Account Name: [Recipient - use for vendor lookup]
+Amount (THB): X,XXX.XX
+```
+
+**PromptPay Transfer:**
+```
+Transaction Date: DD/MM/YYYY  HH:MM:SS
+Transaction Number: XXXXXXXXXXXXXXXXXXXXXX
+To PromptPay ID: XXX-XXX-XXXX
+Received Name: [Recipient - use for vendor lookup]
+Amount (THB): X,XXX.XX
+```
+
+#### Parsing Notes
+- Date format is `DD/MM/YYYY` (not US format) - convert to `YYYY-MM-DD`
+- Recipient names may appear in UPPERCASE, Title Case, or Thai script
+- Look up recipient in K PLUS Address Book for vendor mapping
+- All K PLUS transactions use payment method: Kasikorn Bank (K PLUS)
+- Currency is always THB
+
+### Bolt Email Receipt Patterns
+
+Bolt sends HTML ride receipts after each trip. Like Grab, these show THB amounts but are charged to Chase in USD.
+
+#### Email Identification
+
+| Field | Pattern |
+|-------|---------|
+| Subject | `Your Bolt ride on [Day of Week]` (e.g., "Your Bolt ride on Saturday") |
+| From | `Bolt Thailand <bangkok@bolt.eu>` (via Apple Private Relay) |
+| Content-Type | HTML (text/html) |
+
+#### Key Fields to Extract
+
+The email body contains (in quoted-printable HTML):
+
+| Field | Location/Format |
+|-------|-----------------|
+| **Total Amount** | `฿XXX.XX` (Thai Baht symbol encoded as `=E0=B8=BF`) |
+| **Ride Date** | In header, e.g., "Saturday, 29 November 2025" |
+| **Pickup Location** | After "Pickup:" label, includes address + time (HH:MM) |
+| **Dropoff Location** | After "Dropoff:" label, includes address + time (HH:MM) |
+
+#### Description Format
+**Pattern**: `Taxi to [Destination]`
+
+Destination is derived from the dropoff location. Use simplified/recognizable names:
+
+| Dropoff Contains | Description |
+|------------------|-------------|
+| "Golf" | `Taxi to Golf` |
+| "Airport" | `Taxi to Airport` |
+| "Central" / "Mall" | `Taxi to Mall` |
+| Home address | `Taxi to Home` |
+| Hotel name | `Taxi to Hotel` |
+
+#### Parsing Notes
+- Date in email header is UTC - the ride date in the body is local Thailand time
+- Amount in THB needs to be matched to USD credit card charge
+- Cross-reference using ~34 THB/USD rate (same as Grab)
+- Payment method: Chase Sapphire Reserve (USD)
+- Vendor: Bolt
+
+### Bangkok Bank (Bualuang mBanking) Email Receipt Patterns
+
+Bangkok Bank sends email confirmations for transfers and payments via Bualuang mBanking app. All emails:
+- Come from `BualuangmBanking@bangkokbank.com`
+- Are bilingual (Thai subject line / English in body)
+- Are base64-encoded HTML
+- Use +0700 timezone
+- Include transaction reference numbers
+
+#### Email Type Identification
+
+| Subject Line (Thai / English) | Transfer Type | Skip? |
+|-------------------------------|---------------|-------|
+| `ยืนยันการชำระเงิน / Payments confirmation` | Bill payment to merchant/company | No |
+| `ยืนยันรายการโอนเงินไปยังหมายเลขโทรศัพท์มือถือโดยพร้อมเพย์ / Confirmation of funds transfer to Mobile Phone Number by PromptPay` | PromptPay to mobile number | No |
+| `ยืนยันการโอนเงิน / Funds transfer confirmation` | Bank-to-bank transfer | Check* |
+| `ยืนยันการเติมเงินพร้อมเพย์ / PromptPay Top Up Confirmation` | Top-up (e.g., to e-wallet) | Check* |
+
+*Check: Skip if transfer is to own account/wallet (personal fund movement)
+
+#### Key Fields to Extract (from decoded HTML body)
+
+**Payments (Bill Payment):**
+```
+Date and Time: DD/MM/YYYY HH:MM:SS
+Company/Merchant: [Recipient - use for vendor lookup]
+Amount: X,XXX.XX Baht
+Reference No.: XXXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+**PromptPay to Mobile:**
+```
+Date and Time: DD/MM/YYYY HH:MM:SS
+Beneficiary Name: [Recipient - use for vendor lookup]
+Amount: X,XXX.XX Baht
+Reference No.: XXXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+**Funds Transfer:**
+```
+Date and Time: DD/MM/YYYY HH:MM:SS
+To Account Name: [Recipient - check if self or other]
+To Account Number: XXX-X-XXXXX-X
+To Bank: [Bank name]
+Amount: X,XXX.XX Baht
+Reference No.: XXXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+#### Parsing Notes
+- Date format is `DD/MM/YYYY` (not US format) - convert to `YYYY-MM-DD`
+- HTML content is base64-encoded - decode before parsing
+- Look up recipient in Bangkok Bank Address Book for vendor mapping
+- All Bangkok Bank transactions use payment method: Bangkok Bank (Bualuang)
+- Currency is always THB
+- Skip self-transfers (to own accounts or own wallets)
 
 ---
 
