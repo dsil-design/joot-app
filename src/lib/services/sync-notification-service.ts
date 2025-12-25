@@ -3,7 +3,6 @@
  * Handles notifications for sync failures and important events
  */
 
-import { db } from '../supabase/database';
 import { createClient } from '../supabase/server';
 
 export interface NotificationConfig {
@@ -93,10 +92,6 @@ export class SyncNotificationService {
   private async sendNotification(notification: SyncNotification): Promise<void> {
     const promises: Promise<void>[] = [];
 
-    if (this.config.emailEnabled && this.config.emailRecipients.length > 0) {
-      promises.push(this.sendEmailNotification(notification));
-    }
-
     if (this.config.slackEnabled && this.config.slackWebhookUrl) {
       promises.push(this.sendSlackNotification(notification));
     }
@@ -110,41 +105,6 @@ export class SyncNotificationService {
 
     // Log notification to database
     await this.logNotification(notification);
-  }
-
-  /**
-   * Send email notification
-   */
-  private async sendEmailNotification(notification: SyncNotification): Promise<void> {
-    try {
-      // In a real implementation, you'd integrate with your email service
-      // For now, we'll just log it
-      console.log('📧 Email notification (not implemented):', {
-        to: this.config.emailRecipients,
-        subject: notification.title,
-        body: notification.message
-      });
-
-      // Example integration with a service like Resend or SendGrid:
-      /*
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: 'alerts@yourapp.com',
-          to: this.config.emailRecipients,
-          subject: notification.title,
-          html: this.formatEmailHtml(notification)
-        })
-      });
-      */
-
-    } catch (error) {
-      console.error('Failed to send email notification:', error);
-    }
   }
 
   /**
@@ -256,51 +216,6 @@ export class SyncNotificationService {
   }
 
   /**
-   * Format email HTML content
-   */
-  private formatEmailHtml(notification: SyncNotification): string {
-    const emoji = notification.type === 'failure' ? '❌' : 
-                 notification.type === 'warning' ? '⚠️' : '✅';
-                 
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-            .container { max-width: 600px; margin: 0 auto; }
-            .header { background: ${notification.type === 'failure' ? '#fee2e2' : notification.type === 'warning' ? '#fef3c7' : '#d1fae5'}; 
-                     padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-            .title { font-size: 24px; margin: 0; color: ${notification.type === 'failure' ? '#dc2626' : notification.type === 'warning' ? '#d97706' : '#059669'}; }
-            .message { font-size: 16px; line-height: 1.5; margin: 15px 0; }
-            .details { background: #f9fafb; padding: 15px; border-radius: 6px; margin: 15px 0; }
-            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #6b7280; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 class="title">${emoji} ${notification.title}</h1>
-            </div>
-            <div class="message">${notification.message}</div>
-            ${notification.details ? `
-              <div class="details">
-                <strong>Details:</strong><br>
-                <pre>${JSON.stringify(notification.details, null, 2)}</pre>
-              </div>
-            ` : ''}
-            <div class="footer">
-              <p><strong>Sync ID:</strong> ${notification.syncId}</p>
-              <p><strong>Time:</strong> ${new Date(notification.timestamp).toLocaleString()}</p>
-              <p>This is an automated message from the Joot Exchange Rate System.</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
-  }
-
-  /**
    * Check if we should notify about success (after failure)
    */
   async shouldNotifySuccessAfterFailure(syncId: string): Promise<boolean> {
@@ -328,10 +243,8 @@ export class SyncNotificationService {
  * Default notification configuration
  */
 export const defaultNotificationConfig: NotificationConfig = {
-  emailEnabled: false,
   slackEnabled: false,
   webhookEnabled: false,
-  emailRecipients: [],
   notifyOnFailure: true,
   notifyOnSuccess: false,
   notifyOnFirstSuccess: true // Notify when sync recovers after failure
@@ -342,10 +255,8 @@ export const defaultNotificationConfig: NotificationConfig = {
  */
 export function createNotificationService(): SyncNotificationService {
   const config: NotificationConfig = {
-    emailEnabled: process.env.SYNC_EMAIL_NOTIFICATIONS === 'true',
     slackEnabled: !!process.env.SYNC_SLACK_WEBHOOK_URL,
     webhookEnabled: !!process.env.SYNC_WEBHOOK_URL,
-    emailRecipients: process.env.SYNC_EMAIL_RECIPIENTS?.split(',') || [],
     slackWebhookUrl: process.env.SYNC_SLACK_WEBHOOK_URL,
     webhookUrl: process.env.SYNC_WEBHOOK_URL,
     notifyOnFailure: process.env.SYNC_NOTIFY_ON_FAILURE !== 'false',
