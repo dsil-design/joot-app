@@ -1496,6 +1496,7 @@ export default function AllTransactionsPage() {
           paymentMethodIds={filters.paymentMethodIds}
           vendors={uniqueVendors}
           paymentMethods={uniquePaymentMethods}
+          onDateRangeClick={handleCustomRangeClick}
           onRemoveDateRange={handleRemoveDateRange}
           onRemoveTransactionType={handleRemoveTransactionType}
           onRemoveSearchKeyword={handleRemoveSearchKeyword}

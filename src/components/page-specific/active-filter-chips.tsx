@@ -15,6 +15,7 @@ interface ActiveFilterChipsProps {
   paymentMethodIds?: string[]
   vendors?: Array<{ id: string; name: string }>
   paymentMethods?: Array<{ id: string; name: string }>
+  onDateRangeClick?: () => void
   onRemoveDateRange: () => void
   onRemoveTransactionType: () => void
   onRemoveSearchKeyword?: () => void
@@ -34,6 +35,7 @@ export function ActiveFilterChips({
   paymentMethodIds = [],
   vendors = [],
   paymentMethods = [],
+  onDateRangeClick,
   onRemoveDateRange,
   onRemoveTransactionType,
   onRemoveSearchKeyword,
@@ -63,9 +65,15 @@ export function ActiveFilterChips({
           {dateRange && (
             <Badge
               variant="secondary"
-              className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
+              className="bg-blue-100 text-blue-900 border border-blue-200 pr-1 flex items-center gap-0"
             >
-              {formatDateRangeChip(dateRange)}
+              <button
+                onClick={onDateRangeClick}
+                className="hover:underline cursor-pointer"
+                aria-label="Edit date range"
+              >
+                {formatDateRangeChip(dateRange)}
+              </button>
               <button
                 onClick={onRemoveDateRange}
                 className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
