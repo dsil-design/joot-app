@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ecbFullSyncService } from '@/lib/services/ecb-full-sync-service';
 import { dailySyncService } from '@/lib/services/daily-sync-service';
+import { transactionRateGapService } from '@/lib/services/transaction-rate-gap-service';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { syncNotificationService } from '@/lib/services/sync-notification-service';
 
 /**
- * Consolidated ECB Exchange Rates Sync
- * Day-based sync strategy:
- * - Monday-Friday: Fast daily sync (previous business day rates)
- * - Sunday: Full maintenance sync (complete historical verification)
- * - Saturday: Skip (no new ECB data published)
+ * Surgical Exchange Rates Sync
+ *
+ * Uses the "surgical alignment" approach:
+ * - Detects gaps between transactions and exchange rates
+ * - Only fetches rates that are actually needed
+ * - Handles weekends/holidays automatically (interpolates from nearest business day)
+ * - Works for all currencies (ECB and non-ECB)
+ *
  * Runs at 18:00 UTC daily
  */
 export async function GET(request: NextRequest) {
@@ -22,33 +25,19 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const results = {
     cleanup: { success: false, message: '', data: null as any },
-    ecbFullSync: { success: false, message: '', data: null as any },
-    dailySync: { success: false, message: '', data: null as any }
+    surgicalSync: { success: false, message: '', data: null as any },
+    coverage: { success: false, message: '', data: null as any }
   };
 
   try {
     const now = new Date();
-    const dayOfWeek = now.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
-    const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5; // Mon-Fri
-    const isSunday = dayOfWeek === 0;
-    const isSaturday = dayOfWeek === 6;
+    const dayOfWeek = now.getDay();
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek];
 
-    console.log('🚀 Starting ECB rates sync job at', now.toISOString());
-    console.log(`📅 Day: ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek]}`);
+    console.log('🎯 Starting surgical exchange rate sync at', now.toISOString());
+    console.log(`📅 Day: ${dayName}`);
 
-    // Skip entirely on Saturday (no new ECB data, maintenance on Sunday)
-    if (isSaturday) {
-      console.log('⏭️  Skipping Saturday - no new ECB data published on weekends');
-      return NextResponse.json({
-        success: true,
-        message: 'Saturday sync skipped (no new data)',
-        skipped: true,
-        duration: Date.now() - startTime,
-        timestamp: now.toISOString()
-      });
-    }
-
-    // 0. Cleanup stuck syncs first (before starting new syncs)
+    // 1. Cleanup stuck syncs first (before starting new syncs)
     try {
       console.log('🧹 Cleaning up stuck syncs...');
       const supabase = createServiceRoleClient();
@@ -100,113 +89,69 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // SUNDAY: Full maintenance sync (complete historical verification)
-    if (isSunday) {
-      console.log('🔧 SUNDAY MAINTENANCE: Running full ECB historical sync...');
-
-      try {
-        const supabase = createServiceRoleClient();
-
-        // Check if auto-sync is enabled
-        let autoSyncEnabled = true;
-        try {
-          const { data: config } = await supabase.rpc('get_sync_configuration' as any);
-          if (config?.[0]?.auto_sync_enabled === false) {
-            console.log('⏸️  ECB auto-sync is disabled');
-            results.ecbFullSync = {
-              success: true,
-              message: 'Auto-sync disabled',
-              data: { skipped: true }
-            };
-            autoSyncEnabled = false;
-          }
-        } catch (error) {
-          console.log('Sync configuration not available, proceeding...');
-        }
-
-        if (autoSyncEnabled) {
-          // Check if sync is already running
-          try {
-            const { data: latestSync } = await supabase.rpc('get_latest_sync_status' as any);
-            if (latestSync?.[0]?.status === 'running') {
-              const runningTime = Date.now() - new Date(latestSync[0].started_at).getTime();
-              if (runningTime < 10 * 60 * 1000) {
-                console.log('⏳ ECB sync already in progress');
-                results.ecbFullSync = {
-                  success: true,
-                  message: 'Sync already in progress',
-                  data: { skipped: true }
-                };
-                autoSyncEnabled = false;
-              }
-            }
-          } catch (error) {
-            console.log('Sync history not available, proceeding...');
-          }
-
-          if (autoSyncEnabled) {
-            const ecbResult = await ecbFullSyncService.executeSync('scheduled');
-            results.ecbFullSync = {
-              success: true,
-              message: 'ECB full sync completed successfully',
-              data: {
-                syncId: ecbResult.syncId,
-                statistics: ecbResult.statistics
-              }
-            };
-            console.log('✅ ECB full sync completed:', ecbResult.statistics);
-          }
-        }
-
-        // Mark daily sync as skipped for Sunday
-        results.dailySync = {
+    // 2. Check if auto-sync is enabled
+    let autoSyncEnabled = true;
+    try {
+      const supabase = createServiceRoleClient();
+      const { data: config } = await supabase.rpc('get_sync_configuration' as any);
+      if (config?.[0]?.auto_sync_enabled === false) {
+        console.log('⏸️  Auto-sync is disabled');
+        results.surgicalSync = {
           success: true,
-          message: 'Skipped on Sunday (full sync runs instead)',
-          data: { skipped: true, reason: 'sunday_maintenance' }
+          message: 'Auto-sync disabled',
+          data: { skipped: true }
         };
-
-      } catch (error) {
-        console.error('❌ ECB full sync failed:', error);
-        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-        const errorStack = error instanceof Error ? error.stack : undefined;
-        results.ecbFullSync = {
-          success: false,
-          message: errorMessage,
-          data: {
-            error: errorMessage,
-            stack: errorStack,
-            fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
-          }
-        };
-        console.error('Full error details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+        autoSyncEnabled = false;
       }
+    } catch {
+      console.log('Sync configuration not available, proceeding...');
     }
 
-    // MONDAY-FRIDAY: Fast daily sync (previous business day rates only)
-    else if (isWeekday) {
-      console.log('📈 WEEKDAY: Running fast daily sync for previous business day...');
+    // 3. Execute surgical sync
+    if (autoSyncEnabled) {
+      console.log('🔄 Executing surgical sync...');
 
       try {
-        const dailyResult = await dailySyncService.executeDailySync({
-          fillGaps: true,
-          maxGapDays: 7
-        });
+        const syncResult = await dailySyncService.executeSurgicalSync(false);
 
-        results.dailySync = {
-          success: dailyResult.success,
-          message: dailyResult.success ? 'Daily sync completed' : 'Daily sync failed',
+        results.surgicalSync = {
+          success: syncResult.success,
+          message: syncResult.success
+            ? syncResult.totalGaps === 0
+              ? 'No gaps found - all transactions have rates'
+              : `Filled ${syncResult.ratesInserted} rate gaps`
+            : 'Surgical sync completed with errors',
           data: {
-            targetDate: dailyResult.targetDate,
-            ratesInserted: dailyResult.ratesInserted,
-            gapsFilled: dailyResult.gapsFilled,
-            errorCount: dailyResult.errors.length,
-            skippedReason: dailyResult.skippedReason
+            totalGaps: syncResult.totalGaps,
+            ratesInserted: syncResult.ratesInserted,
+            ratesSkipped: syncResult.ratesSkipped,
+            errorCount: syncResult.errors.length,
+            duration: syncResult.duration,
+            details: syncResult.details
           }
         };
-        console.log('✅ Daily sync completed:', results.dailySync.data);
 
-        // Send success notification if recovering from failure
-        if (dailyResult.success) {
+        console.log('✅ Surgical sync completed:', results.surgicalSync.data);
+
+        // Send notifications on failure
+        if (!syncResult.success && syncResult.errors.length > 0) {
+          try {
+            await syncNotificationService.notifyFailure(
+              'surgical-sync-' + now.toISOString(),
+              `Surgical sync had ${syncResult.errors.length} errors`,
+              {
+                syncType: 'surgical',
+                dayOfWeek: dayName,
+                errors: syncResult.errors.slice(0, 5) // First 5 errors
+              }
+            );
+          } catch (notifError) {
+            console.error('Failed to send failure notification:', notifError);
+          }
+        }
+
+        // Send recovery notification if previous sync failed
+        if (syncResult.success && syncResult.ratesInserted > 0) {
           try {
             const supabase = createServiceRoleClient();
             const { data: recentSyncs } = await supabase
@@ -221,11 +166,11 @@ export async function GET(request: NextRequest) {
 
             if (wasAfterFailure) {
               await syncNotificationService.notifySuccess(
-                'weekday-sync-' + new Date().toISOString(),
+                'surgical-sync-' + now.toISOString(),
                 {
-                  newRatesInserted: dailyResult.ratesInserted,
+                  newRatesInserted: syncResult.ratesInserted,
                   ratesUpdated: 0,
-                  gapsFilled: dailyResult.gapsFilled
+                  gapsFilled: syncResult.ratesInserted
                 },
                 true
               );
@@ -235,18 +180,11 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Mark full sync as skipped for weekdays
-        results.ecbFullSync = {
-          success: true,
-          message: 'Skipped on weekday (daily sync runs instead)',
-          data: { skipped: true, reason: 'weekday_fast_sync' }
-        };
-
       } catch (error) {
-        console.error('❌ Daily sync failed:', error);
+        console.error('❌ Surgical sync failed:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-        results.dailySync = {
+        results.surgicalSync = {
           success: false,
           message: errorMessage,
           data: null
@@ -255,11 +193,11 @@ export async function GET(request: NextRequest) {
         // Send failure notification
         try {
           await syncNotificationService.notifyFailure(
-            'weekday-sync-' + new Date().toISOString(),
+            'surgical-sync-' + now.toISOString(),
             errorMessage,
             {
-              syncType: 'weekday_fast_sync',
-              dayOfWeek: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek],
+              syncType: 'surgical',
+              dayOfWeek: dayName,
               error: error instanceof Error ? {
                 name: error.name,
                 message: error.message,
@@ -270,29 +208,38 @@ export async function GET(request: NextRequest) {
         } catch (notifError) {
           console.error('Failed to send notification:', notifError);
         }
-
-        // Mark full sync as not run
-        results.ecbFullSync = {
-          success: true,
-          message: 'Not run (weekday)',
-          data: { skipped: true, reason: 'weekday' }
-        };
       }
     }
 
+    // 4. Get coverage stats for reporting
+    try {
+      console.log('📊 Getting coverage stats...');
+      const coverage = await transactionRateGapService.getCoverageStats();
+      results.coverage = {
+        success: true,
+        message: `Coverage: ${coverage.coveragePercentage}%`,
+        data: coverage
+      };
+      console.log(`  ✅ Coverage: ${coverage.coveragePercentage}% (${coverage.transactionsWithRates}/${coverage.totalTransactionsNeedingRates})`);
+    } catch (error) {
+      console.error('⚠️  Coverage stats failed (non-critical):', error);
+      results.coverage = {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        data: null
+      };
+    }
+
     const duration = Date.now() - startTime;
-    const syncType = isSunday ? 'Sunday Maintenance' : 'Weekday Fast Sync';
-    console.log(`✨ ${syncType} completed in ${(duration / 1000).toFixed(1)}s`);
+    console.log(`✨ Surgical sync completed in ${(duration / 1000).toFixed(1)}s`);
 
     return NextResponse.json({
-      success: true,
-      message: `ECB sync completed (${syncType})`,
+      success: results.surgicalSync.success,
+      message: results.surgicalSync.message,
       syncStrategy: {
-        dayOfWeek: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek],
-        syncType: isSunday ? 'full_maintenance' : 'daily_fast',
-        reason: isSunday
-          ? 'Weekly full sync to verify all historical data'
-          : 'Daily sync for previous business day rates'
+        type: 'surgical',
+        description: 'Only fetches rates needed for actual transactions',
+        dayOfWeek: dayName
       },
       duration,
       results,
@@ -302,7 +249,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const duration = Date.now() - startTime;
     const dayOfWeek = new Date().getDay();
-    console.error('💥 ECB sync job failed:', error);
+    console.error('💥 Surgical sync job failed:', error);
 
     return NextResponse.json(
       {
