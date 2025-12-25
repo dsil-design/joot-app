@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import type { DatePresetKey } from "@/lib/utils/date-filters"
 import { PRESET_LABELS } from "@/lib/utils/date-filters"
+import { HorizontalFilterScroll } from "./horizontal-filter-scroll"
 
 interface QuickFilterBarProps {
   activePreset: string | null
@@ -32,176 +33,202 @@ export function QuickFilterBar({
 }: QuickFilterBarProps) {
   const isActive = (preset: string) => activePreset === preset
 
+  // Check if any non-primary preset is active (for "More" button highlight)
+  const isMoreActive = isActive('custom') || isActive('last-30-days') ||
+    isActive('this-week') || isActive('last-week') ||
+    isActive('last-month') || isActive('this-quarter') || isActive('last-quarter') ||
+    isActive('this-year') || isActive('last-year') || isActive('all-time')
+
   return (
-    <div className="w-full bg-zinc-50 rounded-lg border border-zinc-200 px-4 py-3">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+    <>
+      {/* Mobile: Horizontal scrolling filter pills */}
+      <div className="md:hidden w-full">
+        <HorizontalFilterScroll
+          activePreset={activePreset as DatePresetKey | null}
+          activeTransactionType={activeTransactionType}
+          onPresetChange={onPresetChange}
+          onTransactionTypeChange={onTransactionTypeChange}
+          onMoreClick={onMoreFiltersClick}
+        />
+      </div>
 
-        {/* Date Filters */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-sm font-medium text-zinc-700">Time Period:</span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPresetChange('this-month')}
-              className={
-                isActive('this-month')
-                  ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
-                  : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
-              }
-            >
-              This Month
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPresetChange('last-30-days')}
-              className={
-                isActive('last-30-days')
-                  ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
-                  : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
-              }
-            >
-              Last 30 Days
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPresetChange('this-year')}
-              className={
-                isActive('this-year')
-                  ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
-                  : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
-              }
-            >
-              This Year
-            </Button>
+      {/* Desktop: Traditional filter bar with updated priority */}
+      <div className="hidden md:block w-full bg-zinc-50 rounded-lg border border-zinc-200 px-4 py-3">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
 
-            {/* Extended Presets Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={
-                    isActive('custom') || isActive('today') || isActive('yesterday') ||
-                    isActive('last-7-days') || isActive('this-week') || isActive('last-week') ||
-                    isActive('last-month') || isActive('this-quarter') || isActive('last-quarter') ||
-                    isActive('last-year') || isActive('all-time')
-                      ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
-                      : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
-                  }
-                >
-                  More
-                  <ChevronDown className="ml-1 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => onPresetChange('today')}>
-                  {PRESET_LABELS.today}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onPresetChange('yesterday')}>
-                  {PRESET_LABELS.yesterday}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onPresetChange('last-7-days')}>
-                  {PRESET_LABELS['last-7-days']}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onPresetChange('this-week')}>
-                  {PRESET_LABELS['this-week']}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onPresetChange('last-week')}>
-                  {PRESET_LABELS['last-week']}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onPresetChange('last-month')}>
-                  {PRESET_LABELS['last-month']}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onPresetChange('this-quarter')}>
-                  {PRESET_LABELS['this-quarter']}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onPresetChange('last-quarter')}>
-                  {PRESET_LABELS['last-quarter']}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onPresetChange('last-year')}>
-                  {PRESET_LABELS['last-year']}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onPresetChange('all-time')}>
-                  {PRESET_LABELS['all-time']}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={() => {
-                    // Defer the dialog opening to next tick to allow dropdown to close cleanly
-                    setTimeout(() => {
-                      onCustomRangeClick?.()
-                    }, 0)
-                  }}
-                >
-                  <Calendar className="mr-2 h-4 w-4" />
-                  <strong>Custom Range...</strong>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {/* Type Filters */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-zinc-700">Type:</span>
+          {/* Date Filters - Priority: Today, Yesterday, Last 7 days, This Month */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-medium text-zinc-700">Time Period:</span>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onTransactionTypeChange('all')}
+                onClick={() => onPresetChange('today')}
                 className={
-                  activeTransactionType === 'all'
+                  isActive('today')
                     ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
                     : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
                 }
               >
-                All
+                Today
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onTransactionTypeChange('expense')}
+                onClick={() => onPresetChange('yesterday')}
                 className={
-                  activeTransactionType === 'expense'
+                  isActive('yesterday')
                     ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
                     : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
                 }
               >
-                Expenses
+                Yesterday
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onTransactionTypeChange('income')}
+                onClick={() => onPresetChange('last-7-days')}
                 className={
-                  activeTransactionType === 'income'
+                  isActive('last-7-days')
                     ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
                     : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
                 }
               >
-                Income
+                Last 7 days
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPresetChange('this-month')}
+                className={
+                  isActive('this-month')
+                    ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                    : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
+                }
+              >
+                This Month
+              </Button>
+
+              {/* Extended Presets Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={
+                      isMoreActive
+                        ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                        : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
+                    }
+                  >
+                    More
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => onPresetChange('last-30-days')}>
+                    {PRESET_LABELS['last-30-days']}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onPresetChange('this-week')}>
+                    {PRESET_LABELS['this-week']}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onPresetChange('last-week')}>
+                    {PRESET_LABELS['last-week']}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onPresetChange('last-month')}>
+                    {PRESET_LABELS['last-month']}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onPresetChange('this-quarter')}>
+                    {PRESET_LABELS['this-quarter']}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onPresetChange('last-quarter')}>
+                    {PRESET_LABELS['last-quarter']}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onPresetChange('this-year')}>
+                    {PRESET_LABELS['this-year']}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onPresetChange('last-year')}>
+                    {PRESET_LABELS['last-year']}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onPresetChange('all-time')}>
+                    {PRESET_LABELS['all-time']}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      // Defer the dialog opening to next tick to allow dropdown to close cleanly
+                      setTimeout(() => {
+                        onCustomRangeClick?.()
+                      }, 0)
+                    }}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    <strong>Custom Range...</strong>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onMoreFiltersClick}
-            className="text-zinc-600 hover:text-zinc-900"
-          >
-            More filters
-          </Button>
+          {/* Type Filters */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-zinc-700">Type:</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onTransactionTypeChange('all')}
+                  className={
+                    activeTransactionType === 'all'
+                      ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                      : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
+                  }
+                >
+                  All
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onTransactionTypeChange('expense')}
+                  className={
+                    activeTransactionType === 'expense'
+                      ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                      : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
+                  }
+                >
+                  Expenses
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onTransactionTypeChange('income')}
+                  className={
+                    activeTransactionType === 'income'
+                      ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                      : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
+                  }
+                >
+                  Income
+                </Button>
+              </div>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onMoreFiltersClick}
+              className="text-zinc-600 hover:text-zinc-900"
+            >
+              More filters
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

@@ -34,6 +34,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { TransactionGroup } from "@/components/page-specific/transactions-list"
 import { AddTransactionFooter } from "@/components/page-specific/add-transaction-footer"
+import { MobileFab } from "@/components/page-specific/mobile-fab"
 import { format, parseISO } from "date-fns"
 import { getBatchExchangeRates, getCacheKey } from "@/lib/utils/exchange-rate-batch"
 import type { CurrencyType } from "@/lib/supabase/types"
@@ -1619,16 +1620,21 @@ export default function AllTransactionsPage() {
         />
       )}
 
-      {/* Show totals footer when filters are active and no selection, otherwise show add transaction footer */}
-      {!selectedIds.size && hasActiveFilters ? (
-        <TotalsFooter
-          totals={totals}
-          totalsCurrency={totalsCurrency}
-          onTotalsCurrencyChange={setTotalsCurrency}
-        />
-      ) : !selectedIds.size ? (
-        <AddTransactionFooter />
-      ) : null}
+      {/* Mobile FAB - always visible on mobile for adding transactions */}
+      <div className="md:hidden">
+        <MobileFab />
+      </div>
+
+      {/* Desktop: Show totals footer when filters are active and no selection */}
+      {!selectedIds.size && hasActiveFilters && (
+        <div className="hidden md:block">
+          <TotalsFooter
+            totals={totals}
+            totalsCurrency={totalsCurrency}
+            onTotalsCurrencyChange={setTotalsCurrency}
+          />
+        </div>
+      )}
 
       {/* Add Transaction Modal (Desktop only) */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>

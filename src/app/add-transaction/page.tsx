@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import { X } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { TransactionForm, type TransactionFormData } from "@/components/forms/transaction-form"
 import { useTransactions } from "@/hooks"
 import { format } from "date-fns"
@@ -80,11 +82,22 @@ export default function AddTransactionPage() {
   }
 
   return (
-    <div className="bg-white flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-4 sm:px-6 md:px-10 min-h-screen w-full transaction-form-page">
-      {/* Page Header */}
-      <h1 className="text-2xl sm:text-[30px] md:text-[36px] font-medium text-foreground leading-tight">
-        Add transaction
-      </h1>
+    <div className="bg-white flex flex-col gap-6 items-start justify-start pb-0 pt-6 sm:pt-20 px-4 sm:px-6 md:px-10 min-h-screen w-full transaction-form-page">
+      {/* Page Header with Close Button */}
+      <div className="flex items-center justify-between w-full">
+        <h1 className="text-2xl sm:text-[30px] md:text-[36px] font-medium text-foreground leading-tight">
+          Add transaction
+        </h1>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleCancel}
+          className="h-10 w-10 rounded-full"
+          aria-label="Close"
+        >
+          <X className="h-6 w-6" />
+        </Button>
+      </div>
 
       {/* Form - No extra padding needed, static footer handles spacing */}
       <div className="w-full">
