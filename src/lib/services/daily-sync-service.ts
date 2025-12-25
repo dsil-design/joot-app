@@ -3,14 +3,16 @@ import { RateCalculator, rateCalculator } from './rate-calculator';
 import { GapFillingService, gapFillingService } from './gap-filling-service';
 import { db } from '../supabase/database';
 import { dateHelpers, COMMON_HOLIDAYS } from '../utils/date-helpers';
-import { 
-  ECBRate, 
-  ProcessedRate, 
+import {
+  ECBRate,
+  ProcessedRate,
   ECBErrorType,
   ECBError
 } from '../types/exchange-rates';
 import { currencyConfigService } from './currency-config-service';
 import { ExchangeRateInsert, CurrencyType } from '../supabase/types';
+import { surgicalBackfillService, SurgicalBackfillResult } from './surgical-backfill-service';
+import { transactionRateGapService } from './transaction-rate-gap-service';
 
 export interface SyncOptions {
   targetDate?: string;      // Default: previous business day
@@ -354,6 +356,44 @@ export class DailySyncService {
       fillGaps: true,
       maxGapDays: 7
     });
+  }
+
+  /**
+   * Execute surgical sync - only fetch rates for transactions that actually need them
+   *
+   * This is the recommended sync method for production use:
+   * 1. Detects gaps between transactions and exchange rates
+   * 2. Fetches only the specific rates needed
+   * 3. Handles weekends/holidays automatically
+   * 4. Works for both ECB and non-ECB currencies
+   *
+   * @param dryRun If true, just report what would be done without inserting
+   * @returns Surgical backfill result
+   */
+  async executeSurgicalSync(dryRun: boolean = false): Promise<SurgicalBackfillResult> {
+    console.log('🎯 Starting surgical exchange rate sync...');
+    console.log(`   Mode: ${dryRun ? 'DRY RUN' : 'LIVE'}`);
+
+    return surgicalBackfillService.executeBackfill({
+      dryRun,
+      skipExisting: true
+    });
+  }
+
+  /**
+   * Get coverage statistics for exchange rates
+   * Shows how many transactions have rates vs need them
+   */
+  async getCoverageStats() {
+    return transactionRateGapService.getCoverageStats();
+  }
+
+  /**
+   * Detect gaps without filling them
+   * Useful for diagnostics and reporting
+   */
+  async detectGaps() {
+    return transactionRateGapService.detectGaps();
   }
 
   /**
