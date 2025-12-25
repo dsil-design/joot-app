@@ -56,22 +56,7 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         vendors!transactions_vendor_id_fkey (id, name),
-        payment_methods!transactions_payment_method_id_fkey (id, name),
-        transaction_document_matches!transaction_document_matches_transaction_id_fkey (
-          id,
-          document_id,
-          confidence_score,
-          approved,
-          created_at,
-          documents!transaction_document_matches_document_id_fkey (
-            id,
-            file_name,
-            file_size_bytes,
-            file_type,
-            mime_type,
-            created_at
-          )
-        )
+        payment_methods!transactions_payment_method_id_fkey (id, name)
       `, { count: 'exact' })
       .eq("user_id", user.id)
 
@@ -271,20 +256,12 @@ export async function GET(request: NextRequest) {
     const hasNextPage = transactions.length > pageSize
     const rawItems = hasNextPage ? transactions.slice(0, pageSize) : transactions
 
-    // Transform the data to include tags array, attached documents, and rename joined tables
+    // Transform the data to include tags array and rename joined tables
     const items = rawItems.map((transaction: any) => ({
       ...transaction,
       vendor: transaction.vendors,  // Rename vendors (plural) to vendor (singular)
       payment_method: transaction.payment_methods,  // Rename payment_methods (plural) to payment_method (singular)
-      tags: tagsMap.get(transaction.id) || [],
-      attached_documents: transaction.transaction_document_matches
-        ?.filter((match: any) => match.approved) // Only show approved matches
-        ?.map((match: any) => ({
-          ...match.documents,
-          match_id: match.id,
-          confidence_score: match.confidence_score,
-          match_created_at: match.created_at,
-        })) || []
+      tags: tagsMap.get(transaction.id) || []
     }))
 
     // Generate next cursor from last item

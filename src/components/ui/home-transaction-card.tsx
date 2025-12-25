@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { TransactionCard } from './transaction-card'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
-import { calculateTransactionDisplayAmounts, triggerExchangeRateSync } from '@/lib/utils/currency-converter'
+import { calculateTransactionDisplayAmounts } from '@/lib/utils/currency-converter'
 import { formatCurrency } from '@/lib/utils'
 
 interface HomeTransactionCardProps {
@@ -28,21 +28,6 @@ export function HomeTransactionCard({ transaction }: HomeTransactionCardProps) {
           primary: calculatedAmounts.primary,
           secondary: calculatedAmounts.secondary
         })
-        
-        // If sync is needed and secondary is null, trigger sync
-        if (calculatedAmounts.secondaryNeedsSync && !calculatedAmounts.secondary) {
-          const syncSuccess = await triggerExchangeRateSync()
-          if (syncSuccess) {
-            // Retry calculation after sync
-            setTimeout(async () => {
-              const retryAmounts = await calculateTransactionDisplayAmounts(transaction)
-              setAmounts({
-                primary: retryAmounts.primary,
-                secondary: retryAmounts.secondary
-              })
-            }, 2000) // Wait 2 seconds for sync to potentially complete
-          }
-        }
       } catch (error) {
         console.error('Error calculating display amounts:', error)
         // Fallback to showing only the recorded amount

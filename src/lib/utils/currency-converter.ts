@@ -92,22 +92,3 @@ export async function calculateTransactionDisplayAmounts(
   }
 }
 
-/**
- * Trigger exchange rate sync if needed
- */
-export async function triggerExchangeRateSync(): Promise<boolean> {
-  try {
-    const response = await fetch('/api/admin/sync/trigger', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ syncType: 'daily' })
-    })
-
-    return response.ok
-  } catch (error) {
-    console.error('Failed to trigger exchange rate sync:', error)
-    return false
-  }
-}

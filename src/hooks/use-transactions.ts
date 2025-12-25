@@ -58,27 +58,6 @@ export function useTransactions() {
               name,
               color
             )
-          ),
-          transaction_document_matches!transaction_document_matches_transaction_id_fkey (
-            id,
-            document_id,
-            confidence_score,
-            approved,
-            created_at,
-            documents!transaction_document_matches_document_id_fkey (
-              id,
-              file_name,
-              file_size_bytes,
-              file_type,
-              mime_type,
-              created_at,
-              document_extractions!document_extractions_document_id_fkey (
-                merchant_name,
-                amount,
-                currency,
-                transaction_date
-              )
-            )
           )
         `)
         .eq("user_id", user.id)
@@ -94,21 +73,12 @@ export function useTransactions() {
         throw fetchError
       }
 
-      // Transform the data to include tags array, documents, and rename joined tables
+      // Transform the data to include tags array and rename joined tables
       const transformedData = (data || []).map((transaction: any) => ({
         ...transaction,
         vendor: transaction.vendors,
         payment_method: transaction.payment_methods,
-        tags: transaction.transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || [],
-        attached_documents: transaction.transaction_document_matches
-          ?.filter((match: any) => match.approved) // Only show approved matches
-          ?.map((match: any) => ({
-            ...match.documents,
-            match_id: match.id,
-            confidence_score: match.confidence_score,
-            match_created_at: match.created_at,
-            extraction: match.documents?.document_extractions?.[0] || null
-          })) || []
+        tags: transaction.transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
       }))
 
       setTransactions(transformedData as TransactionWithVendorAndPayment[])

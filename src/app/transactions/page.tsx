@@ -6,7 +6,7 @@
 "use client"
 
 import * as React from "react"
-import { LayoutGrid, Table as TableIcon, Plus, Edit2, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Paperclip } from "lucide-react"
+import { LayoutGrid, Table as TableIcon, Plus, Edit2, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useTransactions } from "@/hooks/use-transactions"
@@ -403,7 +403,6 @@ function TransactionsTable({
               </>
             )}
             <TableHead className="font-medium text-foreground">Tags</TableHead>
-            <TableHead className="font-medium text-foreground w-[80px] text-center">Docs</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -498,20 +497,6 @@ function TransactionsTable({
                           </Badge>
                         ))}
                       </div>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {(transaction as any).attached_documents?.length > 0 ? (
-                      <a
-                        href={`/transactions/${transaction.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
-                      >
-                        <Paperclip className="h-3 w-3" />
-                        {(transaction as any).attached_documents.length}
-                      </a>
                     ) : (
                       <span className="text-muted-foreground text-sm">—</span>
                     )}

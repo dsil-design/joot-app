@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Receipt, Settings, FileText, GitCompare } from 'lucide-react'
+import { Home, Receipt, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigationItems = [
@@ -15,16 +15,6 @@ const navigationItems = [
     name: 'Transactions',
     href: '/transactions',
     icon: Receipt,
-  },
-  {
-    name: 'Documents',
-    href: '/documents',
-    icon: FileText,
-  },
-  {
-    name: 'Reconciliation',
-    href: '/reconciliation',
-    icon: GitCompare,
   },
   {
     name: 'Settings',
@@ -42,9 +32,7 @@ export function MainNavigation() {
         const Icon = item.icon
         // Check if current path matches or starts with the href (for subroutes)
         const isActive = pathname === item.href ||
-          (item.href === '/settings/payment-methods' && pathname?.startsWith('/settings')) ||
-          (item.href === '/documents' && pathname?.startsWith('/documents')) ||
-          (item.href === '/reconciliation' && pathname?.startsWith('/reconciliation'))
+          (item.href === '/settings/payment-methods' && pathname?.startsWith('/settings'))
 
         return (
           <Link

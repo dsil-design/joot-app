@@ -4,14 +4,17 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Project Overview
 
-**Joot** is a personal transaction tracker for tracking expenses and income between USD and THB currencies.
+**Joot** is a personal transaction tracker with multi-currency support. Transactions are recorded in their original currency (the currency actually paid), and the app automatically converts amounts to the user's display currency using stored historical exchange rates — enabling unified views across all transactions regardless of currency.
 
 **Core Features:**
-- Transaction management (add, edit, view)
-- USD/THB currency conversion with historical exchange rates
+- Transaction management (add, edit, view) in any configured currency
+- Automatic currency conversion using historical exchange rates
+- Unified reporting and charts in a single display currency
 - Monthly financial dashboard
 - Vendor and payment method tracking
 - Tag-based categorization
+
+**Current Configuration:** USD and THB, with USD as the display currency. The architecture supports additional currencies.
 
 **Tech Stack:**
 - Next.js 15 (App Router, Turbopack)
@@ -63,14 +66,15 @@ database/
 - `vendors` - Transaction vendors
 - `payment_methods` - Payment method options
 - `tags` / `transaction_tags` - Categorization
-- `exchange_rates` - Historical USD/THB rates
+- `exchange_rates` - Historical exchange rates for currency conversion
 
 ## Key Patterns
 
 ### Currency Handling
-- Amounts stored in original currency (USD or THB)
+- Amounts stored in original currency (the currency actually paid)
 - Exchange rates fetched from ECB and stored in `exchange_rates`
-- Conversion calculated on-the-fly, not stored
+- Conversion to display currency calculated on-the-fly, not stored
+- Source of truth is always the original transaction amount/currency
 
 ### Supabase
 - Row Level Security (RLS) on all tables

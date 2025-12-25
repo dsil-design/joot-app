@@ -7,10 +7,8 @@ import { db } from '../supabase/database';
 import { createClient } from '../supabase/server';
 
 export interface NotificationConfig {
-  emailEnabled: boolean;
   slackEnabled: boolean;
   webhookEnabled: boolean;
-  emailRecipients: string[];
   slackWebhookUrl?: string;
   webhookUrl?: string;
   notifyOnFailure: boolean;
