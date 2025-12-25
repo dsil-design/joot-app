@@ -155,22 +155,40 @@ ORDER BY c1.currency_code, c2.currency_code;
 ALTER TABLE currency_configuration ENABLE ROW LEVEL SECURITY;
 
 -- Read access for all authenticated users
-CREATE POLICY "Authenticated users can view currency configuration" 
-ON currency_configuration
-FOR SELECT 
-USING (auth.role() = 'authenticated');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'currency_configuration' 
+        AND policyname = 'Authenticated users can view currency configuration'
+    ) THEN
+        CREATE POLICY "Authenticated users can view currency configuration" 
+        ON currency_configuration
+        FOR SELECT 
+        USING (auth.role() = 'authenticated');
+    END IF;
+END $$;
 
 -- Write access only for admin users (you may want to adjust this based on your admin setup)
-CREATE POLICY "Admin users can update currency configuration" 
-ON currency_configuration
-FOR UPDATE 
-USING (
-  EXISTS (
-    SELECT 1 FROM auth.users 
-    WHERE auth.uid() = id 
-    AND raw_user_meta_data->>'is_admin' = 'true'
-  )
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'currency_configuration' 
+        AND policyname = 'Admin users can update currency configuration'
+    ) THEN
+        CREATE POLICY "Admin users can update currency configuration" 
+        ON currency_configuration
+        FOR UPDATE 
+        USING (
+          EXISTS (
+            SELECT 1 FROM auth.users 
+            WHERE auth.uid() = id 
+            AND raw_user_meta_data->>'is_admin' = 'true'
+          )
+        );
+    END IF;
+END $$;
 
 -- 8. Create the updated_at function if it doesn't exist, then add trigger
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -182,10 +200,19 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add trigger for updated_at
-CREATE TRIGGER update_currency_config_updated_at 
-BEFORE UPDATE ON currency_configuration
-FOR EACH ROW 
-EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.triggers 
+        WHERE trigger_name = 'update_currency_config_updated_at' 
+        AND event_object_table = 'currency_configuration'
+    ) THEN
+        CREATE TRIGGER update_currency_config_updated_at 
+        BEFORE UPDATE ON currency_configuration
+        FOR EACH ROW 
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 -- 9. Add comments for documentation
 COMMENT ON TABLE currency_configuration IS 'Configuration for which currencies are tracked and synced';

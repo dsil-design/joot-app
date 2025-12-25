@@ -18,7 +18,7 @@ TIMESTAMP=$(date +"%Y%m%d%H%M%S")
 
 # Create filename
 FILENAME="${TIMESTAMP}_${DESCRIPTION}.sql"
-FILEPATH="database/migrations/${FILENAME}"
+FILEPATH="database/supabase/migrations/${FILENAME}"
 
 # Create the file with a basic template
 cat > "$FILEPATH" << EOF

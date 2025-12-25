@@ -1157,3 +1157,49 @@ export const Constants = {
     },
   },
 } as const
+
+// ============================================================================
+// Custom Type Aliases (convenience types used throughout the codebase)
+// ============================================================================
+
+// Enum types
+export type CurrencyType = Database["public"]["Enums"]["currency_type"]
+export type TransactionType = Database["public"]["Enums"]["transaction_type"]
+
+// User types
+export type User = Database["public"]["Tables"]["users"]["Row"]
+export type UserInsert = Database["public"]["Tables"]["users"]["Insert"]
+export type UserUpdate = Database["public"]["Tables"]["users"]["Update"]
+
+// Transaction types
+export type Transaction = Database["public"]["Tables"]["transactions"]["Row"]
+export type TransactionInsert = Database["public"]["Tables"]["transactions"]["Insert"]
+export type TransactionUpdate = Database["public"]["Tables"]["transactions"]["Update"]
+
+// Transaction with related data (for queries with joins)
+export interface TransactionWithVendorAndPayment extends Transaction {
+  vendor: { id: string; name: string } | null
+  payment_method: { id: string; name: string; preferred_currency: string | null } | null
+  tags?: Array<{ id: string; name: string; color: string }>
+  transaction_tags?: Array<{ tag_id: string; tags: { id: string; name: string; color: string } }>
+}
+
+// Exchange rate types
+export type ExchangeRate = Database["public"]["Tables"]["exchange_rates"]["Row"]
+export type ExchangeRateInsert = Database["public"]["Tables"]["exchange_rates"]["Insert"]
+export type ExchangeRateUpdate = Database["public"]["Tables"]["exchange_rates"]["Update"]
+
+// Vendor types
+export type Vendor = Database["public"]["Tables"]["vendors"]["Row"]
+export type VendorInsert = Database["public"]["Tables"]["vendors"]["Insert"]
+export type VendorUpdate = Database["public"]["Tables"]["vendors"]["Update"]
+
+// Payment method types
+export type PaymentMethod = Database["public"]["Tables"]["payment_methods"]["Row"]
+export type PaymentMethodInsert = Database["public"]["Tables"]["payment_methods"]["Insert"]
+export type PaymentMethodUpdate = Database["public"]["Tables"]["payment_methods"]["Update"]
+
+// Tag types
+export type Tag = Database["public"]["Tables"]["tags"]["Row"]
+export type TagInsert = Database["public"]["Tables"]["tags"]["Insert"]
+export type TagUpdate = Database["public"]["Tables"]["tags"]["Update"]
