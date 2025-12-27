@@ -165,6 +165,11 @@ CREATE INDEX idx_vendor_duplicates_source_vendor ON public.vendor_duplicate_sugg
 CREATE INDEX idx_vendor_duplicates_target_vendor ON public.vendor_duplicate_suggestions(target_vendor_id);
 CREATE INDEX idx_vendor_duplicates_confidence ON public.vendor_duplicate_suggestions(confidence_score DESC);
 
+-- Foreign key indexes (for efficient DELETE/UPDATE on parent tables)
+CREATE INDEX idx_rate_changes_exchange_rate_id ON public.rate_changes(exchange_rate_id);
+CREATE INDEX idx_sync_configuration_last_modified_by ON public.sync_configuration(last_modified_by);
+CREATE INDEX idx_sync_history_retry_of ON public.sync_history(retry_of);
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
@@ -177,74 +182,103 @@ ALTER TABLE public.transaction_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vendor_duplicate_suggestions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for users table
+-- Note: Uses (select auth.uid()) for performance optimization (prevents per-row re-evaluation)
 CREATE POLICY "Users can view own profile" ON public.users
-  FOR SELECT USING (auth.uid() = id);
+  FOR SELECT USING ((select auth.uid()) = id);
 
 CREATE POLICY "Users can update own profile" ON public.users
-  FOR UPDATE USING (auth.uid() = id);
+  FOR UPDATE USING ((select auth.uid()) = id);
 
 CREATE POLICY "Users can insert own profile" ON public.users
-  FOR INSERT WITH CHECK (auth.uid() = id);
+  FOR INSERT WITH CHECK ((select auth.uid()) = id);
 
 -- RLS Policies for transactions table
 CREATE POLICY "Users can view own transactions" ON public.transactions
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert own transactions" ON public.transactions
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update own transactions" ON public.transactions
-  FOR UPDATE USING (auth.uid() = user_id);
+  FOR UPDATE USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete own transactions" ON public.transactions
-  FOR DELETE USING (auth.uid() = user_id);
+  FOR DELETE USING ((select auth.uid()) = user_id);
 
 -- RLS Policies for payment_methods table
 CREATE POLICY "Users can view own payment methods" ON public.payment_methods
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert own payment methods" ON public.payment_methods
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update own payment methods" ON public.payment_methods
-  FOR UPDATE USING (auth.uid() = user_id);
+  FOR UPDATE USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete own payment methods" ON public.payment_methods
-  FOR DELETE USING (auth.uid() = user_id);
+  FOR DELETE USING ((select auth.uid()) = user_id);
 
 -- RLS Policies for vendors table
 CREATE POLICY "Users can view own vendors" ON public.vendors
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert own vendors" ON public.vendors
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update own vendors" ON public.vendors
-  FOR UPDATE USING (auth.uid() = user_id);
+  FOR UPDATE USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete own vendors" ON public.vendors
-  FOR DELETE USING (auth.uid() = user_id);
+  FOR DELETE USING ((select auth.uid()) = user_id);
 
--- RLS Policies for currency_configuration table (read-only for all authenticated users)
-CREATE POLICY "Authenticated users can view currency configuration" ON public.currency_configuration
-  FOR SELECT USING (auth.role() = 'authenticated');
+-- RLS Policies for currency_configuration table (public read access)
+CREATE POLICY "Anyone can view currency configuration" ON public.currency_configuration
+  FOR SELECT USING (true);
 
--- RLS Policies for exchange_rates table (read-only for all authenticated users)
+-- RLS Policies for exchange_rates table
+-- Authenticated users can view, admins can insert/update/delete
 CREATE POLICY "Authenticated users can view exchange rates" ON public.exchange_rates
-  FOR SELECT USING (auth.role() = 'authenticated');
+  FOR SELECT USING ((select auth.role()) = 'authenticated');
+
+CREATE POLICY "Admins can insert exchange rates" ON public.exchange_rates
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM auth.users
+      WHERE (select auth.uid()) = id
+      AND raw_user_meta_data->>'is_admin' = 'true'
+    )
+  );
+
+CREATE POLICY "Admins can update exchange rates" ON public.exchange_rates
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM auth.users
+      WHERE (select auth.uid()) = id
+      AND raw_user_meta_data->>'is_admin' = 'true'
+    )
+  );
+
+CREATE POLICY "Admins can delete exchange rates" ON public.exchange_rates
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM auth.users
+      WHERE (select auth.uid()) = id
+      AND raw_user_meta_data->>'is_admin' = 'true'
+    )
+  );
 
 -- RLS Policies for tags table
 CREATE POLICY "Users can view own tags" ON public.tags
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert own tags" ON public.tags
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update own tags" ON public.tags
-  FOR UPDATE USING (auth.uid() = user_id);
+  FOR UPDATE USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete own tags" ON public.tags
-  FOR DELETE USING (auth.uid() = user_id);
+  FOR DELETE USING ((select auth.uid()) = user_id);
 
 -- RLS Policies for transaction_tags table
 CREATE POLICY "Users can view own transaction tags" ON public.transaction_tags
@@ -252,7 +286,7 @@ CREATE POLICY "Users can view own transaction tags" ON public.transaction_tags
     EXISTS (
       SELECT 1 FROM public.transactions
       WHERE transactions.id = transaction_tags.transaction_id
-      AND transactions.user_id = auth.uid()
+      AND transactions.user_id = (select auth.uid())
     )
   );
 
@@ -261,7 +295,7 @@ CREATE POLICY "Users can insert own transaction tags" ON public.transaction_tags
     EXISTS (
       SELECT 1 FROM public.transactions
       WHERE transactions.id = transaction_tags.transaction_id
-      AND transactions.user_id = auth.uid()
+      AND transactions.user_id = (select auth.uid())
     )
   );
 
@@ -270,7 +304,7 @@ CREATE POLICY "Users can delete own transaction tags" ON public.transaction_tags
     EXISTS (
       SELECT 1 FROM public.transactions
       WHERE transactions.id = transaction_tags.transaction_id
-      AND transactions.user_id = auth.uid()
+      AND transactions.user_id = (select auth.uid())
     )
   );
 
@@ -278,31 +312,34 @@ CREATE POLICY "Users can delete own transaction tags" ON public.transaction_tags
 CREATE POLICY "Users can view their own duplicate suggestions"
   ON public.vendor_duplicate_suggestions
   FOR SELECT
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own duplicate suggestions"
   ON public.vendor_duplicate_suggestions
   FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own duplicate suggestions"
   ON public.vendor_duplicate_suggestions
   FOR UPDATE
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete their own duplicate suggestions"
   ON public.vendor_duplicate_suggestions
   FOR DELETE
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- Functions for automatic timestamp updates
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$;
 
 -- Create triggers for updated_at columns
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users
@@ -325,7 +362,10 @@ CREATE TRIGGER update_currency_configuration_updated_at BEFORE UPDATE ON public.
 
 -- Function to handle vendor_duplicate_suggestions updates
 CREATE OR REPLACE FUNCTION update_vendor_duplicate_suggestions_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   IF (NEW.status != OLD.status AND NEW.status IN ('ignored', 'merged')) THEN
@@ -333,7 +373,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE TRIGGER update_vendor_duplicate_suggestions_timestamp
 BEFORE UPDATE ON public.vendor_duplicate_suggestions
@@ -342,7 +382,11 @@ EXECUTE FUNCTION update_vendor_duplicate_suggestions_updated_at();
 
 -- Function to handle user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 BEGIN
   INSERT INTO public.users (id, email, first_name, last_name, avatar_url)
   VALUES (
@@ -352,14 +396,14 @@ BEGIN
     NEW.raw_user_meta_data->>'last_name',
     NEW.raw_user_meta_data->>'avatar_url'
   );
-  
+
   -- Create default payment methods for new user
   INSERT INTO public.payment_methods (name, user_id) VALUES
     ('Cash', NEW.id),
     ('Credit Card', NEW.id),
     ('Bank Account', NEW.id),
     ('Bank Transfer', NEW.id);
-  
+
   -- Create default vendors for new user
   INSERT INTO public.vendors (name, user_id) VALUES
     ('McDonalds', NEW.id),
@@ -395,7 +439,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Trigger for new user creation
 CREATE TRIGGER on_auth_user_created
@@ -404,7 +448,10 @@ CREATE TRIGGER on_auth_user_created
 
 -- Function to cleanup orphaned vendors (vendors with 0 transactions)
 CREATE OR REPLACE FUNCTION cleanup_orphaned_vendors()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 DECLARE
   vendor_to_check UUID;
 BEGIN
@@ -441,7 +488,7 @@ BEGIN
     RETURN NEW;
   END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Trigger to automatically cleanup orphaned vendors
 CREATE TRIGGER cleanup_orphaned_vendors_after_transaction_change
