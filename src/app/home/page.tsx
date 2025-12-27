@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
 import { MainNavigation } from '@/components/page-specific/main-navigation'
-import { AddTransactionFooter } from '@/components/page-specific/add-transaction-footer'
+import { MobileFab } from '@/components/page-specific/mobile-fab'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Plus, X } from 'lucide-react'
@@ -144,8 +144,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </div>
       </main>
 
-      {/* Fixed Sticky Footer - Mobile only */}
-      <AddTransactionFooter />
+      {/* Mobile FAB - always visible on mobile for adding transactions */}
+      <div className="md:hidden">
+        <MobileFab />
+      </div>
     </div>
   )
 }

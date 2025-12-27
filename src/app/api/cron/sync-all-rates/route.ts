@@ -15,6 +15,67 @@ import { syncNotificationService } from '@/lib/services/sync-notification-servic
  *
  * Runs at 18:00 UTC daily
  */
+
+async function createSyncHistoryRecord(syncType: 'scheduled' | 'manual'): Promise<string | null> {
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from('sync_history')
+      .insert({
+        sync_type: syncType,
+        status: 'running',
+        started_at: new Date().toISOString()
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('Failed to create sync_history record:', error);
+      return null;
+    }
+    return data.id;
+  } catch (error) {
+    console.error('Error creating sync_history record:', error);
+    return null;
+  }
+}
+
+async function completeSyncHistoryRecord(
+  syncHistoryId: string | null,
+  success: boolean,
+  durationMs: number,
+  stats: {
+    totalGaps?: number;
+    ratesInserted?: number;
+    ratesSkipped?: number;
+    coveragePercentage?: number;
+    errorCount?: number;
+  },
+  errorMessage?: string
+): Promise<void> {
+  if (!syncHistoryId) return;
+
+  try {
+    const supabase = createServiceRoleClient();
+    await supabase
+      .from('sync_history')
+      .update({
+        status: success ? 'completed' : 'failed',
+        completed_at: new Date().toISOString(),
+        duration_ms: durationMs,
+        new_rates_inserted: stats.ratesInserted ?? 0,
+        rates_updated: 0,
+        rates_deleted: 0,
+        rates_unchanged: stats.ratesSkipped ?? 0,
+        filtered_rates: stats.totalGaps ?? 0,
+        error_message: errorMessage ?? null
+      })
+      .eq('id', syncHistoryId);
+  } catch (error) {
+    console.error('Error updating sync_history record:', error);
+  }
+}
+
 export async function GET(request: NextRequest) {
   // Verify cron authentication
   const authHeader = request.headers.get('authorization');
@@ -23,6 +84,7 @@ export async function GET(request: NextRequest) {
   }
 
   const startTime = Date.now();
+  let syncHistoryId: string | null = null;
   const results = {
     cleanup: { success: false, message: '', data: null as any },
     surgicalSync: { success: false, message: '', data: null as any },
@@ -89,7 +151,13 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // 2. Check if auto-sync is enabled
+    // 2. Create sync_history record
+    syncHistoryId = await createSyncHistoryRecord('scheduled');
+    if (syncHistoryId) {
+      console.log(`📝 Created sync_history record: ${syncHistoryId}`);
+    }
+
+    // 3. Check if auto-sync is enabled
     let autoSyncEnabled = true;
     try {
       const supabase = createServiceRoleClient();
@@ -107,7 +175,7 @@ export async function GET(request: NextRequest) {
       console.log('Sync configuration not available, proceeding...');
     }
 
-    // 3. Execute surgical sync
+    // 4. Execute surgical sync
     if (autoSyncEnabled) {
       console.log('🔄 Executing surgical sync...');
 
@@ -211,16 +279,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 4. Get coverage stats for reporting
+    // 5. Get coverage stats for reporting
+    let coveragePercentage: number | undefined;
     try {
       console.log('📊 Getting coverage stats...');
       const coverage = await transactionRateGapService.getCoverageStats();
+      coveragePercentage = coverage.coveragePercentage;
       results.coverage = {
         success: true,
         message: `Coverage: ${coverage.coveragePercentage}%`,
         data: coverage
       };
-      console.log(`  ✅ Coverage: ${coverage.coveragePercentage}% (${coverage.transactionsWithRates}/${coverage.totalTransactionsNeedingRates})`);
+      console.log(`  ✅ Coverage: ${coverage.coveragePercentage}% (${coverage.transactionsWithRates}/${coverage.totalNonUSDTransactions})`);
     } catch (error) {
       console.error('⚠️  Coverage stats failed (non-critical):', error);
       results.coverage = {
@@ -232,6 +302,20 @@ export async function GET(request: NextRequest) {
 
     const duration = Date.now() - startTime;
     console.log(`✨ Surgical sync completed in ${(duration / 1000).toFixed(1)}s`);
+
+    // 6. Complete sync_history record
+    await completeSyncHistoryRecord(
+      syncHistoryId,
+      results.surgicalSync.success,
+      duration,
+      {
+        totalGaps: results.surgicalSync.data?.totalGaps ?? 0,
+        ratesInserted: results.surgicalSync.data?.ratesInserted ?? 0,
+        ratesSkipped: results.surgicalSync.data?.ratesSkipped ?? 0,
+        coveragePercentage,
+        errorCount: results.surgicalSync.data?.errorCount ?? 0
+      }
+    );
 
     return NextResponse.json({
       success: results.surgicalSync.success,
@@ -249,12 +333,22 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const duration = Date.now() - startTime;
     const dayOfWeek = new Date().getDay();
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('💥 Surgical sync job failed:', error);
+
+    // Record failure in sync_history
+    await completeSyncHistoryRecord(
+      syncHistoryId,
+      false,
+      duration,
+      {},
+      errorMessage
+    );
 
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
         dayOfWeek: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek],
         duration,
         results,
