@@ -125,17 +125,81 @@ This address book maps recipient names from Bangkok Bank (Bualuang mBanking) ema
 
 ---
 
+## Recurring Transaction Patterns
+
+This section documents known recurring transactions. Use this for:
+1. **Import consistency** - Apply the same description to recurring charges
+2. **Amount validation** - Flag charges that deviate significantly from expected amounts
+3. **Duplicate detection** - If a monthly charge appears twice in one month, flag for review
+
+### Monthly Subscriptions & Bills
+
+| Vendor | Vendor ID | Amount | Currency | Day | Description | Tags |
+|--------|-----------|--------|----------|-----|-------------|------|
+| Citizen's Bank | `9a1f871e-8458-4627-aabc-36e3724e94b8` | ~$54 | USD | ~12th | `Monthly: iPhone Payment` | |
+| Google | `ad9b6643-bab9-4193-a994-9d16ac589a11` | ~$6 | USD | 1st | `Monthly Subscription: Google One` | |
+| Paramount+ | `857417d8-a222-4190-9ad9-551f742d2045` | ~$13 | USD | ~8th | `Monthly Subscription: Paramount+` | |
+| T-Mobile | `b40e3647-05db-4c76-886e-efc598ebb7bd` | ~$73 | USD | ~29th | `Monthly: Phone Bill` | |
+| Netflix | `6f71ab35-32fa-4001-b628-255133fdbebc` | ~$25 | USD | ~12th | `Monthly Subscription: Netflix` | |
+| Ring | `783f2a04-0442-41e4-a097-f8b7763c8611` | ~$11 | USD | ~13th | `Monthly Subscription: Ring` | |
+| Landlord | `2640141c-85e5-4a3b-abcf-835dff8bb347` | ~฿35,000 | THB | 1st-5th | `Monthly: Rent` | |
+| Bliss Clean Care | `2056927d-a36a-4328-b878-e59f3d3ff8fd` | ~฿2,958 | THB | ~6th | `Monthly: Cleaning Service` | |
+| Notion | `6608603e-4b5c-4a74-b865-36cba1f726e0` | ~$14 | USD | ~26th | `Monthly Subscription: Notion` | |
+| Xfinity | `d6d6b230-a268-4ffa-88b8-e8098f86b06c` | ~$68 | USD | ~19th | `Monthly: Internet` | Florida House |
+| FPL | `78e3a8cd-2f7d-4c85-8036-8101d1efbe17` | ~$57 | USD | ~17th | `Monthly: Electric` | Florida House |
+| TECO | `299ac3fe-dd9c-4271-8ea9-1c7e58c906be` | ~$45 | USD | ~13th | `Monthly: Electric` | Florida House |
+| Englewood Water | `1557b854-242a-4d15-9705-9b0d758f152c` | ~$58 | USD | ~9th | `Monthly: Water` | Florida House |
+
+**Notes:**
+- BLISS amount varies slightly based on weeks in month and if supplies were purchased
+- Florida House utilities (Xfinity, FPL, TECO, Englewood Water) should all have "Florida House" tag
+
+### Weekly & Bi-Weekly Patterns
+
+| Vendor | Vendor ID | Amount | Currency | Frequency | Day | Description |
+|--------|-----------|--------|----------|-----------|-----|-------------|
+| Chef Fuji | `8f42f382-dd9a-49c8-8984-eea40169ec20` | ~฿1,093 | THB | Weekly | Saturday | `Meal Plan` |
+| Virgin Active | `49641ab2-072e-464e-b377-82f199a5d397` | ~$28 | USD | Bi-weekly | Thursday | `Semi-Monthly: Gym Membership` |
+
+### Annual & Periodic Subscriptions
+
+| Vendor | Vendor ID | Amount | Currency | Month | Description |
+|--------|-----------|--------|----------|-------|-------------|
+| Grammarly | `39bba7a7-95f0-47e9-9b0c-3ba4ac0a74d4` | ~$153 | USD | June | `Annual Subscription: Grammarly` |
+| MyTello | *(create when encountered)* | ~$52 | USD | March | `Annual Subscription: MyTello` |
+| All U Need Pest Control | `8f687f7f-d1c0-4a55-b165-18656a5d9a0c` | ~$110 | USD | Quarterly | `Quarterly: Pest Control` |
+| GoDaddy | `45466bb6-8691-4e9b-a908-7ed965d9a741` | ~$61 | USD | September | `Annual: Domain Renewal` |
+| JetBrains | `ecce979c-a9d8-44ef-8188-e74cd2918db2` | varies | USD | Yearly | `Annual Subscription: WebStorm` |
+
+### Income Patterns
+
+| Vendor | Vendor ID | Amount | Currency | Frequency | Day | Description | Payment Method |
+|--------|-----------|--------|----------|-----------|-----|-------------|----------------|
+| DigiCo | `3b65e56e-9898-44a8-851f-77990b87e80d` | ~฿176,273 | THB | Monthly | 30th | `Monthly Salary` | Kasikorn Bank |
+| DSIL Design | `03781fe6-c4d0-47f3-b41f-e8b372ec14c2` | ~$3,373 | USD | Irregular | - | `Invoice Payment` | |
+| Nidnoi | `504c68c7-9a78-4e84-aa35-255918fdc5bb` | varies | THB | Frequent | - | `Reimbursement` | |
+| NJDA | `d4768e71-3040-4968-9c52-ae2647cf5e54` | ~$216 | USD | Irregular | - | *(ask user)* | |
+
+**Notes:**
+- DigiCo may also appear as "Tungsten Automation" - same employer
+- Nidnoi reimbursements are girlfriend paying back shared expenses (highly variable amounts)
+
+### Inactive/Historical Patterns (for reference)
+
+These patterns are no longer active but may help identify old transactions:
+
+| Vendor | Amount | Currency | Frequency | Status | Notes |
+|--------|--------|----------|-----------|--------|-------|
+| Pol | ~฿23,542 | THB | Monthly | Ended Dec 2024 | Previous condo rent |
+| TTCM | ~$14 | USD | Weekly (Tue) | Ended | Weekly massage, vendor changed |
+| e2open | ~$3,080 | USD | Bi-weekly | Ended Oct 2024 | Previous employer payroll |
+| Rover | ~$3,801 | USD | Bi-weekly | Ended May 2025 | Previous employer payroll |
+| CBS | ~$13 | USD | Monthly | Renamed | Now Paramount+ |
+| Skype | ~$52 | USD | Annual | Renamed | Now MyTello |
+
+---
+
 ## Description Patterns
-
-### Recurring Transactions
-
-| Vendor | Description Pattern | Frequency |
-|--------|---------------------|-----------|
-| Virgin Active | `Semi-Monthly: Gym Membership` | 2x/month |
-| Xfinity | `Monthly: Internet` | Monthly |
-| Citizen's Bank | `Monthly: iPhone Payment` | Monthly |
-| JetBrains | `Annual Subscription: WebStorm` | Yearly |
-| Chef Fuji | `Meal Plan` | Recurring |
 
 ### Category-Based Descriptions
 
