@@ -59,7 +59,38 @@ Using the reference document:
 2. Create the vendor in the database
 3. Add to the reference document for future imports
 
-### 4. Apply Categorization Rules
+### 4. Check for Duplicates
+
+**CRITICAL**: Before presenting transactions for approval, query the database to identify potential duplicates.
+
+```javascript
+// Query existing transactions in the date range
+const startDate = // earliest transaction date from import
+const endDate = // latest transaction date from import
+
+const { data: existing } = await supabase
+  .from('transactions')
+  .select('*')
+  .eq('user_id', 'a1c3caff-a5de-4898-be7d-ab4b76247ae6')
+  .eq('payment_method_id', paymentMethodId)
+  .gte('transaction_date', startDate)
+  .lte('transaction_date', endDate);
+```
+
+**Matching Criteria** (in order of confidence):
+
+| Match Type | Criteria | Action |
+|------------|----------|--------|
+| **Exact duplicate** | Same date + vendor + amount | Skip (default), show as ⛔ |
+| **Probable duplicate** | ±1 day + same vendor + amount ±1% | Flag as ⚠️, ask user |
+| **Possible duplicate** | Same date + amount, different vendor | Flag as ❓, show for review |
+| **New transaction** | No match found | Include as ✅ |
+
+**Why ±1 day?** Credit card posting dates can differ from transaction dates. A charge made on the 31st may post on the 1st.
+
+**Why ±1% amount?** Currency conversion rounding or minor fee variations.
+
+### 5. Apply Categorization Rules
 
 **Grab charges**:
 - < $8 → Grab Taxi, description "Ride"
@@ -71,27 +102,43 @@ Using the reference document:
 - Xfinity → "Monthly: Internet"
 - Citizen's Bank → "Monthly: iPhone Payment"
 
-### 5. Clarify Ambiguities
+### 7. Clarify Ambiguities
 
 Before inserting, ask the user about:
 - Unknown vendors (what should they be called?)
 - Ambiguous descriptions (what was this purchase for?)
 - Any transactions that don't match known patterns
+- Potential duplicates flagged in step 4
 
-### 6. Present Summary for Approval
+### 8. Present Summary for Approval
 
-Show a complete table of all transactions:
+Show a complete table with duplicate status:
 ```
-| Date | Vendor | Amount | Currency | Description |
-|------|--------|--------|----------|-------------|
-| 2025-12-25 | GrabFood | $13.98 | USD | Food Delivery |
+| Status | Date | Vendor | Amount | Currency | Description |
+|--------|------|--------|--------|----------|-------------|
+| ✅ | 2025-12-25 | GrabFood | $13.98 | USD | Food Delivery |
+| ⚠️ | 2025-12-24 | Tops | $45.00 | USD | Groceries |
+| ⛔ | 2025-12-23 | Netflix | $24.99 | USD | Monthly Subscription |
 ```
 
-Include totals by payment method/currency.
+**Legend**:
+- ✅ New - will be imported
+- ⚠️ Possible duplicate - needs confirmation (show existing record)
+- ⛔ Duplicate - will be skipped (unless user overrides)
+
+For flagged items, show the existing database record:
+```
+⚠️ POSSIBLE DUPLICATE:
+   New:      2025-12-24 | Tops | $45.00 | Groceries
+   Existing: 2025-12-23 | Tops | $45.00 | Groceries (ID: abc123)
+   → Import anyway? [Yes/No]
+```
+
+Include totals by payment method/currency (excluding duplicates).
 
 Wait for user approval before inserting.
 
-### 7. Insert Transactions
+### 9. Insert Transactions
 
 Use Supabase to bulk insert all approved transactions:
 
@@ -111,7 +158,7 @@ const { data, error } = await supabase
   .select();
 ```
 
-### 8. Update Reference Document
+### 10. Update Reference Document
 
 After successful import:
 - Add any new vendor mappings
