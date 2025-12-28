@@ -14,9 +14,12 @@ This document captures learned patterns, vendor mappings, and preferences for im
 
 | Payment Method | ID | Currency | Notes |
 |----------------|-----|----------|-------|
-| Chase Sapphire Reserve | `43937623-48b3-45ea-a59c-7ee9c4a4020b` | USD | Primary credit card |
+| Chase Sapphire Reserve | `8b3957e3-317f-4945-a468-dadefc15d52a` | USD | Primary credit card |
 | Kasikorn Bank (K PLUS) | `0aaeb6c8-6052-47c9-b377-bc27d3231d4f` | THB | Thai bank account, bill payments & transfers |
-| Bangkok Bank (Bualuang) | *(look up during import)* | THB | Thai bank account, bill payments & transfers |
+| Bangkok Bank (Bualuang) | `bd798d93-fa54-4520-ba09-367f96e5a94f` | THB | Thai bank account, bill payments & transfers |
+| American Express | `ca2273b3-3231-4b7d-9aeb-4030fd1bf20f` | USD | Credit card |
+| Cash | `1a1ec0c3-31a2-4c20-85b1-f8c860a828ff` | varies | Cash payments |
+| Venmo | `c61fdc4d-307d-4f52-84b6-36d08b9cf3b5` | USD | P2P payments |
 
 ### Currency Rules
 - **Chase credit card**: Always USD, even for Thai merchants
@@ -42,29 +45,43 @@ This document captures learned patterns, vendor mappings, and preferences for im
 | `CLAUDE/AI SUBSCRIPTION` | Anthropic | `423cf0cc-b570-4d1a-98fd-f60cecc221d3` | Software |
 | `Jetbrains Americas` | JetBrains | `ecce979c-a9d8-44ef-8188-e74cd2918db2` | Software |
 | `WWW.2C2P.COM*LAZADA` | Lazada | `797cb44e-b583-482d-841f-0e0b80af2705` | Shopping |
+| `WWW.2C2P.COM*2C2P (THAILA` | Bolt | `dcfd535e-46dc-42d5-9590-d9688d32e3cf` | Transport |
+| `AGODA.COM` / `AGODA` | Agoda | *(look up or create)* | Travel |
+| `AIS` / `AIS SHOP` | AIS | *(look up or create)* | Phone/Mobile |
+| `AVIS` | Avis | *(look up or create)* | Car Rental |
+| `ADELPHI SUITE` | Adelphi Suite | `28765ba3-9fff-45ec-949b-79ffb5b8527c` | Coffee |
+| `MAE FAH LUANG` | Coffee House by Doi Tung | `774215fb-f764-4e13-9e2b-56d1a7c1ac52` | Coffee |
+| `MARGARITA STORM` | Margarita Storm | `61bbabff-36e9-402e-9175-06fcecb78b26` | Restaurant |
+| `FITZGERALDS` / `FITZGERALD'S` | Fitzgeralds | *(look up or create)* | Restaurant |
+| `SZ-` (Sizzler pattern) | Sizzler | *(look up or create)* | Restaurant |
+| `HOMEPRO` / `HOME PRO` | HomePro | *(look up or create)* | Hardware |
+| `NORTH HILL` | North Hill | `4df2d271-cc02-4c9b-92e7-cb9d665795f5` | Golf |
 
 ### Grab Categorization Rules
 
-Grab charges need to be categorized by service type:
+Grab charges need to be categorized by service type. **Always use the email body content to determine type, not amount heuristics.**
 
-| Vendor | ID | Rule |
-|--------|-----|------|
-| GrabFood | `6b451d8c-b8db-4475-b19b-6c3cf38b93d0` | Larger amounts (typically >$10), food delivery |
-| Grab Taxi | `20af541a-173c-4f7a-9e04-e0c821f7d367` | Smaller amounts (typically <$10), rides |
-| GrabMart | `58f6f707-3771-41bf-a5eb-12a0b2ef0e3b` | Grocery/convenience deliveries |
+| Vendor | ID | Detection |
+|--------|-----|-----------|
+| GrabFood | `6b451d8c-b8db-4475-b19b-6c3cf38b93d0` | Email body contains "GrabFood" or restaurant name |
+| Grab Taxi | `20af541a-173c-4f7a-9e04-e0c821f7d367` | Email body contains "Hope you enjoyed your ride" |
+| GrabMart | `58f6f707-3771-41bf-a5eb-12a0b2ef0e3b` | Email body contains "GrabMart" |
+| GrabExpress | *(look up)* | Subject is "Your GrabExpress Receipt" |
 
-**Heuristic**:
+**Fallback heuristic** (only if email unavailable):
 - < $8 → Grab Taxi (Ride)
-- $8-15 → Could be either, check context
+- $8-15 → Could be either, ask user
 - > $15 → GrabFood (Food Delivery)
 
 ### Bolt Rides
 
 | Vendor | ID | Notes |
 |--------|-----|-------|
-| Bolt | *(look up during import)* | Taxi/ride service, similar to Grab Taxi |
+| Bolt | `dcfd535e-46dc-42d5-9590-d9688d32e3cf` | Taxi/ride service, similar to Grab Taxi |
 
-**Payment**: Bolt rides are charged to Chase (USD), like Grab. Cross-reference THB email amounts with USD credit card charges using ~34 THB/USD rate.
+**Statement Pattern**: Bolt rides appear on Chase statements as `WWW.2C2P.COM*2C2P (THAILA` (NOT labeled as "Bolt").
+
+**Payment**: Bolt rides are charged to Chase (USD), like Grab. Cross-reference THB email amounts with USD credit card charges using ~31-34 THB/USD rate (verify actual rate from statement).
 
 ### K PLUS Address Book
 
@@ -95,7 +112,16 @@ This address book maps recipient names (as they appear in K PLUS emails) to vend
 
 This address book maps recipient names from Bangkok Bank (Bualuang mBanking) emails to vendors. Similar to K PLUS, recipients may appear in Thai or English across different transfer types.
 
-**Skip Rules**: Self-transfers (e.g., to own bank accounts or own wallets) should be skipped - these are internal fund movements, not expenses.
+**Self-Transfer Detection** (skip only these):
+- Transfers to user's own bank accounts at other banks
+- TopUp to user's own TrueMoney or LINE Pay wallets
+
+**NOT self-transfers** (process as normal transactions):
+- PromptPay transfers to vendors/individuals
+- PromptPay TopUp to merchant wallets (e.g., paying a vendor via e-wallet)
+- All bill payments and funds transfers to other parties
+
+When uncertain, ask the user.
 
 #### Individuals (PromptPay to Mobile)
 
@@ -224,6 +250,14 @@ These patterns are no longer active but may help identify old transactions:
 | Massage | `Massage` |
 | Coffee shop | `Coffee` |
 
+### Hotel Cancellations
+
+When a hotel booking is cancelled, log **both** transactions for audit trail:
+1. **Expense**: The original charge (description: `Hotel booking`)
+2. **Income**: The refund/credit (description: `Hotel cancellation refund`)
+
+This provides a complete financial record showing the charge was reversed.
+
 ---
 
 ## Transaction Type Rules
@@ -236,9 +270,22 @@ These patterns are no longer active but may help identify old transactions:
 ## Data Source Formats
 
 ### Chase Credit Card Statement
-- Screenshots from Chase app
+- Screenshots from Chase app OR PDF statements
 - Shows: Date, Merchant name, Amount in USD
 - Pending vs Posted sections
+
+**CRITICAL - Billing Cycle Coverage:**
+Chase statement cycles do NOT align with calendar months. For example:
+- December 2025 statement covers **Nov 19 - Dec 18**
+- November 2025 statement covers **Oct 19 - Nov 18**
+
+**Process implication:** To import ALL transactions for a calendar month:
+1. Check the **current month's statement** (covers ~first 18 days)
+2. Check the **next month's statement** (covers ~last 12 days)
+
+Example: For November 2025:
+- November statement: Oct 19 - Nov 18 → covers Nov 1-18
+- December statement: Nov 19 - Dec 18 → covers Nov 19-30
 
 ### K PLUS Bank Transfers
 - Email receipts from `KPLUS@kasikornbank.com`
@@ -251,9 +298,27 @@ These patterns are no longer active but may help identify old transactions:
 - Base64-encoded HTML, bilingual format
 - Skip self-transfers (to own accounts)
 
-### Grab/Lazada Receipts
-- Email PDFs showing THB amounts
+### Lazada Order Processing
+
+Lazada transactions require two-step processing:
+
+1. **Order confirmation email** ("We have received your order No...")
+   - Extract: Order number, item descriptions, THB amounts
+   - Status: "Watch For" until credit card charge found
+
+2. **Credit card statement** (Chase)
+   - Find matching `WWW.2C2P.COM*LAZADA` charge
+   - Use USD amount from statement as transaction amount
+   - Use item descriptions from order email for description
+
+**Description format**: List items purchased
+- Example: `Sour Patch Kids, Golf Balls`
+
+### Grab Receipts
+
+Grab emails show THB amounts but charges appear on Chase in USD.
 - Cross-reference with USD credit card charges using ~34 THB/USD rate
+- Use email body to determine service type (GrabFood, Taxi, Mart, Express)
 
 ### Grab Email Receipt Patterns
 
@@ -416,14 +481,15 @@ Bangkok Bank sends email confirmations for transfers and payments via Bualuang m
 
 #### Email Type Identification
 
-| Subject Line (Thai / English) | Transfer Type | Skip? |
-|-------------------------------|---------------|-------|
-| `ยืนยันการชำระเงิน / Payments confirmation` | Bill payment to merchant/company | No |
-| `ยืนยันรายการโอนเงินไปยังหมายเลขโทรศัพท์มือถือโดยพร้อมเพย์ / Confirmation of funds transfer to Mobile Phone Number by PromptPay` | PromptPay to mobile number | No |
-| `ยืนยันการโอนเงิน / Funds transfer confirmation` | Bank-to-bank transfer | Check* |
-| `ยืนยันการเติมเงินพร้อมเพย์ / PromptPay Top Up Confirmation` | Top-up (e.g., to e-wallet) | Check* |
+| Subject Line (Thai / English) | Transfer Type | Treatment |
+|-------------------------------|---------------|-----------|
+| `ยืนยันการชำระเงิน / Payments confirmation` | Bill payment to merchant/company | Always process |
+| `ยืนยันรายการโอนเงินไปยังหมายเลขโทรศัพท์มือถือโดยพร้อมเพย์ / Confirmation of funds transfer to Mobile Phone Number by PromptPay` | PromptPay to mobile number | Always process |
+| `ยืนยันรายการโอนเงินไปยังเลขประจำตัวประชาชน / Confirmation of funds transfer to Citizen ID` | PromptPay to Citizen ID | Always process |
+| `ยืนยันการโอนเงิน / Funds transfer confirmation` | Bank-to-bank transfer | Check if self-transfer* |
+| `ยืนยันการเติมเงินพร้อมเพย์ / PromptPay Top Up Confirmation` | Top-up to e-wallet | Check if self-transfer* |
 
-*Check: Skip if transfer is to own account/wallet (personal fund movement)
+*Only skip if transfer is to user's own account/wallet. Most TopUps are vendor payments - process them as transactions.
 
 #### Key Fields to Extract (from decoded HTML body)
 
@@ -459,19 +525,29 @@ Reference No.: XXXXXXXXXXXXXXXXXXXXXXXXX
 - Look up recipient in Bangkok Bank Address Book for vendor mapping
 - All Bangkok Bank transactions use payment method: Bangkok Bank (Bualuang)
 - Currency is always THB
-- Skip self-transfers (to own accounts or own wallets)
+- Only skip transfers to user's own accounts - most TopUps are vendor payments
 
 ---
 
 ## Workflow
 
-1. **Collect inputs**: Screenshots, PDFs, receipt emails
-2. **Extract transactions**: Read dates, amounts, merchant names
-3. **Map to vendors**: Use mappings above, create new vendors if needed
-4. **Determine descriptions**: Apply patterns or ask for clarification
-5. **Categorize Grab**: Use amount heuristics
-6. **Present summary**: Show all transactions for approval before insert
-7. **Insert to database**: Bulk insert with proper IDs
+1. **Collect inputs**: Screenshots, PDFs, receipt emails for the target month
+   - **IMPORTANT**: For Chase CC, check BOTH the current month's statement AND the next month's statement (see "Chase Credit Card Statement" section for billing cycle details)
+2. **Create index**: Catalog every document with initial classification
+3. **Classify each document**:
+   - Import (direct expense to log)
+   - Reconcile (matches credit card charge)
+   - Watch For (order confirmation, bill notification)
+   - Income (refund, reimbursement)
+   - Non-Transaction (cancellation, marketing)
+4. **Extract transactions**: Read dates, amounts, merchant names from each document
+5. **Map to vendors**: Use mappings above, create new vendors if needed
+6. **Cross-reference**: Match THB receipts (Grab, Bolt, Lazada) to USD credit card charges
+7. **Check database**: Query existing transactions to find matches/duplicates
+8. **Ask for clarifications**: Unknown vendors, ambiguous descriptions, uncertain classifications
+9. **Present summary**: Show all classifications for approval before insert
+10. **Insert to database**: Bulk insert new transactions
+11. **Learn & update**: Add new vendor mappings and patterns to this reference
 
 ---
 
@@ -499,3 +575,99 @@ const transaction = {
 - Always verify totals match source documents
 - Create new vendors when a mapping doesn't exist
 - Ask for description clarification when context is ambiguous
+
+---
+
+## Validation Learnings
+
+Insights from validation dry runs that improve future imports.
+
+### Date Extraction by Document Type
+
+| Document Type | Date Location | Format |
+|---------------|---------------|--------|
+| Bangkok Bank emails | Filename | `(DD_MM_YYYY @ HH_MM_SS)` |
+| Grab receipts | Email `Date:` header | `Day, DD Mon YYYY HH:MM:SS +0000` |
+| Bolt receipts | Email `Date:` header | `Day, DD Mon YYYY HH:MM:SS +0000` |
+| Lazada orders | Email `Date:` header | `Day, DD Mon YYYY HH:MM:SS +0800 (CST)` |
+| US subscriptions | Email `Date:` header | Various formats |
+
+**Important:** Grab/Bolt/Lazada emails do NOT have dates in filenames - always extract from email content.
+
+### Expected Coverage Patterns
+
+Based on October 2025 validation:
+
+| Source | Expected Ratio | Notes |
+|--------|----------------|-------|
+| Bangkok Bank emails | ~95% of THB transactions | Some reimbursements may not generate emails |
+| Bolt receipts | 1:1 with DB records | Very reliable matching |
+| Grab receipts | Slightly more emails than DB | Some emails may be for non-October dates |
+| Lazada orders | Order confirmations only | Charge appears on CC statement, not in email |
+
+### Grab Payment Method Detection
+
+Grab receipts contain a **Payment Method** field that determines whether a CC charge is expected:
+
+| Payment Method | Found In Email | CC Charge Expected? |
+|----------------|----------------|---------------------|
+| `GrabPay Wallet` | Yes | **NO** - Covered by wallet TopUp transaction |
+| `Credit Card` / `Debit Card` | Yes | **YES** - Should have matching CC charge |
+
+**To extract payment method from Grab emails:**
+```bash
+awk '/^[A-Za-z0-9+\/=]+$/ && length>50' "email.eml" | tr -d '\n' | base64 -d 2>/dev/null | grep -oi "GrabPay Wallet\|Credit Card\|Debit Card"
+```
+
+**Validation logic:**
+- If `GrabPay Wallet` → Skip, no CC charge expected (already covered by Amex TopUp)
+- If `Credit Card` → Must match to CC statement charge
+- GrabPay Wallet TopUps typically appear as separate Amex charges
+
+### Transactions That MUST Have Email Receipts
+
+These credit card charges should **always** have a matching receipt email:
+
+| Vendor | Email Type | Matching Notes |
+|--------|------------|----------------|
+| Grab | `Your Grab E-Receipt` | Match THB amount to USD CC charge (~34 THB/USD) - **only if not GrabPay Wallet** |
+| Bolt | `Your Bolt ride on [Day]` | Match THB amount to USD CC charge (~34 THB/USD) |
+| Lazada | `We have received your order No...` | Order date may precede CC charge by 1-3 days |
+
+**If a Grab, Bolt, or Lazada CC charge has no matching email, flag it for investigation.**
+
+### Time Zone Considerations
+
+Email timestamps are in UTC, but database transaction dates use **local Thai time**:
+
+| Email UTC Time | Local Thai Date | Notes |
+|----------------|-----------------|-------|
+| 23:00-23:59 UTC | Next day (UTC+7) | Common for late evening transactions |
+| 00:00-16:59 UTC | Same day | Most daytime transactions |
+
+**Example:** Bolt email dated `2025-10-29 23:27 UTC` → DB date `2025-10-30` (local Thai time)
+
+When matching documents to DB records, consider ±1 day tolerance for timezone boundary cases.
+
+### Transactions Without Email Receipts
+
+These transaction types legitimately have **no email documentation**:
+
+| Type | Examples | Documented By |
+|------|----------|---------------|
+| Retail purchases | Wine shops, grocery stores, restaurants | Credit card statement |
+| Auto-subscriptions | ChatGPT, Notion, Netflix | Credit card statement |
+| Auto-replenishment | EZ Pass | Credit card statement |
+| Cash payments | Tuktuk, tips, small vendors | Manual entry |
+| Some reimbursements | Nidnoi transfers | May or may not have Bangkok Bank email |
+
+### Validation Script Recommendations
+
+When building validation scripts:
+
+1. **Extract dates from email headers**, not just filenames
+2. **Match by date + vendor + approximate amount** (allow ±$1 for currency conversion)
+3. **Group Grab/Bolt by week** since filenames use day names (e.g., "Friday")
+4. **Cross-reference Lazada orders** with CC charges by order date range (+1-3 days for processing)
+5. **Require matching emails** for Grab, Bolt, Lazada - flag missing as errors
+6. **Don't require emails** for retail/subscription transactions
