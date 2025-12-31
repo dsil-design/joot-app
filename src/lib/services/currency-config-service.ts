@@ -68,12 +68,15 @@ class CurrencyConfigService {
 
       for (const currency of trackedCurrencies) {
         allTracked.push(currency.currency_code);
-        
+
         if (currency.is_crypto) {
           cryptoCurrencies.push(currency.currency_code);
-        } else {
+        } else if (currency.source === 'ECB') {
+          // Only include currencies that actually come from ECB
           ecbCurrencies.push(currency.currency_code);
         }
+        // Non-ECB, non-crypto currencies (like VND with source='MANUAL')
+        // are tracked but not fetched from ECB
       }
 
       // Generate currency pairs (all combinations)

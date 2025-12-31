@@ -9,9 +9,6 @@
     "src/app/api/cron/sync-all-rates/route.ts": {
       "maxDuration": 300
     },
-    "src/app/api/cron/cleanup-stuck-syncs/route.ts": {
-      "maxDuration": 60
-    },
     "src/app/api/cron/analyze-vendor-duplicates/route.ts": {
       "maxDuration": 300
     },

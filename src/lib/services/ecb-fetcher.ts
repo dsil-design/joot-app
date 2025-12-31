@@ -247,17 +247,17 @@ export class ECBFetcher {
     const availableCurrencies = new Set(latestRates.map(rate => rate.currency));
     
     // Check that we have the currencies we expect to track
+    // Missing currencies are warnings, not errors - ECB data should still be usable
     try {
       const trackedECBCurrencies = await currencyConfigService.getECBCurrencies();
-      
+
       for (const requiredCurrency of trackedECBCurrencies) {
         // Skip EUR validation since it's the base currency in ECB data
         if (requiredCurrency === 'EUR') continue;
-        
+
         if (!availableCurrencies.has(requiredCurrency)) {
-          // This is an error since ECB should provide these tracked currencies
-          result.errors.push(`Required tracked currency not found in ECB data: ${requiredCurrency}`);
-          result.isValid = false;
+          // Missing currency is a warning - we can still use the rates we have
+          result.warnings.push(`Tracked ECB currency not found in data: ${requiredCurrency}`);
         }
       }
     } catch (error) {
