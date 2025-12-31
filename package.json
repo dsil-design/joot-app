@@ -55,6 +55,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.12",
     "geist": "^1.4.2",
+    "imapflow": "^1.2.4",
     "input-otp": "^1.4.2",
     "jsdom": "^27.3.0",
     "lucide-react": "^0.535.0",

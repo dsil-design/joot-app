@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CreditCard, Tag, Store } from 'lucide-react'
+import { ArrowLeft, CreditCard, Tag, Store, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,11 @@ const navigationItems = [
     name: 'Vendors',
     href: '/settings/vendors',
     icon: Store,
+  },
+  {
+    name: 'Emails',
+    href: '/settings/emails',
+    icon: Mail,
   },
 ]
 

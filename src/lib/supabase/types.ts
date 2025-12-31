@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.12 (cd3cf9e)"
+    PostgrestVersion: "14.1"
   }
   graphql_public: {
     Tables: {
@@ -77,6 +77,100 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      email_sync_state: {
+        Row: {
+          created_at: string | null
+          folder: string
+          id: string
+          last_sync_at: string | null
+          last_uid: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          folder: string
+          id?: string
+          last_sync_at?: string | null
+          last_uid?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          folder?: string
+          id?: string
+          last_sync_at?: string | null
+          last_uid?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sync_state_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emails: {
+        Row: {
+          created_at: string | null
+          date: string | null
+          folder: string
+          from_address: string | null
+          from_name: string | null
+          has_attachments: boolean | null
+          id: string
+          message_id: string
+          seen: boolean | null
+          subject: string | null
+          synced_at: string | null
+          uid: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string | null
+          folder: string
+          from_address?: string | null
+          from_name?: string | null
+          has_attachments?: boolean | null
+          id?: string
+          message_id: string
+          seen?: boolean | null
+          subject?: string | null
+          synced_at?: string | null
+          uid: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string | null
+          folder?: string
+          from_address?: string | null
+          from_name?: string | null
+          has_attachments?: boolean | null
+          id?: string
+          message_id?: string
+          seen?: boolean | null
+          subject?: string | null
+          synced_at?: string | null
+          uid?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emails_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       exchange_rates: {
         Row: {
@@ -857,19 +951,6 @@ export type Database = {
         }[]
       }
       get_next_tag_color: { Args: { p_user_id: string }; Returns: string }
-      get_statement_transactions: {
-        Args: { p_document_id: string }
-        Returns: {
-          amount: number
-          description: string
-          match_status: string
-          matched_transaction_id: string
-          running_balance: number
-          transaction_date: string
-          transaction_id: string
-          transaction_index: number
-        }[]
-      }
       get_sync_configuration: {
         Args: never
         Returns: {
@@ -932,15 +1013,6 @@ export type Database = {
           message: string
           removed_rates: number
           success: boolean
-        }[]
-      }
-      validate_statement_balances: {
-        Args: { p_statement_metadata_id: string }
-        Returns: {
-          calculated_ending_balance: number
-          difference: number
-          expected_ending_balance: number
-          is_valid: boolean
         }[]
       }
     }
@@ -1203,3 +1275,13 @@ export type PaymentMethodUpdate = Database["public"]["Tables"]["payment_methods"
 export type Tag = Database["public"]["Tables"]["tags"]["Row"]
 export type TagInsert = Database["public"]["Tables"]["tags"]["Insert"]
 export type TagUpdate = Database["public"]["Tables"]["tags"]["Update"]
+
+// Email types
+export type Email = Database["public"]["Tables"]["emails"]["Row"]
+export type EmailInsert = Database["public"]["Tables"]["emails"]["Insert"]
+export type EmailUpdate = Database["public"]["Tables"]["emails"]["Update"]
+
+// Email sync state types
+export type EmailSyncState = Database["public"]["Tables"]["email_sync_state"]["Row"]
+export type EmailSyncStateInsert = Database["public"]["Tables"]["email_sync_state"]["Insert"]
+export type EmailSyncStateUpdate = Database["public"]["Tables"]["email_sync_state"]["Update"]

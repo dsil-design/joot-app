@@ -3,6 +3,7 @@ import { dailySyncService } from '@/lib/services/daily-sync-service';
 import { transactionRateGapService } from '@/lib/services/transaction-rate-gap-service';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { syncNotificationService } from '@/lib/services/sync-notification-service';
+import { emailSyncService } from '@/lib/services/email-sync-service';
 
 /**
  * Surgical Exchange Rates Sync
@@ -88,7 +89,8 @@ export async function GET(request: NextRequest) {
   const results = {
     cleanup: { success: false, message: '', data: null as any },
     surgicalSync: { success: false, message: '', data: null as any },
-    coverage: { success: false, message: '', data: null as any }
+    coverage: { success: false, message: '', data: null as any },
+    emailSync: { success: false, message: '', data: null as any }
   };
 
   try {
@@ -300,8 +302,58 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // 6. Email sync (if configured)
+    if (process.env.ICLOUD_EMAIL && process.env.ICLOUD_APP_PASSWORD) {
+      try {
+        console.log('📧 Syncing emails from iCloud...');
+
+        // Get the first user (single-user app for now)
+        const supabase = createServiceRoleClient();
+        const { data: users } = await supabase
+          .from('users')
+          .select('id')
+          .limit(1)
+          .single();
+
+        if (users) {
+          const emailResult = await emailSyncService.executeSync(users.id);
+
+          results.emailSync = {
+            success: emailResult.success,
+            message: emailResult.message || `Synced ${emailResult.synced} emails`,
+            data: {
+              synced: emailResult.synced,
+              errors: emailResult.errors,
+              lastUid: emailResult.lastUid
+            }
+          };
+
+          console.log(`  ✅ Email sync: ${emailResult.synced} emails synced`);
+        } else {
+          results.emailSync = {
+            success: false,
+            message: 'No user found for email sync',
+            data: null
+          };
+        }
+      } catch (error) {
+        console.error('⚠️  Email sync failed (non-critical):', error);
+        results.emailSync = {
+          success: false,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          data: null
+        };
+      }
+    } else {
+      results.emailSync = {
+        success: true,
+        message: 'Email sync not configured (skipped)',
+        data: { skipped: true }
+      };
+    }
+
     const duration = Date.now() - startTime;
-    console.log(`✨ Surgical sync completed in ${(duration / 1000).toFixed(1)}s`);
+    console.log(`✨ Daily sync completed in ${(duration / 1000).toFixed(1)}s`);
 
     // 6. Complete sync_history record
     await completeSyncHistoryRecord(
