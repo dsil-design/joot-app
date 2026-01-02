@@ -4,9 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'database/migrations/**'
+      - 'database/supabase/migrations/**'
       - 'database/schema.sql'
-      - 'database/seed.sql'
   workflow_dispatch: # Allow manual trigger
   workflow_call: # Allow being called by other workflows
 
@@ -54,7 +53,7 @@ jobs:
       - name: Debug migration status
         run: |
           echo "Local migrations directory:"
-          ls -la database/migrations/
+          ls -la database/supabase/migrations/
           echo "Checking migration status:"
           echo "$SUPABASE_DB_PASSWORD" | supabase migration list --workdir database || true
         env:
@@ -86,11 +85,7 @@ jobs:
           if ! echo "$migration_list" | grep -q "20250819100000"; then
             echo "⚠️ Migration system not tracking existing migrations."
             echo "🔄 Initializing migration system with known working migrations..."
-            
-            # Create migrations directory inside database workdir for repair command compatibility
-            mkdir -p database/supabase/migrations
-            cp database/migrations/*.sql database/supabase/migrations/
-            
+
             # Only mark migrations as applied that we know actually ran successfully
             # Skip migrations that already exist in the remote migration table to avoid duplicates
             migrations_to_repair=""
@@ -123,11 +118,6 @@ jobs:
             if echo "$migration_list" | grep -q "20250820120000.*Applied"; then
               echo "🔍 Role migration marked as applied - but we know it needs to run"
               echo "🔄 Resetting role migration status to force re-execution..."
-              
-              # Create migrations directory inside database workdir for repair command compatibility
-              mkdir -p database/supabase/migrations
-              cp database/migrations/*.sql database/supabase/migrations/
-              
               echo "$SUPABASE_DB_PASSWORD" | supabase migration repair --status reverted 20250820120000 --workdir database
               echo "✅ Role migration reset - will be re-executed by db push"
             fi
