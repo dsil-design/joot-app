@@ -104,7 +104,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-005 | Generate TypeScript types for new tables | Database | P1-004 | P1-010 |
 | [x] | P1-006 | Add "Imports" to sidebar navigation | Navigation | — | P1-007 |
 | [x] | P1-007 | Add "Imports" to mobile navigation | Navigation | P1-006 | P1-008 |
-| [ ] | P1-008 | Create `/imports` route structure | Navigation | P1-007 | P1-009 |
+| [x] | P1-008 | Create `/imports` route structure | Navigation | P1-007 | P1-009 |
 | [ ] | P1-009 | Create Import Dashboard page skeleton | UI | P1-008 | P1-015 |
 | [ ] | P1-010 | Create email transaction extraction service | Email | P1-005 | P1-011 |
 | [ ] | P1-011 | Build Grab email parser | Email | P1-010 | P1-016 |
@@ -446,7 +446,7 @@ Add the "Imports" tab to the mobile/tablet top navigation bar.
 <!--P1-008-->
 ### P1-008 — Create `/imports` route structure
 
-**Status:** open
+**Status:** done
 **Group:** Navigation
 **Depends on:** P1-007  |  **Blocks:** P1-009  |  **parallel:** false
 
@@ -475,7 +475,9 @@ Create the Next.js App Router folder structure for all import-related pages.
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T20:00:00Z · by: claude
+- done: 2026-01-11T20:30:00Z · by: claude · notes: Created all route files with placeholder content using skeleton components. Created `src/app/imports/layout.tsx` for auth protection (redirects to /login if not authenticated) and shared layout. Created `src/components/page-specific/imports-layout.tsx` with side navigation (Dashboard, Review Queue, Statements, History). All four routes render correctly, build passes.
 
 ---
 
