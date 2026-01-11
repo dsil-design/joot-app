@@ -1,4 +1,4 @@
-import { createClient } from '../supabase/client';
+import { createServiceRoleClient } from '../supabase/server';
 
 export interface TrackedCurrency {
   currency_code: string;
@@ -25,7 +25,7 @@ class CurrencyConfigService {
    */
   async getTrackedCurrencies(): Promise<TrackedCurrency[]> {
     try {
-      const supabase = createClient();
+      const supabase = createServiceRoleClient();
       
       // Query the currency_configuration table directly
       // TODO: Use RPC function once types are regenerated after migration
