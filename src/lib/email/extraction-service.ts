@@ -16,7 +16,6 @@ import { createServiceRoleClient } from '../supabase/server';
 import { emailSyncService } from '../services/email-sync-service';
 import {
   EMAIL_TRANSACTION_STATUS,
-  EMAIL_CLASSIFICATION,
   IMPORT_ACTIVITY_TYPE,
 } from '../types/email-imports';
 import type {
@@ -33,6 +32,14 @@ import {
   determineStatusFromConfidence,
   type ConfidenceScoreBreakdown,
 } from './confidence-scoring';
+import {
+  classifyEmailWithContext,
+  detectPaymentContext,
+  getStatusFromRules,
+  type ClassificationContext,
+  type ExtendedClassificationResult,
+  type PaymentContext,
+} from './classifier';
 
 // Import parsers
 import { grabParser } from './extractors/grab';
@@ -127,116 +134,56 @@ export class EmailExtractionService {
 
   /**
    * Classify an email to determine its type and appropriate parser
+   *
+   * This is a basic classification without extraction data.
+   * For full classification with currency awareness, use classifyEmailWithExtraction.
    */
   classifyEmail(email: RawEmailData): ClassificationResult {
-    const fromAddress = email.from_address?.toLowerCase() || '';
-    const subject = email.subject?.toLowerCase() || '';
-
-    // Find matching parser
-    const parser = this.parserRegistry.findParser(email);
-
-    if (parser) {
-      // Parser found - determine classification based on parser type
-      const classification = this.getClassificationForParser(parser.key);
-      const status = this.getInitialStatusForClassification(classification, parser.key);
-
-      return {
-        classification,
-        status,
-        parserKey: parser.key,
-        confidence: 90, // High confidence when parser matches
-      };
-    }
-
-    // No parser found - try basic classification
-    return this.classifyUnknownEmail(email);
-  }
-
-  /**
-   * Get classification type for a parser
-   */
-  private getClassificationForParser(parserKey: string): typeof EMAIL_CLASSIFICATION[keyof typeof EMAIL_CLASSIFICATION] {
-    switch (parserKey) {
-      case 'grab':
-      case 'bolt':
-        return EMAIL_CLASSIFICATION.RECEIPT;
-      case 'bangkok-bank':
-      case 'kasikorn':
-        return EMAIL_CLASSIFICATION.BANK_TRANSFER;
-      case 'lazada':
-        return EMAIL_CLASSIFICATION.ORDER_CONFIRMATION;
-      default:
-        return EMAIL_CLASSIFICATION.UNKNOWN;
-    }
-  }
-
-  /**
-   * Get initial status based on classification and parser
-   *
-   * THB receipts from Grab/Bolt typically need USD statement matching.
-   * Bank transfers are ready for import directly.
-   */
-  private getInitialStatusForClassification(
-    classification: typeof EMAIL_CLASSIFICATION[keyof typeof EMAIL_CLASSIFICATION],
-    parserKey: string | null
-  ): typeof EMAIL_TRANSACTION_STATUS[keyof typeof EMAIL_TRANSACTION_STATUS] {
-    // THB receipts from ride-hailing apps typically paid via USD credit card
-    // These need to wait for statement to match the USD charge
-    if (parserKey === 'grab' || parserKey === 'bolt') {
-      return EMAIL_TRANSACTION_STATUS.WAITING_FOR_STATEMENT;
-    }
-
-    // Bank transfers are direct THB transactions, ready to import
-    if (classification === EMAIL_CLASSIFICATION.BANK_TRANSFER) {
-      return EMAIL_TRANSACTION_STATUS.READY_TO_IMPORT;
-    }
-
-    // Default: needs user review
-    return EMAIL_TRANSACTION_STATUS.PENDING_REVIEW;
-  }
-
-  /**
-   * Classify email that doesn't match any parser
-   */
-  private classifyUnknownEmail(email: RawEmailData): ClassificationResult {
-    const fromAddress = email.from_address?.toLowerCase() || '';
-    const subject = email.subject?.toLowerCase() || '';
-
-    // Look for common patterns
-    if (subject.includes('receipt') || subject.includes('payment confirmation')) {
-      return {
-        classification: EMAIL_CLASSIFICATION.RECEIPT,
-        status: EMAIL_TRANSACTION_STATUS.PENDING_REVIEW,
-        parserKey: null,
-        confidence: 40,
-      };
-    }
-
-    if (subject.includes('order') || subject.includes('confirmation')) {
-      return {
-        classification: EMAIL_CLASSIFICATION.ORDER_CONFIRMATION,
-        status: EMAIL_TRANSACTION_STATUS.PENDING_REVIEW,
-        parserKey: null,
-        confidence: 30,
-      };
-    }
-
-    if (fromAddress.includes('bank') || subject.includes('transfer')) {
-      return {
-        classification: EMAIL_CLASSIFICATION.BANK_TRANSFER,
-        status: EMAIL_TRANSACTION_STATUS.PENDING_REVIEW,
-        parserKey: null,
-        confidence: 30,
-      };
-    }
-
-    // Default: unknown
+    // Use the enhanced classifier from classifier.ts
+    const result = classifyEmailWithContext(email);
     return {
-      classification: EMAIL_CLASSIFICATION.UNKNOWN,
-      status: EMAIL_TRANSACTION_STATUS.PENDING_REVIEW,
-      parserKey: null,
-      confidence: 0,
+      classification: result.classification,
+      status: result.status,
+      parserKey: result.parserKey,
+      confidence: result.confidence,
     };
+  }
+
+  /**
+   * Classify an email with extraction data for full context
+   *
+   * This uses the enhanced classification system that considers:
+   * - Parser type
+   * - Payment context (e-wallet vs credit card)
+   * - Currency (THB vs USD)
+   *
+   * Returns extended classification with rule matching info for debugging.
+   */
+  classifyEmailWithExtraction(
+    email: RawEmailData,
+    extractionResult: ExtractionResult
+  ): ExtendedClassificationResult {
+    const extractedData = extractionResult.success ? extractionResult.data : undefined;
+    return classifyEmailWithContext(email, extractedData);
+  }
+
+  /**
+   * Get the payment context for an email
+   *
+   * Detects if payment was made via e-wallet (GrabPay, Bolt Balance) or credit card.
+   */
+  getPaymentContext(parserKey: string | null, email: RawEmailData): PaymentContext {
+    return detectPaymentContext(parserKey, email);
+  }
+
+  /**
+   * Determine final status based on full context
+   *
+   * Uses the classification rules engine to determine the appropriate status
+   * based on parser, classification, payment context, and currency.
+   */
+  determineStatusFromContext(context: ClassificationContext): typeof EMAIL_TRANSACTION_STATUS[keyof typeof EMAIL_TRANSACTION_STATUS] {
+    return getStatusFromRules(context);
   }
 
   /**
@@ -416,25 +363,36 @@ export class EmailExtractionService {
             has_attachments: email.has_attachments ?? false,
           };
 
-          // Classify email
-          const classification = this.classifyEmail(rawEmail);
-
-          // Extract transaction data
+          // Extract transaction data first (we need currency for proper classification)
           const extraction = this.extractFromEmail(rawEmail);
+
+          // Classify email with full context (including extracted currency)
+          // This uses the enhanced classification system that considers:
+          // - Parser type (grab, bolt, bangkok-bank, etc.)
+          // - Payment context (e-wallet vs credit card)
+          // - Currency (THB vs USD)
+          const classification = this.classifyEmailWithExtraction(rawEmail, extraction);
 
           // Calculate confidence with detailed breakdown
           const confidenceBreakdown = this.calculateConfidenceWithBreakdown(extraction);
           const confidence = confidenceBreakdown.totalScore;
 
-          // Determine final status based on confidence score
-          // Uses the centralized status determination logic
+          // Determine final status based on:
+          // 1. Classification rules (parser + payment context + currency)
+          // 2. Confidence score (low confidence = pending review)
           const status = determineStatusFromConfidence(
             confidence,
             classification.status
           );
 
           // Build extraction notes combining parser notes with score breakdown
-          const extractionNotes = this.buildExtractionNotes(extraction, confidenceBreakdown);
+          // Include classification rule info for debugging
+          const ruleInfo = classification.matchedRule
+            ? `Classified by rule: ${classification.matchedRule.id} (${classification.matchedRule.description})`
+            : 'No classification rule matched';
+          const paymentInfo = `Payment context: ${classification.paymentContext}`;
+          const extractionNotes = this.buildExtractionNotes(extraction, confidenceBreakdown)
+            + ` | ${ruleInfo} | ${paymentInfo}`;
 
           // Prepare data for database
           const transactionData: EmailTransactionData = {
@@ -594,18 +552,25 @@ export class EmailExtractionService {
       has_attachments: emailTx.has_attachments ?? false,
     };
 
-    // Re-classify and extract
-    const classification = this.classifyEmail(rawEmail);
+    // Extract first (we need currency for proper classification)
     const extraction = this.extractFromEmail(rawEmail);
+
+    // Re-classify with full context (including extracted currency)
+    const classification = this.classifyEmailWithExtraction(rawEmail, extraction);
 
     // Calculate confidence with detailed breakdown
     const confidenceBreakdown = this.calculateConfidenceWithBreakdown(extraction);
     const confidence = confidenceBreakdown.totalScore;
 
-    // Build extraction notes
-    const extractionNotes = this.buildExtractionNotes(extraction, confidenceBreakdown);
+    // Build extraction notes with classification rule info
+    const ruleInfo = classification.matchedRule
+      ? `Classified by rule: ${classification.matchedRule.id} (${classification.matchedRule.description})`
+      : 'No classification rule matched';
+    const paymentInfo = `Payment context: ${classification.paymentContext}`;
+    const extractionNotes = this.buildExtractionNotes(extraction, confidenceBreakdown)
+      + ` | ${ruleInfo} | ${paymentInfo}`;
 
-    // Determine status based on confidence
+    // Determine status based on confidence and classification
     const status = determineStatusFromConfidence(
       confidence,
       classification.status

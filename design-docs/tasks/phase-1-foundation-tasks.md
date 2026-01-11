@@ -114,7 +114,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-015 | Build Lazada email parser | Email | P1-010 | P1-016 |
 | [x] | P1-016 | Integrate parsers into email sync service | Email | P1-011–P1-015 | P1-017 |
 | [x] | P1-017 | Add extraction confidence scoring | Email | P1-016 | P1-018 |
-| [ ] | P1-018 | Implement email classification logic | Email | P1-017 | — |
+| [x] | P1-018 | Implement email classification logic | Email | P1-017 | — |
 | [ ] | P1-019 | Create `ImportStatusCard` component | UI | P1-009 | P1-020 |
 | [ ] | P1-020 | Create Dashboard status cards section | UI | P1-019 | P1-021 |
 | [ ] | P1-021 | Create Email Sync card component | UI | P1-020 | P1-022 |
@@ -955,7 +955,7 @@ Implement confidence scoring for extracted email data based on field completenes
 <!--P1-018-->
 ### P1-018 — Implement email classification logic
 
-**Status:** open
+**Status:** done
 **Group:** Email
 **Depends on:** P1-017  |  **Blocks:** —  |  **parallel:** false
 
@@ -978,7 +978,16 @@ Implement logic to classify emails and determine initial status (pending_review,
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- 2026-01-11: Implemented comprehensive email classification logic with:
+  - Rule-based classification system with 8 default rules
+  - Payment context detection (e-wallet vs credit card)
+  - Currency-aware status determination (THB CC → waiting_for_statement, THB e-wallet → ready_to_import)
+  - Configurable rules via getClassificationRules/setClassificationRules/addClassificationRule/etc.
+  - Updated extraction-service.ts to use enhanced classification with currency info
+  - Created classification rules documentation at docs/classification-rules.md
+  - Created unit tests at __tests__/lib/email/classifier.test.ts
+  - Build passes successfully
 
 ---
 

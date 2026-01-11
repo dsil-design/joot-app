@@ -12,14 +12,35 @@ export { extractionService, EmailExtractionService } from './extraction-service'
 
 // Classifier
 export {
+  // Email classification functions
   classifyEmail,
+  classifyEmailWithContext,
   getParserKey,
   hasMatchingParser,
   getRegisteredParserKeys,
   getParserInfo,
+  // Payment context detection
+  detectPaymentContext,
+  // Classification rules
+  getStatusFromRules,
+  getMatchingRule,
+  getClassificationRules,
+  setClassificationRules,
+  resetClassificationRules,
+  addClassificationRule,
+  removeClassificationRule,
+  setRuleEnabled,
+  // Constants
   PARSER_PATTERNS,
+  DEFAULT_CLASSIFICATION_RULES,
 } from './classifier';
-export type { ParserPattern } from './classifier';
+export type {
+  ParserPattern,
+  PaymentContext,
+  ClassificationRule,
+  ClassificationContext,
+  ExtendedClassificationResult,
+} from './classifier';
 
 // Confidence scoring
 export {
