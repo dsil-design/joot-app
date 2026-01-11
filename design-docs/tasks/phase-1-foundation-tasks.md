@@ -111,7 +111,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-012 | Build Bolt email parser | Email | P1-010 | P1-016 |
 | [x] | P1-013 | Build Bangkok Bank email parser | Email | P1-010 | P1-016 |
 | [x] | P1-014 | Build Kasikorn Bank email parser | Email | P1-010 | P1-016 |
-| [ ] | P1-015 | Build Lazada email parser | Email | P1-010 | P1-016 |
+| [x] | P1-015 | Build Lazada email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-016 | Integrate parsers into email sync service | Email | P1-011–P1-015 | P1-017 |
 | [ ] | P1-017 | Add extraction confidence scoring | Email | P1-016 | P1-018 |
 | [ ] | P1-018 | Implement email classification logic | Email | P1-017 | — |
@@ -832,7 +832,7 @@ Create parser for Kasikorn Bank (K PLUS) notification emails.
 <!--P1-015-->
 ### P1-015 — Build Lazada email parser
 
-**Status:** open
+**Status:** done
 **Group:** Email
 **Depends on:** P1-010  |  **Blocks:** P1-016  |  **parallel:** true
 
@@ -855,7 +855,16 @@ Create parser for Lazada order confirmation and receipt emails.
 **Notes & Open Questions:**
 - Lazada emails often show estimated totals; actual charge may differ
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- 2026-01-11: Created `src/lib/email/extractors/lazada.ts` with:
+  - Sender pattern matching for order@lazada.co.th and related addresses
+  - Email type detection (order_confirmation, shipped, delivered, payment)
+  - THB amount extraction with order total patterns
+  - Order ID extraction
+  - Item count detection for description building
+  - Notes that amounts are estimates (may differ from actual charges)
+- 2026-01-11: Registered parser in extraction service and index.ts
+- 2026-01-11: Verified build passes
 
 ---
 
