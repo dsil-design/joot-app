@@ -1,0 +1,41 @@
+Subject: Your Bolt ride on Friday
+From: bangkok@bolt.eu
+Date: Fri, 21 Nov 2025 22:45:00 +0700
+Content-Type: text/html
+
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .container { font-family: Arial, sans-serif; }
+    .total { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bolt</h1>
+    <h2>Your ride on Friday, November 21</h2>
+
+    <div class="ride-summary">
+      <h3>Ride Summary</h3>
+      <p>Pick-up: Central World</p>
+      <p>Drop-off: Maya Shopping Mall</p>
+      <p>Distance: 3.5 km</p>
+      <p>Duration: 15 min</p>
+    </div>
+
+    <div class="fare-breakdown">
+      <h3>Fare Breakdown</h3>
+      <p>Base Fare: ฿29.00</p>
+      <p>Distance: ฿28.00</p>
+      <p>Time: ฿15.00</p>
+      <p class="total">Total: ฿72.00</p>
+    </div>
+
+    <p>Payment Method: Credit Card</p>
+    <p>Trip ID: BOLT-55555-QRS</p>
+
+    <p>Thank you for riding with Bolt!</p>
+  </div>
+</body>
+</html>

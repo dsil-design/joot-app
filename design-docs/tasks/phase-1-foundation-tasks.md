@@ -108,7 +108,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-009 | Create Import Dashboard page skeleton | UI | P1-008 | P1-015 |
 | [x] | P1-010 | Create email transaction extraction service | Email | P1-005 | P1-011 |
 | [x] | P1-011 | Build Grab email parser | Email | P1-010 | P1-016 |
-| [ ] | P1-012 | Build Bolt email parser | Email | P1-010 | P1-016 |
+| [x] | P1-012 | Build Bolt email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-013 | Build Bangkok Bank email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-014 | Build Kasikorn Bank email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-015 | Build Lazada email parser | Email | P1-010 | P1-016 |
@@ -736,7 +736,7 @@ __tests__/fixtures/emails/grab/
 <!--P1-012-->
 ### P1-012 — Build Bolt email parser
 
-**Status:** open
+**Status:** done
 **Group:** Email
 **Depends on:** P1-010  |  **Blocks:** P1-016  |  **parallel:** true
 
@@ -758,7 +758,9 @@ Create parser for Bolt ride receipt emails.
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T09:40:00Z · by: claude
+- done: 2026-01-11T09:55:00Z · by: claude · notes: Created `src/lib/email/extractors/bolt.ts` implementing EmailParser interface with canParse() and extract() methods. Features: (1) Sender detection for bangkok@bolt.eu, bolt@bolt.eu, noreply@bolt.eu patterns, (2) Subject detection for "Your Bolt ride on [Day]" pattern, (3) THB amount extraction with ฿ symbol and HTML entity support, (4) Trip ID extraction for multiple formats (BOLT-XXX, BK-XXX, etc.), (5) Destination extraction with simplification (Airport, Mall, Hotel, etc.), (6) Day of week extraction from subject for description building, (7) HTML body parsing with tag stripping fallback. Created test fixtures in `__tests__/fixtures/emails/bolt/` (4 sample emails). Created unit tests in `__tests__/lib/email/extractors/bolt.test.ts`. Parser registered in extraction-service.ts and exported from extractors/index.ts. Vendor ID: dcfd535e-46dc-42d5-9590-d9688d32e3cf. Build and lint pass.
 
 ---
 

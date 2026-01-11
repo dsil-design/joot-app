@@ -1,0 +1,31 @@
+Subject: Your Bolt ride on Tuesday
+From: bangkok@bolt.eu
+Date: Tue, 19 Nov 2025 06:15:00 +0700
+
+Bolt
+Your ride on Tuesday, November 19
+
+Ride Summary
+--------------
+Pick-up: Home Residence
+Time: 06:00
+
+Drop-off: Chiang Mai International Airport
+Time: 06:35
+
+Distance: 15.2 km
+Duration: 35 min
+
+Fare Breakdown
+--------------
+Base Fare                              ฿29.00
+Distance (15.2 km)                     ฿121.60
+Time (35 min)                          ฿35.00
+Airport Surcharge                      ฿50.00
+--------------
+Total                                  ฿235.60
+
+Payment Method: Credit Card
+Trip ID: BOLT-98765-ABC
+
+Thank you for riding with Bolt!

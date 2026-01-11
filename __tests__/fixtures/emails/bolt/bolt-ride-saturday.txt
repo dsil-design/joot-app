@@ -1,0 +1,30 @@
+Subject: Your Bolt ride on Saturday
+From: bangkok@bolt.eu
+Date: Sat, 22 Nov 2025 18:30:00 +0700
+
+Bolt
+Your ride on Saturday, November 22
+
+Ride Summary
+--------------
+Pick-up: Central Festival Chiang Mai
+Time: 18:00
+
+Drop-off: Nimman Hotel
+Time: 18:25
+
+Distance: 5.8 km
+Duration: 25 min
+
+Fare Breakdown
+--------------
+Base Fare                              ฿29.00
+Distance (5.8 km)                      ฿46.40
+Time (25 min)                          ฿25.00
+--------------
+Total                                  ฿100.40
+
+Payment Method: Credit Card
+Trip ID: BOLT-12345-XYZ
+
+Thank you for riding with Bolt!
