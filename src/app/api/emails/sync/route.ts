@@ -6,7 +6,14 @@ import { emailSyncService } from '@/lib/services/email-sync-service';
  * POST /api/emails/sync
  *
  * Triggers a manual email sync for the authenticated user.
- * Connects to iCloud IMAP and syncs email metadata from the configured folder.
+ * Connects to iCloud IMAP, syncs email metadata, and processes
+ * each email through the appropriate parser to extract transaction data.
+ *
+ * Flow:
+ * 1. Sync email metadata from IMAP folder
+ * 2. Classify each email to determine parser
+ * 3. Extract transaction data using matching parser
+ * 4. Store extracted data in email_transactions table
  */
 export async function POST(_request: NextRequest) {
   try {
@@ -29,10 +36,10 @@ export async function POST(_request: NextRequest) {
       );
     }
 
-    console.log(`Email sync triggered for user ${user.id}`);
+    console.log(`Email sync with extraction triggered for user ${user.id}`);
 
-    // Execute sync
-    const result = await emailSyncService.executeSync(user.id);
+    // Execute sync with extraction
+    const result = await emailSyncService.executeSyncWithExtraction(user.id);
 
     return NextResponse.json({
       success: result.success,
@@ -40,6 +47,7 @@ export async function POST(_request: NextRequest) {
       errors: result.errors,
       lastUid: result.lastUid,
       message: result.message,
+      extraction: result.extraction,
     });
 
   } catch (error) {

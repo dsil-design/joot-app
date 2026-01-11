@@ -1,6 +1,20 @@
 import { ImapFlow } from 'imapflow';
 import { createServiceRoleClient } from '../supabase/server';
 import type { EmailInsertData, SyncResult, ImapConfig, EmailContent, EmailAttachment } from './email-types';
+import type { BatchProcessingResult } from '../email/types';
+
+/**
+ * Extended sync result that includes extraction statistics
+ */
+export interface SyncWithExtractionResult extends SyncResult {
+  /** Extraction processing result */
+  extraction?: {
+    processed: number;
+    extracted: number;
+    failed: number;
+    skipped: number;
+  };
+}
 
 /**
  * iCloud IMAP configuration
@@ -495,6 +509,72 @@ export class EmailSyncService {
     } finally {
       await this.disconnect();
     }
+  }
+
+  /**
+   * Execute full sync with extraction processing
+   *
+   * This is the main entry point for email sync that:
+   * 1. Syncs email metadata from IMAP
+   * 2. Processes each email through the appropriate parser
+   * 3. Stores extracted transaction data in email_transactions table
+   *
+   * @param userId - User ID to sync for
+   * @returns Combined sync and extraction result
+   */
+  async executeSyncWithExtraction(userId: string): Promise<SyncWithExtractionResult> {
+    // First, sync emails from IMAP
+    const syncResult = await this.executeSync(userId);
+
+    // If sync failed or no new emails, return early
+    if (!syncResult.success || syncResult.synced === 0) {
+      return {
+        ...syncResult,
+        extraction: {
+          processed: 0,
+          extracted: 0,
+          failed: 0,
+          skipped: 0,
+        },
+      };
+    }
+
+    // Import extraction service lazily to avoid circular dependencies
+    const { extractionService } = await import('../email/extraction-service');
+
+    // Process newly synced emails through extraction
+    let extractionResult: BatchProcessingResult;
+    try {
+      extractionResult = await extractionService.processNewEmails(userId);
+    } catch (error) {
+      console.error('Extraction processing failed:', error);
+      // Return sync success but note extraction failure
+      return {
+        ...syncResult,
+        message: `${syncResult.message}. Extraction failed: ${error instanceof Error ? error.message : String(error)}`,
+        extraction: {
+          processed: 0,
+          extracted: 0,
+          failed: 0,
+          skipped: 0,
+        },
+      };
+    }
+
+    // Combine results
+    const message = `${syncResult.message}. Extracted: ${extractionResult.extracted}, Failed: ${extractionResult.failed}`;
+    console.log(message);
+
+    return {
+      ...syncResult,
+      message,
+      extraction: {
+        processed: extractionResult.processed,
+        extracted: extractionResult.extracted,
+        failed: extractionResult.failed,
+        skipped: extractionResult.skipped,
+      },
+    };
   }
 }
 

@@ -112,7 +112,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-013 | Build Bangkok Bank email parser | Email | P1-010 | P1-016 |
 | [x] | P1-014 | Build Kasikorn Bank email parser | Email | P1-010 | P1-016 |
 | [x] | P1-015 | Build Lazada email parser | Email | P1-010 | P1-016 |
-| [ ] | P1-016 | Integrate parsers into email sync service | Email | P1-011–P1-015 | P1-017 |
+| [x] | P1-016 | Integrate parsers into email sync service | Email | P1-011–P1-015 | P1-017 |
 | [ ] | P1-017 | Add extraction confidence scoring | Email | P1-016 | P1-018 |
 | [ ] | P1-018 | Implement email classification logic | Email | P1-017 | — |
 | [ ] | P1-019 | Create `ImportStatusCard` component | UI | P1-009 | P1-020 |
@@ -871,7 +871,7 @@ Create parser for Lazada order confirmation and receipt emails.
 <!--P1-016-->
 ### P1-016 — Integrate parsers into email sync service
 
-**Status:** open
+**Status:** done
 **Group:** Email
 **Depends on:** P1-011, P1-012, P1-013, P1-014, P1-015  |  **Blocks:** P1-017  |  **parallel:** false
 
@@ -894,7 +894,12 @@ Integrate all email parsers into the existing `emailSyncService` so that parsed 
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- 2026-01-11: Created `src/lib/email/classifier.ts` with `classifyEmail()` function that routes emails to appropriate parsers based on sender/subject patterns
+- 2026-01-11: Added `executeSyncWithExtraction()` method to `EmailSyncService` that runs extraction after sync
+- 2026-01-11: Updated `/api/emails/sync` route to use the integrated sync+extraction flow
+- 2026-01-11: Exported classifier functions from `src/lib/email/index.ts`
+- 2026-01-11: Build verified successful
 
 ---
 
