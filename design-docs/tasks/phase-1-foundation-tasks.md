@@ -117,7 +117,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-018 | Implement email classification logic | Email | P1-017 | — |
 | [x] | P1-019 | Create `ImportStatusCard` component | UI | P1-009 | P1-020 |
 | [x] | P1-020 | Create Dashboard status cards section | UI | P1-019 | P1-021 |
-| [ ] | P1-021 | Create Email Sync card component | UI | P1-020 | P1-022 |
+| [x] | P1-021 | Create Email Sync card component | UI | P1-020 | P1-022 |
 | [ ] | P1-022 | Create Quick Actions grid | UI | P1-021 | P1-023 |
 | [ ] | P1-023 | Create Recent Activity feed component | UI | P1-022 | — |
 | [ ] | P1-024 | Create API route: POST /api/emails/sync | API | P1-018 | P1-021 |
@@ -1057,7 +1057,7 @@ Implement the top section of the dashboard showing the three status cards in a r
 <!--P1-021-->
 ### P1-021 — Create Email Sync card component
 
-**Status:** open
+**Status:** done
 **Group:** UI
 **Depends on:** P1-020  |  **Blocks:** P1-022  |  **parallel:** false
 
@@ -1081,7 +1081,9 @@ Build the Email Sync status card showing connection status, last sync time, and 
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T14:00:00Z · by: claude
+- done: 2026-01-11T14:30:00Z · by: claude · notes: Created `src/components/page-specific/email-sync-card.tsx` as standalone component with: (1) Time-based status indicators (green < 1hr, yellow 1-6hrs, gray > 6hrs) using getSyncStatusColor(), (2) Human-readable last sync time with formatLastSynced(), (3) Status labels via getSyncStatusLabel(), (4) Skeleton loading state via EmailSyncCardSkeleton, (5) syncError prop for displaying API errors, (6) Proper accessibility attributes (aria-label, role="status", role="alert"). Created `src/hooks/use-email-sync.ts` hook with: triggerSync() async function, isSyncing loading state, syncError state, lastResult from API, clearError helper. Updated `src/app/imports/page.tsx` to use extracted component with functional sync - handleSyncNow triggers API call and refetches status counts on success. Build passes.
 
 ---
 

@@ -1,17 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ImportStatusCard } from '@/components/page-specific/import-status-card'
+import { EmailSyncCard } from '@/components/page-specific/email-sync-card'
 import { useImportStatusCounts } from '@/hooks/use-import-status-counts'
+import { useEmailSync } from '@/hooks/use-email-sync'
 import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  Mail,
-  RefreshCw,
   Upload,
   Search,
   History,
@@ -19,122 +18,6 @@ import {
   ArrowRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-// Email Sync Card Component
-interface EmailSyncCardProps {
-  isLoading?: boolean
-  lastSyncedAt?: string | null
-  folder?: string
-  totalSynced?: number
-  isConnected?: boolean
-  onSyncNow?: () => void
-  isSyncing?: boolean
-}
-
-function EmailSyncCard({
-  isLoading = true,
-  lastSyncedAt = null,
-  folder = 'Transactions',
-  totalSynced = 0,
-  // isConnected will be used when we implement connection status display
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  isConnected = true,
-  onSyncNow,
-  isSyncing = false
-}: EmailSyncCardProps) {
-  // Determine sync status indicator color
-  const getSyncStatusColor = () => {
-    if (!lastSyncedAt) return 'bg-gray-400'
-
-    const lastSync = new Date(lastSyncedAt)
-    const now = new Date()
-    const hoursSince = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60)
-
-    if (hoursSince < 1) return 'bg-green-500'
-    if (hoursSince < 6) return 'bg-yellow-500'
-    return 'bg-gray-400'
-  }
-
-  const formatLastSynced = () => {
-    if (!lastSyncedAt) return 'Never synced'
-
-    const lastSync = new Date(lastSyncedAt)
-    const now = new Date()
-    const hoursSince = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60)
-
-    if (hoursSince < 1) {
-      const minutes = Math.round(hoursSince * 60)
-      return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`
-    }
-    if (hoursSince < 24) {
-      const hours = Math.round(hoursSince)
-      return `${hours} hour${hours !== 1 ? 's' : ''} ago`
-    }
-    return lastSync.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    })
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Mail className="h-5 w-5 text-muted-foreground" />
-          <CardTitle className="text-lg">Email Sync</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-4 w-4 rounded-full" />
-              <div>
-                <Skeleton className="h-4 w-32 mb-1" />
-                <Skeleton className="h-3 w-24" />
-              </div>
-            </div>
-            <Skeleton className="h-10 w-24" />
-          </div>
-        ) : (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-start gap-4">
-              {/* Status indicator */}
-              <div className={cn(
-                "h-3 w-3 rounded-full mt-1.5",
-                getSyncStatusColor()
-              )} />
-              <div className="space-y-1">
-                <p className="text-sm font-medium">
-                  Last synced: {formatLastSynced()}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Folder: {folder}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Total synced: {totalSynced.toLocaleString()} emails
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={onSyncNow}
-              disabled={isSyncing}
-              className="shrink-0"
-            >
-              <RefreshCw className={cn(
-                "h-4 w-4 mr-2",
-                isSyncing && "animate-spin"
-              )} />
-              {isSyncing ? 'Syncing...' : 'Sync Now'}
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
 
 // Quick Action Button Component
 interface QuickActionProps {
@@ -234,7 +117,16 @@ function ActivitySkeleton() {
 }
 
 export default function ImportsDashboardPage() {
-  const { counts, sync, isLoading } = useImportStatusCounts()
+  const { counts, sync, isLoading, refetch } = useImportStatusCounts()
+  const { triggerSync, isSyncing, syncError } = useEmailSync()
+
+  const handleSyncNow = async () => {
+    const result = await triggerSync()
+    if (result?.success) {
+      // Refetch status counts to update the dashboard
+      await refetch()
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -270,10 +162,9 @@ export default function ImportsDashboardPage() {
         folder={sync?.folder ?? 'Transactions'}
         totalSynced={sync?.totalSynced ?? 0}
         isConnected={true}
-        onSyncNow={() => {
-          // TODO: P1-024 will implement actual sync
-        }}
-        isSyncing={false}
+        onSyncNow={handleSyncNow}
+        isSyncing={isSyncing}
+        syncError={syncError}
       />
 
       {/* Quick Actions Section */}
