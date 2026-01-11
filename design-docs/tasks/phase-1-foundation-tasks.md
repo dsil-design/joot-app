@@ -99,7 +99,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 |--------|-----|-------|-------|---------|--------|
 | [x] | P1-001 | Create `email_transactions` table migration | Database | — | P1-004, P1-005 |
 | [x] | P1-002 | Create `statement_uploads` table migration | Database | — | P1-004 |
-| [ ] | P1-003 | Create `import_activities` table migration | Database | — | P1-004 |
+| [x] | P1-003 | Create `import_activities` table migration | Database | — | P1-004 |
 | [ ] | P1-004 | Add RLS policies for new tables | Database | P1-001, P1-002, P1-003 | P1-005 |
 | [ ] | P1-005 | Generate TypeScript types for new tables | Database | P1-004 | P1-010 |
 | [ ] | P1-006 | Add "Imports" to sidebar navigation | Navigation | — | P1-007 |
@@ -290,7 +290,7 @@ Create the database migration for the `statement_uploads` table that stores meta
 <!--P1-003-->
 ### P1-003 — Create `import_activities` table migration
 
-**Status:** open
+**Status:** done
 **Group:** Database
 **Depends on:** —  |  **Blocks:** P1-004  |  **parallel:** true
 
@@ -312,7 +312,9 @@ Create the database migration for the `import_activities` table that provides an
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T13:00:00Z · by: claude
+- done: 2026-01-11T13:10:00Z · by: claude · notes: Created migration with all columns (activity_type with 10 valid types, statement_upload_id, email_transaction_id, description, transactions_affected, total_amount, currency, metadata JSONB), indexes (user_id, type, created_at, user_created compound, errors partial), RLS policies (SELECT, INSERT, DELETE - no UPDATE since activities are immutable). Also updated database/schema.sql.
 
 ---
 
