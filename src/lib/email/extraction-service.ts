@@ -29,6 +29,9 @@ import type {
   ExtractionServiceConfig,
 } from './types';
 
+// Import parsers
+import { grabParser } from './extractors/grab';
+
 /**
  * Registry of available email parsers
  *
@@ -655,3 +658,12 @@ export class EmailExtractionService {
 
 // Singleton instance with default configuration
 export const extractionService = new EmailExtractionService();
+
+// Register available parsers
+extractionService.registerParser(grabParser);
+
+// Future parsers will be registered here as they are implemented:
+// extractionService.registerParser(boltParser);
+// extractionService.registerParser(bangkokBankParser);
+// extractionService.registerParser(kasikornParser);
+// extractionService.registerParser(lazadaParser);

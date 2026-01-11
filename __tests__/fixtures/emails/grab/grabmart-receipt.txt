@@ -1,0 +1,21 @@
+Subject: Your GrabMart Receipt
+From: no-reply@grab.com
+Date: Sun, 16 Nov 2025 14:20:00 +0700
+
+Your GrabMart order has been delivered!
+
+Your order from 7-Eleven
+
+Order Details
+--------------
+Snacks                                 ฿85.00
+Drinks                                 ฿45.00
+Delivery Fee                           ฿20.00
+--------------
+Total                                  ฿150.00
+
+Payment Method: Credit Card
+
+Order ID: GM-567890123456
+
+Thank you for shopping with GrabMart!

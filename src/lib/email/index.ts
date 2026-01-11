@@ -9,3 +9,6 @@ export * from './types';
 
 // Services
 export { extractionService, EmailExtractionService } from './extraction-service';
+
+// Parsers
+export * from './extractors';

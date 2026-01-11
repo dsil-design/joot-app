@@ -107,7 +107,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-008 | Create `/imports` route structure | Navigation | P1-007 | P1-009 |
 | [x] | P1-009 | Create Import Dashboard page skeleton | UI | P1-008 | P1-015 |
 | [x] | P1-010 | Create email transaction extraction service | Email | P1-005 | P1-011 |
-| [ ] | P1-011 | Build Grab email parser | Email | P1-010 | P1-016 |
+| [x] | P1-011 | Build Grab email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-012 | Build Bolt email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-013 | Build Bangkok Bank email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-014 | Build Kasikorn Bank email parser | Email | P1-010 | P1-016 |
@@ -548,7 +548,7 @@ Create the core service that orchestrates email parsing, extraction, and storage
 <!--P1-011-->
 ### P1-011 — Build Grab email parser
 
-**Status:** open
+**Status:** done
 **Group:** Email
 **Depends on:** P1-010  |  **Blocks:** P1-016  |  **parallel:** true
 
@@ -727,7 +727,9 @@ __tests__/fixtures/emails/grab/
 - GrabFood emails contain restaurant name in "Your order from {Restaurant}" pattern
 - Amount is always in THB (฿ symbol)
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T09:15:00Z · by: claude
+- done: 2026-01-11T09:31:00Z · by: claude · notes: Created `src/lib/email/extractors/grab.ts` with comprehensive parser for all Grab services (GrabFood, GrabTaxi, GrabMart, GrabExpress). Implements EmailParser interface with canParse() and extract() methods. Features: (1) Service type detection from email body/subject patterns, (2) THB amount extraction with ฿ symbol support, (3) Order ID extraction for multiple formats (A-XXX, GM-XXX, GE-XXX), (4) Restaurant/destination extraction for descriptions, (5) GrabPay Wallet detection (no CC charge expected), (6) Time-based food type classification. Also created test fixtures in `__tests__/fixtures/emails/grab/` and unit tests in `__tests__/lib/email/extractors/grab.test.ts`. Parser registered in extraction-service.ts singleton. Build passes.
 
 ---
 

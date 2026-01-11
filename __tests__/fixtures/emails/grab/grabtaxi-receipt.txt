@@ -1,0 +1,28 @@
+Subject: Your Grab E-Receipt
+From: no-reply@grab.com
+Date: Fri, 14 Nov 2025 23:15:00 +0700
+
+Hope you enjoyed your ride!
+
+Ride Summary
+--------------
+Pickup: Central Festival Chiang Mai
+Time: 23:00
+
+Drop-off: Nimman Hotel
+Time: 23:12
+
+Distance: 4.2 km
+
+Fare Breakdown
+--------------
+Base Fare                              ฿35.00
+Distance (4.2 km)                      ฿42.00
+--------------
+Total                                  ฿77.00
+
+Payment Method: Credit Card
+
+Booking ID: A-987654321098
+
+Thank you for riding with Grab!

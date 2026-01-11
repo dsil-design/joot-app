@@ -1,0 +1,21 @@
+Subject: Your Grab E-Receipt
+From: no-reply@grab.com
+Date: Sat, 15 Nov 2025 19:30:00 +0700
+
+Your GrabFood order has been delivered!
+
+Your order from Dairy Queen
+
+Order Details
+--------------
+Blizzard (M)                           ฿99.00
+Chicken Strip Basket                   ฿149.00
+Delivery Fee                           ฿25.00
+--------------
+Total                                  ฿273.00
+
+Payment Method: Credit Card
+
+Order ID: A-123456789012
+
+Thank you for ordering with GrabFood!

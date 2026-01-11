@@ -1,0 +1,27 @@
+Subject: Your GrabExpress Receipt
+From: no-reply@grab.com
+Date: Mon, 17 Nov 2025 10:45:00 +0700
+
+Your GrabExpress delivery has been completed!
+
+Delivery Summary
+--------------
+Vehicle Type: GrabExpress
+
+Pickup: Nimman Plaza
+Drop-off: Central Airport Plaza
+
+Distance: 8.5 km
+
+Fare Breakdown
+--------------
+Base Fare                              ฿45.00
+Distance (8.5 km)                      ฿85.00
+--------------
+Total                                  ฿130.00
+
+Payment Method: Credit Card
+
+Booking ID: GE-135792468024
+
+Thank you for using GrabExpress!
