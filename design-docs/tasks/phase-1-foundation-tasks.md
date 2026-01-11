@@ -110,7 +110,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-011 | Build Grab email parser | Email | P1-010 | P1-016 |
 | [x] | P1-012 | Build Bolt email parser | Email | P1-010 | P1-016 |
 | [x] | P1-013 | Build Bangkok Bank email parser | Email | P1-010 | P1-016 |
-| [ ] | P1-014 | Build Kasikorn Bank email parser | Email | P1-010 | P1-016 |
+| [x] | P1-014 | Build Kasikorn Bank email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-015 | Build Lazada email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-016 | Integrate parsers into email sync service | Email | P1-011–P1-015 | P1-017 |
 | [ ] | P1-017 | Add extraction confidence scoring | Email | P1-016 | P1-018 |
@@ -798,7 +798,7 @@ Create parser for Bangkok Bank (Bualuang) notification emails (payments, transfe
 <!--P1-014-->
 ### P1-014 — Build Kasikorn Bank email parser
 
-**Status:** open
+**Status:** done
 **Group:** Email
 **Depends on:** P1-010  |  **Blocks:** P1-016  |  **parallel:** true
 
@@ -820,7 +820,12 @@ Create parser for Kasikorn Bank (K PLUS) notification emails.
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- 2026-01-11: Created `src/lib/email/extractors/kasikorn.ts` with full parser implementation
+- 2026-01-11: Added test fixtures in `__tests__/fixtures/emails/kasikorn/`
+- 2026-01-11: Created unit tests in `__tests__/lib/email/extractors/kasikorn.test.ts`
+- 2026-01-11: Registered parser in extraction service and index.ts
+- 2026-01-11: Verified build passes
 
 ---
 

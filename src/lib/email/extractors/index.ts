@@ -8,7 +8,7 @@
 export { grabParser } from './grab';
 export { boltParser } from './bolt';
 export { bangkokBankParser } from './bangkok-bank';
+export { kasikornParser } from './kasikorn';
 
-// Future parsers (P1-014 to P1-015):
-// export { kasikornParser } from './kasikorn';
+// Future parsers (P1-015):
 // export { lazadaParser } from './lazada';

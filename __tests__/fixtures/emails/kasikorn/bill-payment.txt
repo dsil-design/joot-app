@@ -1,0 +1,20 @@
+From: KPLUS@kasikornbank.com
+Subject: Result of Bill Payment (Success)
+Date: Sat, 15 Nov 2025 14:30:00 +0700
+Content-Type: text/html; charset=utf-8
+
+K PLUS
+
+Result of Bill Payment (Success)
+
+Transaction Date: 15/11/2025  14:30:00
+
+Transaction Number: KPLUS202511150001234567
+
+Company Name: Kunchai cha yen
+
+Amount (THB): 850.00
+
+Thank you for using K PLUS.
+
+This is an automatically generated email. Please do not reply.

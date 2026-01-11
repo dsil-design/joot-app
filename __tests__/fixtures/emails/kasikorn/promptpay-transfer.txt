@@ -1,0 +1,22 @@
+From: KPLUS@kasikornbank.com
+Subject: Result of PromptPay Funds Transfer (Success)
+Date: Wed, 05 Nov 2025 18:45:00 +0700
+Content-Type: text/html; charset=utf-8
+
+K PLUS
+
+Result of PromptPay Funds Transfer (Success)
+
+Transaction Date: 05/11/2025  18:45:00
+
+Transaction Number: KPLUS202511050008889999
+
+To PromptPay ID: 091-XXX-XXXX
+
+Received Name: MS. SUPAPORN KIDKLA
+
+Amount (THB): 180.00
+
+Thank you for using K PLUS.
+
+This is an automatically generated email. Please do not reply.

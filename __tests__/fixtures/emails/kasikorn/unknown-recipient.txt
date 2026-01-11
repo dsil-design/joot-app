@@ -1,0 +1,24 @@
+From: KPLUS@kasikornbank.com
+Subject: Result of Funds Transfer (Success)
+Date: Mon, 10 Nov 2025 09:30:00 +0700
+Content-Type: text/html; charset=utf-8
+
+K PLUS
+
+Result of Funds Transfer (Success)
+
+Transaction Date: 10/11/2025  09:30:00
+
+Transaction Number: KPLUS202511100003337777
+
+To Bank: SCB
+
+To Account: 555-5-55555-5
+
+Account Name: Some New Person
+
+Amount (THB): 500.00
+
+Thank you for using K PLUS.
+
+This is an automatically generated email. Please do not reply.

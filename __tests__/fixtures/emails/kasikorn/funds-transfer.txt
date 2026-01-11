@@ -1,0 +1,24 @@
+From: KPLUS@kasikornbank.com
+Subject: Result of Funds Transfer (Success)
+Date: Thu, 06 Nov 2025 10:00:00 +0700
+Content-Type: text/html; charset=utf-8
+
+K PLUS
+
+Result of Funds Transfer (Success)
+
+Transaction Date: 06/11/2025  10:00:00
+
+Transaction Number: KPLUS202511060005551234
+
+To Bank: Bangkok Bank
+
+To Account: 123-4-56789-0
+
+Account Name: Kittitach
+
+Amount (THB): 12,500.00
+
+Thank you for using K PLUS.
+
+This is an automatically generated email. Please do not reply.
