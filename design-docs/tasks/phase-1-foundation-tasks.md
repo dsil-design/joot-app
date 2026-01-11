@@ -103,7 +103,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-004 | Add RLS policies for new tables | Database | P1-001, P1-002, P1-003 | P1-005 |
 | [x] | P1-005 | Generate TypeScript types for new tables | Database | P1-004 | P1-010 |
 | [x] | P1-006 | Add "Imports" to sidebar navigation | Navigation | — | P1-007 |
-| [ ] | P1-007 | Add "Imports" to mobile navigation | Navigation | P1-006 | P1-008 |
+| [x] | P1-007 | Add "Imports" to mobile navigation | Navigation | P1-006 | P1-008 |
 | [ ] | P1-008 | Create `/imports` route structure | Navigation | P1-007 | P1-009 |
 | [ ] | P1-009 | Create Import Dashboard page skeleton | UI | P1-008 | P1-015 |
 | [ ] | P1-010 | Create email transaction extraction service | Email | P1-005 | P1-011 |
@@ -415,7 +415,7 @@ Add the "Imports" navigation item to the desktop sidebar, positioned between "Al
 <!--P1-007-->
 ### P1-007 — Add "Imports" to mobile navigation
 
-**Status:** open
+**Status:** done
 **Group:** Navigation
 **Depends on:** P1-006  |  **Blocks:** P1-008  |  **parallel:** false
 
@@ -437,7 +437,9 @@ Add the "Imports" tab to the mobile/tablet top navigation bar.
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T19:00:00Z · by: claude
+- done: 2026-01-11T19:15:00Z · by: claude · notes: Added "Imports" navigation item to `src/components/page-specific/main-navigation.tsx` using the Lucide `Import` icon. Positioned between "Transactions" and "Settings" in navigationItems array. Added `pathname?.startsWith('/imports')` check for active state highlighting on subroutes. Updated touch target sizing with `min-h-[44px] min-w-[44px]`, increased vertical padding to py-3, and added `justify-center sm:justify-start` for proper icon centering on mobile. Build passes.
 
 ---
 
