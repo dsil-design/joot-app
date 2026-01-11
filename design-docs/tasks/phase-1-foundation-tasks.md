@@ -106,7 +106,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-007 | Add "Imports" to mobile navigation | Navigation | P1-006 | P1-008 |
 | [x] | P1-008 | Create `/imports` route structure | Navigation | P1-007 | P1-009 |
 | [x] | P1-009 | Create Import Dashboard page skeleton | UI | P1-008 | P1-015 |
-| [ ] | P1-010 | Create email transaction extraction service | Email | P1-005 | P1-011 |
+| [x] | P1-010 | Create email transaction extraction service | Email | P1-005 | P1-011 |
 | [ ] | P1-011 | Build Grab email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-012 | Build Bolt email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-013 | Build Bangkok Bank email parser | Email | P1-010 | P1-016 |
@@ -515,7 +515,7 @@ Build the basic layout structure for the Import Dashboard page following the wir
 <!--P1-010-->
 ### P1-010 — Create email transaction extraction service
 
-**Status:** open
+**Status:** done
 **Group:** Email
 **Depends on:** P1-005  |  **Blocks:** P1-011  |  **parallel:** false
 
@@ -539,7 +539,9 @@ Create the core service that orchestrates email parsing, extraction, and storage
 **Notes & Open Questions:**
 - This builds on existing `emailSyncService` - extends rather than replaces
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T22:00:00Z · by: claude
+- done: 2026-01-11T22:30:00Z · by: claude · notes: Created `src/lib/email/` directory with types.ts (extraction types including ExtractedTransaction, ExtractionResult, ClassificationResult, RawEmailData, EmailParser interface, BatchProcessingResult), extraction-service.ts (EmailExtractionService class with ParserRegistry, classification logic, confidence scoring 0-100, processNewEmails batch processing, reprocessEmailTransaction for retries, activity logging), and index.ts for exports. Service extends existing emailSyncService, calculates extraction confidence using weighted scoring (required fields +40, amount +20, date +20, vendor +10, order ID +10), classifies emails for routing (grab/bolt → waiting_for_statement, bank transfers → ready_to_import), and logs activities to import_activities table. Build passes.
 
 ---
 
