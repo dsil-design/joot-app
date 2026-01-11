@@ -16,6 +16,7 @@
 | Wireframes | `design-docs/email-transaction-wireframes.md` | UI layouts and interactions |
 | Roadmap | `design-docs/email-transaction-implementation-roadmap.md` | 8-week implementation plan |
 | Project Standards | `CLAUDE.md` | Codebase conventions and patterns |
+| AI Skill Guide | `.claude/skills/email-linking/SKILL.md` | Code patterns and architecture |
 
 **Key Constraints:**
 - Next.js 15 (App Router, Turbopack)
@@ -29,6 +30,55 @@
 - Never auto-approve (always require confirmation)
 - Files kept forever (no auto-delete)
 - ±2% exchange rate tolerance using `exchange_rates` table
+
+---
+
+## AI Implementation Guide
+
+### Recommended Agents by Task Group
+
+| Group | Agent | Why |
+|-------|-------|-----|
+| Database (P1-001 to P1-005) | `database-admin` | Schema design, RLS policies |
+| Navigation (P1-006 to P1-008) | `frontend-developer` | React components, routing |
+| Email (P1-010 to P1-018) | `typescript-pro` | Service architecture, parsing |
+| UI (P1-009, P1-019 to P1-023) | `frontend-developer` | React components |
+| API (P1-024 to P1-025) | `backend-architect` | API design |
+| Testing (P1-026 to P1-027) | `test-automator` | Test suites |
+
+### Critical Codebase Patterns
+
+**Migration File Naming:**
+```
+database/migrations/YYYYMMDDHHMMSS_description.sql
+Example: 20250111120000_create_email_transactions.sql
+```
+
+**UUID Generation:**
+```sql
+-- Use gen_random_uuid() NOT uuid_generate_v4()
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+```
+
+**RLS Policy Pattern:**
+```sql
+-- Use (select auth.uid()) for performance
+CREATE POLICY "policy_name" ON table_name
+  FOR SELECT USING ((select auth.uid()) = user_id);
+```
+
+**Service File Location:**
+```
+src/lib/services/     -- For backend services
+src/lib/email/        -- NEW: For email extraction
+src/lib/email/extractors/  -- NEW: Individual parsers
+```
+
+**Existing Email Sync Service:**
+```
+src/lib/services/email-sync-service.ts  -- Extend this, don't replace
+src/lib/services/email-types.ts         -- Existing type definitions
+```
 
 ---
 
@@ -104,8 +154,101 @@ Create the database migration for the `email_transactions` table that stores par
 - Integration: Table accepts valid inserts, rejects invalid status/classification
 - Rollback: Migration can be reversed cleanly
 
+**AI Context — Implementation Template:**
+
+```sql
+-- File: database/migrations/20250111000001_create_email_transactions.sql
+
+-- Email transactions table - stores parsed email data with match info
+CREATE TABLE public.email_transactions (
+  -- Primary key
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- User ownership (for RLS)
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+
+  -- Email metadata (from IMAP sync)
+  message_id TEXT NOT NULL,
+  uid INTEGER NOT NULL,
+  folder TEXT NOT NULL DEFAULT 'Transactions',
+  subject TEXT,
+  from_address TEXT,
+  from_name TEXT,
+  email_date TIMESTAMPTZ,
+  seen BOOLEAN DEFAULT FALSE,
+  has_attachments BOOLEAN DEFAULT FALSE,
+
+  -- Extracted transaction data
+  vendor_id UUID REFERENCES public.vendors(id),
+  vendor_name_raw TEXT,  -- Original vendor text from email
+  amount DECIMAL(12, 2),
+  currency TEXT,  -- 'USD', 'THB', etc.
+  transaction_date DATE,
+  description TEXT,
+  order_id TEXT,  -- Order/transaction ID from email
+
+  -- Match information
+  matched_transaction_id UUID REFERENCES public.transactions(id),
+  match_confidence INTEGER CHECK (match_confidence >= 0 AND match_confidence <= 100),
+  match_method TEXT CHECK (match_method IN ('auto', 'manual', NULL)),
+
+  -- Status tracking
+  status TEXT NOT NULL DEFAULT 'pending_review' CHECK (status IN (
+    'pending_review',      -- Needs user review
+    'matched',             -- Linked to existing transaction
+    'waiting_for_statement', -- THB receipt waiting for USD charge
+    'ready_to_import',     -- Can create new transaction
+    'imported',            -- Transaction created
+    'skipped'              -- User marked as non-transaction
+  )),
+
+  -- Classification
+  classification TEXT CHECK (classification IN (
+    'receipt',             -- Payment confirmation
+    'order_confirmation',  -- Order placed, payment pending
+    'bank_transfer',       -- Direct bank transfer
+    'bill_payment',        -- Bill payment notification
+    'unknown'              -- Could not classify
+  )),
+
+  -- Extraction metadata
+  extraction_confidence INTEGER CHECK (extraction_confidence >= 0 AND extraction_confidence <= 100),
+  extraction_notes TEXT,
+
+  -- Timestamps
+  synced_at TIMESTAMPTZ DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  matched_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Unique constraint for deduplication
+  UNIQUE(user_id, message_id)
+);
+
+-- Indexes for common queries
+CREATE INDEX idx_email_trans_user_status ON public.email_transactions(user_id, status);
+CREATE INDEX idx_email_trans_user_date ON public.email_transactions(user_id, email_date DESC);
+CREATE INDEX idx_email_trans_matched ON public.email_transactions(matched_transaction_id) WHERE matched_transaction_id IS NOT NULL;
+CREATE INDEX idx_email_trans_folder ON public.email_transactions(user_id, folder);
+CREATE INDEX idx_email_trans_synced ON public.email_transactions(synced_at DESC);
+CREATE INDEX idx_email_trans_pending ON public.email_transactions(user_id, match_confidence DESC) WHERE status = 'pending_review';
+
+-- Full-text search on subject and description
+CREATE INDEX idx_email_trans_search ON public.email_transactions
+  USING gin(to_tsvector('english', COALESCE(subject, '') || ' ' || COALESCE(description, '')));
+
+-- Enable RLS (policies added in P1-004)
+ALTER TABLE public.email_transactions ENABLE ROW LEVEL SECURITY;
+```
+
+**Reference Files:**
+- `database/schema.sql` lines 1-200 for existing patterns
+- `src/lib/services/email-sync-service.ts` for existing email metadata structure
+
 **Notes & Open Questions:**
 - Use `gen_random_uuid()` instead of `uuid_generate_v4()` per Supabase best practices
+- After creating migration, also update `database/schema.sql` to match
 
 **Completion Log:** _(empty initially)_
 
@@ -406,8 +549,163 @@ Create parser for Grab receipt emails (GrabFood, GrabCar, GrabMart, GrabExpress)
 - Unit: Parser extracts correct data from sample emails
 - Edge cases: Handles variations in email format
 
+**AI Context — Implementation Template:**
+
+```typescript
+// File: src/lib/email/extractors/grab.ts
+
+import type { ExtractedTransaction, ExtractionResult } from '../types';
+
+// Grab email patterns
+const GRAB_SENDER = 'no-reply@grab.com';
+const GRAB_SUBJECTS = [
+  'Your Grab E-Receipt',
+  'Your GrabExpress Receipt',
+  'Your GrabMart Receipt',
+];
+
+// Amount extraction patterns
+const THB_AMOUNT_PATTERN = /฿\s*([\d,]+(?:\.\d{2})?)/g;
+const ORDER_ID_PATTERN = /(?:Order|GF|GM|GE)-[\w-]+/gi;
+
+interface GrabServiceInfo {
+  type: 'food' | 'car' | 'mart' | 'express';
+  vendorName: string;
+}
+
+/**
+ * Detect Grab service type from email content
+ */
+function detectServiceType(body: string, subject: string): GrabServiceInfo {
+  const lowerBody = body.toLowerCase();
+  const lowerSubject = subject.toLowerCase();
+
+  if (lowerBody.includes('grabfood') || lowerBody.includes('your order from')) {
+    return { type: 'food', vendorName: 'GrabFood' };
+  }
+  if (lowerBody.includes('hope you enjoyed your ride') || lowerBody.includes('grabtaxi')) {
+    return { type: 'car', vendorName: 'Grab Taxi' };
+  }
+  if (lowerBody.includes('grabmart') || lowerSubject.includes('grabmart')) {
+    return { type: 'mart', vendorName: 'GrabMart' };
+  }
+  if (lowerBody.includes('grabexpress') || lowerSubject.includes('grabexpress')) {
+    return { type: 'express', vendorName: 'GrabExpress' };
+  }
+
+  return { type: 'food', vendorName: 'Grab' }; // Default
+}
+
+/**
+ * Extract description based on service type
+ */
+function extractDescription(body: string, serviceInfo: GrabServiceInfo): string {
+  switch (serviceInfo.type) {
+    case 'food': {
+      // Extract restaurant name: "Your order from {Restaurant}"
+      const restaurantMatch = body.match(/your order from\s+([^\n]+)/i);
+      if (restaurantMatch) {
+        return restaurantMatch[1].trim();
+      }
+      return 'GrabFood order';
+    }
+    case 'car': {
+      // Extract destination from dropoff
+      const dropoffMatch = body.match(/drop-off[:\s]+([^\n]+)/i);
+      if (dropoffMatch) {
+        return `Taxi to ${dropoffMatch[1].trim()}`;
+      }
+      return 'Grab ride';
+    }
+    case 'mart': {
+      return 'GrabMart order';
+    }
+    case 'express': {
+      return 'GrabExpress delivery';
+    }
+  }
+}
+
+/**
+ * Check if email is from Grab
+ */
+export function isGrabEmail(fromAddress: string, subject: string): boolean {
+  if (fromAddress.toLowerCase() === GRAB_SENDER) return true;
+  return GRAB_SUBJECTS.some(s => subject.includes(s));
+}
+
+/**
+ * Extract transaction data from Grab receipt email
+ */
+export function extractGrabTransaction(
+  emailBody: string,
+  emailSubject: string,
+  emailDate: Date
+): ExtractionResult {
+  const errors: string[] = [];
+  let confidence = 0;
+
+  // Detect service type
+  const serviceInfo = detectServiceType(emailBody, emailSubject);
+  confidence += 20; // Found service type
+
+  // Extract amount (THB)
+  const amounts = [...emailBody.matchAll(THB_AMOUNT_PATTERN)];
+  if (amounts.length === 0) {
+    return {
+      success: false,
+      confidence: 0,
+      errors: ['No THB amount found in email'],
+    };
+  }
+
+  // Usually the total is the last/largest amount
+  const amountValues = amounts.map(m => parseFloat(m[1].replace(',', '')));
+  const totalAmount = Math.max(...amountValues);
+  confidence += 40; // Found amount
+
+  // Extract order ID
+  const orderIdMatch = emailBody.match(ORDER_ID_PATTERN);
+  const orderId = orderIdMatch?.[0] || null;
+  if (orderId) confidence += 20;
+
+  // Extract description
+  const description = extractDescription(emailBody, serviceInfo);
+  if (description !== serviceInfo.vendorName) confidence += 10;
+
+  return {
+    success: true,
+    confidence: Math.min(confidence, 100),
+    data: {
+      vendor_name_raw: serviceInfo.vendorName,
+      amount: totalAmount,
+      currency: 'THB',
+      transaction_date: emailDate,
+      order_id: orderId,
+      description,
+    },
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+```
+
+**Reference Files:**
+- `.claude/skills/import-transactions/TRANSACTION-IMPORT-REFERENCE.md` for Grab patterns
+- `src/lib/services/email-types.ts` for existing type definitions
+
+**Test Fixture Location:**
+```
+__tests__/fixtures/emails/grab/
+├── grabfood-receipt.eml
+├── grabtaxi-receipt.eml
+├── grabmart-receipt.eml
+└── grabexpress-receipt.eml
+```
+
 **Notes & Open Questions:**
 - Reference existing import skill patterns for Grab parsing
+- GrabFood emails contain restaurant name in "Your order from {Restaurant}" pattern
+- Amount is always in THB (฿ symbol)
 
 **Completion Log:** _(empty initially)_
 
@@ -797,7 +1095,119 @@ Create the API endpoint for manually triggering email sync.
 - Auth: Unauthenticated requests rejected
 - Concurrency: Prevents duplicate runs
 
-**Notes & Open Questions:** _(empty)_
+**AI Context — Implementation Template:**
+
+```typescript
+// File: src/app/api/emails/sync/route.ts
+
+import { NextResponse } from 'next/server';
+import { createServiceRoleClient } from '@/lib/supabase/server';
+import { emailSyncService } from '@/lib/services/email-sync-service';
+import { extractionService } from '@/lib/email/extraction-service';
+
+// Track active syncs to prevent duplicates
+const activeSyncs = new Set<string>();
+
+export async function POST(request: Request) {
+  try {
+    // Get authenticated user
+    const supabase = createServiceRoleClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check if sync already running for this user
+    if (activeSyncs.has(user.id)) {
+      return NextResponse.json(
+        { error: 'Sync already in progress' },
+        { status: 409 }
+      );
+    }
+
+    // Mark sync as active
+    activeSyncs.add(user.id);
+
+    try {
+      // Execute email sync
+      const syncResult = await emailSyncService.executeSync(user.id);
+
+      if (!syncResult.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: syncResult.message,
+            synced: 0,
+            errors: 1,
+          },
+          { status: 500 }
+        );
+      }
+
+      // Process synced emails through extractors
+      // (This integrates with the new extraction service from P1-010)
+      const extractionResult = await extractionService.processNewEmails(user.id);
+
+      return NextResponse.json({
+        success: true,
+        synced: syncResult.synced,
+        extracted: extractionResult.processed,
+        errors: syncResult.errors,
+        lastUid: syncResult.lastUid,
+        message: syncResult.message,
+      });
+    } finally {
+      // Always remove from active syncs
+      activeSyncs.delete(user.id);
+    }
+  } catch (error) {
+    console.error('Email sync error:', error);
+    return NextResponse.json(
+      { error: 'Failed to sync emails' },
+      { status: 500 }
+    );
+  }
+}
+
+// GET to check sync status
+export async function GET(request: Request) {
+  try {
+    const supabase = createServiceRoleClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const stats = await emailSyncService.getSyncStats(user.id);
+    const isRunning = activeSyncs.has(user.id);
+
+    return NextResponse.json({
+      isRunning,
+      ...stats,
+    });
+  } catch (error) {
+    console.error('Sync status error:', error);
+    return NextResponse.json(
+      { error: 'Failed to get sync status' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+**Reference Files:**
+- `src/lib/services/email-sync-service.ts` - Existing sync service to use
+- `src/app/api/cron/sync-all-rates/route.ts` - Example of existing API route pattern
+
+**Notes & Open Questions:**
+- Uses existing `emailSyncService` from the codebase
+- Adds extraction processing after sync completes
+- Simple in-memory tracking for active syncs (sufficient for single-user app)
 
 **Completion Log:** _(empty initially)_
 

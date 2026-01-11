@@ -20,6 +20,8 @@ This directory contains the complete task breakdown for implementing the Email-t
 | Wireframes | `design-docs/email-transaction-wireframes.md` | UI layouts and interactions |
 | Roadmap | `design-docs/email-transaction-implementation-roadmap.md` | 8-week implementation plan |
 | Design Decisions | `design-docs/README.md` | Finalized design decisions |
+| **AI Skill Guide** | `.claude/skills/email-linking/SKILL.md` | Code patterns for Claude Code |
+| **Slash Command** | `.claude/commands/implement-email-linking.md` | Quick-start implementation command |
 
 ---
 
@@ -222,10 +224,65 @@ Each task file includes:
 
 ---
 
+## AI Implementation Guide
+
+### Getting Started with Claude Code
+
+1. **Use the slash command:** `/implement-email-linking` to get an interactive menu
+2. **Or invoke the skill directly:** Reference `.claude/skills/email-linking/SKILL.md`
+
+### Recommended Agents by Task Type
+
+| Task Type | Recommended Agent | Tasks |
+|-----------|-------------------|-------|
+| Database migrations | `database-admin` | P1-001 to P1-005 |
+| TypeScript services | `typescript-pro` | P1-010 to P1-018, P2-008 to P2-014 |
+| API routes | `backend-architect` | P1-024, P1-025, P2-015 to P2-022 |
+| React components | `frontend-developer` | P1-019 to P1-023, P2-023 to P2-032, P3-*, P4-* |
+| Mobile/gestures | `mobile-developer` | P3-001 to P3-009 |
+| Testing | `test-automator` | P1-026, P1-027, P2-033 to P2-035, P4-022 to P4-028 |
+| Code review | `code-reviewer` | After completing each phase |
+
+### Quick Command Examples
+
+```bash
+# Start Phase 1 database tasks
+"Implement tasks P1-001 through P1-005 following the AI skill guide"
+
+# Build Grab email parser
+"Implement P1-011 using the code patterns from .claude/skills/email-linking/SKILL.md"
+
+# Build the review queue
+"Implement P2-023 through P2-030 to create the review queue"
+
+# Add mobile swipe gestures
+"Implement P3-003 through P3-007 for swipe gesture support"
+```
+
+### Key Resources
+
+Each phase task file now includes:
+- **AI Implementation Guide** — Agent recommendations and code patterns
+- **Inline Code Templates** — Copy-paste-ready code for key tasks
+- **Reference Files** — Pointers to existing codebase patterns
+- **Key File Locations** — Where to create new files
+
+### Implementation Protocol
+
+When implementing any task:
+
+1. **Read the skill guide first:** `.claude/skills/email-linking/SKILL.md`
+2. **Check task dependencies:** Ensure prerequisite tasks are complete
+3. **Follow existing patterns:** Match the codebase style
+4. **Update task status:** Mark tasks as `in_progress` then `done`
+5. **Run tests:** Verify with `npm run test:unit` and `npm run lint`
+
+---
+
 ## Next Steps
 
 1. **Review Phase 1 tasks** — Foundation work
 2. **Approve or request changes** — Modify task scope if needed
-3. **Begin implementation** — Start with P1-001
+3. **Begin implementation** — Use `/implement-email-linking` or start with P1-001
 
 Would you like to approve all phases, or review each phase individually?

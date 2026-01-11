@@ -1460,6 +1460,99 @@ GET    /api/imports/history
 
 ---
 
+## Conflict Resolution System
+
+### Overview
+
+The system must handle ambiguous matches intelligently. Since auto-approval is never allowed, all conflicts surface in the Review Queue for user decision.
+
+### Scenario 1: Two Emails Match Same Statement Transaction
+
+**Example:** Two Grab rides on same day, both ฿340 THB → $10.00 USD
+
+**Resolution Strategy:**
+1. Check for unique identifiers in emails:
+   - Grab: Order ID (`GF-20251215-XYABC`)
+   - Bolt: Trip ID from email body
+   - Lazada: Order number
+   - Bank transfers: Transaction reference number
+2. Check secondary differentiators:
+   - Exact timestamp in email body (not just date)
+   - Pickup/dropoff locations (for rides)
+   - Restaurant name (for food delivery)
+3. If still ambiguous → Present both as candidates for user selection
+
+**UI Treatment:**
+- Show "Multiple matches found" warning badge on the MatchCard
+- Display both emails side-by-side with highlighting of differences
+- User selects which email corresponds to the statement charge
+- Unselected email moves to "Waiting for Statement" status
+
+### Scenario 2: Email Matches Existing Database Transaction
+
+Before creating a new transaction from email approval, query for potential duplicates:
+
+```sql
+SELECT * FROM transactions
+WHERE user_id = $1
+  AND transaction_date BETWEEN email_date - INTERVAL '1 day' AND email_date + INTERVAL '1 day'
+  AND vendor_id = $2
+  AND ABS(amount - $3) / NULLIF(amount, 0) < 0.02  -- ±2% tolerance
+```
+
+**Resolution Strategy:**
+1. Calculate match confidence using standard algorithm
+2. If high confidence (>90%) → Suggest linking email to existing transaction (not creating new)
+3. If medium confidence → Show comparison and ask user
+4. If low confidence → Proceed with new transaction creation
+
+**UI Treatment:**
+- "Possible duplicate found" modal when approving
+- Side-by-side comparison: Email data vs. Existing transaction
+- Actions: "Link to existing" | "Create new anyway" | "Skip email"
+
+### Scenario 3: Statement Transaction Has No Email
+
+**Examples:**
+- In-person purchases (wine shop, grocery store)
+- Auto-subscriptions (Netflix, Notion)
+- EZ Pass replenishment
+
+**Classification:** "Ready to Import" (no email match needed)
+
+**UI Treatment:**
+- Different card variant (purple border, no email section)
+- Pre-populated from statement data only
+- User can optionally add description/tags before import
+
+### Scenario 4: Email Has No Statement Match (Yet)
+
+**Status:** "Waiting for Statement"
+
+**Auto-resolution:** When next statement is uploaded, re-run matching against all waiting emails.
+
+**Manual Options:**
+- "Link Manually" → Search existing transactions
+- "Import as THB" → Create transaction in original currency (for cash/direct THB payments)
+- "Skip" → Mark as non-transaction
+
+### Scenario 5: Same Transaction in Multiple Sources
+
+**Example:** Bangkok Bank email AND Bangkok Bank statement both show same ฿1,200 transfer
+
+**Detection:** Match on:
+- Same date (exact)
+- Same amount (exact)
+- Same vendor or recipient
+- Same payment method
+
+**Resolution:**
+- Mark statement line as "Validated" (not "New")
+- Link email to existing transaction
+- Do NOT create duplicate
+
+---
+
 ## Appendix: Color Palette
 
 **Status Colors:**

@@ -17,12 +17,130 @@
 | Wireframes | `design-docs/email-transaction-wireframes.md` | UI layouts and interactions |
 | Roadmap | `design-docs/email-transaction-implementation-roadmap.md` | 8-week implementation plan |
 | Phase 1 Tasks | `design-docs/tasks/phase-1-foundation-tasks.md` | Foundation work |
+| AI Skill Guide | `.claude/skills/email-linking/SKILL.md` | Code patterns and architecture |
 
 **Key Constraints:**
 - Statement upload to Supabase Storage (files kept forever)
 - ±2% exchange rate tolerance using `exchange_rates` table
 - Always require user confirmation (no auto-approve)
 - Block duplicate statement uploads with warning
+
+---
+
+## AI Implementation Guide
+
+### Recommended Agents by Task Group
+
+| Group | Agent | Why |
+|-------|-------|-----|
+| Upload (P2-001 to P2-007) | `frontend-developer` | React components, file handling |
+| Parsing (P2-008 to P2-014) | `typescript-pro` | PDF parsing, text extraction |
+| Matching (P2-015 to P2-020) | `backend-architect` | Algorithm design |
+| Review (P2-021 to P2-030) | `frontend-developer` | Review queue UI |
+| UI (P2-031 to P2-032) | `frontend-developer` | Component design |
+| Testing (P2-033 to P2-035) | `test-automator` | Test suites |
+
+### Critical Codebase Patterns
+
+**File Upload with react-dropzone:**
+```typescript
+import { useDropzone } from 'react-dropzone';
+
+const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  accept: { 'application/pdf': ['.pdf'] },
+  maxSize: 10 * 1024 * 1024, // 10MB
+  onDrop: handleFileDrop,
+});
+```
+
+**Supabase Storage Upload:**
+```typescript
+const { data, error } = await supabase.storage
+  .from('statement-uploads')
+  .upload(`${userId}/${uploadId}.pdf`, file);
+```
+
+**PDF Text Extraction (use pdf-parse):**
+```bash
+npm install pdf-parse
+```
+
+```typescript
+import pdfParse from 'pdf-parse';
+
+const dataBuffer = await file.arrayBuffer();
+const pdfData = await pdfParse(Buffer.from(dataBuffer));
+const text = pdfData.text;
+```
+
+**Match Scoring Constants:**
+```typescript
+const SCORE_WEIGHTS = {
+  AMOUNT: 40,   // Max 40 points
+  DATE: 30,     // Max 30 points
+  VENDOR: 30,   // Max 30 points
+};
+
+const CONFIDENCE_THRESHOLDS = {
+  HIGH: 90,     // >= 90: High confidence
+  MEDIUM: 55,   // 55-89: Medium confidence
+};
+```
+
+**Exchange Rate Lookup:**
+```typescript
+// Use existing exchange_rates table for historical rates
+const { data: rate } = await supabase
+  .from('exchange_rates')
+  .select('rate')
+  .eq('from_currency', 'THB')
+  .eq('to_currency', 'USD')
+  .eq('date', transactionDate)
+  .single();
+
+// If no exact date, find nearest
+if (!rate) {
+  const { data: nearest } = await supabase
+    .from('exchange_rates')
+    .select('rate, date')
+    .eq('from_currency', 'THB')
+    .eq('to_currency', 'USD')
+    .order('date', { ascending: false })
+    .lt('date', transactionDate)
+    .limit(1)
+    .single();
+}
+```
+
+### Key File Locations
+
+```
+src/lib/statements/
+├── parsers/
+│   ├── chase.ts          # P2-008
+│   ├── amex.ts           # P2-009
+│   ├── bangkok-bank.ts   # P2-010
+│   └── kasikorn.ts       # P2-011
+├── pdf-extractor.ts      # P2-012
+└── statement-processor.ts # P2-014
+
+src/lib/matching/
+├── amount-matcher.ts     # P2-015
+├── date-matcher.ts       # P2-016
+├── fuzzy-matcher.ts      # P2-017
+├── cross-currency.ts     # P2-018
+├── match-scorer.ts       # P2-019
+└── match-ranker.ts       # P2-020
+
+src/components/page-specific/
+├── statement-upload-zone.tsx  # P2-001
+├── match-card.tsx            # P2-023
+└── confidence-indicator.tsx  # P2-031
+
+src/app/imports/
+├── statements/page.tsx   # P2-007
+└── review/page.tsx       # P2-030
+```
 
 ---
 
@@ -52,8 +170,8 @@
 | [ ] | P2-010 | Build Bangkok Bank statement parser | Parsing | — | P2-012 |
 | [ ] | P2-011 | Build Kasikorn Bank statement parser | Parsing | — | P2-012 |
 | [ ] | P2-012 | Create PDF text extraction service | Parsing | P2-008–P2-011 | P2-013 |
-| [ ] | P2-013 | Implement OCR fallback for images | Parsing | P2-012 | P2-014 |
-| [ ] | P2-014 | Create statement processing job | Parsing | P2-013 | P2-015 |
+| [ ] | P2-013 | *(Optional)* Implement OCR fallback for images | Parsing | P2-012 | P2-014 |
+| [ ] | P2-014 | Create statement processing job | Parsing | P2-012 | P2-015 |
 | [ ] | P2-015 | Build amount matching algorithm | Matching | P2-014 | P2-018 |
 | [ ] | P2-016 | Build date matching algorithm (±3 days) | Matching | P2-014 | P2-018 |
 | [ ] | P2-017 | Build vendor fuzzy matching (Levenshtein) | Matching | P2-014 | P2-018 |
@@ -440,7 +558,7 @@ Create service that extracts text from PDF files and routes to appropriate parse
 ---
 
 <!--P2-013-->
-### P2-013 — Implement OCR fallback for images
+### P2-013 — *(Optional)* Implement OCR fallback for images
 
 **Status:** open
 **Group:** Parsing
@@ -448,6 +566,8 @@ Create service that extracts text from PDF files and routes to appropriate parse
 
 **Description:**
 Add OCR capability for image uploads (PNG, JPG, HEIC) when PDF extraction fails or isn't applicable.
+
+**⚠️ OPTIONAL:** This task is optional for MVP. All provided PDFs will be text-based, not image-based. OCR can be added later if image-based statements are needed. P2-014 can proceed without this task.
 
 **Acceptance Criteria (EARS):**
 - WHEN file is image THEN run OCR before parsing
@@ -464,6 +584,7 @@ Add OCR capability for image uploads (PNG, JPG, HEIC) when PDF extraction fails 
 
 **Notes & Open Questions:**
 - Consider accuracy vs. cost tradeoffs between Tesseract.js and Cloud Vision
+- **MVP Note:** Skip this task initially; only text-based PDFs will be used
 
 **Completion Log:** _(empty initially)_
 
@@ -474,7 +595,7 @@ Add OCR capability for image uploads (PNG, JPG, HEIC) when PDF extraction fails 
 
 **Status:** open
 **Group:** Parsing
-**Depends on:** P2-013  |  **Blocks:** P2-015  |  **parallel:** false
+**Depends on:** P2-012  |  **Blocks:** P2-015  |  **parallel:** false
 
 **Description:**
 Create the background job that processes uploaded statements end-to-end.
@@ -1132,9 +1253,9 @@ P2-001 ──► P2-002 ──► P2-003 ──► P2-004 ──► P2-005 ─�
 
 Parsing Path (parallel parsers):
 P2-008 ─┐
-P2-009 ─┼──► P2-012 ──► P2-013 ──► P2-014
-P2-010 ─┤
-P2-011 ─┘
+P2-009 ─┼──► P2-012 ──► P2-014
+P2-010 ─┤                  │
+P2-011 ─┘                  └──► (Optional: P2-013 OCR)
 
 Matching Path (parallel matchers):
 P2-015 ─┐

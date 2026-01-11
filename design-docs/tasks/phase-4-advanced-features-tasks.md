@@ -17,12 +17,139 @@
 | Wireframes | `design-docs/email-transaction-wireframes.md` | UI layouts and interactions |
 | Roadmap | `design-docs/email-transaction-implementation-roadmap.md` | 8-week implementation plan |
 | Phase 1-3 Tasks | `design-docs/tasks/phase-*.md` | Previous phase work |
+| AI Skill Guide | `.claude/skills/email-linking/SKILL.md` | Code patterns and architecture |
 
 **Key Constraints:**
 - Manual linking allows user override of system matches
 - Import history provides complete audit trail
 - Settings in existing `/settings` structure
 - Cron job already integrated (18:00 UTC daily)
+
+---
+
+## AI Implementation Guide
+
+### Recommended Agents by Task Group
+
+| Group | Agent | Why |
+|-------|-------|-----|
+| Manual Link (P4-001 to P4-005) | `frontend-developer` | Search modal, linking UI |
+| History (P4-006 to P4-010) | `frontend-developer` | Timeline UI, export |
+| Settings (P4-011 to P4-014) | `frontend-developer` | Settings page integration |
+| Jobs (P4-015 to P4-017) | `backend-architect` | Cron verification |
+| Email Detail (P4-018 to P4-021) | `frontend-developer` | Detail viewer, edit mode |
+| Final (P4-022 to P4-028) | `code-reviewer`, `test-automator` | Quality assurance |
+
+### Critical Codebase Patterns
+
+**Transaction Search API:**
+```typescript
+// File: src/app/api/transactions/search/route.ts
+
+const { searchParams } = new URL(request.url);
+const query = searchParams.get('q');
+const dateFrom = searchParams.get('dateFrom');
+const dateTo = searchParams.get('dateTo');
+const vendorId = searchParams.get('vendor_id');
+const paymentMethodId = searchParams.get('payment_method_id');
+const limit = parseInt(searchParams.get('limit') || '20');
+const offset = parseInt(searchParams.get('offset') || '0');
+
+let queryBuilder = supabase
+  .from('transactions')
+  .select('*, vendors(*), payment_methods(*)')
+  .eq('user_id', user.id)
+  .order('transaction_date', { ascending: false })
+  .range(offset, offset + limit - 1);
+
+if (query) {
+  queryBuilder = queryBuilder.or(`description.ilike.%${query}%,vendors.name.ilike.%${query}%`);
+}
+if (dateFrom) {
+  queryBuilder = queryBuilder.gte('transaction_date', dateFrom);
+}
+if (dateTo) {
+  queryBuilder = queryBuilder.lte('transaction_date', dateTo);
+}
+```
+
+**Activity Logging Pattern:**
+```typescript
+async function logImportActivity(
+  userId: string,
+  activityType: 'sync' | 'upload' | 'approve' | 'reject' | 'link' | 'unlink',
+  description: string,
+  metadata: Record<string, unknown> = {}
+) {
+  await supabase.from('import_activities').insert({
+    user_id: userId,
+    activity_type: activityType,
+    description,
+    transactions_affected: metadata.count || 1,
+    total_amount: metadata.amount || null,
+    metadata,
+    created_at: new Date().toISOString(),
+  });
+}
+```
+
+**CSV Export Pattern:**
+```typescript
+function generateCSV(data: ImportActivity[]): string {
+  const headers = ['Date', 'Type', 'Description', 'Count', 'Amount'];
+  const rows = data.map(item => [
+    new Date(item.created_at).toLocaleDateString(),
+    item.activity_type,
+    item.description,
+    item.transactions_affected,
+    item.total_amount ? `$${item.total_amount.toFixed(2)}` : '-',
+  ]);
+
+  return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+}
+
+// Trigger download
+const blob = new Blob([csvContent], { type: 'text/csv' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = `import-history-${dateRange}.csv`;
+a.click();
+```
+
+**Email Body Sanitization (DOMPurify):**
+```typescript
+import DOMPurify from 'dompurify';
+
+const sanitizedHtml = DOMPurify.sanitize(emailBody, {
+  ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'a', 'img', 'table', 'tr', 'td', 'th', 'div', 'span'],
+  ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'style'],
+  ALLOW_DATA_ATTR: false,
+});
+```
+
+### Key File Locations
+
+```
+src/app/imports/
+├── history/page.tsx           # P4-006
+└── (existing pages)
+
+src/app/settings/
+└── emails/page.tsx            # P4-011 (may need to create)
+
+src/components/page-specific/
+├── transaction-search-modal.tsx  # P4-001
+├── link-confirmation-dialog.tsx  # P4-003
+├── full-email-viewer.tsx         # P4-018
+└── email-edit-form.tsx           # P4-019
+
+src/app/api/
+├── transactions/search/route.ts  # P4-002
+├── imports/link/route.ts         # P4-004
+├── imports/history/route.ts      # P4-008
+└── emails/transactions/[id]/route.ts  # P4-021
+```
 
 ---
 

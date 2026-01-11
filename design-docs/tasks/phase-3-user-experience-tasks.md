@@ -17,12 +17,124 @@
 | Wireframes | `design-docs/email-transaction-wireframes.md` | UI layouts and interactions |
 | Roadmap | `design-docs/email-transaction-implementation-roadmap.md` | 8-week implementation plan |
 | Phase 1-2 Tasks | `design-docs/tasks/phase-1-*.md`, `phase-2-*.md` | Foundation and core work |
+| AI Skill Guide | `.claude/skills/email-linking/SKILL.md` | Code patterns and architecture |
 
 **Key Constraints:**
 - Mobile-first responsive design
 - shadcn/ui components + Tailwind CSS
 - Swipe gestures for mobile review queue
 - Toast notifications via Sonner
+
+---
+
+## AI Implementation Guide
+
+### Recommended Agents by Task Group
+
+| Group | Agent | Why |
+|-------|-------|-----|
+| Mobile (P3-001 to P3-009) | `mobile-developer` | Gestures, touch interactions |
+| Dashboard (P3-010 to P3-012) | `frontend-developer` | React components |
+| Error (P3-013 to P3-017) | `frontend-developer` | Error handling patterns |
+| UX (P3-018 to P3-019) | `frontend-developer` | Toast notifications |
+| Components (P3-020 to P3-023) | `frontend-developer` | Reusable components |
+| A11y (P3-024 to P3-027) | `ui-ux-designer` | Accessibility audit |
+| Polish (P3-028 to P3-030) | `frontend-developer` | Animations, empty states |
+| Testing (P3-031 to P3-032) | `test-automator` | Cross-browser testing |
+
+### Critical Codebase Patterns
+
+**Swipe Gestures (use framer-motion or react-swipeable):**
+```typescript
+import { motion, useAnimation, PanInfo } from 'framer-motion';
+
+const controls = useAnimation();
+
+const handleDrag = (event: any, info: PanInfo) => {
+  const threshold = 100; // pixels
+  if (info.offset.x > threshold) {
+    // Swiped right - approve
+    controls.start({ x: 300, opacity: 0 });
+    onApprove();
+  } else if (info.offset.x < -threshold) {
+    // Swiped left - reject
+    controls.start({ x: -300, opacity: 0 });
+    onReject();
+  }
+};
+```
+
+**Bottom Sheet (use vaul or custom):**
+```typescript
+import { Drawer } from 'vaul';
+
+<Drawer.Root>
+  <Drawer.Trigger>Open Filters</Drawer.Trigger>
+  <Drawer.Portal>
+    <Drawer.Overlay className="fixed inset-0 bg-black/40" />
+    <Drawer.Content className="fixed bottom-0 left-0 right-0 h-[70vh] rounded-t-lg bg-white">
+      {/* Filter content */}
+    </Drawer.Content>
+  </Drawer.Portal>
+</Drawer.Root>
+```
+
+**Toast Notifications (Sonner):**
+```typescript
+import { toast } from 'sonner';
+
+// Success
+toast.success('Match approved!', {
+  description: 'GrabFood $10.00',
+  action: { label: 'Undo', onClick: handleUndo },
+  duration: 5000,
+});
+
+// Error
+toast.error('Failed to approve', {
+  description: 'Please try again',
+  action: { label: 'Retry', onClick: handleRetry },
+});
+```
+
+**Haptic Feedback:**
+```typescript
+const triggerHaptic = (type: 'light' | 'medium' | 'heavy') => {
+  if ('vibrate' in navigator) {
+    const duration = { light: 10, medium: 20, heavy: 40 }[type];
+    navigator.vibrate(duration);
+  }
+};
+```
+
+**Reduced Motion Support:**
+```typescript
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const animationVariants = prefersReducedMotion
+  ? { initial: {}, animate: {}, exit: {} }
+  : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
+```
+
+### Key File Locations
+
+```
+src/components/page-specific/
+├── filter-bottom-sheet.tsx    # P3-002
+├── swipeable-match-card.tsx   # P3-003 to P3-005
+├── undo-toast.tsx             # P3-006
+├── activity-feed-item.tsx     # P3-020
+├── email-detail-modal.tsx     # P3-021
+└── empty-state.tsx            # P3-028
+
+src/components/ui/
+├── skeleton.tsx               # P3-011 (likely exists)
+└── error-boundary.tsx         # P3-013
+
+src/lib/utils/
+├── haptics.ts                 # P3-007
+└── error-messages.ts          # P3-015
+```
 
 ---
 

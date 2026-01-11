@@ -839,6 +839,239 @@ Get import activity history
 
 ---
 
+## Sync Reliability & Monitoring
+
+### Sync Events Table
+
+Track all sync operations for debugging and health monitoring:
+
+```sql
+CREATE TABLE sync_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) NOT NULL,
+  sync_type TEXT NOT NULL,              -- 'email_sync', 'statement_process', 'match_run'
+  status TEXT NOT NULL,                 -- 'started', 'completed', 'failed', 'partial'
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMPTZ,
+
+  -- Sync details
+  items_processed INTEGER DEFAULT 0,
+  items_succeeded INTEGER DEFAULT 0,
+  items_failed INTEGER DEFAULT 0,
+
+  -- For email sync
+  last_uid_processed TEXT,              -- Resume point for partial syncs
+  folder_synced TEXT,
+
+  -- Error tracking
+  error_message TEXT,
+  error_details JSONB,
+
+  -- Metadata
+  trigger_source TEXT,                  -- 'cron', 'manual', 'api'
+  duration_ms INTEGER,
+
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_sync_events_user ON sync_events(user_id, sync_type, started_at DESC);
+CREATE INDEX idx_sync_events_status ON sync_events(status) WHERE status = 'failed';
+```
+
+### Dashboard Sync Health Indicator
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  📧 Email Sync Status                                      │
+├────────────────────────────────────────────────────────────┤
+│                                                            │
+│  Last sync: Today, 6:00 PM UTC                    ✅       │
+│  Emails synced: 12 new, 0 errors                          │
+│                                                            │
+│  ┌──────────────────────────────────────────────────────┐ │
+│  │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░ │ │
+│  │ 7-day success rate: 100%                             │ │
+│  └──────────────────────────────────────────────────────┘ │
+│                                                            │
+│  [Sync Now]  [View History]                               │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
+```
+
+**Status Indicators:**
+- ✅ **Healthy** - Last sync succeeded, no errors in 24h
+- ⚠️ **Warning** - Partial sync or minor errors
+- ❌ **Error** - Last sync failed, needs attention
+
+### Partial Sync Recovery
+
+When sync is interrupted (timeout, network error):
+
+1. **Resume Capability:**
+   - Store `last_uid_processed` in `sync_events`
+   - Next sync starts from last successful UID + 1
+   - Prevents duplicate processing
+
+2. **Automatic Retry:**
+   - Failed syncs retry on next cron run
+   - 3 consecutive failures → send notification (if enabled)
+   - Manual intervention required after 5 failures
+
+3. **Recovery Flow:**
+   ```
+   Cron triggers → Check last sync status
+
+   IF last_sync.status = 'partial':
+     Resume from last_sync.last_uid_processed
+   ELSE IF last_sync.status = 'failed':
+     Full retry with same parameters
+   ELSE:
+     Normal incremental sync
+   ```
+
+### Error Handling Strategy
+
+| Error Type | Action | User Impact |
+|------------|--------|-------------|
+| **IMAP Connection Failed** | Retry 3x with backoff, then mark failed | Warning shown on dashboard |
+| **Single Email Parse Error** | Log error, continue with next email | Item shows "Parse Error" status |
+| **Storage Write Failed** | Retry 2x, then fail sync | Sync marked as partial |
+| **Database Error** | Rollback batch, retry | Sync marked as failed |
+| **Rate Limited** | Exponential backoff, resume | Sync continues on next run |
+
+### Monitoring Queries
+
+**Check recent sync health:**
+```sql
+SELECT
+  DATE(started_at) as date,
+  COUNT(*) as total_syncs,
+  COUNT(*) FILTER (WHERE status = 'completed') as successful,
+  COUNT(*) FILTER (WHERE status = 'failed') as failed,
+  AVG(duration_ms) as avg_duration_ms
+FROM sync_events
+WHERE user_id = $1
+  AND started_at > NOW() - INTERVAL '7 days'
+GROUP BY DATE(started_at)
+ORDER BY date DESC;
+```
+
+**Find failed syncs needing attention:**
+```sql
+SELECT * FROM sync_events
+WHERE status = 'failed'
+  AND started_at > NOW() - INTERVAL '24 hours'
+ORDER BY started_at DESC;
+```
+
+---
+
+## Performance Considerations
+
+### Database Indexes
+
+Ensure these indexes exist for query performance:
+
+```sql
+-- Email transactions lookups
+CREATE INDEX idx_email_trans_status ON email_transactions(user_id, status);
+CREATE INDEX idx_email_trans_date ON email_transactions(user_id, email_date);
+CREATE INDEX idx_email_trans_match ON email_transactions(user_id, match_confidence)
+  WHERE status = 'pending_review';
+
+-- Statement processing
+CREATE INDEX idx_statement_uploads_user ON statement_uploads(user_id, created_at DESC);
+
+-- Matching algorithm queries
+CREATE INDEX idx_email_trans_matching ON email_transactions(
+  user_id,
+  currency,
+  amount,
+  email_date
+) WHERE status IN ('pending_review', 'waiting_for_statement');
+
+-- Activity feed
+CREATE INDEX idx_import_activities_feed ON import_activities(user_id, created_at DESC);
+```
+
+### Batch Processing Limits
+
+| Operation | Batch Size | Rationale |
+|-----------|------------|-----------|
+| Email sync | 50 emails | IMAP connection limits |
+| Statement parsing | 100 transactions | Memory usage |
+| Matching algorithm | 50 candidates | Query performance |
+| Bulk approve | 100 items | Transaction timeout |
+| Activity logging | 25 items | Insert batch size |
+
+### Pagination Strategy
+
+Use cursor-based pagination for large datasets:
+
+```typescript
+// Example: Review queue pagination
+interface PaginationCursor {
+  lastId: string;
+  lastDate: string;
+}
+
+async function getReviewQueue(
+  userId: string,
+  cursor?: PaginationCursor,
+  limit: number = 20
+) {
+  let query = supabase
+    .from('email_transactions')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'pending_review')
+    .order('email_date', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(limit + 1); // Fetch one extra to know if more exist
+
+  if (cursor) {
+    query = query.or(
+      `email_date.lt.${cursor.lastDate},` +
+      `and(email_date.eq.${cursor.lastDate},id.lt.${cursor.lastId})`
+    );
+  }
+
+  const { data, error } = await query;
+
+  const hasMore = data && data.length > limit;
+  const items = hasMore ? data.slice(0, limit) : data;
+  const nextCursor = hasMore ? {
+    lastId: items[items.length - 1].id,
+    lastDate: items[items.length - 1].email_date
+  } : null;
+
+  return { items, nextCursor, hasMore };
+}
+```
+
+### Caching Strategy
+
+For frequently accessed data:
+
+```typescript
+// Cache vendor aliases (changes rarely)
+const VENDOR_ALIAS_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+// Cache exchange rates (fetched daily)
+const EXCHANGE_RATE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+// No cache for review queue (real-time updates needed)
+```
+
+### Query Optimization Tips
+
+1. **Review Queue:** Always filter by `status` first (indexed)
+2. **Matching:** Query by `(user_id, currency, date_range)` - indexed columns
+3. **Activity Feed:** Use `LIMIT` with cursor, never `OFFSET`
+4. **Aggregations:** Use database-level `COUNT` with `GROUP BY`, not app-level
+
+---
+
 ## Risk Mitigation
 
 ### Technical Risks
@@ -915,12 +1148,99 @@ Get import activity history
 
 ## Future Enhancements (Post-MVP)
 
-**Phase 5+:**
-- [ ] **Learn from confirmations** - Pattern recognition knowledge base:
-  - Track approved/rejected matches to improve future confidence scoring
-  - Store vendor name aliases (e.g., "Grab* Bangkok TH" → GrabFood)
-  - Learn posting delays per payment method (e.g., Chase typically posts 1 day later)
-  - Gradually reduce items needing manual review as patterns are learned
+### Phase 5: Learning Mode System
+
+**Goal:** Learn from user confirmations to improve matching accuracy over time
+
+#### Database Schema
+
+```sql
+-- Vendor name aliases learned from user corrections
+CREATE TABLE vendor_aliases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) NOT NULL,
+  statement_name TEXT NOT NULL,         -- "Grab* Bangkok TH"
+  canonical_vendor_id UUID REFERENCES vendors(id),  -- Links to GrabFood vendor
+  confidence DECIMAL(5,2) DEFAULT 100,  -- How certain are we about this alias
+  source TEXT NOT NULL,                 -- 'user_correction', 'auto_learned', 'manual'
+  usage_count INTEGER DEFAULT 1,        -- How many times this alias has matched
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, statement_name)
+);
+
+-- Posting delay patterns per payment method
+CREATE TABLE posting_delay_patterns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) NOT NULL,
+  payment_method_id UUID REFERENCES payment_methods(id) NOT NULL,
+  vendor_category TEXT,                 -- Optional: 'restaurants', 'rideshare', etc.
+  avg_delay_days DECIMAL(3,1) NOT NULL, -- Average posting delay
+  min_delay_days INTEGER DEFAULT 0,
+  max_delay_days INTEGER DEFAULT 5,
+  sample_count INTEGER DEFAULT 1,       -- How many data points
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, payment_method_id, vendor_category)
+);
+
+-- Indexes
+CREATE INDEX idx_vendor_aliases_lookup ON vendor_aliases(user_id, statement_name);
+CREATE INDEX idx_posting_delays_lookup ON posting_delay_patterns(user_id, payment_method_id);
+```
+
+#### Learning Mode UI
+
+**Correction Flow (when user selects different vendor):**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  🎓 Learning Mode                                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  You changed the vendor from "Grab* Bangkok TH" to          │
+│  "GrabFood".                                                │
+│                                                             │
+│  Should we remember this for future matches?                │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ ☑ Always map "Grab* Bangkok TH" → GrabFood          │   │
+│  │ ☐ Just this once                                    │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│                            [Cancel]  [Save & Learn]         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Posting Delay Detection:**
+```
+After enough data points (≥5), system automatically calculates:
+- Chase Sapphire: Average 1.2 days posting delay (transactions → 1 day earlier in email)
+- Bangkok Bank: Average 0.1 days (same-day posting)
+
+This adjusts date matching algorithm automatically.
+```
+
+#### Integration Points
+
+1. **Match Scoring Algorithm** - Query `vendor_aliases` before fuzzy matching
+2. **Date Matcher** - Use `posting_delay_patterns` to adjust expected date range
+3. **Approval Flow** - Capture corrections and update learning tables
+4. **Dashboard** - Show "Learning Progress" indicator (e.g., "87 patterns learned")
+
+#### Tasks
+
+- [ ] **P5-001:** Create `vendor_aliases` migration
+- [ ] **P5-002:** Create `posting_delay_patterns` migration
+- [ ] **P5-003:** Build Learning Mode correction dialog
+- [ ] **P5-004:** Integrate alias lookup into fuzzy matcher
+- [ ] **P5-005:** Calculate posting delays from approval history
+- [ ] **P5-006:** Add "Learned Patterns" section to settings
+- [ ] **P5-007:** Implement alias confidence decay (reduce confidence if alias is corrected)
+
+---
+
+### Phase 6: Additional Features
+
 - [ ] Machine learning for vendor name normalization
 - [ ] Auto-categorization using tags
 - [ ] Receipt image OCR (extract from attachments)
