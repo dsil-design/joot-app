@@ -105,7 +105,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-006 | Add "Imports" to sidebar navigation | Navigation | — | P1-007 |
 | [x] | P1-007 | Add "Imports" to mobile navigation | Navigation | P1-006 | P1-008 |
 | [x] | P1-008 | Create `/imports` route structure | Navigation | P1-007 | P1-009 |
-| [ ] | P1-009 | Create Import Dashboard page skeleton | UI | P1-008 | P1-015 |
+| [x] | P1-009 | Create Import Dashboard page skeleton | UI | P1-008 | P1-015 |
 | [ ] | P1-010 | Create email transaction extraction service | Email | P1-005 | P1-011 |
 | [ ] | P1-011 | Build Grab email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-012 | Build Bolt email parser | Email | P1-010 | P1-016 |
@@ -484,7 +484,7 @@ Create the Next.js App Router folder structure for all import-related pages.
 <!--P1-009-->
 ### P1-009 — Create Import Dashboard page skeleton
 
-**Status:** open
+**Status:** done
 **Group:** UI
 **Depends on:** P1-008  |  **Blocks:** P1-015  |  **parallel:** false
 
@@ -506,7 +506,9 @@ Build the basic layout structure for the Import Dashboard page following the wir
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T21:00:00Z · by: claude
+- done: 2026-01-11T21:30:00Z · by: claude · notes: Created full Import Dashboard page with all sections: (1) Status Cards grid (Pending Review, Waiting for Statement, Matched) with color-coded variants, click navigation, and skeleton loading; (2) Email Sync Card with sync status indicator, last sync time formatting, and Sync Now button; (3) Quick Actions 2x2 grid (Upload Statement as primary, Review Queue, View History, Import Settings); (4) Recent Activity feed with timeline-style items, color-coded icons by type, and skeleton loading. All sections are responsive (mobile single column, desktop multi-column). Build and ESLint pass.
 
 ---
 

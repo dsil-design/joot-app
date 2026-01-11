@@ -1,63 +1,151 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+'use client'
+
+import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertCircle,
+  Clock,
+  CheckCircle2,
+  Mail,
+  RefreshCw,
+  Upload,
+  Search,
+  History,
+  Settings,
+  ArrowRight
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-export default function ImportsDashboardPage() {
+// Status Card Component - reusable for the three top cards
+interface StatusCardProps {
+  title: string
+  value: number | null  // null = loading
+  description: string
+  variant: 'pending' | 'waiting' | 'success'
+  href: string
+}
+
+function StatusCard({ title, value, description, variant, href }: StatusCardProps) {
+  const variantStyles = {
+    pending: {
+      border: 'border-l-4 border-l-amber-500',
+      icon: AlertCircle,
+      iconColor: 'text-amber-500',
+      bgHover: 'hover:bg-amber-50/50',
+    },
+    waiting: {
+      border: 'border-l-4 border-l-blue-500',
+      icon: Clock,
+      iconColor: 'text-blue-500',
+      bgHover: 'hover:bg-blue-50/50',
+    },
+    success: {
+      border: 'border-l-4 border-l-green-500',
+      icon: CheckCircle2,
+      iconColor: 'text-green-500',
+      bgHover: 'hover:bg-green-50/50',
+    },
+  }
+
+  const styles = variantStyles[variant]
+  const Icon = styles.icon
+
   return (
-    <div className="flex flex-col gap-6">
-      {/* Status Cards Section - Placeholder */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Pending Review</CardDescription>
-            <CardTitle className="text-3xl">
-              <Skeleton className="h-9 w-16" />
+    <Link href={href}>
+      <Card className={cn(
+        "cursor-pointer transition-colors",
+        styles.border,
+        styles.bgHover
+      )}>
+        <CardHeader className="pb-2">
+          <div className="flex items-center gap-2">
+            <Icon className={cn("h-5 w-5", styles.iconColor)} />
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {title}
             </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Emails awaiting review
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Waiting for Statement</CardDescription>
-            <CardTitle className="text-3xl">
-              <Skeleton className="h-9 w-16" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              THB receipts awaiting USD match
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Matched This Month</CardDescription>
-            <CardTitle className="text-3xl">
-              <Skeleton className="h-9 w-16" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Successfully matched transactions
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Email Sync Card - Placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Email Sync</CardTitle>
-          <CardDescription>
-            Sync emails from your iCloud mailbox
-          </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
+          <div className="text-3xl font-bold mb-1">
+            {value !== null ? value : <Skeleton className="h-9 w-16" />}
+          </div>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </CardContent>
+      </Card>
+    </Link>
+  )
+}
+
+// Email Sync Card Component
+interface EmailSyncCardProps {
+  isLoading?: boolean
+  lastSyncedAt?: string | null
+  folder?: string
+  totalSynced?: number
+  isConnected?: boolean
+  onSyncNow?: () => void
+  isSyncing?: boolean
+}
+
+function EmailSyncCard({
+  isLoading = true,
+  lastSyncedAt = null,
+  folder = 'Transactions',
+  totalSynced = 0,
+  // isConnected will be used when we implement connection status display
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  isConnected = true,
+  onSyncNow,
+  isSyncing = false
+}: EmailSyncCardProps) {
+  // Determine sync status indicator color
+  const getSyncStatusColor = () => {
+    if (!lastSyncedAt) return 'bg-gray-400'
+
+    const lastSync = new Date(lastSyncedAt)
+    const now = new Date()
+    const hoursSince = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60)
+
+    if (hoursSince < 1) return 'bg-green-500'
+    if (hoursSince < 6) return 'bg-yellow-500'
+    return 'bg-gray-400'
+  }
+
+  const formatLastSynced = () => {
+    if (!lastSyncedAt) return 'Never synced'
+
+    const lastSync = new Date(lastSyncedAt)
+    const now = new Date()
+    const hoursSince = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60)
+
+    if (hoursSince < 1) {
+      const minutes = Math.round(hoursSince * 60)
+      return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`
+    }
+    if (hoursSince < 24) {
+      const hours = Math.round(hoursSince)
+      return `${hours} hour${hours !== 1 ? 's' : ''} ago`
+    }
+    return lastSync.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    })
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Mail className="h-5 w-5 text-muted-foreground" />
+          <CardTitle className="text-lg">Email Sync</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Skeleton className="h-4 w-4 rounded-full" />
@@ -68,56 +156,269 @@ export default function ImportsDashboardPage() {
             </div>
             <Skeleton className="h-10 w-24" />
           </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start gap-4">
+              {/* Status indicator */}
+              <div className={cn(
+                "h-3 w-3 rounded-full mt-1.5",
+                getSyncStatusColor()
+              )} />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  Last synced: {formatLastSynced()}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Folder: {folder}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Total synced: {totalSynced.toLocaleString()} emails
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={onSyncNow}
+              disabled={isSyncing}
+              className="shrink-0"
+            >
+              <RefreshCw className={cn(
+                "h-4 w-4 mr-2",
+                isSyncing && "animate-spin"
+              )} />
+              {isSyncing ? 'Syncing...' : 'Sync Now'}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// Quick Action Button Component
+interface QuickActionProps {
+  title: string
+  icon: React.ReactNode
+  href: string
+  variant?: 'primary' | 'secondary'
+}
+
+function QuickActionButton({ title, icon, href, variant = 'secondary' }: QuickActionProps) {
+  return (
+    <Link href={href}>
+      <Card className={cn(
+        "cursor-pointer transition-colors h-full",
+        variant === 'primary'
+          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+          : "hover:bg-muted/50"
+      )}>
+        <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
+          {icon}
+          <span className="text-sm font-medium text-center">{title}</span>
         </CardContent>
       </Card>
+    </Link>
+  )
+}
 
-      {/* Quick Actions - Placeholder */}
+// Activity Item Component
+interface ActivityItemProps {
+  type: 'success' | 'waiting' | 'upload' | 'error'
+  title: string
+  description: string
+  timestamp: string
+}
+
+function ActivityItem({ type, title, description, timestamp }: ActivityItemProps) {
+  const typeStyles = {
+    success: {
+      icon: CheckCircle2,
+      iconColor: 'text-green-500',
+      dotColor: 'bg-green-500',
+    },
+    waiting: {
+      icon: Clock,
+      iconColor: 'text-blue-500',
+      dotColor: 'bg-blue-500',
+    },
+    upload: {
+      icon: Upload,
+      iconColor: 'text-purple-500',
+      dotColor: 'bg-purple-500',
+    },
+    error: {
+      icon: AlertCircle,
+      iconColor: 'text-red-500',
+      dotColor: 'bg-red-500',
+    },
+  }
+
+  const styles = typeStyles[type]
+  const Icon = styles.icon
+
+  return (
+    <div className="flex items-start gap-4">
+      <div className="relative flex items-center justify-center">
+        <div className={cn(
+          "h-8 w-8 rounded-full flex items-center justify-center",
+          type === 'success' && 'bg-green-100',
+          type === 'waiting' && 'bg-blue-100',
+          type === 'upload' && 'bg-purple-100',
+          type === 'error' && 'bg-red-100'
+        )}>
+          <Icon className={cn("h-4 w-4", styles.iconColor)} />
+        </div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="text-xs text-muted-foreground mt-1">{timestamp}</p>
+      </div>
+    </div>
+  )
+}
+
+// Loading Activity Skeleton
+function ActivitySkeleton() {
+  return (
+    <div className="flex items-start gap-4">
+      <Skeleton className="h-8 w-8 rounded-full" />
+      <div className="flex-1">
+        <Skeleton className="h-4 w-3/4 mb-1" />
+        <Skeleton className="h-3 w-1/2 mb-1" />
+        <Skeleton className="h-3 w-1/4" />
+      </div>
+    </div>
+  )
+}
+
+export default function ImportsDashboardPage() {
+  // These would be fetched from API - showing skeleton loading state for now
+  const isLoading = true
+  const statusCounts = isLoading ? null : { pending: 42, waiting: 18, matched: 156 }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Status Cards Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatusCard
+          title="Pending Review"
+          value={statusCounts?.pending ?? null}
+          description="Emails awaiting review"
+          variant="pending"
+          href="/imports/review?status=pending"
+        />
+        <StatusCard
+          title="Waiting for Statement"
+          value={statusCounts?.waiting ?? null}
+          description="THB receipts awaiting USD match"
+          variant="waiting"
+          href="/imports/review?status=waiting"
+        />
+        <StatusCard
+          title="Matched (30 days)"
+          value={statusCounts?.matched ?? null}
+          description="Successfully matched transactions"
+          variant="success"
+          href="/imports/review?status=matched"
+        />
+      </div>
+
+      {/* Email Sync Card */}
+      <EmailSyncCard
+        isLoading={isLoading}
+        lastSyncedAt={null}
+        folder="Transactions"
+        totalSynced={0}
+        isConnected={true}
+        onSyncNow={() => {
+          // TODO: P1-024 will implement actual sync
+        }}
+        isSyncing={false}
+      />
+
+      {/* Quick Actions Section */}
       <div>
-        <h2 className="text-lg font-medium mb-4">Quick Actions</h2>
+        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardContent className="flex flex-col items-center justify-center py-6">
-              <Skeleton className="h-8 w-8 mb-2" />
-              <Skeleton className="h-4 w-24" />
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardContent className="flex flex-col items-center justify-center py-6">
-              <Skeleton className="h-8 w-8 mb-2" />
-              <Skeleton className="h-4 w-24" />
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardContent className="flex flex-col items-center justify-center py-6">
-              <Skeleton className="h-8 w-8 mb-2" />
-              <Skeleton className="h-4 w-24" />
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardContent className="flex flex-col items-center justify-center py-6">
-              <Skeleton className="h-8 w-8 mb-2" />
-              <Skeleton className="h-4 w-24" />
-            </CardContent>
-          </Card>
+          <QuickActionButton
+            title="Upload Statement"
+            icon={<Upload className="h-6 w-6" />}
+            href="/imports/statements"
+            variant="primary"
+          />
+          <QuickActionButton
+            title="Review Queue"
+            icon={<Search className="h-6 w-6" />}
+            href="/imports/review"
+          />
+          <QuickActionButton
+            title="View History"
+            icon={<History className="h-6 w-6" />}
+            href="/imports/history"
+          />
+          <QuickActionButton
+            title="Import Settings"
+            icon={<Settings className="h-6 w-6" />}
+            href="/settings"
+          />
         </div>
       </div>
 
-      {/* Recent Activity - Placeholder */}
+      {/* Recent Activity Section */}
       <div>
-        <h2 className="text-lg font-medium mb-4">Recent Activity</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Recent Activity</h2>
+          <Link
+            href="/imports/history"
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+          >
+            View All
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
         <Card>
           <CardContent className="py-6">
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <div className="flex-1">
-                    <Skeleton className="h-4 w-3/4 mb-1" />
-                    <Skeleton className="h-3 w-1/4" />
-                  </div>
-                </div>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="space-y-6">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <ActivitySkeleton key={i} />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Example activity items - would be fetched from API */}
+                <ActivityItem
+                  type="success"
+                  title="Matched 12 Grab receipts to Chase charges"
+                  description="12 high-confidence matches - $142.50 total"
+                  timestamp="Today, 10:15 AM"
+                />
+                <ActivityItem
+                  type="waiting"
+                  title="8 Bolt receipts waiting for statement"
+                  description="Expected: ~$35.20 USD on next Chase statement"
+                  timestamp="Today, 9:30 AM"
+                />
+                <ActivityItem
+                  type="success"
+                  title="Imported 5 Bangkok Bank transfers"
+                  description="฿6,450.00 THB - Payment methods, groceries, utilities"
+                  timestamp="Dec 30, 4:20 PM"
+                />
+                <ActivityItem
+                  type="upload"
+                  title="Processed Chase December statement"
+                  description="38 matches found - 7 new transactions - 45 total processed"
+                  timestamp="Dec 30, 11:45 AM"
+                />
+                <ActivityItem
+                  type="success"
+                  title="Bulk approved 15 high-confidence matches"
+                  description="$456.78 USD imported successfully"
+                  timestamp="Dec 29, 3:15 PM"
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
