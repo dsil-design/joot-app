@@ -119,7 +119,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-020 | Create Dashboard status cards section | UI | P1-019 | P1-021 |
 | [x] | P1-021 | Create Email Sync card component | UI | P1-020 | P1-022 |
 | [x] | P1-022 | Create Quick Actions grid | UI | P1-021 | P1-023 |
-| [ ] | P1-023 | Create Recent Activity feed component | UI | P1-022 | — |
+| [x] | P1-023 | Create Recent Activity feed component | UI | P1-022 | — |
 | [ ] | P1-024 | Create API route: POST /api/emails/sync | API | P1-018 | P1-021 |
 | [ ] | P1-025 | Create API route: GET /api/emails/transactions | API | P1-018 | P1-023 |
 | [ ] | P1-026 | Write unit tests for email parsers | Testing | P1-011–P1-015 | — |
@@ -1121,7 +1121,7 @@ Build the 2x2 quick actions grid with buttons for Upload Statement, Review Queue
 <!--P1-023-->
 ### P1-023 — Create Recent Activity feed component
 
-**Status:** open
+**Status:** done
 **Group:** UI
 **Depends on:** P1-022  |  **Blocks:** —  |  **parallel:** false
 
@@ -1144,7 +1144,11 @@ Build the activity feed showing recent import actions (matches, imports, uploads
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T16:00:00Z · by: claude
+- completed: 2026-01-11T16:30:00Z · by: claude
+- files: `src/components/page-specific/activity-feed-item.tsx`, `src/components/page-specific/recent-activity-feed.tsx`, `src/hooks/use-recent-activities.ts`, `src/app/api/imports/recent-activities/route.ts`, updated `src/app/imports/page.tsx`
+- notes: Created `ActivityFeedItem` component with color-coded icons for different activity types (success/waiting/upload/error/info). Created `RecentActivityFeed` component with loading skeleton, empty state, and "View All History" link. Created `useRecentActivities` hook and API route to fetch activities from `import_activities` table. Integrated into imports dashboard page, replacing inline mock activity items.
 
 ---
 
