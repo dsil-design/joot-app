@@ -102,7 +102,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-003 | Create `import_activities` table migration | Database | — | P1-004 |
 | [x] | P1-004 | Add RLS policies for new tables | Database | P1-001, P1-002, P1-003 | P1-005 |
 | [x] | P1-005 | Generate TypeScript types for new tables | Database | P1-004 | P1-010 |
-| [ ] | P1-006 | Add "Imports" to sidebar navigation | Navigation | — | P1-007 |
+| [x] | P1-006 | Add "Imports" to sidebar navigation | Navigation | — | P1-007 |
 | [ ] | P1-007 | Add "Imports" to mobile navigation | Navigation | P1-006 | P1-008 |
 | [ ] | P1-008 | Create `/imports` route structure | Navigation | P1-007 | P1-009 |
 | [ ] | P1-009 | Create Import Dashboard page skeleton | UI | P1-008 | P1-015 |
@@ -383,7 +383,7 @@ Regenerate Supabase TypeScript types to include the new tables and update any ty
 <!--P1-006-->
 ### P1-006 — Add "Imports" to sidebar navigation
 
-**Status:** open
+**Status:** done
 **Group:** Navigation
 **Depends on:** —  |  **Blocks:** P1-007  |  **parallel:** true
 
@@ -406,7 +406,9 @@ Add the "Imports" navigation item to the desktop sidebar, positioned between "Al
 **Notes & Open Questions:**
 - Check existing sidebar component location
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T14:00:00Z · by: claude
+- done: 2026-01-11T14:10:00Z · by: claude · notes: Added "Imports" navigation item to `src/components/page-specific/sidebar-navigation.tsx` using the Lucide `Import` icon. Positioned after "All Transactions" in navigationItems array. Active state highlighting works via existing `isActive()` function that checks `pathname?.startsWith(href)`. ESLint and build pass.
 
 ---
 
