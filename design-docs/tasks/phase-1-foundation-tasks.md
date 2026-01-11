@@ -115,7 +115,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-016 | Integrate parsers into email sync service | Email | P1-011–P1-015 | P1-017 |
 | [x] | P1-017 | Add extraction confidence scoring | Email | P1-016 | P1-018 |
 | [x] | P1-018 | Implement email classification logic | Email | P1-017 | — |
-| [ ] | P1-019 | Create `ImportStatusCard` component | UI | P1-009 | P1-020 |
+| [x] | P1-019 | Create `ImportStatusCard` component | UI | P1-009 | P1-020 |
 | [ ] | P1-020 | Create Dashboard status cards section | UI | P1-019 | P1-021 |
 | [ ] | P1-021 | Create Email Sync card component | UI | P1-020 | P1-022 |
 | [ ] | P1-022 | Create Quick Actions grid | UI | P1-021 | P1-023 |
@@ -994,7 +994,7 @@ Implement logic to classify emails and determine initial status (pending_review,
 <!--P1-019-->
 ### P1-019 — Create `ImportStatusCard` component
 
-**Status:** open
+**Status:** done
 **Group:** UI
 **Depends on:** P1-009  |  **Blocks:** P1-020  |  **parallel:** false
 
@@ -1017,7 +1017,9 @@ Build the reusable status card component used on the Import Dashboard (Pending R
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T10:00:00Z · by: claude
+- done: 2026-01-11T10:30:00Z · by: claude · notes: Created ImportStatusCard component with TypeScript interface (title, value, description, variant, href, icon, aria-label), 4 variants (pending/amber, waiting/blue, success/green, info/gray), loading skeleton state via null value, ImportStatusCardSkeleton component for full card loading, accessibility (aria-label, aria-live, focus-visible ring, aria-hidden icons), dark mode support. Updated imports/page.tsx to use the new component. Build passes.
 
 ---
 

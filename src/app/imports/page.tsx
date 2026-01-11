@@ -4,10 +4,11 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ImportStatusCard } from '@/components/page-specific/import-status-card'
 import {
-  AlertCircle,
-  Clock,
   CheckCircle2,
+  Clock,
+  AlertCircle,
   Mail,
   RefreshCw,
   Upload,
@@ -17,66 +18,6 @@ import {
   ArrowRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-// Status Card Component - reusable for the three top cards
-interface StatusCardProps {
-  title: string
-  value: number | null  // null = loading
-  description: string
-  variant: 'pending' | 'waiting' | 'success'
-  href: string
-}
-
-function StatusCard({ title, value, description, variant, href }: StatusCardProps) {
-  const variantStyles = {
-    pending: {
-      border: 'border-l-4 border-l-amber-500',
-      icon: AlertCircle,
-      iconColor: 'text-amber-500',
-      bgHover: 'hover:bg-amber-50/50',
-    },
-    waiting: {
-      border: 'border-l-4 border-l-blue-500',
-      icon: Clock,
-      iconColor: 'text-blue-500',
-      bgHover: 'hover:bg-blue-50/50',
-    },
-    success: {
-      border: 'border-l-4 border-l-green-500',
-      icon: CheckCircle2,
-      iconColor: 'text-green-500',
-      bgHover: 'hover:bg-green-50/50',
-    },
-  }
-
-  const styles = variantStyles[variant]
-  const Icon = styles.icon
-
-  return (
-    <Link href={href}>
-      <Card className={cn(
-        "cursor-pointer transition-colors",
-        styles.border,
-        styles.bgHover
-      )}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            <Icon className={cn("h-5 w-5", styles.iconColor)} />
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {title}
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold mb-1">
-            {value !== null ? value : <Skeleton className="h-9 w-16" />}
-          </div>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </CardContent>
-      </Card>
-    </Link>
-  )
-}
 
 // Email Sync Card Component
 interface EmailSyncCardProps {
@@ -300,21 +241,21 @@ export default function ImportsDashboardPage() {
     <div className="flex flex-col gap-6">
       {/* Status Cards Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatusCard
+        <ImportStatusCard
           title="Pending Review"
           value={statusCounts?.pending ?? null}
           description="Emails awaiting review"
           variant="pending"
           href="/imports/review?status=pending"
         />
-        <StatusCard
+        <ImportStatusCard
           title="Waiting for Statement"
           value={statusCounts?.waiting ?? null}
           description="THB receipts awaiting USD match"
           variant="waiting"
           href="/imports/review?status=waiting"
         />
-        <StatusCard
+        <ImportStatusCard
           title="Matched (30 days)"
           value={statusCounts?.matched ?? null}
           description="Successfully matched transactions"
