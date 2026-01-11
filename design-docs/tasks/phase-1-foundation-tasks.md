@@ -1,0 +1,976 @@
+# Phase 1: Foundation — Task Breakdown
+
+**Feature:** Email-to-Transaction Linking System
+**Phase:** 1 of 4 — Foundation
+**Status:** `draft`
+**Created:** 2025-01-02
+**Target Duration:** 2 weeks
+
+---
+
+## Steering & Inputs
+
+| Input | Path | Intent |
+|-------|------|--------|
+| Main Spec | `design-docs/email-transaction-linking-system.md` | Complete feature specification |
+| Wireframes | `design-docs/email-transaction-wireframes.md` | UI layouts and interactions |
+| Roadmap | `design-docs/email-transaction-implementation-roadmap.md` | 8-week implementation plan |
+| Project Standards | `CLAUDE.md` | Codebase conventions and patterns |
+
+**Key Constraints:**
+- Next.js 15 (App Router, Turbopack)
+- Supabase (PostgreSQL + RLS + Storage)
+- shadcn/ui + Tailwind CSS
+- TypeScript strict mode
+- Existing cron job at 18:00 UTC for email sync integration
+
+**Design Decisions Applied:**
+- Top-level "Imports" navigation
+- Never auto-approve (always require confirmation)
+- Files kept forever (no auto-delete)
+- ±2% exchange rate tolerance using `exchange_rates` table
+
+---
+
+## How to Use This Task List
+
+1. Tasks are numbered `P1-001`, `P1-002`, etc. (P1 = Phase 1)
+2. Execute tasks individually or in dependency order
+3. Each task contains Acceptance Criteria and Verification steps
+4. Parallelizable tasks are marked with `parallel: true`
+5. While in `draft`, tasks may be refined. After `approved`, IDs are immutable
+6. AI will update status as work progresses
+
+---
+
+## Task Index
+
+| Status | ID | Title | Group | Depends | Blocks |
+|--------|-----|-------|-------|---------|--------|
+| [ ] | P1-001 | Create `email_transactions` table migration | Database | — | P1-004, P1-005 |
+| [ ] | P1-002 | Create `statement_uploads` table migration | Database | — | P1-004 |
+| [ ] | P1-003 | Create `import_activities` table migration | Database | — | P1-004 |
+| [ ] | P1-004 | Add RLS policies for new tables | Database | P1-001, P1-002, P1-003 | P1-005 |
+| [ ] | P1-005 | Generate TypeScript types for new tables | Database | P1-004 | P1-010 |
+| [ ] | P1-006 | Add "Imports" to sidebar navigation | Navigation | — | P1-007 |
+| [ ] | P1-007 | Add "Imports" to mobile navigation | Navigation | P1-006 | P1-008 |
+| [ ] | P1-008 | Create `/imports` route structure | Navigation | P1-007 | P1-009 |
+| [ ] | P1-009 | Create Import Dashboard page skeleton | UI | P1-008 | P1-015 |
+| [ ] | P1-010 | Create email transaction extraction service | Email | P1-005 | P1-011 |
+| [ ] | P1-011 | Build Grab email parser | Email | P1-010 | P1-016 |
+| [ ] | P1-012 | Build Bolt email parser | Email | P1-010 | P1-016 |
+| [ ] | P1-013 | Build Bangkok Bank email parser | Email | P1-010 | P1-016 |
+| [ ] | P1-014 | Build Kasikorn Bank email parser | Email | P1-010 | P1-016 |
+| [ ] | P1-015 | Build Lazada email parser | Email | P1-010 | P1-016 |
+| [ ] | P1-016 | Integrate parsers into email sync service | Email | P1-011–P1-015 | P1-017 |
+| [ ] | P1-017 | Add extraction confidence scoring | Email | P1-016 | P1-018 |
+| [ ] | P1-018 | Implement email classification logic | Email | P1-017 | — |
+| [ ] | P1-019 | Create `ImportStatusCard` component | UI | P1-009 | P1-020 |
+| [ ] | P1-020 | Create Dashboard status cards section | UI | P1-019 | P1-021 |
+| [ ] | P1-021 | Create Email Sync card component | UI | P1-020 | P1-022 |
+| [ ] | P1-022 | Create Quick Actions grid | UI | P1-021 | P1-023 |
+| [ ] | P1-023 | Create Recent Activity feed component | UI | P1-022 | — |
+| [ ] | P1-024 | Create API route: POST /api/emails/sync | API | P1-018 | P1-021 |
+| [ ] | P1-025 | Create API route: GET /api/emails/transactions | API | P1-018 | P1-023 |
+| [ ] | P1-026 | Write unit tests for email parsers | Testing | P1-011–P1-015 | — |
+| [ ] | P1-027 | Write integration tests for email sync | Testing | P1-024 | — |
+
+---
+
+## Tasks (Detailed Sections)
+
+<!--P1-001-->
+### P1-001 — Create `email_transactions` table migration
+
+**Status:** open
+**Group:** Database
+**Depends on:** —  |  **Blocks:** P1-004, P1-005  |  **parallel:** true
+
+**Description:**
+Create the database migration for the `email_transactions` table that stores parsed email data, links to matched transactions, and tracks confidence/status.
+
+**Acceptance Criteria (EARS):**
+- The migration SHALL create a table with all columns from spec (id, user_id, message_id, uid, folder, subject, from_address, from_name, email_date, seen, has_attachments, vendor_id, vendor_name_raw, amount, currency, transaction_date, description, order_id, matched_transaction_id, match_confidence, match_method, status, classification, extraction_confidence, extraction_notes, synced_at, processed_at, matched_at, created_at, updated_at)
+- WHEN the migration runs THEN all indexes are created (user_id, status, matched_transaction_id, date, folder, synced_at, full-text search)
+- The table SHALL have foreign key constraints to users, vendors, and transactions tables
+- The table SHALL have CHECK constraints for valid status and classification values
+
+**Deliverables:**
+- `database/migrations/YYYYMMDDHHMMSS_create_email_transactions.sql`
+- Updated `database/schema.sql` with table definition
+
+**Verification:**
+- Unit: Migration runs without errors on clean database
+- Integration: Table accepts valid inserts, rejects invalid status/classification
+- Rollback: Migration can be reversed cleanly
+
+**Notes & Open Questions:**
+- Use `gen_random_uuid()` instead of `uuid_generate_v4()` per Supabase best practices
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-002-->
+### P1-002 — Create `statement_uploads` table migration
+
+**Status:** open
+**Group:** Database
+**Depends on:** —  |  **Blocks:** P1-004  |  **parallel:** true
+
+**Description:**
+Create the database migration for the `statement_uploads` table that stores metadata for uploaded statement files and processing results.
+
+**Acceptance Criteria (EARS):**
+- The migration SHALL create a table with columns: id, user_id, filename, file_path, file_size, file_type, payment_method_id, statement_period_start, statement_period_end, status, transactions_extracted, transactions_matched, transactions_new, extraction_started_at, extraction_completed_at, extraction_error, extraction_log, uploaded_at, created_at, updated_at
+- WHEN the migration runs THEN indexes are created (user_id, payment_method_id, uploaded_at, status)
+- The table SHALL have CHECK constraint for valid status values (pending, processing, completed, failed)
+
+**Deliverables:**
+- `database/migrations/YYYYMMDDHHMMSS_create_statement_uploads.sql`
+- Updated `database/schema.sql`
+
+**Verification:**
+- Unit: Migration runs without errors
+- Integration: Table accepts valid inserts with file metadata
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-003-->
+### P1-003 — Create `import_activities` table migration
+
+**Status:** open
+**Group:** Database
+**Depends on:** —  |  **Blocks:** P1-004  |  **parallel:** true
+
+**Description:**
+Create the database migration for the `import_activities` table that provides an audit trail of all import actions.
+
+**Acceptance Criteria (EARS):**
+- The migration SHALL create a table with columns: id, user_id, activity_type, statement_upload_id, description, transactions_affected, total_amount, currency, metadata, created_at
+- WHEN the migration runs THEN indexes are created (user_id, activity_type, created_at)
+- The table SHALL have CHECK constraint for valid activity_type values
+
+**Deliverables:**
+- `database/migrations/YYYYMMDDHHMMSS_create_import_activities.sql`
+- Updated `database/schema.sql`
+
+**Verification:**
+- Unit: Migration runs without errors
+- Integration: Activity records can be inserted and queried
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-004-->
+### P1-004 — Add RLS policies for new tables
+
+**Status:** open
+**Group:** Database
+**Depends on:** P1-001, P1-002, P1-003  |  **Blocks:** P1-005  |  **parallel:** false
+
+**Description:**
+Enable Row Level Security and create policies for all three new tables, ensuring users can only access their own data.
+
+**Acceptance Criteria (EARS):**
+- WHEN RLS is enabled THEN users can only SELECT/INSERT/UPDATE/DELETE their own records
+- The policies SHALL match the pattern used for existing tables (transactions, vendors, etc.)
+- Service role SHALL have full access for API routes
+
+**Deliverables:**
+- RLS policies added to migration files or separate policy migration
+- Documentation of policy rules
+
+**Verification:**
+- Integration: Test that user A cannot see user B's data
+- Integration: Test that service role can access all data
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-005-->
+### P1-005 — Generate TypeScript types for new tables
+
+**Status:** open
+**Group:** Database
+**Depends on:** P1-004  |  **Blocks:** P1-010  |  **parallel:** false
+
+**Description:**
+Regenerate Supabase TypeScript types to include the new tables and update any type definitions.
+
+**Acceptance Criteria (EARS):**
+- WHEN types are generated THEN `src/lib/supabase/types.ts` includes EmailTransaction, StatementUpload, ImportActivity types
+- The types SHALL be properly exported and usable throughout the codebase
+
+**Deliverables:**
+- Updated `src/lib/supabase/types.ts`
+- Optional: Create convenience type aliases in `src/lib/types/` if needed
+
+**Verification:**
+- TypeScript compilation passes with no errors
+- Types are correctly inferred in IDE
+
+**Notes & Open Questions:**
+- Run: `npx supabase gen types typescript --linked > src/lib/supabase/types.ts`
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-006-->
+### P1-006 — Add "Imports" to sidebar navigation
+
+**Status:** open
+**Group:** Navigation
+**Depends on:** —  |  **Blocks:** P1-007  |  **parallel:** true
+
+**Description:**
+Add the "Imports" navigation item to the desktop sidebar, positioned between "All Transactions" and "Settings".
+
+**Acceptance Criteria (EARS):**
+- The sidebar SHALL display "Imports" with a 📥 icon (or appropriate Lucide icon)
+- WHEN on any `/imports/*` route THEN the Imports nav item is highlighted as active
+- The link SHALL navigate to `/imports`
+
+**Deliverables:**
+- Updated sidebar navigation component
+
+**Verification:**
+- Visual: Nav item appears in correct position
+- Functional: Clicking navigates to /imports
+- Active state displays correctly
+
+**Notes & Open Questions:**
+- Check existing sidebar component location
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-007-->
+### P1-007 — Add "Imports" to mobile navigation
+
+**Status:** open
+**Group:** Navigation
+**Depends on:** P1-006  |  **Blocks:** P1-008  |  **parallel:** false
+
+**Description:**
+Add the "Imports" tab to the mobile/tablet top navigation bar.
+
+**Acceptance Criteria (EARS):**
+- The mobile nav SHALL display "Imports" tab between "Transactions" and "Settings"
+- WHEN on any `/imports/*` route THEN the tab is highlighted
+- Touch target SHALL be at least 44x44px
+
+**Deliverables:**
+- Updated mobile navigation component
+
+**Verification:**
+- Visual: Tab appears on mobile viewport
+- Functional: Tap navigates correctly
+- A11y: Touch target size is adequate
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-008-->
+### P1-008 — Create `/imports` route structure
+
+**Status:** open
+**Group:** Navigation
+**Depends on:** P1-007  |  **Blocks:** P1-009  |  **parallel:** false
+
+**Description:**
+Create the Next.js App Router folder structure for all import-related pages.
+
+**Acceptance Criteria (EARS):**
+- The route structure SHALL include:
+  - `/imports` (dashboard)
+  - `/imports/review` (review queue)
+  - `/imports/statements` (upload)
+  - `/imports/history` (activity log)
+- Each route SHALL have a basic page.tsx with placeholder content
+- Routes SHALL be protected by authentication
+
+**Deliverables:**
+- `src/app/imports/page.tsx`
+- `src/app/imports/review/page.tsx`
+- `src/app/imports/statements/page.tsx`
+- `src/app/imports/history/page.tsx`
+- `src/app/imports/layout.tsx` (if needed for shared layout)
+
+**Verification:**
+- Navigation: All routes accessible and render
+- Auth: Unauthenticated users redirected to login
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-009-->
+### P1-009 — Create Import Dashboard page skeleton
+
+**Status:** open
+**Group:** UI
+**Depends on:** P1-008  |  **Blocks:** P1-015  |  **parallel:** false
+
+**Description:**
+Build the basic layout structure for the Import Dashboard page following the wireframe.
+
+**Acceptance Criteria (EARS):**
+- The page SHALL have the correct layout matching wireframe (status cards, email sync card, quick actions, activity feed)
+- The page SHALL be responsive (desktop/tablet/mobile breakpoints)
+- Initial state SHALL show loading skeletons for dynamic content
+
+**Deliverables:**
+- `src/app/imports/page.tsx` with full layout structure
+- Placeholder/skeleton components for each section
+
+**Verification:**
+- Visual: Layout matches wireframe at all breakpoints
+- Loading: Skeleton states display correctly
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-010-->
+### P1-010 — Create email transaction extraction service
+
+**Status:** open
+**Group:** Email
+**Depends on:** P1-005  |  **Blocks:** P1-011  |  **parallel:** false
+
+**Description:**
+Create the core service that orchestrates email parsing, extraction, and storage into `email_transactions` table.
+
+**Acceptance Criteria (EARS):**
+- The service SHALL accept raw email content and return extracted transaction data
+- WHEN extraction succeeds THEN data is inserted into `email_transactions`
+- WHEN extraction fails THEN error is logged and email is marked for manual review
+- The service SHALL calculate extraction confidence scores
+
+**Deliverables:**
+- `src/lib/email/extraction-service.ts`
+- `src/lib/email/types.ts` (extraction types)
+
+**Verification:**
+- Unit: Service correctly orchestrates parser calls
+- Integration: Extracted data saves to database
+
+**Notes & Open Questions:**
+- This builds on existing `emailSyncService` - extends rather than replaces
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-011-->
+### P1-011 — Build Grab email parser
+
+**Status:** open
+**Group:** Email
+**Depends on:** P1-010  |  **Blocks:** P1-016  |  **parallel:** true
+
+**Description:**
+Create parser for Grab receipt emails (GrabFood, GrabCar, GrabMart, GrabExpress).
+
+**Acceptance Criteria (EARS):**
+- The parser SHALL extract: vendor name, amount, currency (THB), transaction date, order ID, description
+- WHEN email is from `no-reply@grab.com` or contains Grab receipt patterns THEN parser is triggered
+- The parser SHALL handle all Grab service types (Food, Car, Mart, Express)
+- Extraction confidence SHALL be calculated based on field match quality
+
+**Deliverables:**
+- `src/lib/email/extractors/grab.ts`
+- Test fixtures with sample Grab emails
+
+**Verification:**
+- Unit: Parser extracts correct data from sample emails
+- Edge cases: Handles variations in email format
+
+**Notes & Open Questions:**
+- Reference existing import skill patterns for Grab parsing
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-012-->
+### P1-012 — Build Bolt email parser
+
+**Status:** open
+**Group:** Email
+**Depends on:** P1-010  |  **Blocks:** P1-016  |  **parallel:** true
+
+**Description:**
+Create parser for Bolt ride receipt emails.
+
+**Acceptance Criteria (EARS):**
+- The parser SHALL extract: vendor name (Bolt), amount, currency (THB), transaction date, trip ID, description
+- WHEN email is from `bangkok@bolt.eu` or contains Bolt receipt patterns THEN parser is triggered
+- Extraction confidence SHALL be calculated
+
+**Deliverables:**
+- `src/lib/email/extractors/bolt.ts`
+- Test fixtures with sample Bolt emails
+
+**Verification:**
+- Unit: Parser extracts correct data
+- Edge cases: Handles format variations
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-013-->
+### P1-013 — Build Bangkok Bank email parser
+
+**Status:** open
+**Group:** Email
+**Depends on:** P1-010  |  **Blocks:** P1-016  |  **parallel:** true
+
+**Description:**
+Create parser for Bangkok Bank (Bualuang) notification emails (payments, transfers, PromptPay).
+
+**Acceptance Criteria (EARS):**
+- The parser SHALL extract: vendor/recipient name, amount, currency (THB), transaction date, reference number
+- WHEN email is from `BualuangmBanking@bangkokbank.com` THEN parser is triggered
+- The parser SHALL distinguish between payment types (bill pay, transfer, PromptPay)
+
+**Deliverables:**
+- `src/lib/email/extractors/bangkok-bank.ts`
+- Test fixtures
+
+**Verification:**
+- Unit: Parser handles all Bangkok Bank email types
+- Edge cases: Different payment types parsed correctly
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-014-->
+### P1-014 — Build Kasikorn Bank email parser
+
+**Status:** open
+**Group:** Email
+**Depends on:** P1-010  |  **Blocks:** P1-016  |  **parallel:** true
+
+**Description:**
+Create parser for Kasikorn Bank (K PLUS) notification emails.
+
+**Acceptance Criteria (EARS):**
+- The parser SHALL extract: vendor/recipient name, amount, currency (THB), transaction date, reference
+- WHEN email matches Kasikorn patterns THEN parser is triggered
+- The parser SHALL handle different notification types
+
+**Deliverables:**
+- `src/lib/email/extractors/kasikorn.ts`
+- Test fixtures
+
+**Verification:**
+- Unit: Parser extracts correct data
+- Edge cases: Format variations handled
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-015-->
+### P1-015 — Build Lazada email parser
+
+**Status:** open
+**Group:** Email
+**Depends on:** P1-010  |  **Blocks:** P1-016  |  **parallel:** true
+
+**Description:**
+Create parser for Lazada order confirmation and receipt emails.
+
+**Acceptance Criteria (EARS):**
+- The parser SHALL extract: vendor (Lazada), estimated amount, currency (THB), order date, order ID
+- WHEN email is from `order@lazada.co.th` THEN parser is triggered
+- The parser SHALL note that Lazada amounts may be estimates (pending actual charge)
+
+**Deliverables:**
+- `src/lib/email/extractors/lazada.ts`
+- Test fixtures
+
+**Verification:**
+- Unit: Parser extracts order data
+- Edge cases: Multi-item orders, partial orders
+
+**Notes & Open Questions:**
+- Lazada emails often show estimated totals; actual charge may differ
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-016-->
+### P1-016 — Integrate parsers into email sync service
+
+**Status:** open
+**Group:** Email
+**Depends on:** P1-011, P1-012, P1-013, P1-014, P1-015  |  **Blocks:** P1-017  |  **parallel:** false
+
+**Description:**
+Integrate all email parsers into the existing `emailSyncService` so that parsed data flows into `email_transactions` table during sync.
+
+**Acceptance Criteria (EARS):**
+- WHEN email sync runs THEN each email is processed through appropriate parser
+- WHEN parser matches THEN extracted data is saved to `email_transactions`
+- WHEN no parser matches THEN email is stored with `classification: 'unknown'`
+- The sync SHALL continue even if individual emails fail parsing
+
+**Deliverables:**
+- Updated `src/lib/services/email-sync-service.ts`
+- `src/lib/email/classifier.ts` (detects which parser to use)
+
+**Verification:**
+- Integration: Full sync populates `email_transactions`
+- Error handling: Failed parses don't break sync
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-017-->
+### P1-017 — Add extraction confidence scoring
+
+**Status:** open
+**Group:** Email
+**Depends on:** P1-016  |  **Blocks:** P1-018  |  **parallel:** false
+
+**Description:**
+Implement confidence scoring for extracted email data based on field completeness and pattern match quality.
+
+**Acceptance Criteria (EARS):**
+- The score SHALL be 0-100 based on:
+  - All required fields present: +40 points
+  - Amount parsed correctly: +20 points
+  - Date parsed correctly: +20 points
+  - Vendor identified: +10 points
+  - Order ID found: +10 points
+- WHEN score < 55 THEN status = 'needs_manual_review'
+- WHEN score >= 90 THEN status = 'pending_review' (high confidence)
+
+**Deliverables:**
+- Confidence calculation logic in extraction service
+- Score stored in `extraction_confidence` column
+
+**Verification:**
+- Unit: Score calculation is deterministic and correct
+- Integration: Scores stored with email records
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-018-->
+### P1-018 — Implement email classification logic
+
+**Status:** open
+**Group:** Email
+**Depends on:** P1-017  |  **Blocks:** —  |  **parallel:** false
+
+**Description:**
+Implement logic to classify emails and determine initial status (pending_review, waiting_for_statement, ready_to_import, etc.).
+
+**Acceptance Criteria (EARS):**
+- WHEN THB email from Grab/Bolt (typically paid via USD CC) THEN status = 'waiting_for_statement'
+- WHEN THB email from Bangkok Bank/Kasikorn (direct debit) THEN status = 'ready_to_import'
+- WHEN classification uncertain THEN status = 'pending_review'
+- Classification logic SHALL be configurable per payment method
+
+**Deliverables:**
+- Classification logic in `src/lib/email/classifier.ts`
+- Classification rules documentation
+
+**Verification:**
+- Unit: Classification returns correct status for each email type
+- Integration: Status correctly set in database
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-019-->
+### P1-019 — Create `ImportStatusCard` component
+
+**Status:** open
+**Group:** UI
+**Depends on:** P1-009  |  **Blocks:** P1-020  |  **parallel:** false
+
+**Description:**
+Build the reusable status card component used on the Import Dashboard (Pending Review, Waiting for Statement, Matched counts).
+
+**Acceptance Criteria (EARS):**
+- The component SHALL accept: title, value, icon, variant (pending/waiting/success/info)
+- The component SHALL be clickable and navigate to filtered view
+- Colors SHALL match spec (amber for pending, blue for waiting, green for matched)
+- The component SHALL show loading skeleton state
+
+**Deliverables:**
+- `src/components/page-specific/import-status-card.tsx`
+
+**Verification:**
+- Visual: Matches wireframe design
+- Interaction: Click navigates correctly
+- A11y: Proper focus states and aria labels
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-020-->
+### P1-020 — Create Dashboard status cards section
+
+**Status:** open
+**Group:** UI
+**Depends on:** P1-019  |  **Blocks:** P1-021  |  **parallel:** false
+
+**Description:**
+Implement the top section of the dashboard showing the three status cards in a responsive grid.
+
+**Acceptance Criteria (EARS):**
+- The grid SHALL be 3 columns on desktop, 1 column on mobile
+- The cards SHALL fetch real data from API
+- WHEN data is loading THEN skeleton cards are shown
+
+**Deliverables:**
+- Status cards section in dashboard page
+- Data fetching hook for counts
+
+**Verification:**
+- Visual: Responsive grid works correctly
+- Data: Counts reflect actual database values
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-021-->
+### P1-021 — Create Email Sync card component
+
+**Status:** open
+**Group:** UI
+**Depends on:** P1-020  |  **Blocks:** P1-022  |  **parallel:** false
+
+**Description:**
+Build the Email Sync status card showing connection status, last sync time, and "Sync Now" button.
+
+**Acceptance Criteria (EARS):**
+- The card SHALL show: last sync timestamp, folder name, total synced count
+- WHEN synced < 1 hour ago THEN show green indicator
+- WHEN synced 1-6 hours ago THEN show yellow indicator
+- WHEN synced > 6 hours ago THEN show gray indicator
+- WHEN "Sync Now" clicked THEN trigger manual sync with loading state
+
+**Deliverables:**
+- Email sync card in dashboard
+- Manual sync trigger integration
+
+**Verification:**
+- Visual: Indicators change based on time
+- Functional: Sync Now triggers API call
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-022-->
+### P1-022 — Create Quick Actions grid
+
+**Status:** open
+**Group:** UI
+**Depends on:** P1-021  |  **Blocks:** P1-023  |  **parallel:** false
+
+**Description:**
+Build the 2x2 quick actions grid with buttons for Upload Statement, Review Queue, View History, and Import Settings.
+
+**Acceptance Criteria (EARS):**
+- The grid SHALL be 2x2 on desktop, 1x4 (stacked) on mobile
+- Each button SHALL have icon + label
+- "Upload Statement" SHALL be primary button style
+- Others SHALL be secondary/outline style
+
+**Deliverables:**
+- Quick actions section in dashboard
+
+**Verification:**
+- Visual: Grid layout correct at all breakpoints
+- Navigation: All buttons navigate to correct pages
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-023-->
+### P1-023 — Create Recent Activity feed component
+
+**Status:** open
+**Group:** UI
+**Depends on:** P1-022  |  **Blocks:** —  |  **parallel:** false
+
+**Description:**
+Build the activity feed showing recent import actions (matches, imports, uploads, errors).
+
+**Acceptance Criteria (EARS):**
+- The feed SHALL show 5 most recent activities
+- Each item SHALL have: timestamp, icon (color-coded by type), description, metadata
+- "View All History" link SHALL navigate to `/imports/history`
+- WHEN no activities THEN show empty state
+
+**Deliverables:**
+- `src/components/page-specific/activity-feed-item.tsx`
+- Activity feed section in dashboard
+
+**Verification:**
+- Visual: Timeline style matches wireframe
+- Data: Activities fetched from `import_activities` table
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-024-->
+### P1-024 — Create API route: POST /api/emails/sync
+
+**Status:** open
+**Group:** API
+**Depends on:** P1-018  |  **Blocks:** P1-021  |  **parallel:** false
+
+**Description:**
+Create the API endpoint for manually triggering email sync.
+
+**Acceptance Criteria (EARS):**
+- WHEN POST request received THEN trigger email sync for authenticated user
+- The response SHALL include: success, synced count, errors, lastUid
+- WHEN sync is already running THEN return 409 Conflict
+- The endpoint SHALL require authentication
+
+**Deliverables:**
+- `src/app/api/emails/sync/route.ts`
+
+**Verification:**
+- Functional: Endpoint triggers sync
+- Auth: Unauthenticated requests rejected
+- Concurrency: Prevents duplicate runs
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-025-->
+### P1-025 — Create API route: GET /api/emails/transactions
+
+**Status:** open
+**Group:** API
+**Depends on:** P1-018  |  **Blocks:** P1-023  |  **parallel:** true
+
+**Description:**
+Create the API endpoint for listing email transactions with filtering and pagination.
+
+**Acceptance Criteria (EARS):**
+- The endpoint SHALL accept query params: status, currency, dateFrom, dateTo, search, limit, offset
+- The response SHALL include: emails array, total count, pagination info
+- Results SHALL be filtered by authenticated user's ID (RLS)
+
+**Deliverables:**
+- `src/app/api/emails/transactions/route.ts`
+
+**Verification:**
+- Functional: Filtering works correctly
+- Pagination: Limit/offset work as expected
+- Security: Only user's own data returned
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-026-->
+### P1-026 — Write unit tests for email parsers
+
+**Status:** open
+**Group:** Testing
+**Depends on:** P1-011, P1-012, P1-013, P1-014, P1-015  |  **Blocks:** —  |  **parallel:** true
+
+**Description:**
+Create comprehensive unit tests for all email parser modules.
+
+**Acceptance Criteria (EARS):**
+- Each parser SHALL have tests for: valid extraction, missing fields, format variations
+- Test coverage SHALL be >80% for parser modules
+- Tests SHALL use realistic email fixtures
+
+**Deliverables:**
+- `__tests__/lib/email/extractors/grab.test.ts`
+- `__tests__/lib/email/extractors/bolt.test.ts`
+- `__tests__/lib/email/extractors/bangkok-bank.test.ts`
+- `__tests__/lib/email/extractors/kasikorn.test.ts`
+- `__tests__/lib/email/extractors/lazada.test.ts`
+- Test fixtures in `__tests__/fixtures/emails/`
+
+**Verification:**
+- All tests pass
+- Coverage meets threshold
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+<!--P1-027-->
+### P1-027 — Write integration tests for email sync
+
+**Status:** open
+**Group:** Testing
+**Depends on:** P1-024  |  **Blocks:** —  |  **parallel:** true
+
+**Description:**
+Create integration tests for the email sync flow end-to-end.
+
+**Acceptance Criteria (EARS):**
+- Tests SHALL verify: API triggers sync, data saved to database, correct status returned
+- Tests SHALL mock IMAP connection
+- Tests SHALL verify error handling
+
+**Deliverables:**
+- `__tests__/integration/email-sync.test.ts`
+
+**Verification:**
+- Tests pass with mocked IMAP
+
+**Notes & Open Questions:** _(empty)_
+
+**Completion Log:** _(empty initially)_
+
+---
+
+## Dependency Map
+
+```
+Critical Path:
+P1-001 ──┐
+P1-002 ──┼──► P1-004 ──► P1-005 ──► P1-010 ──► P1-011─P1-015 ──► P1-016 ──► P1-017 ──► P1-018
+P1-003 ──┘                                      (parallel)
+
+UI Path (can run parallel after P1-008):
+P1-006 ──► P1-007 ──► P1-008 ──► P1-009 ──► P1-019 ──► P1-020 ──► P1-021 ──► P1-022 ──► P1-023
+
+Safe Parallel Lanes:
+- Database tasks P1-001, P1-002, P1-003 can run in parallel
+- Parser tasks P1-011, P1-012, P1-013, P1-014, P1-015 can run in parallel
+- Testing tasks P1-026, P1-027 can run in parallel with other work
+```
+
+---
+
+## Traceability
+
+| Spec Requirement | Plan Section | Task IDs |
+|-----------------|--------------|----------|
+| Database: email_transactions table | Phase 1: Database | P1-001 |
+| Database: statement_uploads table | Phase 1: Database | P1-002 |
+| Database: import_activities table | Phase 1: Database | P1-003 |
+| Database: RLS policies | Phase 1: Database | P1-004 |
+| Navigation: Imports menu item | Phase 1: Navigation | P1-006, P1-007, P1-008 |
+| Email parsing: Grab | Phase 1: Email Integration | P1-011 |
+| Email parsing: Bolt | Phase 1: Email Integration | P1-012 |
+| Email parsing: Bangkok Bank | Phase 1: Email Integration | P1-013 |
+| Email parsing: Kasikorn | Phase 1: Email Integration | P1-014 |
+| Email parsing: Lazada | Phase 1: Email Integration | P1-015 |
+| Dashboard UI | Phase 1: Basic UI | P1-009, P1-019–P1-023 |
+
+---
+
+## Estimates & Sequencing Notes
+
+| Task ID | Estimate | Notes |
+|---------|----------|-------|
+| P1-001–P1-004 | S (1-2 hrs each) | Database migrations are straightforward |
+| P1-005 | S (30 min) | Type generation is automated |
+| P1-006–P1-008 | S (1 hr each) | Navigation changes are simple |
+| P1-009 | M (2-3 hrs) | Layout skeleton with responsive design |
+| P1-010 | M (3-4 hrs) | Core extraction service architecture |
+| P1-011–P1-015 | M (2-3 hrs each) | Email parsers need pattern testing |
+| P1-016–P1-018 | M (2-3 hrs each) | Integration and classification logic |
+| P1-019–P1-023 | S-M (1-3 hrs each) | UI components |
+| P1-024–P1-025 | S (1-2 hrs each) | API routes |
+| P1-026–P1-027 | M (3-4 hrs total) | Testing |
+
+**Total Estimated Time:** ~40-50 hours (2 weeks with buffer)
+
+---
+
+## Update Protocol
+
+When implementing tasks:
+
+1. **Mark task in progress:** Add note to Completion Log with start timestamp
+2. **Update status when done:**
+   - Flip checkbox in Task Index: `[ ]` → `[x]`
+   - Change `**Status:** open` → `**Status:** done`
+   - Add Completion Log entry: `- done: <ISO-8601> · by: <agent|user> · notes: <optional>`
+3. **If blocked:** Add note to Notes & Open Questions, do not mark done
+4. **If scope changes:** Append new tasks with next available ID (P1-028, etc.)
+5. **Never renumber** existing task IDs after document is approved
+
+---
+
+## Approval Gate
+
+Task breakdown complete (initial state: all tasks open).
+
+**Phase 1 Summary:**
+- 27 tasks total
+- 4 Database, 4 Navigation, 9 Email, 7 UI, 2 API, 2 Testing
+- Critical path: Database → Types → Parsers → Integration
+- Parallel work possible for parsers and UI
+
+Would you like to approve or modify the tasks?
