@@ -11,6 +11,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "jest",
+    "test:unit": "jest --testPathPattern='__tests__/lib'",
+    "test:coverage": "jest --coverage",
     "db:test": "node scripts/db/test-supabase-connection.js",
     "db:reset": "node scripts/db/reset-transaction-data.js",
     "validate:env": "node scripts/env/validate-env.js",
@@ -77,7 +80,9 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@jest/globals": "^30.2.0",
     "@tailwindcss/postcss": "^4.1.11",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.19.21",
     "@types/pg": "^8.15.5",
     "@types/react": "^19",
@@ -87,9 +92,11 @@
     "dotenv": "^17.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.4.5",
+    "jest": "^30.2.0",
     "ora": "^8.2.0",
     "pg": "^8.16.3",
     "tailwindcss": "^4.1.11",
+    "ts-jest": "^29.4.6",
     "tsx": "^4.20.4",
     "typescript": "^5"
   }

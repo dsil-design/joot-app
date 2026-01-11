@@ -1,0 +1,16 @@
+Subject: Payment confirmed for your Lazada order
+From: order@lazada.co.th
+Date: Tue, 19 Nov 2025 09:00:00 +0700
+
+Lazada Thailand
+
+Payment Confirmed!
+
+Your payment has been received for Order #1111222233334.
+
+Amount: ฿2,599.00
+Payment Method: LazWallet
+
+Your order is being prepared for shipment.
+
+Thank you for shopping with Lazada!

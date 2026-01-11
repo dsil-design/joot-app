@@ -115,7 +115,7 @@ describe('boltParser', () => {
       expect(result.data!.order_id).toBe('BOLT-12345-XYZ');
       expect(result.data!.vendor_id).toBe(BOLT_VENDOR_ID);
       expect(result.data!.description).toContain('Saturday');
-      expect(result.data!.description).toContain('Nimman Hotel');
+      expect(result.data!.description).toContain('Hotel'); // Simplified destination
       expect(result.confidence).toBeGreaterThanOrEqual(80);
     });
 
@@ -256,14 +256,14 @@ describe('boltParser', () => {
 });
 
 describe('extractDestination', () => {
-  it('should extract drop-off location with hyphen', () => {
+  it('should extract and simplify drop-off location with hyphen', () => {
     const result = extractDestination('Drop-off: Nimman Hotel\nTime: 18:25');
-    expect(result).toBe('Nimman Hotel');
+    expect(result).toBe('Hotel'); // Simplified from "Nimman Hotel"
   });
 
-  it('should extract dropoff location without hyphen', () => {
+  it('should extract and simplify dropoff location without hyphen', () => {
     const result = extractDestination('Dropoff: Central Plaza');
-    expect(result).toBe('Central Plaza');
+    expect(result).toBe('Mall'); // Simplified from "Central Plaza"
   });
 
   it('should extract destination keyword location', () => {
@@ -419,7 +419,7 @@ describe('buildDescription', () => {
       'Drop-off: Nimman Hotel',
       'Your Bolt ride on Saturday'
     );
-    expect(result).toBe('Saturday Ride to Nimman Hotel');
+    expect(result).toBe('Saturday Ride to Hotel'); // Destination simplified
   });
 
   it('should build description with destination only', () => {

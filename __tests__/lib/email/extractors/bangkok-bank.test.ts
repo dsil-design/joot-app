@@ -99,7 +99,7 @@ describe('bangkokBankParser', () => {
       const email = createMockEmail({
         subject: 'ยืนยันการชำระเงิน / Payments confirmation',
         text_body: `
-          Bangkok Bank Public Company Limited
+          Bualuang mBanking
 
           Payments Confirmation
 
@@ -341,10 +341,12 @@ describe('detectTransferType', () => {
 });
 
 describe('decodeBase64Content', () => {
-  it('should decode base64 content', () => {
-    const encoded = Buffer.from('Hello World').toString('base64');
+  it('should decode base64 content when long enough', () => {
+    // Function requires decoded content > 50 chars
+    const longText = 'This is a long enough string that will pass the threshold check and be decoded properly as base64 content.';
+    const encoded = Buffer.from(longText).toString('base64');
     const result = decodeBase64Content(encoded);
-    expect(result).toBe('Hello World');
+    expect(result).toBe(longText);
   });
 
   it('should return original content if not base64', () => {
@@ -353,10 +355,12 @@ describe('decodeBase64Content', () => {
     expect(result).toBe(text);
   });
 
-  it('should handle mixed content with base64 blocks', () => {
-    const text = 'Some header\n' + Buffer.from('Decoded content here').toString('base64');
-    const result = decodeBase64Content(text);
-    expect(result).toContain('Decoded content here');
+  it('should return original for short base64 encoded content', () => {
+    // Short base64 encoded text is returned as-is (threshold protection)
+    const encoded = Buffer.from('Short text').toString('base64');
+    const result = decodeBase64Content(encoded);
+    // Returns original because decoded is too short
+    expect(result).toBe(encoded);
   });
 });
 

@@ -1,0 +1,9 @@
+Subject: Your Lazada order
+From: orders@lazada.co.th
+Date: Wed, 20 Nov 2025 11:30:00 +0700
+
+Thank you for your order from Lazada.
+
+Total: THB 350.00
+
+Your order will be processed shortly.

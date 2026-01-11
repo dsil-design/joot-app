@@ -1,0 +1,19 @@
+Subject: Your Lazada order has been delivered
+From: notification@lazada.co.th
+Date: Mon, 18 Nov 2025 15:45:00 +0700
+
+Lazada Thailand
+
+Your order has been delivered!
+
+Order #5555666677778 has been delivered.
+
+Delivery completed at 15:30 on November 18, 2025.
+
+Order Total: ฿450.00
+
+We hope you enjoy your purchase!
+
+Rate your experience and earn LazCoins.
+
+Thank you for shopping with Lazada!

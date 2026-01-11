@@ -34,10 +34,11 @@ const GRAB_SUBJECT_PATTERNS = [
 const THB_AMOUNT_PATTERN = /(?:฿|THB)\s*([\d,]+(?:\.\d{2})?)/gi;
 
 // Order/Booking ID patterns
+// Note: Patterns are checked in order - more specific patterns first
 const ORDER_ID_PATTERNS = [
-  /(?:Order|Booking)\s*(?:ID|No\.?|Number)?[:\s]*([A-Z0-9-]+)/gi,
-  /(?:A-\d{12,})/gi, // Grab format: A-XXXXXXXXXXXX
-  /(?:GF|GM|GE|GC)-[\w-]+/gi, // Service-specific prefixes
+  /\b(A-\d{12,})\b/gi, // Grab format: A-XXXXXXXXXXXX
+  /\b((?:GF|GM|GE|GC)-[\w-]+)\b/gi, // Service-specific prefixes with full match capture
+  /(?:Order|Booking)\s+(?:ID|No\.?|Number)[:\s]+([A-Z0-9-]+)/gi, // Must have ID/No/Number keyword
 ];
 
 // Service type detection patterns

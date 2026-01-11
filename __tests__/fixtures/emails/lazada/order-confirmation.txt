@@ -1,0 +1,29 @@
+Subject: Thank you for your order! Your Lazada order has been confirmed
+From: order@lazada.co.th
+Date: Wed, 15 Nov 2025 14:30:00 +0700
+
+Lazada Thailand
+
+Thank you for your order!
+
+Your order has been confirmed.
+
+Order Details
+Order ID: #1234567890123
+
+Items (3):
+1. Wireless Bluetooth Earbuds - ฿599.00
+2. Phone Case - ฿299.00
+3. USB-C Cable (2 pack) - ฿199.00
+
+Subtotal: ฿1,097.00
+Shipping: ฿0.00
+Discount: -฿100.00
+
+Order Total: ฿997.00
+
+Payment Method: Credit Card ending in 1234
+
+Estimated Delivery: November 18-20, 2025
+
+Thank you for shopping with Lazada!

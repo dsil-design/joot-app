@@ -34,8 +34,8 @@ const KPLUS_SUBJECT_PATTERNS = {
 const THB_AMOUNT_PATTERN = /amount\s*\(?thb\)?[:\s]*([\d,]+(?:\.\d{2})?)/gi;
 const SIMPLE_AMOUNT_PATTERN = /([\d,]+(?:\.\d{2})?)\s*(?:thb|baht|บาท)/gi;
 
-// Reference/Transaction number pattern
-const TRANSACTION_NUMBER_PATTERN = /transaction\s*(?:no\.?|number)?[:\s]*([A-Z0-9]+)/gi;
+// Reference/Transaction number pattern - must have No./Number to avoid matching "Transaction Date"
+const TRANSACTION_NUMBER_PATTERN = /transaction\s+(?:no\.?|number)[:\s]*([A-Z0-9]+)/gi;
 
 // Date/time extraction pattern (DD/MM/YYYY HH:MM:SS)
 const DATE_PATTERN = /transaction\s*date[:\s]*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/gi;
@@ -71,6 +71,7 @@ type TransferType = 'bill_payment' | 'funds_transfer' | 'promptpay_transfer' | '
 
 /**
  * Detect transfer type from email subject
+ * Note: PromptPay must be checked before Funds Transfer since PromptPay subjects contain "funds transfer"
  */
 function detectTransferType(subject: string): TransferType {
   const lowerSubject = subject.toLowerCase();
@@ -78,11 +79,12 @@ function detectTransferType(subject: string): TransferType {
   if (KPLUS_SUBJECT_PATTERNS.billPayment.some(p => lowerSubject.includes(p.toLowerCase()))) {
     return 'bill_payment';
   }
-  if (KPLUS_SUBJECT_PATTERNS.fundsTransfer.some(p => lowerSubject.includes(p.toLowerCase()))) {
-    return 'funds_transfer';
-  }
+  // Check PromptPay BEFORE funds transfer (PromptPay subjects contain "funds transfer")
   if (KPLUS_SUBJECT_PATTERNS.promptpayTransfer.some(p => lowerSubject.includes(p.toLowerCase()))) {
     return 'promptpay_transfer';
+  }
+  if (KPLUS_SUBJECT_PATTERNS.fundsTransfer.some(p => lowerSubject.includes(p.toLowerCase()))) {
+    return 'funds_transfer';
   }
 
   return 'unknown';

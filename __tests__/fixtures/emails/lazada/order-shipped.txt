@@ -1,0 +1,21 @@
+Subject: Your Lazada order has been shipped!
+From: noreply@lazada.co.th
+Date: Thu, 16 Nov 2025 10:15:00 +0700
+
+Lazada Thailand
+
+Your order is on the way!
+
+Order #9876543210987 has been shipped.
+
+Track your package with tracking number: TH123456789
+
+Items in this shipment (2 items):
+- Wireless Mouse
+- Keyboard Mat
+
+Order Total: ฿1,250.00
+
+Estimated Delivery: November 18, 2025
+
+Thank you for shopping with Lazada!

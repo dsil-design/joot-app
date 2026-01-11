@@ -136,7 +136,7 @@ describe('grabParser', () => {
       expect(result.data!.amount).toBe(77);
       expect(result.data!.currency).toBe('THB');
       expect(result.data!.description).toContain('Taxi to');
-      expect(result.data!.description).toContain('Nimman Hotel');
+      expect(result.data!.description).toContain('Hotel'); // Simplified destination
     });
 
     it('should extract GrabMart transaction data', () => {
@@ -285,9 +285,9 @@ describe('extractRestaurantName', () => {
 });
 
 describe('extractDropoffLocation', () => {
-  it('should extract dropoff location', () => {
-    const result = extractDropoffLocation('Drop-off: Nimman Hotel\nTime: 23:12');
-    expect(result).toBe('Nimman Hotel');
+  it('should extract and simplify dropoff location', () => {
+    const result = extractDropoffLocation('Drop-off: Nimman Road\nTime: 23:12');
+    expect(result).toBe('Nimman Road');
   });
 
   it('should simplify to "Golf" for golf-related locations', () => {

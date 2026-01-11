@@ -122,7 +122,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-023 | Create Recent Activity feed component | UI | P1-022 | — |
 | [x] | P1-024 | Create API route: POST /api/emails/sync | API | P1-018 | P1-021 |
 | [x] | P1-025 | Create API route: GET /api/emails/transactions | API | P1-018 | P1-023 |
-| [ ] | P1-026 | Write unit tests for email parsers | Testing | P1-011–P1-015 | — |
+| [x] | P1-026 | Write unit tests for email parsers | Testing | P1-011–P1-015 | — |
 | [ ] | P1-027 | Write integration tests for email sync | Testing | P1-024 | — |
 
 ---
@@ -1334,7 +1334,7 @@ Create the API endpoint for listing email transactions with filtering and pagina
 <!--P1-026-->
 ### P1-026 — Write unit tests for email parsers
 
-**Status:** open
+**Status:** done
 **Group:** Testing
 **Depends on:** P1-011, P1-012, P1-013, P1-014, P1-015  |  **Blocks:** —  |  **parallel:** true
 
@@ -1360,7 +1360,8 @@ Create comprehensive unit tests for all email parser modules.
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- 2026-01-11: All 272 tests pass. Coverage: 95.14% statements, 83.15% branches, 97.36% functions, 95.49% lines (all exceed 80% threshold)
 
 ---
 
