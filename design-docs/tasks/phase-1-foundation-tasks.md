@@ -116,7 +116,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-017 | Add extraction confidence scoring | Email | P1-016 | P1-018 |
 | [x] | P1-018 | Implement email classification logic | Email | P1-017 | — |
 | [x] | P1-019 | Create `ImportStatusCard` component | UI | P1-009 | P1-020 |
-| [ ] | P1-020 | Create Dashboard status cards section | UI | P1-019 | P1-021 |
+| [x] | P1-020 | Create Dashboard status cards section | UI | P1-019 | P1-021 |
 | [ ] | P1-021 | Create Email Sync card component | UI | P1-020 | P1-022 |
 | [ ] | P1-022 | Create Quick Actions grid | UI | P1-021 | P1-023 |
 | [ ] | P1-023 | Create Recent Activity feed component | UI | P1-022 | — |
@@ -1026,7 +1026,7 @@ Build the reusable status card component used on the Import Dashboard (Pending R
 <!--P1-020-->
 ### P1-020 — Create Dashboard status cards section
 
-**Status:** open
+**Status:** done
 **Group:** UI
 **Depends on:** P1-019  |  **Blocks:** P1-021  |  **parallel:** false
 
@@ -1048,7 +1048,9 @@ Implement the top section of the dashboard showing the three status cards in a r
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T11:00:00Z · by: claude
+- done: 2026-01-11T11:30:00Z · by: claude · notes: Created API route `/api/imports/status-counts` that fetches counts from `email_transactions` table (pending_review, waiting_for_statement, matched in last 30 days) and sync stats from `email_sync_state` and `emails` tables. Created `useImportStatusCounts` hook for data fetching with loading/error states and refetch capability. Updated imports dashboard page to use the hook instead of hardcoded values. Grid is responsive: 1 column on mobile (`grid-cols-1`), 3 columns on desktop (`md:grid-cols-3`). Skeleton cards shown during loading via ImportStatusCard's null value handling. Build passes.
 
 ---
 

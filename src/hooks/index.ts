@@ -21,3 +21,7 @@ export { useTags } from "./use-tags"
 export { useTagOptions } from "./use-tag-options"
 export type { TagOption } from "./use-tag-options"
 
+// Import status hooks
+export { useImportStatusCounts } from "./use-import-status-counts"
+export type { ImportStatusCounts, ImportSyncStats, UseImportStatusCountsResult } from "./use-import-status-counts"
+

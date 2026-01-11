@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ImportStatusCard } from '@/components/page-specific/import-status-card'
+import { useImportStatusCounts } from '@/hooks/use-import-status-counts'
 import {
   CheckCircle2,
   Clock,
@@ -233,9 +234,7 @@ function ActivitySkeleton() {
 }
 
 export default function ImportsDashboardPage() {
-  // These would be fetched from API - showing skeleton loading state for now
-  const isLoading = true
-  const statusCounts = isLoading ? null : { pending: 42, waiting: 18, matched: 156 }
+  const { counts, sync, isLoading } = useImportStatusCounts()
 
   return (
     <div className="flex flex-col gap-6">
@@ -243,21 +242,21 @@ export default function ImportsDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <ImportStatusCard
           title="Pending Review"
-          value={statusCounts?.pending ?? null}
+          value={isLoading ? null : (counts?.pending ?? 0)}
           description="Emails awaiting review"
           variant="pending"
           href="/imports/review?status=pending"
         />
         <ImportStatusCard
           title="Waiting for Statement"
-          value={statusCounts?.waiting ?? null}
+          value={isLoading ? null : (counts?.waiting ?? 0)}
           description="THB receipts awaiting USD match"
           variant="waiting"
           href="/imports/review?status=waiting"
         />
         <ImportStatusCard
           title="Matched (30 days)"
-          value={statusCounts?.matched ?? null}
+          value={isLoading ? null : (counts?.matched ?? 0)}
           description="Successfully matched transactions"
           variant="success"
           href="/imports/review?status=matched"
@@ -267,9 +266,9 @@ export default function ImportsDashboardPage() {
       {/* Email Sync Card */}
       <EmailSyncCard
         isLoading={isLoading}
-        lastSyncedAt={null}
-        folder="Transactions"
-        totalSynced={0}
+        lastSyncedAt={sync?.lastSyncedAt ?? null}
+        folder={sync?.folder ?? 'Transactions'}
+        totalSynced={sync?.totalSynced ?? 0}
         isConnected={true}
         onSyncNow={() => {
           // TODO: P1-024 will implement actual sync
