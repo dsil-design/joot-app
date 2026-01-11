@@ -100,7 +100,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-001 | Create `email_transactions` table migration | Database | — | P1-004, P1-005 |
 | [x] | P1-002 | Create `statement_uploads` table migration | Database | — | P1-004 |
 | [x] | P1-003 | Create `import_activities` table migration | Database | — | P1-004 |
-| [ ] | P1-004 | Add RLS policies for new tables | Database | P1-001, P1-002, P1-003 | P1-005 |
+| [x] | P1-004 | Add RLS policies for new tables | Database | P1-001, P1-002, P1-003 | P1-005 |
 | [ ] | P1-005 | Generate TypeScript types for new tables | Database | P1-004 | P1-010 |
 | [ ] | P1-006 | Add "Imports" to sidebar navigation | Navigation | — | P1-007 |
 | [ ] | P1-007 | Add "Imports" to mobile navigation | Navigation | P1-006 | P1-008 |
@@ -321,7 +321,7 @@ Create the database migration for the `import_activities` table that provides an
 <!--P1-004-->
 ### P1-004 — Add RLS policies for new tables
 
-**Status:** open
+**Status:** done
 **Group:** Database
 **Depends on:** P1-001, P1-002, P1-003  |  **Blocks:** P1-005  |  **parallel:** false
 
@@ -343,7 +343,9 @@ Enable Row Level Security and create policies for all three new tables, ensuring
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T16:00:00Z · by: claude
+- done: 2026-01-11T16:15:00Z · by: claude · notes: RLS policies were already included in P1-001, P1-002, P1-003 migrations. All three tables have: RLS enabled via `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`; SELECT/INSERT/UPDATE/DELETE policies using `(select auth.uid()) = user_id` pattern (except import_activities which is immutable - no UPDATE). Verified policies match existing project patterns in schema.sql. Service role has implicit full access per Supabase defaults.
 
 ---
 
