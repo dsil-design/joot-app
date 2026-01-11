@@ -1,0 +1,20 @@
+From: BualuangmBanking@bangkokbank.com
+Subject: ยืนยันการชำระเงิน / Payments confirmation
+Date: Sat, 15 Nov 2025 14:30:00 +0700
+Content-Type: text/html; charset=utf-8
+
+Bangkok Bank Public Company Limited
+
+Payments Confirmation
+
+Date and Time: 15/11/2025 14:30:00
+
+Company: บริษัท ม่อนพญาพรหม จำกัด
+
+Amount: 2,500.00 Baht
+
+Reference No.: BBL202511150001234567
+
+Thank you for using Bualuang mBanking.
+
+This is an automatically generated email. Please do not reply.

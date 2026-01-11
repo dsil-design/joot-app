@@ -1,0 +1,24 @@
+From: BualuangmBanking@bangkokbank.com
+Subject: ยืนยันการโอนเงิน / Funds transfer confirmation
+Date: Thu, 06 Nov 2025 10:00:00 +0700
+Content-Type: text/html; charset=utf-8
+
+Bangkok Bank Public Company Limited
+
+Funds Transfer Confirmation
+
+Date and Time: 06/11/2025 10:00:00
+
+To Bank: Kasikorn Bank
+
+To Account: 123-4-56789-0
+
+To Account Name: บจ. บลิส คลีน แอนด์ แคร์
+
+Amount: 2,958.00 Baht
+
+Reference No.: BBL202511060005551234
+
+Thank you for using Bualuang mBanking.
+
+This is an automatically generated email. Please do not reply.

@@ -109,7 +109,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-010 | Create email transaction extraction service | Email | P1-005 | P1-011 |
 | [x] | P1-011 | Build Grab email parser | Email | P1-010 | P1-016 |
 | [x] | P1-012 | Build Bolt email parser | Email | P1-010 | P1-016 |
-| [ ] | P1-013 | Build Bangkok Bank email parser | Email | P1-010 | P1-016 |
+| [x] | P1-013 | Build Bangkok Bank email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-014 | Build Kasikorn Bank email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-015 | Build Lazada email parser | Email | P1-010 | P1-016 |
 | [ ] | P1-016 | Integrate parsers into email sync service | Email | P1-011–P1-015 | P1-017 |
@@ -767,7 +767,7 @@ Create parser for Bolt ride receipt emails.
 <!--P1-013-->
 ### P1-013 — Build Bangkok Bank email parser
 
-**Status:** open
+**Status:** done
 **Group:** Email
 **Depends on:** P1-010  |  **Blocks:** P1-016  |  **parallel:** true
 
@@ -789,7 +789,9 @@ Create parser for Bangkok Bank (Bualuang) notification emails (payments, transfe
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T09:55:00Z · by: claude
+- done: 2026-01-11T10:30:00Z · by: claude · notes: Created `src/lib/email/extractors/bangkok-bank.ts` implementing EmailParser interface with canParse() and extract() methods. Features: (1) Transfer type detection (payment, promptpay_mobile, promptpay_citizen, funds_transfer, promptpay_topup) from bilingual Thai/English subjects, (2) Base64 content decoding for Bangkok Bank HTML emails, (3) THB amount extraction with Baht/บาท suffix support, (4) Recipient extraction for all transfer types (Company, Beneficiary Name, To Account Name, To Wallet), (5) Reference number extraction, (6) Transaction date extraction from DD/MM/YYYY format, (7) Vendor lookup from TRANSACTION-IMPORT-REFERENCE.md mappings (Highlands, Nidnoi, Bliss Clean Care, All Time Pickleball, etc.), (8) Self-transfer detection for TrueMoney/LINE Pay TopUps, (9) Proper classification for bank_transfer status (ready_to_import). Created 5 test fixtures in `__tests__/fixtures/emails/bangkok-bank/` (payment-confirmation.txt, promptpay-mobile.txt, funds-transfer.txt, promptpay-topup.txt, unknown-recipient.txt). Created comprehensive unit tests in `__tests__/lib/email/extractors/bangkok-bank.test.ts`. Parser registered in extractors/index.ts and extraction-service.ts. ESLint passes with no errors.
 
 ---
 

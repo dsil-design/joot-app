@@ -1,0 +1,20 @@
+From: BualuangmBanking@bangkokbank.com
+Subject: ยืนยันการเติมเงินพร้อมเพย์ / PromptPay Top Up Confirmation
+Date: Fri, 22 Nov 2025 16:45:00 +0700
+Content-Type: text/html; charset=utf-8
+
+Bangkok Bank Public Company Limited
+
+PromptPay Top Up Confirmation
+
+Date and Time: 22/11/2025 16:45:00
+
+To Wallet: SCB มณี SHOP (ALL TIME PICKLEBALL)
+
+Amount: 500.00 Baht
+
+Reference No.: BBL202511220007778899
+
+Thank you for using Bualuang mBanking.
+
+This is an automatically generated email. Please do not reply.

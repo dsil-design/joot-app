@@ -32,6 +32,7 @@ import type {
 // Import parsers
 import { grabParser } from './extractors/grab';
 import { boltParser } from './extractors/bolt';
+import { bangkokBankParser } from './extractors/bangkok-bank';
 
 /**
  * Registry of available email parsers
@@ -663,8 +664,8 @@ export const extractionService = new EmailExtractionService();
 // Register available parsers
 extractionService.registerParser(grabParser);
 extractionService.registerParser(boltParser);
+extractionService.registerParser(bangkokBankParser);
 
 // Future parsers will be registered here as they are implemented:
-// extractionService.registerParser(bangkokBankParser);
 // extractionService.registerParser(kasikornParser);
 // extractionService.registerParser(lazadaParser);

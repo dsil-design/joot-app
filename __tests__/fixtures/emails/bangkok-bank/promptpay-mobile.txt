@@ -1,0 +1,22 @@
+From: BualuangmBanking@bangkokbank.com
+Subject: ยืนยันรายการโอนเงินไปยังหมายเลขโทรศัพท์มือถือโดยพร้อมเพย์ / Confirmation of funds transfer to Mobile Phone Number by PromptPay
+Date: Mon, 18 Nov 2025 09:15:00 +0700
+Content-Type: text/html; charset=utf-8
+
+Bangkok Bank Public Company Limited
+
+Confirmation of Funds Transfer to Mobile Phone Number by PromptPay
+
+Date and Time: 18/11/2025 09:15:00
+
+To PromptPay ID: 098-XXX-XXXX
+
+Beneficiary Name: SUPAPORN KID
+
+Amount: 150.00 Baht
+
+Reference No.: BBL202511180009876543
+
+Thank you for using Bualuang mBanking.
+
+This is an automatically generated email. Please do not reply.
