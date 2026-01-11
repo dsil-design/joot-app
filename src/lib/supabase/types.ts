@@ -116,6 +116,127 @@ export type Database = {
           },
         ]
       }
+      email_transactions: {
+        Row: {
+          amount: number | null
+          classification: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          email_date: string | null
+          extraction_confidence: number | null
+          extraction_notes: string | null
+          folder: string
+          from_address: string | null
+          from_name: string | null
+          has_attachments: boolean | null
+          id: string
+          match_confidence: number | null
+          match_method: string | null
+          matched_at: string | null
+          matched_transaction_id: string | null
+          message_id: string
+          order_id: string | null
+          processed_at: string | null
+          seen: boolean | null
+          status: string
+          subject: string | null
+          synced_at: string | null
+          transaction_date: string | null
+          uid: number
+          updated_at: string | null
+          user_id: string
+          vendor_id: string | null
+          vendor_name_raw: string | null
+        }
+        Insert: {
+          amount?: number | null
+          classification?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          email_date?: string | null
+          extraction_confidence?: number | null
+          extraction_notes?: string | null
+          folder?: string
+          from_address?: string | null
+          from_name?: string | null
+          has_attachments?: boolean | null
+          id?: string
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_at?: string | null
+          matched_transaction_id?: string | null
+          message_id: string
+          order_id?: string | null
+          processed_at?: string | null
+          seen?: boolean | null
+          status?: string
+          subject?: string | null
+          synced_at?: string | null
+          transaction_date?: string | null
+          uid: number
+          updated_at?: string | null
+          user_id: string
+          vendor_id?: string | null
+          vendor_name_raw?: string | null
+        }
+        Update: {
+          amount?: number | null
+          classification?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          email_date?: string | null
+          extraction_confidence?: number | null
+          extraction_notes?: string | null
+          folder?: string
+          from_address?: string | null
+          from_name?: string | null
+          has_attachments?: boolean | null
+          id?: string
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_at?: string | null
+          matched_transaction_id?: string | null
+          message_id?: string
+          order_id?: string | null
+          processed_at?: string | null
+          seen?: boolean | null
+          status?: string
+          subject?: string | null
+          synced_at?: string | null
+          transaction_date?: string | null
+          uid?: number
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string | null
+          vendor_name_raw?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_transactions_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_transactions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emails: {
         Row: {
           created_at: string | null
@@ -207,6 +328,70 @@ export type Database = {
           to_currency?: Database["public"]["Enums"]["currency_type"]
         }
         Relationships: []
+      }
+      import_activities: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          currency: string | null
+          description: string
+          email_transaction_id: string | null
+          id: string
+          metadata: Json | null
+          statement_upload_id: string | null
+          total_amount: number | null
+          transactions_affected: number | null
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string | null
+          currency?: string | null
+          description: string
+          email_transaction_id?: string | null
+          id?: string
+          metadata?: Json | null
+          statement_upload_id?: string | null
+          total_amount?: number | null
+          transactions_affected?: number | null
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string
+          email_transaction_id?: string | null
+          id?: string
+          metadata?: Json | null
+          statement_upload_id?: string | null
+          total_amount?: number | null
+          transactions_affected?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_activities_email_transaction_id_fkey"
+            columns: ["email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "import_activities_statement_upload_id_fkey"
+            columns: ["statement_upload_id"]
+            isOneToOne: false
+            referencedRelation: "statement_uploads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "import_activities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_methods: {
         Row: {
@@ -473,6 +658,90 @@ export type Database = {
           },
           {
             foreignKeyName: "statement_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statement_uploads: {
+        Row: {
+          created_at: string | null
+          extraction_completed_at: string | null
+          extraction_error: string | null
+          extraction_log: Json | null
+          extraction_started_at: string | null
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          filename: string
+          id: string
+          payment_method_id: string | null
+          statement_period_end: string | null
+          statement_period_start: string | null
+          status: string
+          transactions_extracted: number | null
+          transactions_matched: number | null
+          transactions_new: number | null
+          updated_at: string | null
+          uploaded_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          extraction_completed_at?: string | null
+          extraction_error?: string | null
+          extraction_log?: Json | null
+          extraction_started_at?: string | null
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          filename: string
+          id?: string
+          payment_method_id?: string | null
+          statement_period_end?: string | null
+          statement_period_start?: string | null
+          status?: string
+          transactions_extracted?: number | null
+          transactions_matched?: number | null
+          transactions_new?: number | null
+          updated_at?: string | null
+          uploaded_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          extraction_completed_at?: string | null
+          extraction_error?: string | null
+          extraction_log?: Json | null
+          extraction_started_at?: string | null
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          filename?: string
+          id?: string
+          payment_method_id?: string | null
+          statement_period_end?: string | null
+          statement_period_start?: string | null
+          status?: string
+          transactions_extracted?: number | null
+          transactions_matched?: number | null
+          transactions_new?: number | null
+          updated_at?: string | null
+          uploaded_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_uploads_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_uploads_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1285,3 +1554,22 @@ export type EmailUpdate = Database["public"]["Tables"]["emails"]["Update"]
 export type EmailSyncState = Database["public"]["Tables"]["email_sync_state"]["Row"]
 export type EmailSyncStateInsert = Database["public"]["Tables"]["email_sync_state"]["Insert"]
 export type EmailSyncStateUpdate = Database["public"]["Tables"]["email_sync_state"]["Update"]
+
+// ============================================================================
+// Email Import Types (P1-001 to P1-005)
+// ============================================================================
+
+// Email Transaction types (parsed email data with transaction matching)
+export type EmailTransaction = Database["public"]["Tables"]["email_transactions"]["Row"]
+export type EmailTransactionInsert = Database["public"]["Tables"]["email_transactions"]["Insert"]
+export type EmailTransactionUpdate = Database["public"]["Tables"]["email_transactions"]["Update"]
+
+// Statement Upload types (uploaded statement files and processing status)
+export type StatementUpload = Database["public"]["Tables"]["statement_uploads"]["Row"]
+export type StatementUploadInsert = Database["public"]["Tables"]["statement_uploads"]["Insert"]
+export type StatementUploadUpdate = Database["public"]["Tables"]["statement_uploads"]["Update"]
+
+// Import Activity types (audit trail for import actions)
+export type ImportActivity = Database["public"]["Tables"]["import_activities"]["Row"]
+export type ImportActivityInsert = Database["public"]["Tables"]["import_activities"]["Insert"]
+export type ImportActivityUpdate = Database["public"]["Tables"]["import_activities"]["Update"]

@@ -101,7 +101,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-002 | Create `statement_uploads` table migration | Database | — | P1-004 |
 | [x] | P1-003 | Create `import_activities` table migration | Database | — | P1-004 |
 | [x] | P1-004 | Add RLS policies for new tables | Database | P1-001, P1-002, P1-003 | P1-005 |
-| [ ] | P1-005 | Generate TypeScript types for new tables | Database | P1-004 | P1-010 |
+| [x] | P1-005 | Generate TypeScript types for new tables | Database | P1-004 | P1-010 |
 | [ ] | P1-006 | Add "Imports" to sidebar navigation | Navigation | — | P1-007 |
 | [ ] | P1-007 | Add "Imports" to mobile navigation | Navigation | P1-006 | P1-008 |
 | [ ] | P1-008 | Create `/imports` route structure | Navigation | P1-007 | P1-009 |
@@ -352,7 +352,7 @@ Enable Row Level Security and create policies for all three new tables, ensuring
 <!--P1-005-->
 ### P1-005 — Generate TypeScript types for new tables
 
-**Status:** open
+**Status:** done
 **Group:** Database
 **Depends on:** P1-004  |  **Blocks:** P1-010  |  **parallel:** false
 
@@ -374,7 +374,9 @@ Regenerate Supabase TypeScript types to include the new tables and update any ty
 **Notes & Open Questions:**
 - Run: `npx supabase gen types typescript --linked > src/lib/supabase/types.ts`
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T18:00:00Z · by: claude
+- done: 2026-01-11T18:15:00Z · by: claude · notes: Regenerated Supabase types including email_transactions, statement_uploads, import_activities. Added convenience type aliases (EmailTransaction, StatementUpload, ImportActivity with Insert/Update variants) to types.ts. Also created src/lib/types/email-imports.ts with status/classification enums matching database CHECK constraints. TypeScript compilation passes.
 
 ---
 
