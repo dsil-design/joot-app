@@ -254,9 +254,10 @@ export function EmailsSettings({
                     <div className="flex items-start justify-between gap-2">
                       <p className={cn(
                         "font-medium truncate",
-                        !email.seen && "text-blue-900"
+                        !email.seen && "text-blue-900",
+                        !email.subject && !email.from_address && "text-zinc-400 italic"
                       )}>
-                        {email.subject || '(No subject)'}
+                        {email.subject || (email.from_address ? '(No subject)' : `(Unable to fetch - UID ${email.uid})`)}
                       </p>
                       <span className="text-xs text-zinc-400 whitespace-nowrap flex-shrink-0">
                         {formatDate(email.date)}

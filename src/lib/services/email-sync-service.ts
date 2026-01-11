@@ -153,13 +153,25 @@ export class EmailSyncService {
 
       const emails: EmailInsertData[] = [];
 
+      // Use SEARCH to find UIDs in range first (avoids FETCH error on empty range)
+      const uidsToFetch = await this.client.search({ uid: searchQuery }, { uid: true });
+
+      if (!uidsToFetch || uidsToFetch.length === 0) {
+        result.message = 'No new emails to sync';
+        console.log(result.message);
+        return result;
+      }
+
+      console.log(`Found ${uidsToFetch.length} messages to fetch, UIDs: ${uidsToFetch.slice(0, 5).join(', ')}${uidsToFetch.length > 5 ? '...' : ''}`);
+
       // Fetch message envelopes (metadata only, not body)
-      for await (const message of this.client.fetch(searchQuery, {
+      // Pass { uid: true } as third param to indicate we're using UIDs not sequence numbers
+      for await (const message of this.client.fetch(uidsToFetch, {
         uid: true,
         envelope: true,
         flags: true,
         bodyStructure: true,
-      })) {
+      }, { uid: true })) {
         try {
           // Skip if this is the same UID we already have (edge case)
           if (message.uid <= lastUid) {
