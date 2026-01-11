@@ -120,7 +120,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-021 | Create Email Sync card component | UI | P1-020 | P1-022 |
 | [x] | P1-022 | Create Quick Actions grid | UI | P1-021 | P1-023 |
 | [x] | P1-023 | Create Recent Activity feed component | UI | P1-022 | — |
-| [ ] | P1-024 | Create API route: POST /api/emails/sync | API | P1-018 | P1-021 |
+| [x] | P1-024 | Create API route: POST /api/emails/sync | API | P1-018 | P1-021 |
 | [ ] | P1-025 | Create API route: GET /api/emails/transactions | API | P1-018 | P1-023 |
 | [ ] | P1-026 | Write unit tests for email parsers | Testing | P1-011–P1-015 | — |
 | [ ] | P1-027 | Write integration tests for email sync | Testing | P1-024 | — |
@@ -1155,7 +1155,7 @@ Build the activity feed showing recent import actions (matches, imports, uploads
 <!--P1-024-->
 ### P1-024 — Create API route: POST /api/emails/sync
 
-**Status:** open
+**Status:** done
 **Group:** API
 **Depends on:** P1-018  |  **Blocks:** P1-021  |  **parallel:** false
 
@@ -1290,7 +1290,9 @@ export async function GET(request: Request) {
 - Adds extraction processing after sync completes
 - Simple in-memory tracking for active syncs (sufficient for single-user app)
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T17:00:00Z · by: claude
+- done: 2026-01-11T17:15:00Z · by: claude · notes: Updated existing `/api/emails/sync/route.ts` to add: (1) Concurrent sync prevention using in-memory `activeSyncs` Set - returns 409 Conflict when sync already running, (2) GET endpoint for checking sync status (isRunning, totalEmails, lastSyncAt, folders array), (3) Enhanced JSDoc with full status code documentation. Route uses `executeSyncWithExtraction()` for combined IMAP sync + email parsing. All acceptance criteria met. ESLint passes (warnings only for intentional console logs).
 
 ---
 
