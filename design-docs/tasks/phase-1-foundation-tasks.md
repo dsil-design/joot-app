@@ -121,7 +121,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-022 | Create Quick Actions grid | UI | P1-021 | P1-023 |
 | [x] | P1-023 | Create Recent Activity feed component | UI | P1-022 | — |
 | [x] | P1-024 | Create API route: POST /api/emails/sync | API | P1-018 | P1-021 |
-| [ ] | P1-025 | Create API route: GET /api/emails/transactions | API | P1-018 | P1-023 |
+| [x] | P1-025 | Create API route: GET /api/emails/transactions | API | P1-018 | P1-023 |
 | [ ] | P1-026 | Write unit tests for email parsers | Testing | P1-011–P1-015 | — |
 | [ ] | P1-027 | Write integration tests for email sync | Testing | P1-024 | — |
 
@@ -1299,7 +1299,7 @@ export async function GET(request: Request) {
 <!--P1-025-->
 ### P1-025 — Create API route: GET /api/emails/transactions
 
-**Status:** open
+**Status:** done
 **Group:** API
 **Depends on:** P1-018  |  **Blocks:** P1-023  |  **parallel:** true
 
@@ -1321,7 +1321,13 @@ Create the API endpoint for listing email transactions with filtering and pagina
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- completed: 2026-01-11 · by: claude
+- Created GET /api/emails/transactions route with filtering by status, currency, dateFrom, dateTo, and search
+- Implemented pagination with limit/offset (default 50, max 100)
+- Added hasMore field for easy pagination handling
+- Included vendor data via join for convenience
+- RLS ensures user can only access their own email transactions
 
 ---
 
