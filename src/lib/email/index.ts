@@ -21,5 +21,19 @@ export {
 } from './classifier';
 export type { ParserPattern } from './classifier';
 
+// Confidence scoring
+export {
+  calculateConfidenceScore,
+  determineStatusFromConfidence,
+  getConfidenceLevel,
+  isHighConfidence,
+  isLowConfidence,
+  formatScoreAsNotes,
+  getConfidenceSummary,
+  CONFIDENCE_THRESHOLDS,
+  SCORE_WEIGHTS,
+} from './confidence-scoring';
+export type { ConfidenceScoreBreakdown, ScoreComponent } from './confidence-scoring';
+
 // Parsers
 export * from './extractors';

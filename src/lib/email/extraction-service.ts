@@ -28,6 +28,11 @@ import type {
   EmailParser,
   ExtractionServiceConfig,
 } from './types';
+import {
+  calculateConfidenceScore,
+  determineStatusFromConfidence,
+  type ConfidenceScoreBreakdown,
+} from './confidence-scoring';
 
 // Import parsers
 import { grabParser } from './extractors/grab';
@@ -272,41 +277,59 @@ export class EmailExtractionService {
    * - Date parsed correctly: +20 points
    * - Vendor identified: +10 points
    * - Order ID found: +10 points
+   *
+   * @deprecated Use calculateConfidenceWithBreakdown for detailed scoring
    */
   calculateConfidence(result: ExtractionResult): number {
+    const breakdown = this.calculateConfidenceWithBreakdown(result);
+    return breakdown.totalScore;
+  }
+
+  /**
+   * Calculate confidence score with detailed breakdown
+   *
+   * Returns a detailed breakdown of the confidence score including
+   * individual component scores and human-readable notes.
+   */
+  calculateConfidenceWithBreakdown(result: ExtractionResult): ConfidenceScoreBreakdown {
     if (!result.success || !result.data) {
-      return 0;
+      return calculateConfidenceScore(undefined);
+    }
+    return calculateConfidenceScore(result.data);
+  }
+
+  /**
+   * Build extraction notes combining parser notes with score breakdown
+   *
+   * Creates a comprehensive note string for the extraction_notes column
+   * that includes both parser-specific notes and the confidence breakdown.
+   */
+  private buildExtractionNotes(
+    extraction: ExtractionResult,
+    breakdown: ConfidenceScoreBreakdown
+  ): string {
+    const parts: string[] = [];
+
+    // Add confidence summary
+    parts.push(breakdown.summary);
+
+    // Add parser notes if present
+    if (extraction.notes) {
+      parts.push(`Parser notes: ${extraction.notes}`);
     }
 
-    let score = 0;
-    const data = result.data;
-
-    // Required fields present (vendor, amount, currency, date)
-    if (data.vendor_name_raw && data.amount && data.currency && data.transaction_date) {
-      score += 40;
+    // Add errors if present
+    if (extraction.errors && extraction.errors.length > 0) {
+      parts.push(`Errors: ${extraction.errors.join('; ')}`);
     }
 
-    // Amount parsed correctly (positive number)
-    if (data.amount && data.amount > 0) {
-      score += 20;
-    }
+    // Add score breakdown details
+    const scoreDetails = breakdown.components
+      .map(c => `${c.satisfied ? '✓' : '✗'} ${c.name}: ${c.earnedPoints}/${c.maxPoints}`)
+      .join(', ');
+    parts.push(`Scoring: ${scoreDetails}`);
 
-    // Date parsed correctly (valid date)
-    if (data.transaction_date && !isNaN(data.transaction_date.getTime())) {
-      score += 20;
-    }
-
-    // Vendor identified
-    if (data.vendor_name_raw && data.vendor_name_raw.length > 0) {
-      score += 10;
-    }
-
-    // Order ID found
-    if (data.order_id) {
-      score += 10;
-    }
-
-    return Math.min(score, 100);
+    return parts.join(' | ');
   }
 
   /**
@@ -399,14 +422,19 @@ export class EmailExtractionService {
           // Extract transaction data
           const extraction = this.extractFromEmail(rawEmail);
 
-          // Calculate confidence
-          const confidence = this.calculateConfidence(extraction);
+          // Calculate confidence with detailed breakdown
+          const confidenceBreakdown = this.calculateConfidenceWithBreakdown(extraction);
+          const confidence = confidenceBreakdown.totalScore;
 
-          // Determine final status based on extraction result
-          let status = classification.status;
-          if (!extraction.success || confidence < this.config.minAutoClassifyConfidence) {
-            status = EMAIL_TRANSACTION_STATUS.PENDING_REVIEW;
-          }
+          // Determine final status based on confidence score
+          // Uses the centralized status determination logic
+          const status = determineStatusFromConfidence(
+            confidence,
+            classification.status
+          );
+
+          // Build extraction notes combining parser notes with score breakdown
+          const extractionNotes = this.buildExtractionNotes(extraction, confidenceBreakdown);
 
           // Prepare data for database
           const transactionData: EmailTransactionData = {
@@ -423,7 +451,7 @@ export class EmailExtractionService {
             status,
             classification: classification.classification,
             extraction_confidence: confidence,
-            extraction_notes: extraction.notes || extraction.errors?.join('; ') || null,
+            extraction_notes: extractionNotes,
             synced_at: email.synced_at || new Date().toISOString(),
             processed_at: new Date().toISOString(),
           };
@@ -569,15 +597,28 @@ export class EmailExtractionService {
     // Re-classify and extract
     const classification = this.classifyEmail(rawEmail);
     const extraction = this.extractFromEmail(rawEmail);
-    const confidence = this.calculateConfidence(extraction);
+
+    // Calculate confidence with detailed breakdown
+    const confidenceBreakdown = this.calculateConfidenceWithBreakdown(extraction);
+    const confidence = confidenceBreakdown.totalScore;
+
+    // Build extraction notes
+    const extractionNotes = this.buildExtractionNotes(extraction, confidenceBreakdown);
+
+    // Determine status based on confidence
+    const status = determineStatusFromConfidence(
+      confidence,
+      classification.status
+    );
 
     // Update the email transaction
     const updateData: Record<string, unknown> = {
       classification: classification.classification,
       extraction_confidence: confidence,
-      extraction_notes: extraction.notes || extraction.errors?.join('; ') || null,
+      extraction_notes: extractionNotes,
       processed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      status,
     };
 
     // Update extracted data if successful
@@ -588,13 +629,6 @@ export class EmailExtractionService {
       updateData.transaction_date = extraction.data.transaction_date.toISOString().split('T')[0];
       updateData.description = extraction.data.description || null;
       updateData.order_id = extraction.data.order_id || null;
-
-      // Update status based on new extraction
-      if (confidence >= this.config.minAutoClassifyConfidence) {
-        updateData.status = classification.status;
-      } else {
-        updateData.status = EMAIL_TRANSACTION_STATUS.PENDING_REVIEW;
-      }
     }
 
     await supabase

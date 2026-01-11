@@ -113,7 +113,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-014 | Build Kasikorn Bank email parser | Email | P1-010 | P1-016 |
 | [x] | P1-015 | Build Lazada email parser | Email | P1-010 | P1-016 |
 | [x] | P1-016 | Integrate parsers into email sync service | Email | P1-011–P1-015 | P1-017 |
-| [ ] | P1-017 | Add extraction confidence scoring | Email | P1-016 | P1-018 |
+| [x] | P1-017 | Add extraction confidence scoring | Email | P1-016 | P1-018 |
 | [ ] | P1-018 | Implement email classification logic | Email | P1-017 | — |
 | [ ] | P1-019 | Create `ImportStatusCard` component | UI | P1-009 | P1-020 |
 | [ ] | P1-020 | Create Dashboard status cards section | UI | P1-019 | P1-021 |
@@ -906,7 +906,7 @@ Integrate all email parsers into the existing `emailSyncService` so that parsed 
 <!--P1-017-->
 ### P1-017 — Add extraction confidence scoring
 
-**Status:** open
+**Status:** done
 **Group:** Email
 **Depends on:** P1-016  |  **Blocks:** P1-018  |  **parallel:** false
 
@@ -933,7 +933,22 @@ Implement confidence scoring for extracted email data based on field completenes
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- 2026-01-11: Created dedicated confidence scoring module `src/lib/email/confidence-scoring.ts` with:
+  - `calculateConfidenceScore()` - returns detailed breakdown with individual component scores
+  - `determineStatusFromConfidence()` - determines status based on thresholds (< 55 = pending_review)
+  - `getConfidenceLevel()` - returns 'low', 'medium', or 'high' based on score
+  - `formatScoreAsNotes()` - formats breakdown for extraction_notes column
+  - `getConfidenceSummary()` - returns color-coded summary for UI display
+  - `SCORE_WEIGHTS` and `CONFIDENCE_THRESHOLDS` constants per spec
+- 2026-01-11: Updated `src/lib/email/extraction-service.ts` to use new scoring module:
+  - Added `calculateConfidenceWithBreakdown()` method for detailed scoring
+  - Updated `processNewEmails()` to use centralized status determination
+  - Updated `reprocessEmailTransaction()` to use new scoring
+  - Added `buildExtractionNotes()` helper to combine parser notes with score breakdown
+- 2026-01-11: Exported all scoring functions and types from `src/lib/email/index.ts`
+- 2026-01-11: Created comprehensive unit tests in `__tests__/lib/email/confidence-scoring.test.ts`
+- 2026-01-11: Verified build passes successfully
 
 ---
 
