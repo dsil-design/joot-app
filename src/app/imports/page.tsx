@@ -5,45 +5,16 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ImportStatusCard } from '@/components/page-specific/import-status-card'
 import { EmailSyncCard } from '@/components/page-specific/email-sync-card'
+import { QuickActionsGrid } from '@/components/page-specific/quick-actions-grid'
 import { useImportStatusCounts } from '@/hooks/use-import-status-counts'
 import { useEmailSync } from '@/hooks/use-email-sync'
 import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  Upload,
-  Search,
-  History,
-  Settings,
   ArrowRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-// Quick Action Button Component
-interface QuickActionProps {
-  title: string
-  icon: React.ReactNode
-  href: string
-  variant?: 'primary' | 'secondary'
-}
-
-function QuickActionButton({ title, icon, href, variant = 'secondary' }: QuickActionProps) {
-  return (
-    <Link href={href}>
-      <Card className={cn(
-        "cursor-pointer transition-colors h-full",
-        variant === 'primary'
-          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-          : "hover:bg-muted/50"
-      )}>
-        <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
-          {icon}
-          <span className="text-sm font-medium text-center">{title}</span>
-        </CardContent>
-      </Card>
-    </Link>
-  )
-}
 
 // Activity Item Component
 interface ActivityItemProps {
@@ -168,32 +139,7 @@ export default function ImportsDashboardPage() {
       />
 
       {/* Quick Actions Section */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <QuickActionButton
-            title="Upload Statement"
-            icon={<Upload className="h-6 w-6" />}
-            href="/imports/statements"
-            variant="primary"
-          />
-          <QuickActionButton
-            title="Review Queue"
-            icon={<Search className="h-6 w-6" />}
-            href="/imports/review"
-          />
-          <QuickActionButton
-            title="View History"
-            icon={<History className="h-6 w-6" />}
-            href="/imports/history"
-          />
-          <QuickActionButton
-            title="Import Settings"
-            icon={<Settings className="h-6 w-6" />}
-            href="/settings"
-          />
-        </div>
-      </div>
+      <QuickActionsGrid />
 
       {/* Recent Activity Section */}
       <div>

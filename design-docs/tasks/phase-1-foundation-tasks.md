@@ -118,7 +118,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-019 | Create `ImportStatusCard` component | UI | P1-009 | P1-020 |
 | [x] | P1-020 | Create Dashboard status cards section | UI | P1-019 | P1-021 |
 | [x] | P1-021 | Create Email Sync card component | UI | P1-020 | P1-022 |
-| [ ] | P1-022 | Create Quick Actions grid | UI | P1-021 | P1-023 |
+| [x] | P1-022 | Create Quick Actions grid | UI | P1-021 | P1-023 |
 | [ ] | P1-023 | Create Recent Activity feed component | UI | P1-022 | — |
 | [ ] | P1-024 | Create API route: POST /api/emails/sync | API | P1-018 | P1-021 |
 | [ ] | P1-025 | Create API route: GET /api/emails/transactions | API | P1-018 | P1-023 |
@@ -1090,7 +1090,7 @@ Build the Email Sync status card showing connection status, last sync time, and 
 <!--P1-022-->
 ### P1-022 — Create Quick Actions grid
 
-**Status:** open
+**Status:** done
 **Group:** UI
 **Depends on:** P1-021  |  **Blocks:** P1-023  |  **parallel:** false
 
@@ -1112,7 +1112,9 @@ Build the 2x2 quick actions grid with buttons for Upload Statement, Review Queue
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T15:00:00Z · by: claude
+- done: 2026-01-11T15:30:00Z · by: claude · notes: Created `src/components/page-specific/quick-actions-grid.tsx` as standalone, reusable component with: (1) QuickActionButton component accepting title, LucideIcon, href, and variant props, (2) QuickActionsGrid component with default actions matching wireframe (Upload Statement as primary, Review Queue, View History, Import Settings as secondary), (3) Responsive grid layout: 1 column on mobile (stacked), 2x2 on desktop per wireframe spec, (4) Proper accessibility (aria-labels, aria-hidden icons, focus-visible rings), (5) Skeleton loading state via QuickActionsGridSkeleton. Updated imports/page.tsx to use the new component, removing inline implementation. Build and ESLint pass.
 
 ---
 
