@@ -98,7 +98,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | Status | ID | Title | Group | Depends | Blocks |
 |--------|-----|-------|-------|---------|--------|
 | [x] | P1-001 | Create `email_transactions` table migration | Database | — | P1-004, P1-005 |
-| [ ] | P1-002 | Create `statement_uploads` table migration | Database | — | P1-004 |
+| [x] | P1-002 | Create `statement_uploads` table migration | Database | — | P1-004 |
 | [ ] | P1-003 | Create `import_activities` table migration | Database | — | P1-004 |
 | [ ] | P1-004 | Add RLS policies for new tables | Database | P1-001, P1-002, P1-003 | P1-005 |
 | [ ] | P1-005 | Generate TypeScript types for new tables | Database | P1-004 | P1-010 |
@@ -259,7 +259,7 @@ ALTER TABLE public.email_transactions ENABLE ROW LEVEL SECURITY;
 <!--P1-002-->
 ### P1-002 — Create `statement_uploads` table migration
 
-**Status:** open
+**Status:** done
 **Group:** Database
 **Depends on:** —  |  **Blocks:** P1-004  |  **parallel:** true
 
@@ -281,7 +281,9 @@ Create the database migration for the `statement_uploads` table that stores meta
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- started: 2026-01-11T12:30:00Z · by: claude
+- done: 2026-01-11T12:35:00Z · by: claude · notes: Created migration with all columns (file metadata, statement metadata, processing status/results, timestamps), indexes (user_id, payment_method_id, uploaded_at, status, compound user_status_date), RLS policies (CRUD), and updated_at trigger. Also updated database/schema.sql.
 
 ---
 
