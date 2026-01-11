@@ -123,7 +123,7 @@ src/lib/services/email-types.ts         -- Existing type definitions
 | [x] | P1-024 | Create API route: POST /api/emails/sync | API | P1-018 | P1-021 |
 | [x] | P1-025 | Create API route: GET /api/emails/transactions | API | P1-018 | P1-023 |
 | [x] | P1-026 | Write unit tests for email parsers | Testing | P1-011–P1-015 | — |
-| [ ] | P1-027 | Write integration tests for email sync | Testing | P1-024 | — |
+| [x] | P1-027 | Write integration tests for email sync | Testing | P1-024 | — |
 
 ---
 
@@ -1368,7 +1368,7 @@ Create comprehensive unit tests for all email parser modules.
 <!--P1-027-->
 ### P1-027 — Write integration tests for email sync
 
-**Status:** open
+**Status:** done
 **Group:** Testing
 **Depends on:** P1-024  |  **Blocks:** —  |  **parallel:** true
 
@@ -1388,7 +1388,17 @@ Create integration tests for the email sync flow end-to-end.
 
 **Notes & Open Questions:** _(empty)_
 
-**Completion Log:** _(empty initially)_
+**Completion Log:**
+- 2026-01-11: Created `__tests__/integration/email-sync.test.ts` with 24 tests covering:
+  - IMAP connection (connect, disconnect, credentials validation, error handling)
+  - Folder sync (empty folder, no new emails, new emails, incremental sync, parse errors)
+  - Execute sync (connect/sync/disconnect lifecycle)
+  - Fetch email content (success, not found, error handling)
+  - Get sync stats
+  - Attachment detection
+  - API route integration (auth, missing config, concurrent sync prevention)
+  - Database operations (insert errors, sync state update errors, upsert deduplication)
+  - All tests pass with mocked IMAP via jest.mock('imapflow')
 
 ---
 
