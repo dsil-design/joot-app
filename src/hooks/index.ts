@@ -25,3 +25,7 @@ export type { TagOption } from "./use-tag-options"
 export { useImportStatusCounts } from "./use-import-status-counts"
 export type { ImportStatusCounts, ImportSyncStats, UseImportStatusCountsResult } from "./use-import-status-counts"
 
+// Statement upload hooks
+export { useStatementUpload } from "./use-statement-upload"
+export type { StatementUploadState, UseStatementUploadResult } from "./use-statement-upload"
+

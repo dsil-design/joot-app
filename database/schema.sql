@@ -689,6 +689,7 @@ CREATE TABLE public.statement_uploads (
   file_path TEXT NOT NULL,             -- Path in Supabase Storage bucket
   file_size INTEGER,                   -- File size in bytes
   file_type TEXT,                      -- MIME type (e.g., 'application/pdf', 'text/csv')
+  file_hash TEXT,                      -- SHA256 hash of file contents for duplicate detection
 
   -- Statement metadata
   payment_method_id UUID REFERENCES public.payment_methods(id) ON DELETE SET NULL,
@@ -728,6 +729,12 @@ CREATE INDEX idx_statement_uploads_uploaded_at ON public.statement_uploads(uploa
 CREATE INDEX idx_statement_uploads_status ON public.statement_uploads(user_id, status);
 CREATE INDEX idx_statement_uploads_user_status_date
   ON public.statement_uploads(user_id, status, uploaded_at DESC);
+CREATE INDEX idx_statement_uploads_file_hash ON public.statement_uploads(file_hash)
+  WHERE file_hash IS NOT NULL;
+-- Unique constraint per user for file hash (same user can't upload same file twice)
+CREATE UNIQUE INDEX idx_statement_uploads_user_file_hash_unique
+  ON public.statement_uploads(user_id, file_hash)
+  WHERE file_hash IS NOT NULL;
 
 -- Enable RLS for statement_uploads
 ALTER TABLE public.statement_uploads ENABLE ROW LEVEL SECURITY;
@@ -820,3 +827,74 @@ INSERT INTO public.exchange_rates (from_currency, to_currency, rate, date) VALUE
   ('USD', 'THB', 35.50, CURRENT_DATE),
   ('THB', 'USD', 0.0282, CURRENT_DATE)
 ON CONFLICT (from_currency, to_currency, date) DO NOTHING;
+
+-- ============================================================================
+-- STORAGE BUCKETS
+-- ============================================================================
+
+-- Storage bucket: statement-uploads (private)
+-- Stores uploaded statement files (PDF, PNG, JPG, JPEG, HEIC)
+-- Files are stored at path: {user_id}/{upload_id}.{ext}
+-- Files are kept forever (no automatic expiration)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'statement-uploads',
+  'statement-uploads',
+  false,  -- Private bucket: requires authentication for all access
+  10485760,  -- 10MB file size limit
+  ARRAY['application/pdf', 'image/png', 'image/jpeg', 'image/heic']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- RLS Policies for statement-uploads bucket
+CREATE POLICY "Users can upload own statement files"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'statement-uploads'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+CREATE POLICY "Users can view own statement files"
+ON storage.objects FOR SELECT TO authenticated
+USING (
+  bucket_id = 'statement-uploads'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+CREATE POLICY "Users can update own statement files"
+ON storage.objects FOR UPDATE TO authenticated
+USING (
+  bucket_id = 'statement-uploads'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+CREATE POLICY "Users can delete own statement files"
+ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id = 'statement-uploads'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- ============================================================================
+-- STORAGE HELPER FUNCTIONS
+-- ============================================================================
+
+-- Function to generate storage path for a statement upload
+CREATE OR REPLACE FUNCTION public.get_statement_upload_path(
+  p_user_id UUID,
+  p_upload_id UUID,
+  p_file_extension TEXT
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN p_user_id::text || '/' || p_upload_id::text || '.' || LOWER(p_file_extension);
+END;
+$$;
+
+COMMENT ON FUNCTION public.get_statement_upload_path IS
+  'Generates the storage path for a statement upload file: {user_id}/{upload_id}.{ext}';
