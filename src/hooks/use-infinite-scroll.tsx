@@ -100,6 +100,13 @@ export function useInfiniteScroll<T>({
   const loadMoreRef = React.useRef<HTMLDivElement | null>(null)
   const scrollPositionRef = React.useRef<number>(0)
   const isFetchingRef = React.useRef(false)
+  const fetchIdRef = React.useRef(0) // Track current fetch to ignore stale responses
+  const initialFetchDoneRef = React.useRef(false) // Track if initial fetch has been done
+  const mountedRef = React.useRef(true) // Track if component is mounted
+
+  // Store keyExtractor in a ref to use in state updates
+  const keyExtractorRef = React.useRef(keyExtractor)
+  keyExtractorRef.current = keyExtractor
 
   /**
    * Fetch next page of items
@@ -108,20 +115,53 @@ export function useInfiniteScroll<T>({
     if (isFetchingRef.current || !state.hasMore) return
 
     isFetchingRef.current = true
+    initialFetchDoneRef.current = true // Mark as done to prevent duplicate fetches
+    const currentFetchId = ++fetchIdRef.current
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
       const result = await fetchFn(state.page, limit)
 
-      setState(prev => ({
-        ...prev,
-        items: [...prev.items, ...result.items],
-        hasMore: result.hasMore,
-        page: prev.page + 1,
-        isLoading: false,
-        isInitialLoading: false,
-      }))
+      // Ignore stale responses
+      if (currentFetchId !== fetchIdRef.current) {
+        return
+      }
+
+      setState(prev => {
+        // Deduplicate items using keyExtractor if available
+        let newItems: T[]
+        if (keyExtractorRef.current) {
+          // First deduplicate within result.items
+          const resultSeen = new Set<string>()
+          const dedupedResult = result.items.filter(item => {
+            const key = keyExtractorRef.current!(item)
+            if (resultSeen.has(key)) return false
+            resultSeen.add(key)
+            return true
+          })
+
+          // Then filter out items that already exist
+          const existingKeys = new Set(prev.items.map(keyExtractorRef.current))
+          const uniqueNewItems = dedupedResult.filter(item => !existingKeys.has(keyExtractorRef.current!(item)))
+          newItems = [...prev.items, ...uniqueNewItems]
+        } else {
+          newItems = [...prev.items, ...result.items]
+        }
+
+        return {
+          ...prev,
+          items: newItems,
+          hasMore: result.hasMore,
+          page: prev.page + 1,
+          isLoading: false,
+          isInitialLoading: false,
+        }
+      })
     } catch (error) {
+      // Ignore errors from stale requests
+      if (currentFetchId !== fetchIdRef.current) {
+        return
+      }
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -129,7 +169,9 @@ export function useInfiniteScroll<T>({
         error: error instanceof Error ? error.message : 'Failed to load items',
       }))
     } finally {
-      isFetchingRef.current = false
+      if (currentFetchId === fetchIdRef.current) {
+        isFetchingRef.current = false
+      }
     }
   }, [fetchFn, limit, state.hasMore, state.page])
 
@@ -137,7 +179,12 @@ export function useInfiniteScroll<T>({
    * Reset and refetch from start
    */
   const reset = React.useCallback(async () => {
-    isFetchingRef.current = false
+    // Prevent concurrent resets
+    if (isFetchingRef.current) return
+
+    isFetchingRef.current = true
+    initialFetchDoneRef.current = true // Mark as done to prevent duplicate fetches
+    const currentFetchId = ++fetchIdRef.current
     setState({
       items: [],
       isLoading: true,
@@ -150,8 +197,25 @@ export function useInfiniteScroll<T>({
     try {
       const result = await fetchFn(1, limit)
 
+      // Ignore stale responses
+      if (currentFetchId !== fetchIdRef.current) {
+        return
+      }
+
+      // Deduplicate items within the result if keyExtractor is available
+      let dedupedItems = result.items
+      if (keyExtractorRef.current) {
+        const seen = new Set<string>()
+        dedupedItems = result.items.filter(item => {
+          const key = keyExtractorRef.current!(item)
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+      }
+
       setState({
-        items: result.items,
+        items: dedupedItems,
         hasMore: result.hasMore,
         page: 2, // Next page to fetch
         isLoading: false,
@@ -159,12 +223,19 @@ export function useInfiniteScroll<T>({
         error: null,
       })
     } catch (error) {
+      if (currentFetchId !== fetchIdRef.current) {
+        return
+      }
       setState(prev => ({
         ...prev,
         isLoading: false,
         isInitialLoading: false,
         error: error instanceof Error ? error.message : 'Failed to load items',
       }))
+    } finally {
+      if (currentFetchId === fetchIdRef.current) {
+        isFetchingRef.current = false
+      }
     }
   }, [fetchFn, limit])
 
@@ -176,6 +247,11 @@ export function useInfiniteScroll<T>({
       return reset()
     }
 
+    // Prevent concurrent refreshes
+    if (isFetchingRef.current) return
+
+    isFetchingRef.current = true
+    const currentFetchId = ++fetchIdRef.current
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
@@ -183,19 +259,43 @@ export function useInfiniteScroll<T>({
       const totalItems = (state.page - 1) * limit
       const result = await fetchFn(1, Math.max(totalItems, limit))
 
+      // Ignore stale responses
+      if (currentFetchId !== fetchIdRef.current) {
+        return
+      }
+
+      // Deduplicate items within the result if keyExtractor is available
+      let dedupedItems = result.items
+      if (keyExtractorRef.current) {
+        const seen = new Set<string>()
+        dedupedItems = result.items.filter(item => {
+          const key = keyExtractorRef.current!(item)
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+      }
+
       setState(prev => ({
         ...prev,
-        items: result.items,
+        items: dedupedItems,
         hasMore: result.hasMore,
         isLoading: false,
         error: null,
       }))
     } catch (error) {
+      if (currentFetchId !== fetchIdRef.current) {
+        return
+      }
       setState(prev => ({
         ...prev,
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to refresh items',
       }))
+    } finally {
+      if (currentFetchId === fetchIdRef.current) {
+        isFetchingRef.current = false
+      }
     }
   }, [fetchFn, limit, reset, state.items.length, state.page])
 
@@ -215,15 +315,41 @@ export function useInfiniteScroll<T>({
     }
   }, [])
 
-  // Set up Intersection Observer for load more trigger
+  // Track if this is the initial mount (must be declared before effects that use it)
+  const isInitialMountRef = React.useRef(true)
+
+  // Reset mounted state on unmount
   React.useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
+  // Initial fetch on mount - single source of truth for initial load
+  React.useEffect(() => {
+    if (fetchOnMount && !initialFetchDoneRef.current) {
+      initialFetchDoneRef.current = true
+      loadMore()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Set up Intersection Observer for load more trigger
+  // IMPORTANT: Only observe after initial fetch is done to avoid race conditions
+  React.useEffect(() => {
+    // Don't set up observer until initial fetch is complete
+    if (!initialFetchDoneRef.current || state.isInitialLoading) {
+      return
+    }
+
     if (observerRef.current) {
       observerRef.current.disconnect()
     }
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && !isFetchingRef.current && state.hasMore) {
+        if (entries[0]?.isIntersecting && !isFetchingRef.current && state.hasMore && !state.isInitialLoading) {
           loadMore()
         }
       },
@@ -241,19 +367,17 @@ export function useInfiniteScroll<T>({
         observerRef.current.disconnect()
       }
     }
-  }, [loadMore, state.hasMore, threshold])
+  }, [loadMore, state.hasMore, state.isInitialLoading, threshold])
 
-  // Initial fetch on mount
+  // Reset when deps change (but not on initial mount)
   React.useEffect(() => {
-    if (fetchOnMount && state.items.length === 0 && state.isInitialLoading) {
-      loadMore()
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false
+      return
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Reset when deps change
-  React.useEffect(() => {
     if (deps.length > 0) {
+      // Reset the initialFetchDone flag when deps change
+      initialFetchDoneRef.current = false
       reset()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -372,7 +372,7 @@ export const COMMON_HOLIDAYS = {
     '2024-11-28', // Thanksgiving
     '2024-12-25'  // Christmas
   ],
-  
+
   // European holidays (ECB calendar)
   EU_2024: [
     '2024-01-01', // New Year's Day
@@ -381,7 +381,35 @@ export const COMMON_HOLIDAYS = {
     '2024-05-01', // Labour Day
     '2024-12-25', // Christmas Day
     '2024-12-26'  // Boxing Day
+  ],
+
+  EU_2025: [
+    '2025-01-01', // New Year's Day
+    '2025-04-18', // Good Friday
+    '2025-04-21', // Easter Monday
+    '2025-05-01', // Labour Day
+    '2025-12-25', // Christmas Day
+    '2025-12-26'  // Boxing Day
+  ],
+
+  EU_2026: [
+    '2026-01-01', // New Year's Day
+    '2026-04-03', // Good Friday
+    '2026-04-06', // Easter Monday
+    '2026-05-01', // Labour Day
+    '2026-12-25', // Christmas Day
+    '2026-12-26'  // Boxing Day
   ]
 };
+
+/**
+ * Get EU holidays for the current year.
+ * Falls back to an empty array if the year isn't defined yet.
+ */
+export function getEUHolidaysForYear(year?: number): string[] {
+  const y = year ?? new Date().getFullYear();
+  const key = `EU_${y}` as keyof typeof COMMON_HOLIDAYS;
+  return COMMON_HOLIDAYS[key] ?? [];
+}
 
 export default dateHelpers;

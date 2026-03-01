@@ -12,16 +12,30 @@ import {
   MatchCard,
   MatchCardSkeleton,
   type MatchCardData,
+  type ImportSource,
+  type EmailMetadata,
+  type MergedEmailData,
+  type CrossCurrencyInfo,
 } from "@/components/page-specific/match-card"
 import {
   BatchApproveDialog,
   type BatchApproveItem,
 } from "@/components/page-specific/batch-approve-dialog"
 import {
+  LinkToExistingDialog,
+  type LinkSourceItem,
+} from "@/components/page-specific/link-to-existing-dialog"
+import {
+  CreateFromImportDialog,
+  type CreateFromImportData,
+} from "@/components/page-specific/create-from-import-dialog"
+import {
   useInfiniteScroll,
   LoadMoreTrigger,
 } from "@/hooks/use-infinite-scroll"
 import { useMatchActions } from "@/hooks/use-match-actions"
+import { useTransactions } from "@/hooks"
+import { toast } from "sonner"
 import {
   CheckCircle2,
   FileText,
@@ -64,7 +78,9 @@ async function fetchMatches(
   if (filters.status !== "all") params.set("status", filters.status)
   if (filters.currency !== "all") params.set("currency", filters.currency)
   if (filters.confidence !== "all") params.set("confidence", filters.confidence)
+  if (filters.source !== "all") params.set("source", filters.source)
   if (filters.search) params.set("search", filters.search)
+  if (filters.statementUploadId) params.set("statementUploadId", filters.statementUploadId)
   if (filters.dateRange?.from) {
     params.set("from", filters.dateRange.from.toISOString().split("T")[0])
   }
@@ -84,13 +100,19 @@ async function fetchMatches(
     // Transform API response to MatchCardData format
     const items: MatchCardData[] = data.items.map((item: {
       id: string
-      statementTransaction: { date: string; description: string; amount: number; currency: string }
-      matchedTransaction?: { id: string; date: string; amount: number; currency: string; vendor_name?: string }
+      statementTransaction: { date: string; description: string; amount: number; currency: string; sourceFilename?: string }
+      statementFilename: string
+      paymentMethod: { id: string; name: string } | null
+      matchedTransaction?: { id: string; date: string; amount: number; currency: string; vendor_name?: string; description?: string; payment_method_name?: string }
       confidence: number
       confidenceLevel: 'high' | 'medium' | 'low' | 'none'
       reasons: string[]
       isNew: boolean
       status: 'pending' | 'approved' | 'rejected'
+      source?: ImportSource
+      emailMetadata?: EmailMetadata
+      mergedEmailData?: MergedEmailData
+      crossCurrencyInfo?: CrossCurrencyInfo
     }) => ({
       id: item.id,
       statementTransaction: item.statementTransaction,
@@ -100,6 +122,13 @@ async function fetchMatches(
       reasons: item.reasons,
       isNew: item.isNew,
       status: item.status,
+      sourceStatement: item.paymentMethod?.name
+        ? `${item.paymentMethod.name}`
+        : item.statementFilename,
+      source: item.source,
+      emailMetadata: item.emailMetadata,
+      mergedEmailData: item.mergedEmailData,
+      crossCurrencyInfo: item.crossCurrencyInfo,
     }))
 
     return {
@@ -146,6 +175,14 @@ export default function ReviewQueuePage() {
   // Batch approve dialog
   const [batchDialogOpen, setBatchDialogOpen] = React.useState(false)
 
+  // Link to existing dialog
+  const [linkDialogOpen, setLinkDialogOpen] = React.useState(false)
+  const [linkingItemId, setLinkingItemId] = React.useState<string | null>(null)
+
+  // Create from import dialog
+  const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
+  const [createDialogData, setCreateDialogData] = React.useState<CreateFromImportData | null>(null)
+
   // Stats state
   const [stats, setStats] = React.useState<QueueStats>({
     total: 0,
@@ -178,7 +215,9 @@ export default function ReviewQueuePage() {
       filters.status,
       filters.currency,
       filters.confidence,
+      filters.source,
       filters.search,
+      filters.statementUploadId,
       filters.dateRange?.from?.getTime(),
       filters.dateRange?.to?.getTime(),
     ],
@@ -189,6 +228,7 @@ export default function ReviewQueuePage() {
   const {
     approve,
     reject,
+    linkToExisting,
     batchApprove,
     isProcessing,
   } = useMatchActions({
@@ -220,6 +260,92 @@ export default function ReviewQueuePage() {
       return next
     })
   }
+
+  // Handle "Link to Existing" click
+  const handleLinkManually = (id: string) => {
+    setLinkingItemId(id)
+    setLinkDialogOpen(true)
+  }
+
+  // Handle link confirmation
+  const handleLinkConfirm = async (transactionId: string) => {
+    if (!linkingItemId) return
+    await linkToExisting(linkingItemId, transactionId)
+    setLinkDialogOpen(false)
+    setLinkingItemId(null)
+  }
+
+  // Transaction creation hook
+  const { createTransaction } = useTransactions()
+
+  // Handle "Create as New" click - opens pre-filled dialog
+  const handleCreateAsNew = (id: string) => {
+    const item = items.find((i) => i.id === id)
+    if (!item) return
+    setCreateDialogData({
+      compositeId: id,
+      description: item.statementTransaction.description,
+      amount: item.statementTransaction.amount,
+      currency: item.statementTransaction.currency,
+      date: item.statementTransaction.date,
+    })
+    setCreateDialogOpen(true)
+  }
+
+  // Handle create+link confirmation from dialog
+  const handleCreateConfirm = async (
+    compositeId: string,
+    transactionData: {
+      description: string
+      amount: number
+      currency: string
+      date: string
+      vendorId?: string
+      paymentMethodId?: string
+      tagIds?: string[]
+      transactionType: string
+    }
+  ) => {
+    // Step 1: Create the transaction via Supabase
+    const result = await createTransaction({
+      description: transactionData.description,
+      amount: transactionData.amount,
+      originalCurrency: transactionData.currency as "USD" | "THB",
+      transactionDate: transactionData.date,
+      transactionType: transactionData.transactionType as "expense" | "income",
+      vendorId: transactionData.vendorId,
+      paymentMethodId: transactionData.paymentMethodId,
+      tagIds: transactionData.tagIds,
+    })
+
+    if (!result) {
+      throw new Error("Failed to create transaction")
+    }
+
+    // Step 2: Link the import item to the new transaction
+    await linkToExisting(compositeId, result.id)
+
+    toast.success("Transaction created and linked")
+  }
+
+  // Handle "Import as New" click (legacy - for ready-to-import variant)
+  const handleImport = (id: string) => {
+    handleCreateAsNew(id)
+  }
+
+  // Get the linking item data for the dialog
+  const linkingItem: LinkSourceItem | null = React.useMemo(() => {
+    if (!linkingItemId) return null
+    const item = items.find((i) => i.id === linkingItemId)
+    if (!item) return null
+    return {
+      id: item.id,
+      description: item.statementTransaction.description,
+      amount: item.statementTransaction.amount,
+      currency: item.statementTransaction.currency,
+      date: item.statementTransaction.date,
+    }
+  }, [linkingItemId, items])
 
   // Get high-confidence items for batch approve
   const highConfidenceItems = items.filter(
@@ -385,6 +511,9 @@ export default function ReviewQueuePage() {
               loading={isProcessing(item.id)}
               onApprove={(id) => approve(id)}
               onReject={(id) => reject(id)}
+              onLinkManually={handleLinkManually}
+              onImport={handleImport}
+              onCreateAsNew={handleCreateAsNew}
               onSelectionChange={handleSelectionChange}
             />
           ))
@@ -404,6 +533,28 @@ export default function ReviewQueuePage() {
         onOpenChange={setBatchDialogOpen}
         items={batchApproveItems}
         onConfirm={handleBatchApprove}
+      />
+
+      {/* Link to existing dialog */}
+      <LinkToExistingDialog
+        open={linkDialogOpen}
+        onOpenChange={(open) => {
+          setLinkDialogOpen(open)
+          if (!open) setLinkingItemId(null)
+        }}
+        item={linkingItem}
+        onConfirm={handleLinkConfirm}
+      />
+
+      {/* Create from import dialog */}
+      <CreateFromImportDialog
+        open={createDialogOpen}
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open)
+          if (!open) setCreateDialogData(null)
+        }}
+        data={createDialogData}
+        onConfirm={handleCreateConfirm}
       />
     </div>
   )

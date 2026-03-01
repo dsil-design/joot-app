@@ -2,7 +2,7 @@ import { ECBFetcher, ecbFetcher } from './ecb-fetcher';
 import { RateCalculator, rateCalculator } from './rate-calculator';
 import { GapFillingService, gapFillingService } from './gap-filling-service';
 import { db } from '../supabase/database';
-import { dateHelpers, COMMON_HOLIDAYS } from '../utils/date-helpers';
+import { dateHelpers, COMMON_HOLIDAYS, getEUHolidaysForYear } from '../utils/date-helpers';
 import {
   ECBRate,
   ProcessedRate,
@@ -81,7 +81,7 @@ export class DailySyncService {
     const startTime = Date.now();
     
     const config: SyncOptions = {
-      targetDate: dateHelpers.getTargetSyncDate(undefined, COMMON_HOLIDAYS.EU_2024),
+      targetDate: dateHelpers.getTargetSyncDate(undefined, getEUHolidaysForYear()),
       forceUpdate: false,
       fillGaps: true,
       maxGapDays: 7,
@@ -118,7 +118,7 @@ export class DailySyncService {
       }
 
       // Step 2: Determine if target date should have data (business day check)
-      if (!dateHelpers.isBusinessDay(config.targetDate!, COMMON_HOLIDAYS.EU_2024)) {
+      if (!dateHelpers.isBusinessDay(config.targetDate!, getEUHolidaysForYear())) {
         console.log(`📅 Target date ${config.targetDate} is not a business day, handling as weekend/holiday`);
         
         if (config.fillGaps) {

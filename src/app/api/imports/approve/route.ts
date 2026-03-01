@@ -1,20 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
+import type { Json } from '@/lib/supabase/types'
+import { parseImportId } from '@/lib/utils/import-id'
+
+interface Suggestion {
+  transaction_date: string
+  description: string
+  amount: number
+  currency: string
+  matched_transaction_id?: string
+  confidence: number
+  reasons: string[]
+  is_new: boolean
+  status?: 'pending' | 'approved' | 'rejected'
+}
+
+interface ExtractionLog {
+  suggestions?: Suggestion[]
+  [key: string]: unknown
+}
 
 /**
  * POST /api/imports/approve
  *
- * Approves matches and optionally creates transactions from them.
+ * Approves matches from the review queue.
+ * IDs can be:
+ * - stmt:<uuid>:<index> (statement items)
+ * - email:<uuid> (email items)
+ * - <uuid>:<index> (legacy statement format)
  *
  * Request body:
- * - emailIds: string[] - Array of email_transaction IDs to approve
+ * - emailIds: string[] - Array of IDs to approve
  * - createTransactions: boolean - Whether to create transaction records
- *
- * Returns:
- * - 200: Success with counts
- * - 400: Invalid request
- * - 401: Unauthorized
- * - 500: Internal server error
  */
 export async function POST(request: NextRequest) {
   try {
@@ -54,16 +71,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate all IDs are valid UUIDs
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    const invalidIds = emailIds.filter(id => !uuidRegex.test(id))
-    if (invalidIds.length > 0) {
-      return NextResponse.json(
-        { error: 'Invalid email ID format', invalidIds },
-        { status: 400 }
-      )
-    }
-
     // Limit batch size
     if (emailIds.length > 100) {
       return NextResponse.json(
@@ -72,106 +79,291 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use service role client for batch operations
-    const serviceClient = createServiceRoleClient()
+    // Parse and separate IDs by type
+    const statementIds: { id: string; statementId: string; index: number }[] = []
+    const emailItemIds: string[] = []
+    const mergedIds: { id: string; emailId: string; statementId: string; index: number }[] = []
+    const invalidIds: string[] = []
 
-    // Verify all email_transactions belong to user and are in pending status
-    const { data: emailTransactions, error: fetchError } = await serviceClient
-      .from('email_transactions')
-      .select('id, user_id, status, email_data, extracted_data')
-      .in('id', emailIds)
-      .eq('user_id', user.id)
-
-    if (fetchError) {
-      console.error('Error fetching email transactions:', fetchError)
-      return NextResponse.json(
-        { error: 'Failed to fetch email transactions' },
-        { status: 500 }
-      )
+    for (const id of emailIds) {
+      const parsed = parseImportId(id)
+      if (!parsed) {
+        invalidIds.push(id)
+      } else if (parsed.type === 'merged') {
+        mergedIds.push({ id, emailId: parsed.emailId, statementId: parsed.statementId, index: parsed.index })
+      } else if (parsed.type === 'statement') {
+        statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
+      } else {
+        emailItemIds.push(parsed.emailId)
+      }
     }
 
-    if (!emailTransactions || emailTransactions.length === 0) {
+    if (invalidIds.length > 0) {
       return NextResponse.json(
-        { error: 'No matching email transactions found' },
-        { status: 404 }
-      )
-    }
-
-    // Filter to only process pending items
-    const pendingTransactions = emailTransactions.filter(
-      et => et.status === 'pending' || et.status === 'extracted'
-    )
-
-    if (pendingTransactions.length === 0) {
-      return NextResponse.json(
-        { error: 'No pending email transactions to approve' },
+        { error: 'Invalid ID format', invalidIds },
         { status: 400 }
       )
     }
+
+    // Use service role client for batch operations
+    const serviceClient = createServiceRoleClient()
 
     // Track results
     const results = {
       success: 0,
       failed: 0,
-      skipped: emailIds.length - pendingTransactions.length,
+      skipped: 0,
       totalAmount: 0,
       transactionsCreated: 0,
       errors: [] as string[],
     }
 
-    // Process each email transaction
-    for (const emailTx of pendingTransactions) {
-      try {
-        // Update status to 'imported'
-        const { error: updateError } = await serviceClient
-          .from('email_transactions')
-          .update({
-            status: 'imported',
-            reviewed_at: new Date().toISOString(),
-          })
-          .eq('id', emailTx.id)
+    // --- Process STATEMENT items ---
+    if (statementIds.length > 0) {
+      // Group by statement ID
+      const byStatement = new Map<string, number[]>()
+      for (const { statementId, index } of statementIds) {
+        const indices = byStatement.get(statementId) || []
+        indices.push(index)
+        byStatement.set(statementId, indices)
+      }
 
-        if (updateError) {
-          throw new Error(`Failed to update status: ${updateError.message}`)
-        }
+      // Fetch all relevant statements
+      const stmtIdList = Array.from(byStatement.keys())
+      const { data: statements, error: fetchError } = await serviceClient
+        .from('statement_uploads')
+        .select('id, user_id, extraction_log')
+        .in('id', stmtIdList)
+        .eq('user_id', user.id)
 
-        // Create transaction if requested
-        if (createTransactions) {
-          const extractedData = emailTx.extracted_data as {
-            amount?: number
-            currency?: string
-            date?: string
-            vendor_name?: string
-            description?: string
-          } | null
+      if (fetchError) {
+        console.error('Error fetching statements:', fetchError)
+        results.errors.push('Failed to fetch statement data')
+      } else if (!statements || statements.length === 0) {
+        results.errors.push('No matching statements found')
+      } else {
+        for (const statement of statements) {
+          const indices = byStatement.get(statement.id) || []
+          const extractionLog = statement.extraction_log as ExtractionLog | null
+          const suggestions = extractionLog?.suggestions || []
 
-          if (extractedData?.amount && extractedData?.date) {
-            const { error: insertError } = await serviceClient
-              .from('transactions')
-              .insert({
-                user_id: user.id,
-                amount: extractedData.amount,
-                currency: extractedData.currency || 'USD',
-                date: extractedData.date,
-                notes: extractedData.description || `Imported from email`,
-                created_at: new Date().toISOString(),
+          let hasChanges = false
+
+          for (const idx of indices) {
+            if (idx < 0 || idx >= suggestions.length) {
+              results.failed++
+              results.errors.push(`Invalid suggestion index ${idx} for statement ${statement.id}`)
+              continue
+            }
+
+            const suggestion = suggestions[idx]
+
+            if (suggestion.status === 'approved') {
+              results.skipped++
+              continue
+            }
+
+            suggestion.status = 'approved'
+            hasChanges = true
+
+            if (createTransactions && suggestion.amount && suggestion.transaction_date) {
+              const { error: insertError } = await serviceClient
+                .from('transactions')
+                .insert({
+                  user_id: user.id,
+                  amount: suggestion.amount,
+                  original_currency: (suggestion.currency || 'USD') as 'USD' | 'THB',
+                  transaction_type: 'expense' as const,
+                  transaction_date: suggestion.transaction_date,
+                  description: suggestion.description || 'Imported from statement',
+                })
+
+              if (insertError) {
+                results.errors.push(`Failed to create transaction: ${insertError.message}`)
+              } else {
+                results.transactionsCreated++
+                results.totalAmount += Math.abs(suggestion.amount)
+              }
+            }
+
+            results.success++
+          }
+
+          if (hasChanges) {
+            const { error: updateError } = await serviceClient
+              .from('statement_uploads')
+              .update({
+                extraction_log: { ...extractionLog, suggestions } as unknown as Json,
               })
+              .eq('id', statement.id)
 
-            if (insertError) {
-              results.errors.push(`Failed to create transaction for ${emailTx.id}: ${insertError.message}`)
-            } else {
-              results.transactionsCreated++
-              results.totalAmount += Math.abs(extractedData.amount)
+            if (updateError) {
+              console.error('Error updating statement:', updateError)
+              results.errors.push(`Failed to save changes to statement ${statement.id}`)
             }
           }
         }
+      }
+    }
+
+    // --- Process EMAIL items ---
+    if (emailItemIds.length > 0) {
+      if (createTransactions) {
+        // Fetch email rows to create transactions from them
+        const { data: emailRows, error: emailFetchError } = await serviceClient
+          .from('email_transactions')
+          .select('id, amount, currency, transaction_date, email_date, description, subject, status')
+          .in('id', emailItemIds)
+          .eq('user_id', user.id)
+
+        if (emailFetchError) {
+          results.errors.push('Failed to fetch email transactions')
+        } else if (emailRows) {
+          for (const row of emailRows) {
+            if (row.status === 'imported' || row.status === 'matched') {
+              results.skipped++
+              continue
+            }
+
+            // Create transaction
+            const { data: newTx, error: insertError } = await serviceClient
+              .from('transactions')
+              .insert({
+                user_id: user.id,
+                amount: row.amount ?? 0,
+                original_currency: (row.currency || 'USD') as 'USD' | 'THB',
+                transaction_type: 'expense' as const,
+                transaction_date: row.transaction_date ?? row.email_date?.split('T')[0] ?? new Date().toISOString().split('T')[0],
+                description: row.description || row.subject || 'Imported from email',
+              })
+              .select('id')
+              .single()
+
+            if (insertError) {
+              results.failed++
+              results.errors.push(`Failed to create transaction for email ${row.id}: ${insertError.message}`)
+              continue
+            }
+
+            // Update email_transactions status
+            await serviceClient
+              .from('email_transactions')
+              .update({
+                status: 'imported',
+                matched_transaction_id: newTx.id,
+                match_method: 'auto',
+                matched_at: new Date().toISOString(),
+              })
+              .eq('id', row.id)
+
+            results.success++
+            results.transactionsCreated++
+            results.totalAmount += Math.abs(row.amount ?? 0)
+          }
+        }
+      } else {
+        // Just mark as matched (approve without creating transactions)
+        const { data: updated, error: emailUpdateError } = await serviceClient
+          .from('email_transactions')
+          .update({
+            status: 'matched',
+            matched_at: new Date().toISOString(),
+          })
+          .in('id', emailItemIds)
+          .eq('user_id', user.id)
+          .select('id')
+
+        if (emailUpdateError) {
+          results.errors.push('Failed to update email transactions')
+          results.failed += emailItemIds.length
+        } else {
+          results.success += updated?.length ?? 0
+        }
+      }
+    }
+
+    // --- Process MERGED items (cross-source pairs) ---
+    if (mergedIds.length > 0) {
+      for (const merged of mergedIds) {
+        // Fetch the statement to get suggestion data
+        const { data: statement, error: stmtFetchError } = await serviceClient
+          .from('statement_uploads')
+          .select('id, extraction_log')
+          .eq('id', merged.statementId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (stmtFetchError || !statement) {
+          results.failed++
+          results.errors.push(`Statement not found for merged ID ${merged.id}`)
+          continue
+        }
+
+        const extractionLog = statement.extraction_log as ExtractionLog | null
+        const suggestions = extractionLog?.suggestions || []
+
+        if (merged.index < 0 || merged.index >= suggestions.length) {
+          results.failed++
+          results.errors.push(`Invalid suggestion index for merged ID ${merged.id}`)
+          continue
+        }
+
+        const suggestion = suggestions[merged.index]
+
+        if (suggestion.status === 'approved') {
+          results.skipped++
+          continue
+        }
+
+        // Create ONE transaction from statement data (USD = primary)
+        const { data: newTx, error: txError } = await serviceClient
+          .from('transactions')
+          .insert({
+            user_id: user.id,
+            amount: suggestion.amount,
+            original_currency: (suggestion.currency || 'USD') as 'USD' | 'THB',
+            transaction_type: 'expense' as const,
+            transaction_date: suggestion.transaction_date,
+            description: suggestion.description || 'Imported from cross-source match',
+          })
+          .select('id')
+          .single()
+
+        if (txError || !newTx) {
+          results.failed++
+          results.errors.push(`Failed to create transaction for merged ID ${merged.id}: ${txError?.message}`)
+          continue
+        }
+
+        // Update statement suggestion
+        suggestions[merged.index] = {
+          ...suggestion,
+          status: 'approved',
+          matched_transaction_id: newTx.id,
+        }
+
+        await serviceClient
+          .from('statement_uploads')
+          .update({
+            extraction_log: { ...extractionLog, suggestions } as unknown as Json,
+          })
+          .eq('id', statement.id)
+
+        // Update email_transaction
+        await serviceClient
+          .from('email_transactions')
+          .update({
+            matched_transaction_id: newTx.id,
+            status: 'imported',
+            match_method: 'cross_source',
+            matched_at: new Date().toISOString(),
+          })
+          .eq('id', merged.emailId)
+          .eq('user_id', user.id)
 
         results.success++
-      } catch (error) {
-        results.failed++
-        results.errors.push(
-          `Error processing ${emailTx.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
-        )
+        results.transactionsCreated++
+        results.totalAmount += Math.abs(suggestion.amount)
       }
     }
 
@@ -181,11 +373,11 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         activity_type: 'batch_import',
-        description: `Approved ${results.success} email transactions`,
+        description: `Approved ${results.success} matches from review queue`,
         transactions_affected: results.success,
         total_amount: results.totalAmount > 0 ? results.totalAmount : null,
         metadata: {
-          emailIds: pendingTransactions.map(et => et.id),
+          compositeIds: emailIds,
           createTransactions,
           results,
         },

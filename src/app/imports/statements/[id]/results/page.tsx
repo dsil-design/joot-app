@@ -80,8 +80,8 @@ async function fetchResults(statementId: string): Promise<ProcessingResult | nul
  * - CTAs to review queue and history
  */
 export default function ProcessingResultsPage() {
-  const params = useParams()
-  const statementId = params.id as string
+  const params = useParams<{ id: string }>()
+  const statementId = params?.id as string
 
   const [result, setResult] = React.useState<ProcessingResult | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
@@ -174,11 +174,24 @@ export default function ProcessingResultsPage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold">Processing Results</h1>
-          <p className="text-sm text-muted-foreground">
-            {result.statement.filename}
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-sm text-muted-foreground">
+              {result.statement.filename}
+            </p>
+            {result.statement.payment_method && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                {result.statement.payment_method.name}
+              </span>
+            )}
+            {result.statement.period.start && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                {formatDate(result.statement.period.start)}
+                {result.statement.period.end && ` — ${formatDate(result.statement.period.end)}`}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -292,6 +305,7 @@ export default function ProcessingResultsPage() {
               label="Extracted"
               value={result.summary.total_extracted}
               description="transactions found"
+              href={`/imports/review?statementUploadId=${statementId}`}
             />
             <StatCard
               icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
@@ -299,6 +313,7 @@ export default function ProcessingResultsPage() {
               value={result.summary.total_matched}
               description="existing transactions"
               className="border-green-200 bg-green-50"
+              href={`/imports/review?statementUploadId=${statementId}&confidence=high`}
             />
             <StatCard
               icon={<AlertTriangle className="h-5 w-5 text-amber-600" />}
@@ -306,6 +321,7 @@ export default function ProcessingResultsPage() {
               value={result.summary.total_new}
               description="to import"
               className="border-amber-200 bg-amber-50"
+              href={`/imports/review?statementUploadId=${statementId}&confidence=low`}
             />
           </div>
 
@@ -321,24 +337,28 @@ export default function ProcessingResultsPage() {
                   value={result.summary.confidence_distribution.high}
                   total={result.summary.total_extracted}
                   color="bg-green-500"
+                  href={`/imports/review?statementUploadId=${statementId}&confidence=high`}
                 />
                 <DistributionBar
                   label="Medium Confidence (55-89%)"
                   value={result.summary.confidence_distribution.medium}
                   total={result.summary.total_extracted}
                   color="bg-amber-500"
+                  href={`/imports/review?statementUploadId=${statementId}&confidence=medium`}
                 />
                 <DistributionBar
                   label="Low Confidence (<55%)"
                   value={result.summary.confidence_distribution.low}
                   total={result.summary.total_extracted}
                   color="bg-red-500"
+                  href={`/imports/review?statementUploadId=${statementId}&confidence=low`}
                 />
                 <DistributionBar
                   label="No Match"
                   value={result.summary.confidence_distribution.no_match}
                   total={result.summary.total_extracted}
                   color="bg-gray-400"
+                  href={`/imports/review?statementUploadId=${statementId}`}
                 />
               </div>
             </CardContent>
@@ -407,7 +427,7 @@ export default function ProcessingResultsPage() {
             <div className="flex items-center gap-3">
               {result.summary.total_extracted > 0 && (
                 <Button asChild>
-                  <Link href="/imports/review">
+                  <Link href={`/imports/review?statementUploadId=${statementId}`}>
                     Review Matches
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Link>
@@ -430,15 +450,17 @@ function StatCard({
   value,
   description,
   className,
+  href,
 }: {
   icon: React.ReactNode
   label: string
   value: number
   description: string
   className?: string
+  href?: string
 }) {
-  return (
-    <Card className={cn("text-center", className)}>
+  const card = (
+    <Card className={cn("text-center", href && "cursor-pointer hover:shadow-md transition-shadow", className)}>
       <CardContent className="py-4">
         <div className="flex justify-center mb-2">{icon}</div>
         <p className="text-3xl font-bold">{value}</p>
@@ -447,6 +469,12 @@ function StatCard({
       </CardContent>
     </Card>
   )
+
+  if (href) {
+    return <Link href={href}>{card}</Link>
+  }
+
+  return card
 }
 
 /**
@@ -457,20 +485,23 @@ function DistributionBar({
   value,
   total,
   color,
+  href,
 }: {
   label: string
   value: number
   total: number
   color: string
+  href?: string
 }) {
   const percentage = total > 0 ? (value / total) * 100 : 0
 
-  return (
-    <div>
+  const content = (
+    <div className={href && value > 0 ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}>
       <div className="flex items-center justify-between text-sm mb-1">
         <span>{label}</span>
         <span className="font-medium">
           {value} ({Math.round(percentage)}%)
+          {href && value > 0 && <ArrowRight className="inline h-3 w-3 ml-1" />}
         </span>
       </div>
       <div className="h-3 bg-muted rounded-full overflow-hidden">
@@ -481,6 +512,12 @@ function DistributionBar({
       </div>
     </div>
   )
+
+  if (href && value > 0) {
+    return <Link href={href}>{content}</Link>
+  }
+
+  return content
 }
 
 /**

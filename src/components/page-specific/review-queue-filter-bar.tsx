@@ -19,7 +19,7 @@ import type { DateRange } from "react-day-picker"
 /**
  * Filter status options
  */
-export type FilterStatus = "all" | "pending" | "matched" | "waiting" | "new"
+export type FilterStatus = "all" | "pending" | "approved" | "rejected"
 
 /**
  * Filter currency options
@@ -32,14 +32,21 @@ export type FilterCurrency = "all" | "USD" | "THB"
 export type FilterConfidence = "all" | "high" | "medium" | "low"
 
 /**
+ * Filter source type
+ */
+export type FilterSource = "all" | "statement" | "email" | "merged"
+
+/**
  * Filter state
  */
 export interface ReviewQueueFilters {
   status: FilterStatus
   currency: FilterCurrency
   confidence: FilterConfidence
+  source: FilterSource
   dateRange: DateRange | undefined
   search: string
+  statementUploadId: string
 }
 
 /**
@@ -49,8 +56,10 @@ export const defaultFilters: ReviewQueueFilters = {
   status: "all",
   currency: "all",
   confidence: "all",
+  source: "all",
   dateRange: undefined,
   search: "",
+  statementUploadId: "",
 }
 
 /**
@@ -85,9 +94,8 @@ export interface ReviewQueueFilterBarProps {
 const statusOptions: Array<{ value: FilterStatus; label: string }> = [
   { value: "all", label: "All Statuses" },
   { value: "pending", label: "Pending Review" },
-  { value: "matched", label: "Matched" },
-  { value: "waiting", label: "Waiting for Statement" },
-  { value: "new", label: "New Transactions" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
 ]
 
 /**
@@ -110,13 +118,23 @@ const confidenceOptions: Array<{ value: FilterConfidence; label: string }> = [
 ]
 
 /**
+ * Source filter options
+ */
+const sourceOptions: Array<{ value: FilterSource; label: string }> = [
+  { value: "all", label: "All Sources" },
+  { value: "statement", label: "Statements" },
+  { value: "email", label: "Emails" },
+  { value: "merged", label: "Cross-Source Matches" },
+]
+
+/**
  * Parse URL params to filters
  */
 function parseUrlParams(searchParams: URLSearchParams): Partial<ReviewQueueFilters> {
   const filters: Partial<ReviewQueueFilters> = {}
 
   const status = searchParams.get("status")
-  if (status && ["all", "pending", "matched", "waiting", "new"].includes(status)) {
+  if (status && ["all", "pending", "approved", "rejected"].includes(status)) {
     filters.status = status as FilterStatus
   }
 
@@ -128,6 +146,11 @@ function parseUrlParams(searchParams: URLSearchParams): Partial<ReviewQueueFilte
   const confidence = searchParams.get("confidence")
   if (confidence && ["all", "high", "medium", "low"].includes(confidence)) {
     filters.confidence = confidence as FilterConfidence
+  }
+
+  const source = searchParams.get("source")
+  if (source && ["all", "statement", "email", "merged"].includes(source)) {
+    filters.source = source as FilterSource
   }
 
   const search = searchParams.get("search")
@@ -142,6 +165,11 @@ function parseUrlParams(searchParams: URLSearchParams): Partial<ReviewQueueFilte
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
     }
+  }
+
+  const statementUploadId = searchParams.get("statementUploadId")
+  if (statementUploadId) {
+    filters.statementUploadId = statementUploadId
   }
 
   return filters
@@ -162,6 +190,9 @@ function filtersToUrlParams(filters: ReviewQueueFilters): URLSearchParams {
   if (filters.confidence !== "all") {
     params.set("confidence", filters.confidence)
   }
+  if (filters.source !== "all") {
+    params.set("source", filters.source)
+  }
   if (filters.search) {
     params.set("search", filters.search)
   }
@@ -170,6 +201,9 @@ function filtersToUrlParams(filters: ReviewQueueFilters): URLSearchParams {
   }
   if (filters.dateRange?.to) {
     params.set("to", filters.dateRange.to.toISOString().split("T")[0])
+  }
+  if (filters.statementUploadId) {
+    params.set("statementUploadId", filters.statementUploadId)
   }
 
   return params
@@ -183,8 +217,10 @@ function hasActiveFilters(filters: ReviewQueueFilters): boolean {
     filters.status !== "all" ||
     filters.currency !== "all" ||
     filters.confidence !== "all" ||
+    filters.source !== "all" ||
     filters.search !== "" ||
-    filters.dateRange !== undefined
+    filters.dateRange !== undefined ||
+    filters.statementUploadId !== ""
   )
 }
 
@@ -199,6 +235,14 @@ function hasActiveFilters(filters: ReviewQueueFilters): boolean {
  * - Search input (vendor, amount, description)
  * - Clear all button
  */
+/**
+ * Statement option for filter dropdown
+ */
+interface StatementOption {
+  id: string
+  label: string
+}
+
 export function ReviewQueueFilterBar({
   filters,
   onFiltersChange,
@@ -209,6 +253,54 @@ export function ReviewQueueFilterBar({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [searchInput, setSearchInput] = React.useState(filters.search)
+  const [statementOptions, setStatementOptions] = React.useState<StatementOption[]>([])
+
+  // Fetch statement options on mount
+  React.useEffect(() => {
+    const loadStatements = async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client")
+        const supabase = createClient()
+        const { data } = await supabase
+          .from("statement_uploads")
+          .select(`
+            id,
+            filename,
+            statement_period_start,
+            statement_period_end,
+            payment_methods (name)
+          `)
+          .eq("status", "completed")
+          .order("extraction_completed_at", { ascending: false })
+          .limit(50)
+
+        if (data) {
+          setStatementOptions(
+            data.map((s: {
+              id: string
+              filename: string
+              statement_period_start: string | null
+              statement_period_end: string | null
+              payment_methods: { name: string } | null
+            }) => {
+              const pmName = (s.payment_methods as { name: string } | null)?.name
+              const period = s.statement_period_start
+                ? new Date(s.statement_period_start).toLocaleDateString("en-US", {
+                    month: "short",
+                    year: "numeric",
+                  })
+                : null
+              const label = [pmName, period].filter(Boolean).join(" — ") || s.filename
+              return { id: s.id, label }
+            })
+          )
+        }
+      } catch {
+        // Silently fail — dropdown just won't be populated
+      }
+    }
+    loadStatements()
+  }, [])
 
   // Debounced search
   React.useEffect(() => {
@@ -241,15 +333,15 @@ export function ReviewQueueFilterBar({
     if (syncWithUrl) {
       const params = filtersToUrlParams(filters)
       const newUrl = params.toString()
-        ? `${pathname}?${params.toString()}`
-        : pathname
+        ? `${pathname ?? ''}?${params.toString()}`
+        : (pathname ?? '')
       router.replace(newUrl, { scroll: false })
     }
   }, [filters, pathname, router, syncWithUrl])
 
   const handleFilterChange = (
     key: keyof ReviewQueueFilters,
-    value: FilterStatus | FilterCurrency | FilterConfidence | DateRange | undefined | string
+    value: FilterStatus | FilterCurrency | FilterConfidence | FilterSource | DateRange | undefined | string
   ) => {
     onFiltersChange({ ...filters, [key]: value })
   }
@@ -263,8 +355,10 @@ export function ReviewQueueFilterBar({
     filters.status !== "all",
     filters.currency !== "all",
     filters.confidence !== "all",
+    filters.source !== "all",
     filters.dateRange !== undefined,
     filters.search !== "",
+    filters.statementUploadId !== "",
   ].filter(Boolean).length
 
   return (
@@ -282,6 +376,47 @@ export function ReviewQueueFilterBar({
             className="pl-9"
           />
         </div>
+
+        {/* Statement filter */}
+        {statementOptions.length > 0 && (
+          <Select
+            value={filters.statementUploadId || "all"}
+            onValueChange={(value) =>
+              handleFilterChange("statementUploadId", value === "all" ? "" : value)
+            }
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Statements" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statements</SelectItem>
+              {statementOptions.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Source filter */}
+        <Select
+          value={filters.source}
+          onValueChange={(value) =>
+            handleFilterChange("source", value as FilterSource)
+          }
+        >
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Source" />
+          </SelectTrigger>
+          <SelectContent>
+            {sourceOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* Status filter */}
         <Select
@@ -342,8 +477,8 @@ export function ReviewQueueFilterBar({
 
         {/* Date range picker */}
         <DateRangePicker
-          date={filters.dateRange}
-          onDateChange={(range) => handleFilterChange("dateRange", range)}
+          dateRange={filters.dateRange}
+          onDateRangeChange={(range: DateRange | undefined) => handleFilterChange("dateRange", range)}
           className="w-[260px]"
         />
 
@@ -380,9 +515,13 @@ export function ReviewQueueFilterBar({
 export function useReviewQueueFilters(
   initialFilters: Partial<ReviewQueueFilters> = {}
 ): [ReviewQueueFilters, (filters: ReviewQueueFilters) => void] {
-  const [filters, setFilters] = React.useState<ReviewQueueFilters>({
-    ...defaultFilters,
-    ...initialFilters,
+  const searchParams = useSearchParams()
+
+  const [filters, setFilters] = React.useState<ReviewQueueFilters>(() => {
+    // Read URL params on initial render to avoid flash of unfiltered data
+    // useSearchParams is hydration-safe (same value on server and client)
+    const urlFilters = searchParams ? parseUrlParams(searchParams) : {}
+    return { ...defaultFilters, ...initialFilters, ...urlFilters }
   })
 
   return [filters, setFilters]

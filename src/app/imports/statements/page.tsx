@@ -154,7 +154,7 @@ export default function StatementsPage() {
       const formattedUploads: RecentUpload[] = (data || []).map((upload) => ({
         id: upload.id,
         filename: upload.filename,
-        uploaded_at: upload.uploaded_at,
+        uploaded_at: upload.uploaded_at ?? new Date().toISOString(),
         status: upload.status as RecentUpload['status'],
         payment_method_name: (upload.payment_methods as { name: string } | null)?.name || null,
         transactions_extracted: upload.transactions_extracted,

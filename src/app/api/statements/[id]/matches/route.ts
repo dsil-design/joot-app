@@ -257,9 +257,9 @@ export async function GET(
         .from('transactions')
         .select(`
           id,
-          date,
+          transaction_date,
           amount,
-          currency,
+          original_currency,
           vendors (name)
         `)
         .in('id', matchedTransactionIds)
@@ -269,9 +269,9 @@ export async function GET(
           const vendors = tx.vendors as { name: string } | null
           acc[tx.id] = {
             id: tx.id,
-            date: tx.date,
+            date: tx.transaction_date,
             amount: tx.amount,
-            currency: tx.currency,
+            currency: tx.original_currency,
             vendor_name: vendors?.name,
           }
           return acc

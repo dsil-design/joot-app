@@ -280,9 +280,12 @@ export class StatementProcessor {
     const upload = await this.getUploadRecord(uploadId);
     if (!upload) return null;
 
+    const logEntries = (upload.extraction_log as Record<string, unknown> | null)?.log;
+    const logArray = Array.isArray(logEntries) ? logEntries : [];
+
     return {
       status: upload.status,
-      progress: upload.extraction_log?.log?.[upload.extraction_log.log.length - 1] as ProcessingProgress | undefined,
+      progress: logArray.length > 0 ? logArray[logArray.length - 1] as ProcessingProgress : undefined,
       error: upload.extraction_error ?? undefined,
     };
   }

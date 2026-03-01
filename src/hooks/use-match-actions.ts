@@ -320,6 +320,59 @@ export function useMatchActions({
   )
 
   /**
+   * Link a match to an existing transaction
+   */
+  const linkToExisting = React.useCallback(
+    async (id: string, transactionId: string) => {
+      setState({ isLoading: true, processingId: id, error: null })
+
+      // Optimistic update
+      onStatusChange?.(id, "approved")
+
+      try {
+        const response = await fetch("/api/imports/link", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ compositeId: id, transactionId }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || "Failed to link")
+        }
+
+        setState({ isLoading: false, processingId: null, error: null })
+
+        toast.success("Linked to existing transaction", {
+          description: "Statement entry linked successfully.",
+        })
+
+        // Remove after short delay
+        setTimeout(() => {
+          onItemRemove?.(id)
+        }, 2000)
+
+        return true
+      } catch (error) {
+        // Rollback optimistic update
+        onStatusChange?.(id, "pending")
+
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to link"
+
+        setState({ isLoading: false, processingId: null, error: errorMessage })
+
+        toast.error("Failed to link", {
+          description: errorMessage,
+        })
+
+        return false
+      }
+    },
+    [onItemRemove, onStatusChange]
+  )
+
+  /**
    * Batch reject multiple matches
    */
   const batchReject = React.useCallback(
@@ -390,6 +443,7 @@ export function useMatchActions({
     // Single actions
     approve,
     reject,
+    linkToExisting,
     undoAction,
 
     // Batch actions

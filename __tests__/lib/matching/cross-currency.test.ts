@@ -57,7 +57,8 @@ function createMockSupabase() {
   };
 }
 
-let mockSupabase: ReturnType<typeof createMockSupabase>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let mockSupabase: any;
 
 describe('Cross-Currency Converter', () => {
   beforeEach(() => {

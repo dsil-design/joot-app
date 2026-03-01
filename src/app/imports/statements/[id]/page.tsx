@@ -11,9 +11,9 @@ import { useParams, useRouter } from 'next/navigation'
  * work correctly.
  */
 export default function StatementDetailPage() {
-  const params = useParams()
+  const params = useParams<{ id: string }>()
   const router = useRouter()
-  const id = params.id as string
+  const id = params?.id as string
 
   useEffect(() => {
     router.replace(`/imports/statements/${id}/results`)

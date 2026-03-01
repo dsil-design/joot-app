@@ -1,67 +1,87 @@
 'use client'
 
-import { ImportStatusCard } from '@/components/page-specific/import-status-card'
-import { EmailSyncCard } from '@/components/page-specific/email-sync-card'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { StatementCoverageGrid } from '@/components/page-specific/statement-coverage-grid'
 import { QuickActionsGrid } from '@/components/page-specific/quick-actions-grid'
 import { RecentActivityFeed } from '@/components/page-specific/recent-activity-feed'
-import { useImportStatusCounts } from '@/hooks/use-import-status-counts'
+import { useCoverageData } from '@/hooks/use-coverage-data'
 import { useEmailSync } from '@/hooks/use-email-sync'
+import { AlertCircle, ArrowRight, Mail, RefreshCw } from 'lucide-react'
 
 export default function ImportsDashboardPage() {
-  const { counts, sync, isLoading, refetch } = useImportStatusCounts()
+  const { data: coverage, isLoading, refetch } = useCoverageData()
   const { triggerSync, isSyncing, syncError } = useEmailSync()
 
   const handleSyncNow = async () => {
     const result = await triggerSync()
     if (result?.success) {
-      // Refetch status counts to update the dashboard
       await refetch()
     }
   }
 
+  const pendingTotal = coverage?.pendingTotal ?? 0
+  const highConfidenceCount = coverage?.highConfidenceCount ?? 0
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Status Cards Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <ImportStatusCard
-          title="Pending Review"
-          value={isLoading ? null : (counts?.pending ?? 0)}
-          description="Emails awaiting review"
-          variant="pending"
-          href="/imports/review?status=pending"
-        />
-        <ImportStatusCard
-          title="Waiting for Statement"
-          value={isLoading ? null : (counts?.waiting ?? 0)}
-          description="THB receipts awaiting USD match"
-          variant="waiting"
-          href="/imports/review?status=waiting"
-        />
-        <ImportStatusCard
-          title="Matched (30 days)"
-          value={isLoading ? null : (counts?.matched ?? 0)}
-          description="Successfully matched transactions"
-          variant="success"
-          href="/imports/review?status=matched"
-        />
+      {/* Attention Required Banner */}
+      {!isLoading && pendingTotal > 0 && (
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+                <div>
+                  <p className="font-medium text-amber-900">
+                    {pendingTotal} match{pendingTotal !== 1 ? 'es' : ''} pending review
+                    {highConfidenceCount > 0 && (
+                      <span className="text-amber-700 font-normal">
+                        {' '}&mdash; {highConfidenceCount} high confidence
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <Button asChild size="sm">
+                <Link href="/imports/review?status=pending">
+                  Review Now
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Statement Coverage Grid */}
+      <StatementCoverageGrid data={coverage} isLoading={isLoading} />
+
+      {/* Quick Actions + Sync Email */}
+      <div className="space-y-4">
+        <QuickActionsGrid />
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncNow}
+            disabled={isSyncing}
+          >
+            {isSyncing ? (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Mail className="h-4 w-4 mr-2" />
+            )}
+            {isSyncing ? 'Syncing...' : 'Sync Email'}
+          </Button>
+          {syncError && (
+            <span className="text-xs text-destructive">{syncError}</span>
+          )}
+        </div>
       </div>
 
-      {/* Email Sync Card */}
-      <EmailSyncCard
-        isLoading={isLoading}
-        lastSyncedAt={sync?.lastSyncedAt ?? null}
-        folder={sync?.folder ?? 'Transactions'}
-        totalSynced={sync?.totalSynced ?? 0}
-        isConnected={true}
-        onSyncNow={handleSyncNow}
-        isSyncing={isSyncing}
-        syncError={syncError}
-      />
-
-      {/* Quick Actions Section */}
-      <QuickActionsGrid />
-
-      {/* Recent Activity Section */}
+      {/* Recent Activity */}
       <RecentActivityFeed />
     </div>
   )

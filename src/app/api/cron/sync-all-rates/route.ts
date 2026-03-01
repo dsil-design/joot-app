@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
   let syncHistoryId: string | null = null;
   const results = {
     cleanup: { success: false, message: '', data: null as any },
+    dailySync: { success: false, message: '', data: null as any },
     surgicalSync: { success: false, message: '', data: null as any },
     coverage: { success: false, message: '', data: null as any },
     emailSync: { success: false, message: '', data: null as any }
@@ -177,7 +178,38 @@ export async function GET(request: NextRequest) {
       console.log('Sync configuration not available, proceeding...');
     }
 
-    // 4. Execute surgical sync
+    // 4. Proactive daily sync — fetch today's ECB rates regardless of transaction gaps
+    if (autoSyncEnabled) {
+      try {
+        console.log('📡 Running proactive daily rate sync...');
+        const dailyResult = await dailySyncService.executeDailySync({ forceUpdate: false });
+
+        results.dailySync = {
+          success: dailyResult.success,
+          message: dailyResult.skippedReason
+            ? `Skipped: ${dailyResult.skippedReason}`
+            : `Inserted ${dailyResult.ratesInserted} rates for ${dailyResult.targetDate}`,
+          data: {
+            targetDate: dailyResult.targetDate,
+            ratesInserted: dailyResult.ratesInserted,
+            gapsFilled: dailyResult.gapsFilled,
+            skippedReason: dailyResult.skippedReason,
+            duration: dailyResult.duration
+          }
+        };
+
+        console.log('✅ Proactive daily sync:', results.dailySync.message);
+      } catch (error) {
+        console.error('⚠️  Proactive daily sync failed (non-critical):', error);
+        results.dailySync = {
+          success: false,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          data: null
+        };
+      }
+    }
+
+    // 5. Execute surgical sync
     if (autoSyncEnabled) {
       console.log('🔄 Executing surgical sync...');
 

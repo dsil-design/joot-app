@@ -125,9 +125,11 @@ export async function extractPDFText(
       : Buffer.from(pdfBuffer);
 
     // Configure pdf-parse options
-    const parseOptions: Parameters<typeof pdfParse>[1] = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parseOptions: Record<string, any> = {
       // Custom page render function to extract text properly
-      pagerender: function (pageData) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pagerender: function (pageData: any) {
         return pageData.getTextContent().then((textContent: { items: Array<{ str: string }> }) => {
           let lastY: number | null = null;
           let text = '';

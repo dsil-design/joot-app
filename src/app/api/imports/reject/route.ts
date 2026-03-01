@@ -1,25 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { parseImportId } from '@/lib/utils/import-id'
+
+interface Suggestion {
+  transaction_date: string
+  description: string
+  amount: number
+  currency: string
+  matched_transaction_id?: string
+  confidence: number
+  reasons: string[]
+  is_new: boolean
+  status?: 'pending' | 'approved' | 'rejected'
+}
+
+interface ExtractionLog {
+  suggestions?: Suggestion[]
+  [key: string]: unknown
+}
 
 /**
  * POST /api/imports/reject
  *
- * Rejects a match (marks email transaction as skipped).
+ * Rejects matches from the review queue.
+ * IDs can be:
+ * - stmt:<uuid>:<index> (statement items)
+ * - email:<uuid> (email items)
+ * - <uuid>:<index> (legacy statement format)
  *
  * Request body:
- * - emailId: string - Email transaction ID to reject
- * - reason: string (optional) - Reason for rejection
- *
- * Can also accept an array for batch rejection:
- * - emailIds: string[] - Array of email transaction IDs to reject
- * - reason: string (optional) - Reason for rejection
- *
- * Returns:
- * - 200: Success
- * - 400: Invalid request
- * - 401: Unauthorized
- * - 404: Email transaction not found
- * - 500: Internal server error
+ * - emailId: string - Single ID to reject
+ * - emailIds: string[] - Array of IDs to reject (batch)
+ * - reason: string (optional)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -63,16 +75,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate all IDs are valid UUIDs
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    const invalidIds = idsToReject.filter(id => !uuidRegex.test(id))
-    if (invalidIds.length > 0) {
-      return NextResponse.json(
-        { error: 'Invalid email ID format', invalidIds },
-        { status: 400 }
-      )
-    }
-
     // Limit batch size
     if (idsToReject.length > 100) {
       return NextResponse.json(
@@ -89,72 +91,125 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use service role client for updates
-    const serviceClient = createServiceRoleClient()
+    // Parse and separate IDs by type — merged IDs decompose into both statement + email
+    const statementIds: { id: string; statementId: string; index: number }[] = []
+    const emailItemIds: string[] = []
+    const invalidIds: string[] = []
 
-    // Verify email_transactions belong to user
-    const { data: emailTransactions, error: fetchError } = await serviceClient
-      .from('email_transactions')
-      .select('id, user_id, status')
-      .in('id', idsToReject)
-      .eq('user_id', user.id)
-
-    if (fetchError) {
-      console.error('Error fetching email transactions:', fetchError)
-      return NextResponse.json(
-        { error: 'Failed to fetch email transactions' },
-        { status: 500 }
-      )
+    for (const id of idsToReject) {
+      const parsed = parseImportId(id)
+      if (!parsed) {
+        invalidIds.push(id)
+      } else if (parsed.type === 'merged') {
+        // Decompose merged into both statement rejection + email rejection
+        statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
+        emailItemIds.push(parsed.emailId)
+      } else if (parsed.type === 'statement') {
+        statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
+      } else {
+        emailItemIds.push(parsed.emailId)
+      }
     }
 
-    if (!emailTransactions || emailTransactions.length === 0) {
+    if (invalidIds.length > 0) {
       return NextResponse.json(
-        { error: 'No matching email transactions found' },
-        { status: 404 }
-      )
-    }
-
-    // Filter to only process items that aren't already skipped
-    const toProcess = emailTransactions.filter(et => et.status !== 'skipped')
-
-    if (toProcess.length === 0) {
-      return NextResponse.json(
-        { error: 'All email transactions are already skipped' },
+        { error: 'Invalid ID format', invalidIds },
         { status: 400 }
       )
     }
+
+    // Use service role client for updates
+    const serviceClient = createServiceRoleClient()
 
     // Track results
     const results = {
       rejected: 0,
       failed: 0,
-      skipped: idsToReject.length - toProcess.length,
+      skipped: 0,
       errors: [] as string[],
     }
 
-    // Process each email transaction
-    for (const emailTx of toProcess) {
-      try {
-        // Update status to 'skipped' and store rejection reason in metadata
-        const { error: updateError } = await serviceClient
-          .from('email_transactions')
-          .update({
-            status: 'skipped',
-            reviewed_at: new Date().toISOString(),
-            metadata: reason ? { rejection_reason: reason } : undefined,
-          })
-          .eq('id', emailTx.id)
+    // --- Process STATEMENT items ---
+    if (statementIds.length > 0) {
+      // Group by statement ID
+      const byStatement = new Map<string, number[]>()
+      for (const { statementId, index } of statementIds) {
+        const indices = byStatement.get(statementId) || []
+        indices.push(index)
+        byStatement.set(statementId, indices)
+      }
 
-        if (updateError) {
-          throw new Error(`Failed to update status: ${updateError.message}`)
+      // Fetch all relevant statements
+      const stmtIdList = Array.from(byStatement.keys())
+      const { data: statements, error: fetchError } = await serviceClient
+        .from('statement_uploads')
+        .select('id, user_id, extraction_log')
+        .in('id', stmtIdList)
+        .eq('user_id', user.id)
+
+      if (fetchError) {
+        console.error('Error fetching statements:', fetchError)
+        results.errors.push('Failed to fetch statement data')
+      } else if (!statements || statements.length === 0) {
+        results.errors.push('No matching statements found')
+      } else {
+        for (const statement of statements) {
+          const indices = byStatement.get(statement.id) || []
+          const extractionLog = statement.extraction_log as ExtractionLog | null
+          const suggestions = extractionLog?.suggestions || []
+
+          let hasChanges = false
+
+          for (const idx of indices) {
+            if (idx < 0 || idx >= suggestions.length) {
+              results.failed++
+              results.errors.push(`Invalid suggestion index ${idx} for statement ${statement.id}`)
+              continue
+            }
+
+            const suggestion = suggestions[idx]
+
+            if (suggestion.status === 'rejected') {
+              results.skipped++
+              continue
+            }
+
+            suggestion.status = 'rejected'
+            hasChanges = true
+            results.rejected++
+          }
+
+          if (hasChanges) {
+            const { error: updateError } = await serviceClient
+              .from('statement_uploads')
+              .update({
+                extraction_log: { ...extractionLog, suggestions } as unknown as import('@/lib/supabase/types').Json,
+              })
+              .eq('id', statement.id)
+
+            if (updateError) {
+              console.error('Error updating statement:', updateError)
+              results.errors.push(`Failed to save changes to statement ${statement.id}`)
+            }
+          }
         }
+      }
+    }
 
-        results.rejected++
-      } catch (error) {
-        results.failed++
-        results.errors.push(
-          `Error rejecting ${emailTx.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
-        )
+    // --- Process EMAIL items ---
+    if (emailItemIds.length > 0) {
+      const { data: updated, error: emailUpdateError } = await serviceClient
+        .from('email_transactions')
+        .update({ status: 'skipped' })
+        .in('id', emailItemIds)
+        .eq('user_id', user.id)
+        .select('id')
+
+      if (emailUpdateError) {
+        results.errors.push('Failed to update email transactions')
+        results.failed += emailItemIds.length
+      } else {
+        results.rejected += updated?.length ?? 0
       }
     }
 
@@ -165,11 +220,11 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         activity_type: 'transaction_skipped',
         description: results.rejected === 1
-          ? `Rejected email transaction`
-          : `Rejected ${results.rejected} email transactions`,
+          ? 'Rejected match from review queue'
+          : `Rejected ${results.rejected} matches from review queue`,
         transactions_affected: results.rejected,
         metadata: {
-          emailIds: toProcess.map(et => et.id),
+          compositeIds: idsToReject,
           reason,
           results,
         },
@@ -177,15 +232,13 @@ export async function POST(request: NextRequest) {
 
     // Return appropriate response based on single vs batch
     if (!emailIds && emailId) {
-      // Single rejection - simpler response
       return NextResponse.json({
         success: results.rejected > 0,
-        message: results.rejected > 0 ? 'Email transaction rejected' : 'Failed to reject',
+        message: results.rejected > 0 ? 'Match rejected' : 'Failed to reject',
         reason: reason || undefined,
       })
     }
 
-    // Batch rejection - detailed response
     return NextResponse.json({
       success: true,
       results: {
