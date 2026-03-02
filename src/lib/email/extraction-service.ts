@@ -300,7 +300,7 @@ export class EmailExtractionService {
       // Get unprocessed emails (emails that don't have a corresponding email_transaction)
       const { data: emails, error: fetchError } = await supabase
         .from('emails')
-        .select('*')
+        .select('id, user_id, message_id, uid, folder, subject, from_address, from_name, date, seen, has_attachments, text_body, html_body, synced_at, created_at')
         .eq('user_id', userId)
         .order('uid', { ascending: true })
         .limit(this.config.batchSize);
@@ -335,17 +335,24 @@ export class EmailExtractionService {
         result.processed++;
 
         try {
-          // Fetch full email content for extraction
-          const emailContent = await this.fetchEmailContent(email.folder, email.uid);
+          // Use stored bodies if available, fall back to IMAP
+          let textBody: string | null = email.text_body ?? null;
+          let htmlBody: string | null = email.html_body ?? null;
 
-          if (!emailContent) {
-            result.failed++;
-            result.results.set(email.message_id, {
-              success: false,
-              confidence: 0,
-              errors: ['Failed to fetch email content'],
-            });
-            continue;
+          if (textBody === null && htmlBody === null) {
+            // Bodies not stored yet — fetch from IMAP
+            const emailContent = await this.fetchEmailContent(email.folder, email.uid);
+            if (!emailContent) {
+              result.failed++;
+              result.results.set(email.message_id, {
+                success: false,
+                confidence: 0,
+                errors: ['Failed to fetch email content'],
+              });
+              continue;
+            }
+            textBody = emailContent.text;
+            htmlBody = emailContent.html;
           }
 
           // Build raw email data
@@ -357,8 +364,8 @@ export class EmailExtractionService {
             from_address: email.from_address,
             from_name: email.from_name,
             email_date: email.date ? new Date(email.date) : new Date(),
-            text_body: emailContent.text,
-            html_body: emailContent.html,
+            text_body: textBody,
+            html_body: htmlBody,
             seen: email.seen ?? false,
             has_attachments: email.has_attachments ?? false,
           };
@@ -527,14 +534,32 @@ export class EmailExtractionService {
       };
     }
 
-    // Fetch email content
-    const content = await this.fetchEmailContent(emailTx.folder, emailTx.uid);
-    if (!content) {
-      return {
-        success: false,
-        confidence: 0,
-        errors: ['Failed to fetch email content'],
-      };
+    // Check for stored bodies in the emails table first
+    let textBody: string | null = null;
+    let htmlBody: string | null = null;
+
+    const { data: dbEmail } = await supabase
+      .from('emails')
+      .select('text_body, html_body')
+      .eq('folder', emailTx.folder)
+      .eq('uid', emailTx.uid)
+      .single();
+
+    if (dbEmail && (dbEmail.text_body !== null || dbEmail.html_body !== null)) {
+      textBody = dbEmail.text_body;
+      htmlBody = dbEmail.html_body;
+    } else {
+      // Fall back to IMAP
+      const content = await this.fetchEmailContent(emailTx.folder, emailTx.uid);
+      if (!content) {
+        return {
+          success: false,
+          confidence: 0,
+          errors: ['Failed to fetch email content'],
+        };
+      }
+      textBody = content.text;
+      htmlBody = content.html;
     }
 
     // Build raw email data
@@ -546,8 +571,8 @@ export class EmailExtractionService {
       from_address: emailTx.from_address,
       from_name: emailTx.from_name,
       email_date: emailTx.email_date ? new Date(emailTx.email_date) : new Date(),
-      text_body: content.text,
-      html_body: content.html,
+      text_body: textBody,
+      html_body: htmlBody,
       seen: emailTx.seen ?? false,
       has_attachments: emailTx.has_attachments ?? false,
     };

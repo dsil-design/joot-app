@@ -1,4 +1,5 @@
 import { ImapFlow } from 'imapflow';
+import { simpleParser } from 'mailparser';
 import { createServiceRoleClient } from '../supabase/server';
 import type { EmailInsertData, SyncResult, ImapConfig, EmailContent, EmailAttachment } from './email-types';
 import type { BatchProcessingResult } from '../email/types';
@@ -178,13 +179,14 @@ export class EmailSyncService {
 
       console.log(`Found ${uidsToFetch.length} messages to fetch, UIDs: ${uidsToFetch.slice(0, 5).join(', ')}${uidsToFetch.length > 5 ? '...' : ''}`);
 
-      // Fetch message envelopes (metadata only, not body)
+      // Fetch message envelopes and source (for body parsing)
       // Pass { uid: true } as third param to indicate we're using UIDs not sequence numbers
       for await (const message of this.client.fetch(uidsToFetch, {
         uid: true,
         envelope: true,
         flags: true,
         bodyStructure: true,
+        source: true,
       }, { uid: true })) {
         try {
           // Skip if this is the same UID we already have (edge case)
@@ -199,6 +201,15 @@ export class EmailSyncService {
           }
           const fromAddress = envelope.from?.[0];
 
+          // Parse body from source
+          let text_body: string | null = null;
+          let html_body: string | null = null;
+          if (message.source) {
+            const parsed = await this.parseEmailBody(message.source);
+            text_body = parsed.text ?? '';
+            html_body = parsed.html ?? '';
+          }
+
           emails.push({
             user_id: userId,
             message_id: envelope.messageId || `uid-${message.uid}`,
@@ -210,6 +221,8 @@ export class EmailSyncService {
             date: envelope.date?.toISOString() || null,
             seen: message.flags?.has('\\Seen') || false,
             has_attachments: this.hasAttachments(message.bodyStructure),
+            text_body,
+            html_body,
           });
 
           result.lastUid = Math.max(result.lastUid, message.uid);
@@ -253,6 +266,34 @@ export class EmailSyncService {
    * @returns Email content including body
    */
   async fetchEmailContent(folder: string, uid: number): Promise<EmailContent | null> {
+    // Check DB first for stored bodies
+    try {
+      const supabase = createServiceRoleClient();
+      const { data: dbEmail } = await supabase
+        .from('emails')
+        .select('text_body, html_body, subject, from_address, from_name, date')
+        .eq('folder', folder)
+        .eq('uid', uid)
+        .single();
+
+      if (dbEmail && (dbEmail.text_body !== null || dbEmail.html_body !== null)) {
+        return {
+          uid,
+          subject: dbEmail.subject || null,
+          from: {
+            address: dbEmail.from_address || null,
+            name: dbEmail.from_name || null,
+          },
+          date: dbEmail.date ? new Date(dbEmail.date) : null,
+          text: dbEmail.text_body,
+          html: dbEmail.html_body,
+          attachments: [],
+        };
+      }
+    } catch {
+      // Fall through to IMAP fetch
+    }
+
     if (!this.client || !this.connected) {
       throw new Error('Not connected to IMAP server. Call connect() first.');
     }
@@ -274,9 +315,9 @@ export class EmailSyncService {
       const envelope = message.envelope;
       const fromAddress = envelope.from?.[0];
 
-      // Parse email body from source
-      const source = message.source?.toString() || '';
-      const { text, html } = this.parseEmailBody(source);
+      // Parse email body from source using mailparser
+      const source = message.source || Buffer.alloc(0);
+      const { text, html } = await this.parseEmailBody(source);
 
       return {
         uid,
@@ -351,27 +392,20 @@ export class EmailSyncService {
   }
 
   /**
-   * Parse email body from raw source
-   * Simple implementation - a full implementation would use mailparser
+   * Parse email body from raw source using mailparser
+   * Handles base64, quoted-printable, charset encoding, and multipart MIME
    */
-  private parseEmailBody(source: string): { text: string | null; html: string | null } {
-    // This is a simplified parser. For production, consider using mailparser
-    let text: string | null = null;
-    let html: string | null = null;
-
-    // Check for HTML content
-    const htmlMatch = source.match(/Content-Type: text\/html[^]*?(?:\r\n\r\n|\n\n)([^]*?)(?:--|\Z)/i);
-    if (htmlMatch) {
-      html = htmlMatch[1]?.trim() || null;
+  private async parseEmailBody(source: Buffer | string): Promise<{ text: string | null; html: string | null }> {
+    try {
+      const parsed = await simpleParser(source);
+      return {
+        text: parsed.text || null,
+        html: typeof parsed.html === 'string' ? parsed.html : null,
+      };
+    } catch (error) {
+      console.error('Error parsing email body:', error);
+      return { text: null, html: null };
     }
-
-    // Check for plain text content
-    const textMatch = source.match(/Content-Type: text\/plain[^]*?(?:\r\n\r\n|\n\n)([^]*?)(?:--|\Z)/i);
-    if (textMatch) {
-      text = textMatch[1]?.trim() || null;
-    }
-
-    return { text, html };
   }
 
   /**

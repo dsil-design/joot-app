@@ -1,4 +1,3 @@
-Initialising login role...
 export type Json =
   | string
   | number
@@ -246,11 +245,13 @@ export type Database = {
           from_address: string | null
           from_name: string | null
           has_attachments: boolean | null
+          html_body: string | null
           id: string
           message_id: string
           seen: boolean | null
           subject: string | null
           synced_at: string | null
+          text_body: string | null
           uid: number
           user_id: string
         }
@@ -261,11 +262,13 @@ export type Database = {
           from_address?: string | null
           from_name?: string | null
           has_attachments?: boolean | null
+          html_body?: string | null
           id?: string
           message_id: string
           seen?: boolean | null
           subject?: string | null
           synced_at?: string | null
+          text_body?: string | null
           uid: number
           user_id: string
         }
@@ -276,11 +279,13 @@ export type Database = {
           from_address?: string | null
           from_name?: string | null
           has_attachments?: boolean | null
+          html_body?: string | null
           id?: string
           message_id?: string
           seen?: boolean | null
           subject?: string | null
           synced_at?: string | null
+          text_body?: string | null
           uid?: number
           user_id?: string
         }
@@ -1001,6 +1006,7 @@ export type Database = {
           id: string
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id: string | null
+          source_email_transaction_id: string | null
           transaction_date: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string | null
@@ -1014,6 +1020,7 @@ export type Database = {
           id?: string
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
+          source_email_transaction_id?: string | null
           transaction_date?: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string | null
@@ -1027,6 +1034,7 @@ export type Database = {
           id?: string
           original_currency?: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
+          source_email_transaction_id?: string | null
           transaction_date?: string
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string | null
@@ -1039,6 +1047,13 @@ export type Database = {
             columns: ["payment_method_id"]
             isOneToOne: false
             referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_source_email_transaction_id_fkey"
+            columns: ["source_email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_transactions"
             referencedColumns: ["id"]
           },
           {

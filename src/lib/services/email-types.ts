@@ -17,6 +17,8 @@ export interface EmailMetadata {
   date: string | null;
   seen: boolean;
   has_attachments: boolean;
+  text_body: string | null;
+  html_body: string | null;
   synced_at: string;
   created_at: string;
 }
@@ -35,6 +37,8 @@ export interface EmailInsertData {
   date: string | null;
   seen: boolean;
   has_attachments: boolean;
+  text_body?: string | null;
+  html_body?: string | null;
 }
 
 /**

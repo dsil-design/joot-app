@@ -525,10 +525,17 @@ CREATE TABLE public.emails (
   date TIMESTAMPTZ,
   seen BOOLEAN DEFAULT FALSE,
   has_attachments BOOLEAN DEFAULT FALSE,
+  text_body TEXT,                       -- Parsed plain text body (NULL = never fetched, '' = empty/unparseable)
+  html_body TEXT,                       -- Parsed HTML body (NULL = never fetched, '' = empty/unparseable)
   synced_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, message_id)
 );
+
+-- Partial index for backfill: efficiently find emails missing bodies
+CREATE INDEX IF NOT EXISTS idx_emails_missing_body
+  ON public.emails(user_id, uid)
+  WHERE text_body IS NULL AND html_body IS NULL;
 
 -- Email sync state table - tracks sync progress per folder
 CREATE TABLE public.email_sync_state (
