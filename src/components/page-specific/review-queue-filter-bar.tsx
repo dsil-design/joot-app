@@ -122,8 +122,8 @@ const confidenceOptions: Array<{ value: FilterConfidence; label: string }> = [
  */
 const sourceOptions: Array<{ value: FilterSource; label: string }> = [
   { value: "all", label: "All Sources" },
-  { value: "statement", label: "Statements" },
-  { value: "email", label: "Emails" },
+  { value: "statement", label: "PDF Statements" },
+  { value: "email", label: "Email Receipts" },
   { value: "merged", label: "Cross-Source Matches" },
 ]
 

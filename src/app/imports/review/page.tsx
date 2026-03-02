@@ -37,6 +37,9 @@ import { useMatchActions } from "@/hooks/use-match-actions"
 import { useTransactions } from "@/hooks"
 import { toast } from "sonner"
 import {
+  ContextBreadcrumb,
+} from "@/components/page-specific/context-breadcrumb"
+import {
   CheckCircle2,
   FileText,
   Clock,
@@ -453,6 +456,14 @@ export default function ReviewQueuePage() {
         />
       </div>
 
+      {/* Context breadcrumb when filtered by statement */}
+      {filters.statementUploadId && (
+        <ContextBreadcrumb
+          statementUploadId={filters.statementUploadId}
+          onClearFilter={() => setFilters({ ...filters, statementUploadId: "" })}
+        />
+      )}
+
       {/* Filter bar */}
       <ReviewQueueFilterBar
         filters={filters}
@@ -498,7 +509,7 @@ export default function ReviewQueuePage() {
                 : "Upload a statement to start matching transactions."}
             </p>
             <Button asChild variant="outline">
-              <Link href="/imports/statements">Upload Statement</Link>
+              <Link href="/imports">← Coverage</Link>
             </Button>
           </div>
         ) : (

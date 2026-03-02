@@ -16,11 +16,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, preferred_currency } = await request.json()
-
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
-    }
+    const body = await request.json()
+    const { name, preferred_currency, billing_cycle_start_day } = body
 
     // Verify ownership
     const { data: paymentMethod } = await supabase
@@ -34,29 +31,60 @@ export async function PATCH(
       return NextResponse.json({ error: 'Payment method not found' }, { status: 404 })
     }
 
-    // Check if another payment method with this name already exists
-    const { data: existing } = await supabase
-      .from('payment_methods')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('name', name.trim())
-      .neq('id', id)
-      .single()
+    // Build update object (only include provided fields)
+    const updateData: Record<string, unknown> = {}
 
-    if (existing) {
-      return NextResponse.json(
-        { error: 'A payment method with this name already exists' },
-        { status: 409 }
-      )
+    if (name !== undefined) {
+      if (!name || !name.trim()) {
+        return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 })
+      }
+
+      // Check if another payment method with this name already exists
+      const { data: existing } = await supabase
+        .from('payment_methods')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('name', name.trim())
+        .neq('id', id)
+        .single()
+
+      if (existing) {
+        return NextResponse.json(
+          { error: 'A payment method with this name already exists' },
+          { status: 409 }
+        )
+      }
+
+      updateData.name = name.trim()
+    }
+
+    if (preferred_currency !== undefined) {
+      updateData.preferred_currency = preferred_currency || null
+    }
+
+    if (billing_cycle_start_day !== undefined) {
+      if (billing_cycle_start_day !== null) {
+        const day = Number(billing_cycle_start_day)
+        if (!Number.isInteger(day) || day < 1 || day > 28) {
+          return NextResponse.json(
+            { error: 'billing_cycle_start_day must be an integer between 1 and 28' },
+            { status: 400 }
+          )
+        }
+        updateData.billing_cycle_start_day = day
+      } else {
+        updateData.billing_cycle_start_day = null
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
     }
 
     // Update payment method
     const { data, error } = await supabase
       .from('payment_methods')
-      .update({
-        name: name.trim(),
-        preferred_currency: preferred_currency || null,
-      })
+      .update(updateData)
       .eq('id', id)
       .eq('user_id', user.id)
       .select()

@@ -57,6 +57,9 @@ CREATE TABLE public.payment_methods (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  preferred_currency TEXT REFERENCES public.currency_configuration(currency_code),
+  billing_cycle_start_day INTEGER DEFAULT NULL CHECK (billing_cycle_start_day BETWEEN 1 AND 28),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(name, user_id)

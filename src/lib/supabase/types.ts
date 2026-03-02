@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -395,6 +396,7 @@ export type Database = {
       }
       payment_methods: {
         Row: {
+          billing_cycle_start_day: number | null
           created_at: string | null
           id: string
           name: string
@@ -404,6 +406,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          billing_cycle_start_day?: number | null
           created_at?: string | null
           id?: string
           name: string
@@ -413,6 +416,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          billing_cycle_start_day?: number | null
           created_at?: string | null
           id?: string
           name?: string
@@ -672,6 +676,7 @@ export type Database = {
           extraction_error: string | null
           extraction_log: Json | null
           extraction_started_at: string | null
+          file_hash: string | null
           file_path: string
           file_size: number | null
           file_type: string | null
@@ -694,6 +699,7 @@ export type Database = {
           extraction_error?: string | null
           extraction_log?: Json | null
           extraction_started_at?: string | null
+          file_hash?: string | null
           file_path: string
           file_size?: number | null
           file_type?: string | null
@@ -716,6 +722,7 @@ export type Database = {
           extraction_error?: string | null
           extraction_log?: Json | null
           extraction_started_at?: string | null
+          file_hash?: string | null
           file_path?: string
           file_size?: number | null
           file_type?: string | null
@@ -1220,6 +1227,14 @@ export type Database = {
         }[]
       }
       get_next_tag_color: { Args: { p_user_id: string }; Returns: string }
+      get_statement_upload_path: {
+        Args: {
+          p_file_extension: string
+          p_upload_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       get_sync_configuration: {
         Args: never
         Returns: {
@@ -1498,78 +1513,3 @@ export const Constants = {
     },
   },
 } as const
-
-// ============================================================================
-// Custom Type Aliases (convenience types used throughout the codebase)
-// ============================================================================
-
-// Enum types
-export type CurrencyType = Database["public"]["Enums"]["currency_type"]
-export type TransactionType = Database["public"]["Enums"]["transaction_type"]
-
-// User types
-export type User = Database["public"]["Tables"]["users"]["Row"]
-export type UserInsert = Database["public"]["Tables"]["users"]["Insert"]
-export type UserUpdate = Database["public"]["Tables"]["users"]["Update"]
-
-// Transaction types
-export type Transaction = Database["public"]["Tables"]["transactions"]["Row"]
-export type TransactionInsert = Database["public"]["Tables"]["transactions"]["Insert"]
-export type TransactionUpdate = Database["public"]["Tables"]["transactions"]["Update"]
-
-// Transaction with related data (for queries with joins)
-export interface TransactionWithVendorAndPayment extends Transaction {
-  vendor: { id: string; name: string } | null
-  payment_method: { id: string; name: string; preferred_currency: string | null } | null
-  tags?: Array<{ id: string; name: string; color: string }>
-  transaction_tags?: Array<{ tag_id: string; tags: { id: string; name: string; color: string } }>
-}
-
-// Exchange rate types
-export type ExchangeRate = Database["public"]["Tables"]["exchange_rates"]["Row"]
-export type ExchangeRateInsert = Database["public"]["Tables"]["exchange_rates"]["Insert"]
-export type ExchangeRateUpdate = Database["public"]["Tables"]["exchange_rates"]["Update"]
-
-// Vendor types
-export type Vendor = Database["public"]["Tables"]["vendors"]["Row"]
-export type VendorInsert = Database["public"]["Tables"]["vendors"]["Insert"]
-export type VendorUpdate = Database["public"]["Tables"]["vendors"]["Update"]
-
-// Payment method types
-export type PaymentMethod = Database["public"]["Tables"]["payment_methods"]["Row"]
-export type PaymentMethodInsert = Database["public"]["Tables"]["payment_methods"]["Insert"]
-export type PaymentMethodUpdate = Database["public"]["Tables"]["payment_methods"]["Update"]
-
-// Tag types
-export type Tag = Database["public"]["Tables"]["tags"]["Row"]
-export type TagInsert = Database["public"]["Tables"]["tags"]["Insert"]
-export type TagUpdate = Database["public"]["Tables"]["tags"]["Update"]
-
-// Email types
-export type Email = Database["public"]["Tables"]["emails"]["Row"]
-export type EmailInsert = Database["public"]["Tables"]["emails"]["Insert"]
-export type EmailUpdate = Database["public"]["Tables"]["emails"]["Update"]
-
-// Email sync state types
-export type EmailSyncState = Database["public"]["Tables"]["email_sync_state"]["Row"]
-export type EmailSyncStateInsert = Database["public"]["Tables"]["email_sync_state"]["Insert"]
-export type EmailSyncStateUpdate = Database["public"]["Tables"]["email_sync_state"]["Update"]
-
-// ============================================================================
-// Email Import Types (P1-001 to P1-005)
-// ============================================================================
-
-// Email Transaction types (parsed email data with transaction matching)
-export type EmailTransaction = Database["public"]["Tables"]["email_transactions"]["Row"]
-export type EmailTransactionInsert = Database["public"]["Tables"]["email_transactions"]["Insert"]
-export type EmailTransactionUpdate = Database["public"]["Tables"]["email_transactions"]["Update"]
-
-// Statement Upload types (uploaded statement files and processing status)
-export type StatementUpload = Database["public"]["Tables"]["statement_uploads"]["Row"]
-export type StatementUploadInsert = Database["public"]["Tables"]["statement_uploads"]["Insert"]
-export type StatementUploadUpdate = Database["public"]["Tables"]["statement_uploads"]["Update"]
-
-// Import Activity types (audit trail for import actions)
-export type ImportActivity = Database["public"]["Tables"]["import_activities"]["Row"]
-export type ImportActivityInsert = Database["public"]["Tables"]["import_activities"]["Insert"]
-export type ImportActivityUpdate = Database["public"]["Tables"]["import_activities"]["Update"]

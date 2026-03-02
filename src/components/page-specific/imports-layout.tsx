@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, LayoutDashboard, ClipboardCheck, FileText, History } from 'lucide-react'
+import { ArrowLeft, LayoutDashboard, ClipboardCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
 import { MainNavigation } from '@/components/page-specific/main-navigation'
@@ -19,24 +19,14 @@ interface ImportsLayoutProps {
 
 const navigationItems = [
   {
-    name: 'Dashboard',
+    name: 'Coverage',
     href: '/imports',
     icon: LayoutDashboard,
   },
   {
-    name: 'Review Queue',
+    name: 'Review',
     href: '/imports/review',
     icon: ClipboardCheck,
-  },
-  {
-    name: 'Statements',
-    href: '/imports/statements',
-    icon: FileText,
-  },
-  {
-    name: 'History',
-    href: '/imports/history',
-    icon: History,
   },
 ]
 
