@@ -69,9 +69,16 @@ function formatAmount(amount: number | null, currency: string | null): string {
  * Format date as compact string
  */
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—"
+  if (!dateStr) return ""
   const d = new Date(dateStr)
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+}
+
+/**
+ * Determine if email has extracted transaction data
+ */
+function hasExtractedData(data: EmailTransactionRow): boolean {
+  return data.amount != null || data.transaction_date != null
 }
 
 export function EmailTransactionCard({
@@ -84,7 +91,11 @@ export function EmailTransactionCard({
 }: EmailTransactionCardProps) {
   const statusBadge = getStatusBadge(data.status)
   const parserTag = getParserTag(data.from_address)
-  const vendorName = data.vendors?.name || data.vendor_name_raw || data.subject || "Unknown"
+  const vendorName = data.vendors?.name || data.vendor_name_raw || data.from_name || "Unknown sender"
+  const extracted = hasExtractedData(data)
+
+  // Use transaction_date if extracted, fall back to email_date
+  const displayDate = data.transaction_date || data.email_date
 
   return (
     <div
@@ -112,7 +123,7 @@ export function EmailTransactionCard({
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium truncate">{vendorName}</span>
             {parserTag && (
-              <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", parserTag.className)}>
+              <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0", parserTag.className)}>
                 {parserTag.label}
               </span>
             )}
@@ -122,25 +133,40 @@ export function EmailTransactionCard({
           </p>
         </div>
 
-        {/* Amount */}
+        {/* Amount + Date */}
         <div className="text-right shrink-0">
-          <p className="text-sm font-semibold">
-            {formatAmount(data.amount, data.currency)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {formatDate(data.email_date)}
-          </p>
+          {extracted ? (
+            <>
+              <p className="text-sm font-semibold">
+                {formatAmount(data.amount, data.currency)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatDate(displayDate)}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground italic">
+                No data extracted
+              </p>
+              {data.email_date && (
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(data.email_date)}
+                </p>
+              )}
+            </>
+          )}
         </div>
 
         {/* Confidence */}
         <div className="shrink-0 hidden sm:block">
-          {data.extraction_confidence != null && (
+          {data.extraction_confidence != null && data.extraction_confidence > 0 ? (
             <ConfidenceIndicatorBadgeOnly
               score={data.extraction_confidence}
               size="sm"
               showPercentage={false}
             />
-          )}
+          ) : null}
         </div>
 
         {/* Status */}

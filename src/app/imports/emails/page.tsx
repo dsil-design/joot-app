@@ -46,8 +46,10 @@ export default function EmailHubPage() {
     isLoading,
     isInitialLoading,
     hasMore,
+    total,
     error,
     loadMoreRef,
+    loadMore,
     reset,
     refresh,
     updateItemByKey,
@@ -280,7 +282,7 @@ export default function EmailHubPage() {
         <EmailBatchToolbar
           selectedCount={selectedIds.size}
           onSkipSelected={handleBatchSkip}
-          onMarkWaiting={handleBatchMarkPending}
+          onMarkPending={handleBatchMarkPending}
           onClearSelection={() => setSelectedIds(new Set())}
           isProcessing={isProcessing("batch")}
         />
@@ -342,11 +344,35 @@ export default function EmailHubPage() {
           ))
         )}
 
-        <LoadMoreTrigger
-          loadMoreRef={loadMoreRef}
-          isLoading={isLoading && !isInitialLoading}
-          hasMore={hasMore}
-        />
+        {/* Pagination footer */}
+        {items.length > 0 && (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <p className="text-sm text-muted-foreground">
+              Showing {items.length}{total != null ? ` of ${total}` : ""} email{(total ?? items.length) !== 1 ? "s" : ""}
+            </p>
+
+            {hasMore && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadMore}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  "Load More"
+                )}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Invisible scroll trigger (backup for auto-loading) */}
+        <div ref={loadMoreRef} />
       </div>
 
       {/* Link to existing dialog */}

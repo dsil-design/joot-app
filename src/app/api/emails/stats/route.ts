@@ -71,6 +71,9 @@ export async function GET(request: NextRequest) {
     const confidenceBuckets = { high: 0, medium: 0, low: 0 }
     const monthlyMap = new Map<string, { received: number; extracted: number; matched: number; imported: number }>()
 
+    // Extraction tracking
+    let notExtractedCount = 0
+
     // Waiting summary
     let waitingCount = 0
     let waitingTotalAmount = 0
@@ -84,6 +87,11 @@ export async function GET(request: NextRequest) {
       // Classification counts
       const classification = email.classification || 'unknown'
       classificationCounts[classification] = (classificationCounts[classification] || 0) + 1
+
+      // Track unextracted (no processed_at or zero confidence with no amount)
+      if (!email.processed_at || (email.extraction_confidence === 0 && email.amount == null)) {
+        notExtractedCount++
+      }
 
       // Confidence buckets
       const conf = email.extraction_confidence
@@ -139,7 +147,16 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .single()
 
+    // Count total synced emails (raw emails table)
+    const { count: totalSyncedEmails } = await supabase
+      .from('emails')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+
     return NextResponse.json({
+      total: (emails || []).length,
+      total_synced_emails: totalSyncedEmails || 0,
+      not_extracted: notExtractedCount,
       status_counts: statusCounts,
       classification_counts: classificationCounts,
       confidence_buckets: confidenceBuckets,

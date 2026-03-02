@@ -26,6 +26,7 @@ export function useEmailHubActions({
 }: UseEmailHubActionsOptions = {}) {
   const [processingId, setProcessingId] = React.useState<string | null>(null)
   const pendingUndosRef = React.useRef<Map<string, PendingUndo>>(new Map())
+  const undoSkipRef = React.useRef<(id: string) => void>(() => {})
 
   const clearPendingUndo = React.useCallback((id: string) => {
     const pending = pendingUndosRef.current.get(id)
@@ -74,7 +75,7 @@ export function useEmailHubActions({
           description: "Marked as non-transaction.",
           action: {
             label: "Undo",
-            onClick: () => undoSkip(id),
+            onClick: () => undoSkipRef.current(id),
           },
           duration: undoDuration,
         })
@@ -119,6 +120,7 @@ export function useEmailHubActions({
     },
     [clearPendingUndo, onStatusChange]
   )
+  undoSkipRef.current = undoSkip
 
   /**
    * Link an email transaction to an existing transaction

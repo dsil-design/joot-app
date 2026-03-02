@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log activity
-    const activityType = action === 'skip' ? 'transaction_skipped' : 'email_extracted'
+    const activityType = action === 'skip' ? 'transaction_skipped' : 'transaction_matched'
     await serviceClient
       .from('import_activities')
       .insert({

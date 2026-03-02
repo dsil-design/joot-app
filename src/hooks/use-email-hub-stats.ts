@@ -3,6 +3,9 @@
 import * as React from "react"
 
 export interface EmailHubStats {
+  total: number
+  total_synced_emails: number
+  not_extracted: number
   status_counts: Record<string, number>
   classification_counts: Record<string, number>
   confidence_buckets: { high: number; medium: number; low: number }
@@ -19,6 +22,9 @@ export interface UseEmailHubStatsResult {
 }
 
 const emptyStats: EmailHubStats = {
+  total: 0,
+  total_synced_emails: 0,
+  not_extracted: 0,
   status_counts: {},
   classification_counts: {},
   confidence_buckets: { high: 0, medium: 0, low: 0 },

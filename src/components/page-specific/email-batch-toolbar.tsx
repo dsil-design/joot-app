@@ -17,7 +17,7 @@ import { SkipForward, Clock, X } from "lucide-react"
 interface EmailBatchToolbarProps {
   selectedCount: number
   onSkipSelected: () => void
-  onMarkWaiting: () => void
+  onMarkPending: () => void
   onClearSelection: () => void
   isProcessing: boolean
 }
@@ -25,7 +25,7 @@ interface EmailBatchToolbarProps {
 export function EmailBatchToolbar({
   selectedCount,
   onSkipSelected,
-  onMarkWaiting,
+  onMarkPending,
   onClearSelection,
   isProcessing,
 }: EmailBatchToolbarProps) {
@@ -60,7 +60,7 @@ export function EmailBatchToolbar({
           <Button
             variant="outline"
             size="sm"
-            onClick={onMarkWaiting}
+            onClick={onMarkPending}
             disabled={isProcessing}
           >
             <Clock className="h-4 w-4 mr-1" />

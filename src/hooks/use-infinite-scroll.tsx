@@ -16,6 +16,8 @@ export interface InfiniteScrollState<T> {
   hasMore: boolean
   /** Current page */
   page: number
+  /** Total number of items (from last API response) */
+  total: number | null
   /** Error if any */
   error: string | null
 }
@@ -93,6 +95,7 @@ export function useInfiniteScroll<T>({
     isInitialLoading: fetchOnMount,
     hasMore: true,
     page: 1, // Start at page 1 (1-based pagination)
+    total: null,
     error: null,
   })
 
@@ -152,6 +155,7 @@ export function useInfiniteScroll<T>({
           ...prev,
           items: newItems,
           hasMore: result.hasMore,
+          total: result.total ?? prev.total,
           page: prev.page + 1,
           isLoading: false,
           isInitialLoading: false,
@@ -191,6 +195,7 @@ export function useInfiniteScroll<T>({
       isInitialLoading: true,
       hasMore: true,
       page: 1, // Start at page 1 (1-based pagination)
+      total: null,
       error: null,
     })
 
@@ -217,6 +222,7 @@ export function useInfiniteScroll<T>({
       setState({
         items: dedupedItems,
         hasMore: result.hasMore,
+        total: result.total ?? null,
         page: 2, // Next page to fetch
         isLoading: false,
         isInitialLoading: false,
@@ -280,6 +286,7 @@ export function useInfiniteScroll<T>({
         ...prev,
         items: dedupedItems,
         hasMore: result.hasMore,
+        total: result.total ?? prev.total,
         isLoading: false,
         error: null,
       }))

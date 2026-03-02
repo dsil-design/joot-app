@@ -129,9 +129,19 @@ export function EmailDetailPanel({
           />
           <DetailRow
             icon={<Calendar className="h-4 w-4" />}
-            label="Date"
+            label="Txn Date"
             value={emailTransaction.transaction_date
               ? new Date(emailTransaction.transaction_date).toLocaleDateString("en-US", {
+                  year: "numeric", month: "short", day: "numeric",
+                })
+              : "—"
+            }
+          />
+          <DetailRow
+            icon={<Calendar className="h-4 w-4" />}
+            label="Received"
+            value={emailTransaction.email_date
+              ? new Date(emailTransaction.email_date).toLocaleDateString("en-US", {
                   year: "numeric", month: "short", day: "numeric",
                 })
               : "—"
@@ -303,7 +313,7 @@ function SuggestionCard({
       </div>
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span>{formatAmount(tx.amount, tx.original_currency)}</span>
-        <span>{new Date(tx.transaction_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+        <span>{new Date(tx.transaction_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
         {pmName && <span>{pmName}</span>}
       </div>
       {suggestion.reasons.length > 0 && (
@@ -347,7 +357,7 @@ function LinkedTransactionCard({ transaction }: {
       </div>
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span>{formatAmount(transaction.amount, transaction.original_currency)}</span>
-        <span>{new Date(transaction.transaction_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+        <span>{new Date(transaction.transaction_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
         {pmName && <span>{pmName}</span>}
       </div>
       <Button variant="ghost" size="sm" asChild>

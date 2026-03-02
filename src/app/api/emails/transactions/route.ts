@@ -172,8 +172,7 @@ export async function GET(request: NextRequest) {
         updated_at,
         vendors:vendor_id (
           id,
-          name,
-          category
+          name
         )
       `, { count: 'exact' })
       .eq('user_id', user.id)

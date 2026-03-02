@@ -8,10 +8,6 @@ import { EmailDetailPanel } from "@/components/page-specific/email-detail-panel"
 import { useEmailHubActions } from "@/hooks/use-email-hub-actions"
 import { useTransactions } from "@/hooks"
 import {
-  LinkToExistingDialog,
-  type LinkSourceItem,
-} from "@/components/page-specific/link-to-existing-dialog"
-import {
   CreateFromImportDialog,
   type CreateFromImportData,
 } from "@/components/page-specific/create-from-import-dialog"
@@ -32,7 +28,6 @@ export default function EmailDetailPage({
   const [resolvedId, setResolvedId] = React.useState<string | null>(null)
 
   // Dialogs
-  const [linkDialogOpen, setLinkDialogOpen] = React.useState(false)
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [createDialogData, setCreateDialogData] = React.useState<CreateFromImportData | null>(null)
 
@@ -52,8 +47,6 @@ export default function EmailDetailPage({
     async function fetchEmail() {
       setIsLoading(true)
       try {
-        const response = await fetch(`/api/emails/transactions?search=&limit=1&offset=0`)
-        // Use a direct query with the ID
         const detailResponse = await fetch(`/api/emails/transactions/${resolvedId}/matches`)
         if (!detailResponse.ok) throw new Error("Failed to fetch email details")
         const data = await detailResponse.json()
@@ -128,17 +121,6 @@ export default function EmailDetailPage({
     router.push(backUrl)
   }
 
-  // Link dialog item
-  const linkingItem: LinkSourceItem | null = emailTx
-    ? {
-        id: emailTx.id,
-        description: emailTx.description || emailTx.subject || "",
-        amount: emailTx.amount || 0,
-        currency: emailTx.currency || "USD",
-        date: emailTx.transaction_date || "",
-      }
-    : null
-
   return (
     <div className="space-y-6">
       {/* Back button */}
@@ -170,17 +152,6 @@ export default function EmailDetailPage({
           <p className="text-muted-foreground">Email transaction not found</p>
         </div>
       )}
-
-      {/* Link dialog */}
-      <LinkToExistingDialog
-        open={linkDialogOpen}
-        onOpenChange={setLinkDialogOpen}
-        item={linkingItem}
-        onConfirm={async (txId) => {
-          if (emailTx) await handleLink(emailTx.id, txId)
-          setLinkDialogOpen(false)
-        }}
-      />
 
       {/* Create dialog */}
       <CreateFromImportDialog

@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
         .update({
           matched_transaction_id: transactionId,
           status: 'matched',
-          match_method: 'cross_source',
+          match_method: 'manual',
           matched_at: new Date().toISOString(),
         })
         .eq('id', parsed.emailId)
@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
       .from('import_activities')
       .insert({
         user_id: user.id,
-        activity_type: 'manual_link',
+        activity_type: 'transaction_matched',
         description: `Linked ${parsed.type} entry to existing transaction`,
         transactions_affected: 1,
         metadata: {
