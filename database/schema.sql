@@ -45,6 +45,7 @@ CREATE TABLE public.transactions (
   original_currency currency_type NOT NULL, -- Which currency was originally entered
   transaction_type transaction_type NOT NULL,
   transaction_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  source_email_transaction_id UUID REFERENCES public.email_transactions(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
@@ -150,6 +151,9 @@ CREATE INDEX idx_transactions_user_id ON public.transactions(user_id);
 CREATE INDEX idx_transactions_date ON public.transactions(transaction_date DESC);
 CREATE INDEX idx_transactions_vendor_id ON public.transactions(vendor_id);
 CREATE INDEX idx_transactions_payment_method_id ON public.transactions(payment_method_id);
+CREATE INDEX idx_transactions_user_date_composite ON public.transactions(user_id, transaction_date DESC);
+CREATE INDEX idx_transactions_source_email ON public.transactions(source_email_transaction_id)
+  WHERE source_email_transaction_id IS NOT NULL;
 CREATE INDEX idx_payment_methods_user_id ON public.payment_methods(user_id);
 CREATE INDEX idx_payment_methods_name ON public.payment_methods(name);
 CREATE INDEX idx_vendors_user_id ON public.vendors(user_id);
@@ -648,6 +652,10 @@ CREATE TABLE public.email_transactions (
 
 -- Indexes for email_transactions
 CREATE INDEX idx_email_trans_user_status ON public.email_transactions(user_id, status);
+CREATE INDEX idx_email_transactions_waiting ON public.email_transactions(user_id, transaction_date)
+  WHERE status = 'waiting_for_statement';
+CREATE INDEX idx_email_transactions_stats ON public.email_transactions(user_id, status, classification, email_date DESC);
+CREATE INDEX idx_email_transactions_email_date ON public.email_transactions(user_id, email_date DESC);
 CREATE INDEX idx_email_trans_user_date ON public.email_transactions(user_id, email_date DESC);
 CREATE INDEX idx_email_trans_matched ON public.email_transactions(matched_transaction_id)
   WHERE matched_transaction_id IS NOT NULL;

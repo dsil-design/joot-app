@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { processStatement, getProcessingStatus } from '@/lib/statements/statement-processor'
+import { resolveWaitingEmailTransactions } from '@/lib/email/waiting-resolver'
 
 /**
  * POST /api/statements/[id]/process
@@ -286,6 +287,43 @@ async function processStatementAsync(
             transactions_new: result.transactionsNew,
           },
         })
+
+      // Fire-and-forget: resolve waiting email transactions against this statement
+      try {
+        const { data: statement } = await serviceClient
+          .from('statement_uploads')
+          .select('statement_period_start, statement_period_end')
+          .eq('id', statementId)
+          .single()
+
+        if (statement?.statement_period_start && statement?.statement_period_end) {
+          const resolution = await resolveWaitingEmailTransactions(
+            userId,
+            statement.statement_period_start,
+            statement.statement_period_end,
+            serviceClient
+          )
+
+          if (resolution.resolved > 0) {
+            await serviceClient
+              .from('import_activities')
+              .insert({
+                user_id: userId,
+                activity_type: 'transaction_matched',
+                statement_upload_id: statementId,
+                description: `Auto-resolved ${resolution.resolved} waiting email transaction(s) after statement upload`,
+                transactions_affected: resolution.resolved,
+                metadata: {
+                  resolved: resolution.resolved,
+                  still_waiting: resolution.stillWaiting,
+                },
+              })
+          }
+        }
+      } catch (resolveError) {
+        // Non-fatal: don't fail the statement processing
+        console.error('Error resolving waiting email transactions:', resolveError)
+      }
     } else {
       await serviceClient
         .from('import_activities')

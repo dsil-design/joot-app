@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, LayoutDashboard, ClipboardCheck } from 'lucide-react'
+import { ArrowLeft, LayoutDashboard, ClipboardCheck, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
 import { MainNavigation } from '@/components/page-specific/main-navigation'
@@ -27,6 +27,11 @@ const navigationItems = [
     name: 'Review',
     href: '/imports/review',
     icon: ClipboardCheck,
+  },
+  {
+    name: 'Emails',
+    href: '/imports/emails',
+    icon: Mail,
   },
 ]
 

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Mail, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { formatLastSynced } from '@/lib/utils/format-sync-time'
 
 export interface EmailSyncCardProps {
   /** Whether the card is in loading state */
@@ -42,37 +43,6 @@ function getSyncStatusColor(lastSyncedAt: string | null): string {
   if (hoursSince < 1) return 'bg-green-500'
   if (hoursSince < 6) return 'bg-yellow-500'
   return 'bg-gray-400'
-}
-
-/**
- * Formats the last synced timestamp into a human-readable string.
- *
- * - < 1 hour: "X minute(s) ago"
- * - 1-24 hours: "X hour(s) ago"
- * - > 24 hours: "Mon DD, HH:MM AM/PM"
- */
-function formatLastSynced(lastSyncedAt: string | null): string {
-  if (!lastSyncedAt) return 'Never synced'
-
-  const lastSync = new Date(lastSyncedAt)
-  const now = new Date()
-  const hoursSince = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60)
-
-  if (hoursSince < 1) {
-    const minutes = Math.round(hoursSince * 60)
-    if (minutes < 1) return 'Just now'
-    return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`
-  }
-  if (hoursSince < 24) {
-    const hours = Math.round(hoursSince)
-    return `${hours} hour${hours !== 1 ? 's' : ''} ago`
-  }
-  return lastSync.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  })
 }
 
 /**

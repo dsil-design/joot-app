@@ -5,6 +5,7 @@ import { ArrowRight, Mail, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { CoverageRing } from './coverage-ring'
+import { formatSyncTime } from '@/lib/utils/format-sync-time'
 
 interface CoverageStatsBarProps {
   coveragePercent: number
@@ -13,20 +14,6 @@ interface CoverageStatsBarProps {
   emailsPendingReview: number
   isSyncing: boolean
   onSyncNow: () => void
-}
-
-function formatSyncTime(iso: string | null): string {
-  if (!iso) return 'Never'
-  const date = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
-  const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays}d ago`
 }
 
 export function CoverageStatsBar({
@@ -80,9 +67,9 @@ export function CoverageStatsBar({
                 Last sync: {formatSyncTime(lastEmailSync)}
               </p>
               {emailsPendingReview > 0 && (
-                <p className="text-xs text-amber-600">
+                <Link href="/imports/emails?status=pending_review" className="text-xs text-amber-600 hover:underline">
                   {emailsPendingReview} emails pending
-                </p>
+                </Link>
               )}
             </div>
             <Button

@@ -14,8 +14,12 @@ import { createClient } from '@/lib/supabase/server';
  * - dateFrom: Filter by transaction date >= value (ISO date string)
  * - dateTo: Filter by transaction date <= value (ISO date string)
  * - search: Search in subject, description, and vendor name
+ * - classification: Filter by classification ('receipt', 'order_confirmation', 'bank_transfer', 'bill_payment', 'unknown')
+ * - confidence: Filter by confidence bucket ('high' >= 90, 'medium' 55-89, 'low' < 55)
+ * - sort: Sort order ('email_date_desc' default, 'email_date_asc', 'amount_desc', 'confidence_desc')
  * - limit: Number of records to return (default: 50, max: 100)
  * - offset: Pagination offset (default: 0)
+ * - page: Page number (1-based, alternative to offset: offset = (page - 1) * limit)
  *
  * Returns:
  * - emails: Array of email transaction records
@@ -44,8 +48,14 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
     const search = searchParams.get('search');
+    const classification = searchParams.get('classification');
+    const confidence = searchParams.get('confidence');
+    const sort = searchParams.get('sort') || 'email_date_desc';
     const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
-    const offset = parseInt(searchParams.get('offset') || '0', 10);
+    const page = searchParams.get('page');
+    const offset = page
+      ? (Math.max(1, parseInt(page, 10)) - 1) * limit
+      : parseInt(searchParams.get('offset') || '0', 10);
 
     // Validate status if provided
     const validStatuses = [
@@ -75,6 +85,56 @@ export async function GET(request: NextRequest) {
         { error: 'Invalid dateTo format. Use ISO date string.' },
         { status: 400 }
       );
+    }
+
+    // Validate classification if provided
+    const validClassifications = ['receipt', 'order_confirmation', 'bank_transfer', 'bill_payment', 'unknown'];
+    if (classification && !validClassifications.includes(classification)) {
+      return NextResponse.json(
+        { error: `Invalid classification. Must be one of: ${validClassifications.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate confidence if provided
+    const validConfidences = ['high', 'medium', 'low'];
+    if (confidence && !validConfidences.includes(confidence)) {
+      return NextResponse.json(
+        { error: `Invalid confidence. Must be one of: ${validConfidences.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate sort if provided
+    const validSorts = ['email_date_desc', 'email_date_asc', 'amount_desc', 'confidence_desc'];
+    if (!validSorts.includes(sort)) {
+      return NextResponse.json(
+        { error: `Invalid sort. Must be one of: ${validSorts.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Determine sort order
+    let orderColumn = 'email_date';
+    let orderAscending = false;
+    switch (sort) {
+      case 'email_date_asc':
+        orderColumn = 'email_date';
+        orderAscending = true;
+        break;
+      case 'amount_desc':
+        orderColumn = 'amount';
+        orderAscending = false;
+        break;
+      case 'confidence_desc':
+        orderColumn = 'extraction_confidence';
+        orderAscending = false;
+        break;
+      case 'email_date_desc':
+      default:
+        orderColumn = 'email_date';
+        orderAscending = false;
+        break;
     }
 
     // Build query
@@ -117,7 +177,7 @@ export async function GET(request: NextRequest) {
         )
       `, { count: 'exact' })
       .eq('user_id', user.id)
-      .order('email_date', { ascending: false })
+      .order(orderColumn, { ascending: orderAscending })
       .range(offset, offset + limit - 1);
 
     // Apply status filter
@@ -136,6 +196,26 @@ export async function GET(request: NextRequest) {
     }
     if (dateTo) {
       query = query.lte('transaction_date', dateTo);
+    }
+
+    // Apply classification filter
+    if (classification) {
+      query = query.eq('classification', classification);
+    }
+
+    // Apply confidence filter
+    if (confidence) {
+      switch (confidence) {
+        case 'high':
+          query = query.gte('extraction_confidence', 90);
+          break;
+        case 'medium':
+          query = query.gte('extraction_confidence', 55).lt('extraction_confidence', 90);
+          break;
+        case 'low':
+          query = query.gt('extraction_confidence', 0).lt('extraction_confidence', 55);
+          break;
+      }
     }
 
     // Apply search filter
