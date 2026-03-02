@@ -74,7 +74,9 @@ export default function EmailHubPage() {
     linkToTransaction,
     batchSkip,
     batchMarkPending,
+    processEmail,
     isProcessing,
+    isExtracting,
   } = useEmailHubActions({
     onStatusChange: (id, status) => {
       updateItemByKey(id, (item) => ({ ...item, status }))
@@ -86,6 +88,9 @@ export default function EmailHubPage() {
         next.delete(id)
         return next
       })
+    },
+    onItemUpdate: (id, data) => {
+      updateItemByKey(id, (item) => ({ ...item, ...data }))
     },
   })
 
@@ -188,6 +193,11 @@ export default function EmailHubPage() {
     await linkToTransaction(emailId, result.id)
     toast.success("Transaction created and linked")
     refetchStats()
+  }
+
+  // Handle process (extract) for unprocessed emails
+  const handleProcess = (emailId: string) => {
+    processEmail(emailId).then(() => refetchStats())
   }
 
   // Handle skip
@@ -332,13 +342,17 @@ export default function EmailHubPage() {
               isSelected={selectedIds.has(item.id)}
               onToggleExpand={() => handleToggleExpand(item.id)}
               onToggleSelect={(selected) => handleToggleSelect(item.id, selected)}
+              onProcess={handleProcess}
+              isProcessingExtraction={isExtracting(item.id)}
             >
               <EmailDetailPanel
                 emailTransaction={item}
                 onLink={handleLink}
                 onCreateNew={handleCreateNew}
                 onSkip={handleSkip}
+                onProcess={handleProcess}
                 isProcessing={isProcessing(item.id)}
+                isProcessingExtraction={isExtracting(item.id)}
               />
             </EmailTransactionCard>
           ))

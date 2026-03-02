@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
 
     // Validate status if provided
     const validStatuses = [
+      'unprocessed',
       'pending_review',
       'matched',
       'waiting_for_statement',
@@ -137,9 +138,9 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // Build query
+    // Build query (uses email_hub_unified view which LEFT JOINs emails + email_transactions)
     let query = supabase
-      .from('email_transactions')
+      .from('email_hub_unified')
       .select(`
         id,
         message_id,
@@ -170,13 +171,11 @@ export async function GET(request: NextRequest) {
         matched_at,
         created_at,
         updated_at,
-        vendors:vendor_id (
-          id,
-          name
-        )
+        is_processed,
+        email_transaction_id
       `, { count: 'exact' })
       .eq('user_id', user.id)
-      .order(orderColumn, { ascending: orderAscending })
+      .order(orderColumn, { ascending: orderAscending, nullsFirst: false })
       .range(offset, offset + limit - 1);
 
     // Apply status filter
@@ -219,9 +218,9 @@ export async function GET(request: NextRequest) {
 
     // Apply search filter
     if (search) {
-      // Search in subject, description, vendor_name_raw, and order_id
+      // Search in subject, description, vendor_name_raw, order_id, from_address, and from_name
       query = query.or(
-        `subject.ilike.%${search}%,description.ilike.%${search}%,vendor_name_raw.ilike.%${search}%,order_id.ilike.%${search}%`
+        `subject.ilike.%${search}%,description.ilike.%${search}%,vendor_name_raw.ilike.%${search}%,order_id.ilike.%${search}%,from_address.ilike.%${search}%,from_name.ilike.%${search}%`
       );
     }
 

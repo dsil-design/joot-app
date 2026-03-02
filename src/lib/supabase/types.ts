@@ -380,6 +380,13 @@ export type Database = {
             foreignKeyName: "import_activities_email_transaction_id_fkey"
             columns: ["email_transaction_id"]
             isOneToOne: false
+            referencedRelation: "email_hub_unified"
+            referencedColumns: ["email_transaction_id"]
+          },
+          {
+            foreignKeyName: "import_activities_email_transaction_id_fkey"
+            columns: ["email_transaction_id"]
+            isOneToOne: false
             referencedRelation: "email_transactions"
             referencedColumns: ["id"]
           },
@@ -1053,6 +1060,13 @@ export type Database = {
             foreignKeyName: "transactions_source_email_transaction_id_fkey"
             columns: ["source_email_transaction_id"]
             isOneToOne: false
+            referencedRelation: "email_hub_unified"
+            referencedColumns: ["email_transaction_id"]
+          },
+          {
+            foreignKeyName: "transactions_source_email_transaction_id_fkey"
+            columns: ["source_email_transaction_id"]
+            isOneToOne: false
             referencedRelation: "email_transactions"
             referencedColumns: ["id"]
           },
@@ -1208,6 +1222,65 @@ export type Database = {
           to_display_name: string | null
         }
         Relationships: []
+      }
+      email_hub_unified: {
+        Row: {
+          amount: number | null
+          classification: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          email_date: string | null
+          email_transaction_id: string | null
+          extraction_confidence: number | null
+          extraction_notes: string | null
+          folder: string | null
+          from_address: string | null
+          from_name: string | null
+          has_attachments: boolean | null
+          id: string | null
+          is_processed: boolean | null
+          match_confidence: number | null
+          match_method: string | null
+          matched_at: string | null
+          matched_transaction_id: string | null
+          message_id: string | null
+          order_id: string | null
+          processed_at: string | null
+          seen: boolean | null
+          status: string | null
+          subject: string | null
+          synced_at: string | null
+          transaction_date: string | null
+          uid: number | null
+          updated_at: string | null
+          user_id: string | null
+          vendor_id: string | null
+          vendor_name_raw: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_transactions_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_transactions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emails_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {

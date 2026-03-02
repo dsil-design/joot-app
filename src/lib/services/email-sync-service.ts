@@ -3,6 +3,7 @@ import { simpleParser } from 'mailparser';
 import { createServiceRoleClient } from '../supabase/server';
 import type { EmailInsertData, SyncResult, ImapConfig, EmailContent, EmailAttachment } from './email-types';
 import type { BatchProcessingResult } from '../email/types';
+import { getEarliestTransactionDate } from '../email/date-cutoff';
 
 /**
  * Extended sync result that includes extraction statistics
@@ -153,23 +154,31 @@ export class EmailSyncService {
       }
 
       // Determine the UID range to fetch
-      // For initial sync (lastUid = 0), only fetch the most recent 500 messages
-      // to avoid timeout issues with large mailboxes
-      let searchQuery: string;
+      // For initial sync (lastUid = 0), use SINCE filter based on earliest transaction date
+      // For incremental sync, fetch messages newer than last synced UID
+      const emails: EmailInsertData[] = [];
+      let uidsToFetch: number[];
+
       if (lastUid > 0) {
         // Incremental sync: fetch messages newer than last synced UID
-        searchQuery = `${lastUid + 1}:*`;
+        const searchQuery = `${lastUid + 1}:*`;
+        uidsToFetch = await this.client.search({ uid: searchQuery }, { uid: true });
       } else {
-        // Initial sync: fetch only recent messages (last 500 by sequence number)
-        const startSeq = Math.max(1, mailbox.exists - 499);
-        searchQuery = `${startSeq}:*`;
-        console.log(`Initial sync: fetching messages ${startSeq} to ${mailbox.exists} (${mailbox.exists - startSeq + 1} messages)`);
+        // Initial sync: use SINCE filter based on earliest transaction date
+        const earliestDate = await getEarliestTransactionDate(userId);
+        if (earliestDate) {
+          // IMAP SINCE uses date only (no time), and is inclusive
+          const sinceDate = earliestDate.toISOString().split('T')[0];
+          console.log(`Initial sync: using SINCE ${sinceDate} (earliest transaction date)`);
+          uidsToFetch = await this.client.search({ since: sinceDate }, { uid: true });
+        } else {
+          // No transactions exist — fall back to last 500 messages
+          const startSeq = Math.max(1, mailbox.exists - 499);
+          const searchQuery = `${startSeq}:*`;
+          console.log(`Initial sync: no transactions found, fetching last 500 messages`);
+          uidsToFetch = await this.client.search({ uid: searchQuery }, { uid: true });
+        }
       }
-
-      const emails: EmailInsertData[] = [];
-
-      // Use SEARCH to find UIDs in range first (avoids FETCH error on empty range)
-      const uidsToFetch = await this.client.search({ uid: searchQuery }, { uid: true });
 
       if (!uidsToFetch || uidsToFetch.length === 0) {
         result.message = 'No new emails to sync';

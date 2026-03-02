@@ -9,6 +9,7 @@ import type { DateRange } from "react-day-picker"
  */
 export type EmailHubStatus =
   | "all"
+  | "unprocessed"
   | "pending_review"
   | "matched"
   | "waiting_for_statement"
@@ -49,7 +50,7 @@ export const defaultEmailHubFilters: EmailHubFilters = {
 }
 
 const validStatuses: EmailHubStatus[] = [
-  "all", "pending_review", "matched", "waiting_for_statement",
+  "all", "unprocessed", "pending_review", "matched", "waiting_for_statement",
   "ready_to_import", "imported", "skipped",
 ]
 const validClassifications: EmailHubClassification[] = [

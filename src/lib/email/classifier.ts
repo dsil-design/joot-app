@@ -22,6 +22,7 @@
 import type { RawEmailData, ClassificationResult, ExtractedTransaction } from './types';
 import { EMAIL_CLASSIFICATION, EMAIL_TRANSACTION_STATUS } from '../types/email-imports';
 import type { EmailClassification, EmailTransactionStatus } from '../types/email-imports';
+import { normalizeICloudRelay } from './icloud-relay';
 
 // ============================================================================
 // CLASSIFICATION RULE TYPES
@@ -104,43 +105,75 @@ const PARSER_PATTERNS: ParserPattern[] = [
     defaultPaymentContext: 'credit_card', // Default; can be overridden by content detection
   },
 
-  // Bolt receipts
+  // Bolt receipts — aligned with bolt.ts BOLT_SENDER_PATTERNS / BOLT_SUBJECT_PATTERNS
   {
     key: 'bolt',
     name: 'Bolt Receipt Parser',
     classification: EMAIL_CLASSIFICATION.RECEIPT,
-    senderPatterns: ['no-reply@bolt.eu', 'noreply@bolt.eu', 'receipts@bolt.eu'],
-    subjectPatterns: ['your bolt receipt', 'your bolt ride receipt'],
+    senderPatterns: ['bangkok@bolt.eu', 'bolt@bolt.eu', 'noreply@bolt.eu'],
+    subjectPatterns: ['your bolt ride on', 'bolt ride receipt', 'bolt ride summary'],
     defaultPaymentContext: 'credit_card',
   },
 
-  // Bangkok Bank transfers
+  // Bangkok Bank transfers — aligned with bangkok-bank.ts BBL_SENDER_PATTERNS / BBL_SUBJECT_PATTERNS
   {
     key: 'bangkok-bank',
     name: 'Bangkok Bank Parser',
     classification: EMAIL_CLASSIFICATION.BANK_TRANSFER,
-    senderPatterns: ['bualuang@bangkokbank.com', 'notification@bangkokbank.com'],
-    subjectPatterns: ['transfer notification', 'funds transfer', 'payment notification'],
+    senderPatterns: ['bualuangmbanking@bangkokbank.com', 'noreply@bangkokbank.com'],
+    subjectPatterns: [
+      'payments confirmation', 'funds transfer confirmation',
+      'funds transfer to mobile phone number', 'funds transfer to citizen id',
+      'promptpay top up confirmation',
+      'ยืนยันการชำระเงิน', 'ยืนยันการโอนเงิน',
+    ],
     defaultPaymentContext: 'bank_transfer',
   },
 
-  // Kasikorn Bank (K PLUS) transfers
+  // Kasikorn Bank (K PLUS) transfers — aligned with kasikorn.ts KPLUS_SENDER_PATTERNS / KPLUS_SUBJECT_PATTERNS
   {
     key: 'kasikorn',
     name: 'Kasikorn Bank Parser',
     classification: EMAIL_CLASSIFICATION.BANK_TRANSFER,
-    senderPatterns: ['kplus@kasikornbank.com', 'notification@kasikornbank.com', 'kbank@kasikornbank.com'],
-    subjectPatterns: ['k plus', 'kplus', 'transfer notification'],
+    senderPatterns: ['kplus@kasikornbank.com', 'noreply@kasikornbank.com'],
+    subjectPatterns: [
+      'result of bill payment', 'bill payment (success)',
+      'result of funds transfer', 'funds transfer (success)',
+      'result of promptpay funds transfer', 'promptpay funds transfer (success)',
+    ],
     defaultPaymentContext: 'bank_transfer',
   },
 
-  // Lazada orders
+  // Lazada orders — aligned with lazada.ts LAZADA_SENDER_PATTERNS / LAZADA_SUBJECT_PATTERNS
   {
     key: 'lazada',
     name: 'Lazada Order Parser',
     classification: EMAIL_CLASSIFICATION.ORDER_CONFIRMATION,
-    senderPatterns: ['no-reply@lazada.co.th', 'noreply@lazada.co.th', 'notification@lazada.co.th'],
-    subjectPatterns: ['order confirmation', 'your order', 'order placed'],
+    senderPatterns: ['order@lazada.co.th', 'noreply@lazada.co.th', 'notification@lazada.co.th', 'orders@lazada.co.th'],
+    subjectPatterns: [
+      'order confirmed', 'order has been confirmed', 'your order',
+      'has been shipped', 'delivered', 'lazada order', 'payment confirmed',
+    ],
+    defaultPaymentContext: 'credit_card',
+  },
+
+  // Apple receipts — aligned with apple.ts
+  {
+    key: 'apple',
+    name: 'Apple Receipt Parser',
+    classification: EMAIL_CLASSIFICATION.RECEIPT,
+    senderPatterns: ['no_reply@email.apple.com', 'no-reply@email.apple.com'],
+    subjectPatterns: ['your receipt from apple', 'receipt from apple'],
+    defaultPaymentContext: 'credit_card',
+  },
+
+  // Stripe receipts — aligned with stripe.ts
+  {
+    key: 'stripe',
+    name: 'Stripe Receipt Parser',
+    classification: EMAIL_CLASSIFICATION.RECEIPT,
+    senderPatterns: ['receipts@stripe.com'],
+    subjectPatterns: ['receipt from', 'payment to'],
     defaultPaymentContext: 'credit_card',
   },
 ];
@@ -500,7 +533,7 @@ export function setRuleEnabled(ruleId: string, enabled: boolean): boolean {
  * Classify email using basic heuristics when no parser matches
  */
 function classifyUnknownEmail(email: RawEmailData): ClassificationResult {
-  const fromAddress = email.from_address?.toLowerCase() || '';
+  const fromAddress = normalizeICloudRelay(email.from_address || '')?.toLowerCase() || '';
   const subject = email.subject?.toLowerCase() || '';
 
   // Look for common patterns
@@ -568,7 +601,7 @@ export function classifyEmailWithContext(
   email: RawEmailData,
   extractedData?: Partial<ExtractedTransaction>
 ): ExtendedClassificationResult {
-  const fromAddress = email.from_address?.toLowerCase() || '';
+  const fromAddress = normalizeICloudRelay(email.from_address || '')?.toLowerCase() || '';
   const subject = email.subject?.toLowerCase() || '';
 
   // Try each parser pattern in order
@@ -634,7 +667,7 @@ export function classifyEmailWithContext(
  * @returns Classification result with parser key and confidence
  */
 export function classifyEmail(email: RawEmailData): ClassificationResult {
-  const fromAddress = email.from_address?.toLowerCase() || '';
+  const fromAddress = normalizeICloudRelay(email.from_address || '')?.toLowerCase() || '';
   const subject = email.subject?.toLowerCase() || '';
 
   // Try each parser pattern in order

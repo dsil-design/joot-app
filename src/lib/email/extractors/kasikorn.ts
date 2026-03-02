@@ -29,6 +29,31 @@ const KPLUS_SUBJECT_PATTERNS = {
   promptpayTransfer: ['result of promptpay funds transfer', 'promptpay funds transfer (success)'],
 };
 
+// ============================================================================
+// PLAIN TEXT (bilingual Thai/English) PATTERNS — K PLUS email format
+// These are tried first before the HTML/base64 patterns below.
+// ============================================================================
+
+// จำนวนเงิน/Amount : 450.00 บาท/Baht
+const PLAIN_TEXT_AMOUNT_PATTERN = /จำนวนเงิน\s*\/\s*Amount\s*:\s*([\d,]+(?:\.\d{2})?)\s*(?:บาท|Baht)/i;
+
+// วันที่/Date : 28/02/2026  เวลา/Time : 12:34  (no seconds in plain text format)
+const PLAIN_TEXT_DATE_PATTERN = /วันที่\s*\/\s*Date\s*:\s*(\d{2})\/(\d{2})\/(\d{4})\s+เวลา\s*\/\s*Time\s*:\s*(\d{2}):(\d{2})/i;
+
+// ผู้รับเงิน/To : VENDOR NAME
+const PLAIN_TEXT_RECIPIENT_PATTERN = /ผู้รับเงิน\s*\/\s*To\s*:\s*(.+)/i;
+
+// เลขที่อ้างอิง/Ref. No. : 123456789
+const PLAIN_TEXT_REFERENCE_PATTERN = /เลขที่อ้างอิง\s*\/\s*Ref\.?\s*No\.?\s*:\s*([A-Za-z0-9]+)/i;
+
+// รายการ/Transaction : ชำระค่าสินค้า/บริการ (Bill Payment)
+// รายการ/Transaction : โอนเงิน (Funds Transfer)
+const PLAIN_TEXT_TRANSACTION_TYPE_PATTERN = /รายการ\s*\/\s*Transaction\s*:\s*(.+)/i;
+
+// ============================================================================
+// HTML / base64 PATTERNS — original K PLUS email format
+// ============================================================================
+
 // Amount extraction patterns
 // THB amount in format "Amount (THB): X,XXX.XX" or "X,XXX.XX THB"
 const THB_AMOUNT_PATTERN = /amount\s*\(?thb\)?[:\s]*([\d,]+(?:\.\d{2})?)/gi;
@@ -70,10 +95,10 @@ const VENDOR_MAPPINGS: Record<string, { vendorId: string; vendorName: string; de
 type TransferType = 'bill_payment' | 'funds_transfer' | 'promptpay_transfer' | 'unknown';
 
 /**
- * Detect transfer type from email subject
+ * Detect transfer type from email subject and optionally from body content.
  * Note: PromptPay must be checked before Funds Transfer since PromptPay subjects contain "funds transfer"
  */
-function detectTransferType(subject: string): TransferType {
+function detectTransferType(subject: string, body?: string): TransferType {
   const lowerSubject = subject.toLowerCase();
 
   if (KPLUS_SUBJECT_PATTERNS.billPayment.some(p => lowerSubject.includes(p.toLowerCase()))) {
@@ -85,6 +110,23 @@ function detectTransferType(subject: string): TransferType {
   }
   if (KPLUS_SUBJECT_PATTERNS.fundsTransfer.some(p => lowerSubject.includes(p.toLowerCase()))) {
     return 'funds_transfer';
+  }
+
+  // Try body-based detection from plain text format: รายการ/Transaction : ...
+  if (body) {
+    const txTypeMatch = PLAIN_TEXT_TRANSACTION_TYPE_PATTERN.exec(body);
+    if (txTypeMatch) {
+      const txType = txTypeMatch[1].toLowerCase();
+      if (txType.includes('ชำระค่าสินค้า') || txType.includes('bill payment')) {
+        return 'bill_payment';
+      }
+      if (txType.includes('พร้อมเพย์') || txType.includes('promptpay')) {
+        return 'promptpay_transfer';
+      }
+      if (txType.includes('โอนเงิน') || txType.includes('transfer')) {
+        return 'funds_transfer';
+      }
+    }
   }
 
   return 'unknown';
@@ -166,6 +208,15 @@ function stripHtml(html: string): string {
  * Extract THB amount from email body
  */
 function extractAmount(body: string): { amount: number; confidence: number } | null {
+  // Try plain text bilingual pattern first (K PLUS format: จำนวนเงิน/Amount : X.XX บาท/Baht)
+  const plainMatch = PLAIN_TEXT_AMOUNT_PATTERN.exec(body);
+  if (plainMatch) {
+    const amount = parseFloat(plainMatch[1].replace(/,/g, ''));
+    if (!isNaN(amount) && amount > 0) {
+      return { amount, confidence: 95 };
+    }
+  }
+
   const allMatches: number[] = [];
 
   // Try specific amount patterns first
@@ -205,6 +256,13 @@ function extractAmount(body: string): { amount: number; confidence: number } | n
  * Extract recipient name from email body based on transfer type
  */
 function extractRecipient(body: string, transferType: TransferType): string | null {
+  // Try plain text bilingual pattern first (K PLUS format: ผู้รับเงิน/To : NAME)
+  const plainMatch = PLAIN_TEXT_RECIPIENT_PATTERN.exec(body);
+  if (plainMatch) {
+    const recipient = plainMatch[1].trim().replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    if (recipient) return recipient;
+  }
+
   const patterns: RegExp[] = [];
 
   switch (transferType) {
@@ -261,6 +319,12 @@ function extractRecipient(body: string, transferType: TransferType): string | nu
  * Extract reference/transaction number from email body
  */
 function extractReference(body: string): string | null {
+  // Try plain text bilingual pattern first (K PLUS format: เลขที่อ้างอิง/Ref. No. : 123456789)
+  const plainMatch = PLAIN_TEXT_REFERENCE_PATTERN.exec(body);
+  if (plainMatch) {
+    return plainMatch[1].trim();
+  }
+
   TRANSACTION_NUMBER_PATTERN.lastIndex = 0;
   const match = TRANSACTION_NUMBER_PATTERN.exec(body);
   if (match) {
@@ -273,7 +337,22 @@ function extractReference(body: string): string | null {
  * Extract transaction date from email body
  */
 function extractTransactionDate(body: string): Date | null {
-  // Try the specific "Transaction Date:" pattern first
+  // Try plain text bilingual pattern first (K PLUS format: วันที่/Date : DD/MM/YYYY เวลา/Time : HH:MM)
+  const plainMatch = PLAIN_TEXT_DATE_PATTERN.exec(body);
+  if (plainMatch) {
+    const day = parseInt(plainMatch[1], 10);
+    const month = parseInt(plainMatch[2], 10) - 1;
+    const year = parseInt(plainMatch[3], 10);
+    const hour = parseInt(plainMatch[4], 10);
+    const minute = parseInt(plainMatch[5], 10);
+
+    const date = new Date(year, month, day, hour, minute, 0);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+
+  // Try the specific "Transaction Date:" pattern
   DATE_PATTERN.lastIndex = 0;
   let match = DATE_PATTERN.exec(body);
 
@@ -431,8 +510,8 @@ export const kasikornParser: EmailParser = {
       body = stripHtml(body);
     }
 
-    // Detect transfer type
-    const transferType = detectTransferType(email.subject || '');
+    // Detect transfer type from subject, with body fallback for plain text emails
+    const transferType = detectTransferType(email.subject || '', body);
     if (transferType === 'unknown') {
       notes.push('Unknown transfer type - using generic extraction');
     }

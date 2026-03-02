@@ -33,6 +33,7 @@ interface EmailHubFilterBarProps {
 
 const statusOptions: Array<{ value: EmailHubStatus; label: string }> = [
   { value: "all", label: "All Statuses" },
+  { value: "unprocessed", label: "Unprocessed" },
   { value: "pending_review", label: "Pending Review" },
   { value: "matched", label: "Matched" },
   { value: "waiting_for_statement", label: "Waiting" },

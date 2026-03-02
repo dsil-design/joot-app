@@ -3,9 +3,10 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ConfidenceIndicatorBadgeOnly } from "@/components/ui/confidence-indicator"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Zap } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 
 interface EmailTransactionCardProps {
@@ -14,6 +15,8 @@ interface EmailTransactionCardProps {
   isSelected: boolean
   onToggleExpand: () => void
   onToggleSelect: (selected: boolean) => void
+  onProcess?: (emailId: string) => void
+  isProcessingExtraction?: boolean
   children?: React.ReactNode
 }
 
@@ -22,6 +25,8 @@ interface EmailTransactionCardProps {
  */
 function getStatusBadge(status: string) {
   switch (status) {
+    case "unprocessed":
+      return { label: "Unprocessed", className: "bg-slate-100 text-slate-600 border-slate-200" }
     case "pending_review":
       return { label: "Pending", className: "bg-amber-100 text-amber-800 border-amber-200" }
     case "matched":
@@ -87,12 +92,15 @@ export function EmailTransactionCard({
   isSelected,
   onToggleExpand,
   onToggleSelect,
+  onProcess,
+  isProcessingExtraction,
   children,
 }: EmailTransactionCardProps) {
   const statusBadge = getStatusBadge(data.status)
   const parserTag = getParserTag(data.from_address)
-  const vendorName = data.vendors?.name || data.vendor_name_raw || data.from_name || "Unknown sender"
+  const vendorName = data.vendor_name_raw || data.from_name || "Unknown sender"
   const extracted = hasExtractedData(data)
+  const isUnprocessed = !data.is_processed
 
   // Use transaction_date if extracted, fall back to email_date
   const displayDate = data.transaction_date || data.email_date
@@ -133,9 +141,29 @@ export function EmailTransactionCard({
           </p>
         </div>
 
-        {/* Amount + Date */}
+        {/* Amount + Date / Process button */}
         <div className="text-right shrink-0">
-          {extracted ? (
+          {isUnprocessed ? (
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              {data.email_date && (
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(data.email_date)}
+                </p>
+              )}
+              {onProcess && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onProcess(data.id)}
+                  disabled={isProcessingExtraction}
+                  className="h-7 text-xs"
+                >
+                  <Zap className="h-3 w-3 mr-1" />
+                  {isProcessingExtraction ? "Processing..." : "Process"}
+                </Button>
+              )}
+            </div>
+          ) : extracted ? (
             <>
               <p className="text-sm font-semibold">
                 {formatAmount(data.amount, data.currency)}

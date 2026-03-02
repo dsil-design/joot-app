@@ -35,8 +35,9 @@ export interface EmailTransactionRow {
   processed_at: string | null
   matched_at: string | null
   created_at: string
-  updated_at: string
-  vendors: { id: string; name: string } | null
+  updated_at: string | null
+  is_processed: boolean
+  email_transaction_id: string | null
 }
 
 /**

@@ -50,10 +50,11 @@ export async function GET(request: NextRequest) {
       cutoffDate = cutoff.toISOString().split('T')[0]
     }
 
-    // Fetch all email transactions for the period in one query
+    // Fetch all rows from the unified view for the period
+    // This includes both processed (email_transactions) and unprocessed (emails only) rows
     const { data: emails, error: emailsError } = await supabase
-      .from('email_transactions')
-      .select('status, classification, extraction_confidence, email_date, amount, currency, processed_at, matched_at')
+      .from('email_hub_unified')
+      .select('status, classification, extraction_confidence, email_date, amount, currency, processed_at, matched_at, is_processed')
       .eq('user_id', user.id)
       .gte('email_date', cutoffDate)
 
@@ -73,6 +74,7 @@ export async function GET(request: NextRequest) {
 
     // Extraction tracking
     let notExtractedCount = 0
+    let unprocessedCount = 0
 
     // Waiting summary
     let waitingCount = 0
@@ -84,26 +86,33 @@ export async function GET(request: NextRequest) {
       const status = email.status || 'unknown'
       statusCounts[status] = (statusCounts[status] || 0) + 1
 
-      // Classification counts
-      const classification = email.classification || 'unknown'
-      classificationCounts[classification] = (classificationCounts[classification] || 0) + 1
+      // Classification counts (skip for unprocessed emails)
+      if (email.is_processed) {
+        const classification = email.classification || 'unknown'
+        classificationCounts[classification] = (classificationCounts[classification] || 0) + 1
+      }
 
-      // Track unextracted (no processed_at or zero confidence with no amount)
-      if (!email.processed_at || (email.extraction_confidence === 0 && email.amount == null)) {
+      // Track unprocessed and unextracted
+      if (!email.is_processed) {
+        unprocessedCount++
+        notExtractedCount++
+      } else if (!email.processed_at || (email.extraction_confidence === 0 && email.amount == null)) {
         notExtractedCount++
       }
 
-      // Confidence buckets
-      const conf = email.extraction_confidence
-      if (conf != null) {
-        if (conf >= 90) confidenceBuckets.high++
-        else if (conf >= 55) confidenceBuckets.medium++
-        else confidenceBuckets.low++
+      // Confidence buckets (only for processed emails)
+      if (email.is_processed) {
+        const conf = email.extraction_confidence
+        if (conf != null) {
+          if (conf >= 90) confidenceBuckets.high++
+          else if (conf >= 55) confidenceBuckets.medium++
+          else confidenceBuckets.low++
+        }
       }
 
       // Monthly trend
       if (email.email_date) {
-        const month = email.email_date.substring(0, 7) // YYYY-MM
+        const month = (email.email_date as string).substring(0, 7) // YYYY-MM
         if (!monthlyMap.has(month)) {
           monthlyMap.set(month, { received: 0, extracted: 0, matched: 0, imported: 0 })
         }
@@ -157,6 +166,7 @@ export async function GET(request: NextRequest) {
       total: (emails || []).length,
       total_synced_emails: totalSyncedEmails || 0,
       not_extracted: notExtractedCount,
+      unprocessed: unprocessedCount,
       status_counts: statusCounts,
       classification_counts: classificationCounts,
       confidence_buckets: confidenceBuckets,

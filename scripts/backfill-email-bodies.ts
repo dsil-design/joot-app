@@ -10,6 +10,9 @@
  * Usage: npx tsx scripts/backfill-email-bodies.ts
  */
 
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { createServiceRoleClient } from '../src/lib/supabase/server';

@@ -13,6 +13,7 @@ interface PendingUndo {
 export interface UseEmailHubActionsOptions {
   onStatusChange?: (id: string, status: string) => void
   onItemRemove?: (id: string) => void
+  onItemUpdate?: (id: string, data: Record<string, unknown>) => void
   undoDuration?: number
 }
 
@@ -22,9 +23,11 @@ export interface UseEmailHubActionsOptions {
 export function useEmailHubActions({
   onStatusChange,
   onItemRemove,
+  onItemUpdate,
   undoDuration = 5000,
 }: UseEmailHubActionsOptions = {}) {
   const [processingId, setProcessingId] = React.useState<string | null>(null)
+  const [extractingId, setExtractingId] = React.useState<string | null>(null)
   const pendingUndosRef = React.useRef<Map<string, PendingUndo>>(new Map())
   const undoSkipRef = React.useRef<(id: string) => void>(() => {})
 
@@ -245,6 +248,63 @@ export function useEmailHubActions({
     [onStatusChange]
   )
 
+  /**
+   * Process (extract) a single unprocessed email
+   */
+  const processEmail = React.useCallback(
+    async (emailId: string) => {
+      setExtractingId(emailId)
+
+      try {
+        const response = await fetch(`/api/emails/${emailId}/extract`, {
+          method: "POST",
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || "Failed to process email")
+        }
+
+        const result = await response.json()
+        const et = result.emailTransaction
+
+        if (et) {
+          // Update the row in-place with extraction results
+          onItemUpdate?.(emailId, {
+            email_transaction_id: et.id,
+            status: et.status,
+            classification: et.classification,
+            vendor_name_raw: et.vendor_name_raw,
+            amount: et.amount,
+            currency: et.currency,
+            transaction_date: et.transaction_date,
+            description: et.description,
+            order_id: et.order_id,
+            extraction_confidence: et.extraction_confidence,
+            extraction_notes: et.extraction_notes,
+            processed_at: et.processed_at,
+            is_processed: true,
+          })
+        }
+
+        setExtractingId(null)
+        toast.success("Email processed", {
+          description: et?.amount
+            ? `Extracted ${et.currency} ${et.amount} from ${et.vendor_name_raw || "email"}`
+            : "Extraction complete (no transaction data found)",
+        })
+
+        return result
+      } catch (error) {
+        setExtractingId(null)
+        const message = error instanceof Error ? error.message : "Failed to process"
+        toast.error("Failed to process email", { description: message })
+        return null
+      }
+    },
+    [onItemUpdate]
+  )
+
   // Cleanup on unmount
   React.useEffect(() => {
     return () => {
@@ -260,7 +320,9 @@ export function useEmailHubActions({
     linkToTransaction,
     batchSkip,
     batchMarkPending,
+    processEmail,
     isProcessing: (id: string) =>
       processingId === id || processingId === "batch",
+    isExtracting: (id: string) => extractingId === id,
   }
 }

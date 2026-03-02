@@ -15,6 +15,7 @@ import {
   DollarSign,
   Tag,
   Mail,
+  Zap,
 } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 
@@ -62,7 +63,9 @@ interface EmailDetailPanelProps {
   onLink: (emailId: string, txId: string) => void
   onCreateNew: (emailId: string) => void
   onSkip: (emailId: string) => void
+  onProcess?: (emailId: string) => void
   isProcessing: boolean
+  isProcessingExtraction?: boolean
 }
 
 export function EmailDetailPanel({
@@ -70,14 +73,23 @@ export function EmailDetailPanel({
   onLink,
   onCreateNew,
   onSkip,
+  onProcess,
   isProcessing,
+  isProcessingExtraction,
 }: EmailDetailPanelProps) {
   const [matchData, setMatchData] = React.useState<MatchesResponse | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
-  // Fetch match suggestions on mount
+  const isUnprocessed = !emailTransaction.is_processed
+
+  // Fetch match suggestions on mount (skip for unprocessed emails)
   React.useEffect(() => {
+    if (isUnprocessed) {
+      setIsLoading(false)
+      return
+    }
+
     let cancelled = false
 
     async function fetchMatches() {
@@ -85,7 +97,9 @@ export function EmailDetailPanel({
       setError(null)
 
       try {
-        const response = await fetch(`/api/emails/transactions/${emailTransaction.id}/matches`)
+        // Use email_transaction_id for the matches API (it needs the email_transactions row ID)
+        const etId = emailTransaction.email_transaction_id || emailTransaction.id
+        const response = await fetch(`/api/emails/transactions/${etId}/matches`)
         if (!response.ok) throw new Error("Failed to fetch matches")
 
         const data = await response.json()
@@ -99,9 +113,71 @@ export function EmailDetailPanel({
 
     fetchMatches()
     return () => { cancelled = true }
-  }, [emailTransaction.id])
+  }, [emailTransaction.id, emailTransaction.email_transaction_id, isUnprocessed])
 
   const isActioned = ["matched", "imported", "skipped"].includes(emailTransaction.status)
+
+  // Unprocessed email: show metadata + Extract Data button
+  if (isUnprocessed) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left: Email Metadata */}
+        <div className="space-y-4">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Email Details
+          </h4>
+          <div className="space-y-3">
+            <DetailRow
+              icon={<Mail className="h-4 w-4" />}
+              label="From"
+              value={emailTransaction.from_name || emailTransaction.from_address || "Unknown"}
+            />
+            <DetailRow
+              icon={<Tag className="h-4 w-4" />}
+              label="Subject"
+              value={emailTransaction.subject || "No subject"}
+            />
+            <DetailRow
+              icon={<Calendar className="h-4 w-4" />}
+              label="Received"
+              value={emailTransaction.email_date
+                ? new Date(emailTransaction.email_date).toLocaleDateString("en-US", {
+                    year: "numeric", month: "short", day: "numeric",
+                  })
+                : "—"
+              }
+            />
+            {emailTransaction.from_address && (
+              <DetailRow
+                label="Address"
+                value={emailTransaction.from_address}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Right: Extract Data action */}
+        <div className="space-y-4">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Not Yet Processed
+          </h4>
+          <p className="text-sm text-muted-foreground">
+            This email hasn&apos;t been analyzed for transaction data yet. Process it to extract amounts, dates, and vendor info.
+          </p>
+          {onProcess && (
+            <Button
+              onClick={() => onProcess(emailTransaction.id)}
+              disabled={isProcessingExtraction}
+              size="sm"
+            >
+              <Zap className="h-4 w-4 mr-1" />
+              {isProcessingExtraction ? "Extracting..." : "Extract Data"}
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

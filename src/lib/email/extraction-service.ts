@@ -40,6 +40,7 @@ import {
   type ExtendedClassificationResult,
   type PaymentContext,
 } from './classifier';
+import { normalizeICloudRelay } from './icloud-relay';
 
 // Import parsers
 import { grabParser } from './extractors/grab';
@@ -47,6 +48,8 @@ import { boltParser } from './extractors/bolt';
 import { bangkokBankParser } from './extractors/bangkok-bank';
 import { kasikornParser } from './extractors/kasikorn';
 import { lazadaParser } from './extractors/lazada';
+import { appleParser } from './extractors/apple';
+import { stripeParser } from './extractors/stripe';
 
 /**
  * Registry of available email parsers
@@ -72,12 +75,18 @@ class ParserRegistry {
   }
 
   /**
-   * Find the first parser that can handle this email
+   * Find the first parser that can handle this email.
+   * Normalizes iCloud Private Relay addresses before checking parsers.
    */
   findParser(email: RawEmailData): EmailParser | null {
+    // Normalize iCloud relay address so parsers see the original sender
+    const normalizedEmail = {
+      ...email,
+      from_address: normalizeICloudRelay(email.from_address || ''),
+    };
     const parsers = Array.from(this.parsers.values());
     for (const parser of parsers) {
-      if (parser.canParse(email)) {
+      if (parser.canParse(normalizedEmail)) {
         return parser;
       }
     }
@@ -187,11 +196,18 @@ export class EmailExtractionService {
   }
 
   /**
-   * Extract transaction data from a single email
+   * Extract transaction data from a single email.
+   * Normalizes iCloud Private Relay addresses before extraction.
    */
   extractFromEmail(email: RawEmailData): ExtractionResult {
+    // Normalize iCloud relay address so parsers see the original sender
+    const normalizedEmail = {
+      ...email,
+      from_address: normalizeICloudRelay(email.from_address || ''),
+    };
+
     // Find appropriate parser
-    const parser = this.parserRegistry.findParser(email);
+    const parser = this.parserRegistry.findParser(normalizedEmail);
 
     if (!parser) {
       return {
@@ -203,7 +219,7 @@ export class EmailExtractionService {
     }
 
     try {
-      const result = parser.extract(email);
+      const result = parser.extract(normalizedEmail);
       return result;
     } catch (error) {
       console.error(`Parser error (${parser.key}):`, error);
@@ -693,3 +709,5 @@ extractionService.registerParser(boltParser);
 extractionService.registerParser(bangkokBankParser);
 extractionService.registerParser(kasikornParser);
 extractionService.registerParser(lazadaParser);
+extractionService.registerParser(appleParser);
+extractionService.registerParser(stripeParser);
