@@ -1,7 +1,7 @@
 /**
  * Gemini AI Fallback Email Parser
  *
- * Uses Google Gemini 2.0 Flash as a fallback parser for emails that don't
+ * Uses Google Gemini 2.5 Flash as a fallback parser for emails that don't
  * match any regex-based parser. Sends email content to Gemini and extracts
  * structured transaction data.
  *
@@ -17,7 +17,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { EmailParser, RawEmailData, ExtractionResult } from '../types';
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 const MAX_BODY_LENGTH = 8000;
 const REQUEST_TIMEOUT_MS = 15000;
 
@@ -191,7 +191,7 @@ export const geminiAiParser: EmailParser = {
           description: response.description || undefined,
           order_id: response.order_id || undefined,
         },
-        notes: `AI extraction (gemini-2.0-flash). ${response.confidence_notes || ''}`.trim(),
+        notes: `AI extraction (gemini-2.5-flash). ${response.confidence_notes || ''}`.trim(),
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
