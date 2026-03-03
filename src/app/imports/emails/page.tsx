@@ -74,6 +74,7 @@ export default function EmailHubPage() {
     linkToTransaction,
     batchSkip,
     batchMarkPending,
+    batchProcess,
     processEmail,
     isProcessing,
     isExtracting,
@@ -222,6 +223,14 @@ export default function EmailHubPage() {
     })
   }
 
+  const handleBatchProcess = () => {
+    const ids = Array.from(selectedIds)
+    batchProcess(ids).then(() => {
+      setSelectedIds(new Set())
+      refetchStats()
+    })
+  }
+
   // Get linking item for dialog
   const linkingItem: LinkSourceItem | null = React.useMemo(() => {
     if (!linkingItemId) return null
@@ -293,6 +302,7 @@ export default function EmailHubPage() {
           selectedCount={selectedIds.size}
           onSkipSelected={handleBatchSkip}
           onMarkPending={handleBatchMarkPending}
+          onProcessSelected={handleBatchProcess}
           onClearSelection={() => setSelectedIds(new Set())}
           isProcessing={isProcessing("batch")}
         />

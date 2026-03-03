@@ -144,7 +144,7 @@ async function main() {
     };
 
     // Extract
-    const extraction = extractionService.extractFromEmail(rawEmail);
+    const extraction = await extractionService.extractFromEmail(rawEmail);
 
     // Classify with extraction context
     const classification = extractionService.classifyEmailWithExtraction(rawEmail, extraction);

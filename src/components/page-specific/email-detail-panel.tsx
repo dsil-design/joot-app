@@ -16,6 +16,7 @@ import {
   Tag,
   Mail,
   Zap,
+  RefreshCw,
 } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 
@@ -254,6 +255,20 @@ export function EmailDetailPanel({
             />
           )}
         </div>
+
+        {/* Process Again button */}
+        {onProcess && !isActioned && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onProcess(emailTransaction.id)}
+            disabled={isProcessingExtraction}
+            className="text-muted-foreground"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5 mr-1", isProcessingExtraction && "animate-spin")} />
+            {isProcessingExtraction ? "Processing..." : "Process Again"}
+          </Button>
+        )}
       </div>
 
       {/* Right: Match Suggestions */}

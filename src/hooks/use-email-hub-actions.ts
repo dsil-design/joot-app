@@ -249,6 +249,70 @@ export function useEmailHubActions({
   )
 
   /**
+   * Batch process (extract) multiple emails
+   */
+  const batchProcess = React.useCallback(
+    async (ids: string[]) => {
+      setProcessingId("batch")
+      let successCount = 0
+      let failCount = 0
+
+      for (const emailId of ids) {
+        setExtractingId(emailId)
+        try {
+          const response = await fetch(`/api/emails/${emailId}/extract`, {
+            method: "POST",
+          })
+
+          if (!response.ok) {
+            failCount++
+            continue
+          }
+
+          const result = await response.json()
+          const et = result.emailTransaction
+
+          if (et) {
+            onItemUpdate?.(emailId, {
+              email_transaction_id: et.id,
+              status: et.status,
+              classification: et.classification,
+              vendor_name_raw: et.vendor_name_raw,
+              amount: et.amount,
+              currency: et.currency,
+              transaction_date: et.transaction_date,
+              description: et.description,
+              order_id: et.order_id,
+              extraction_confidence: et.extraction_confidence,
+              extraction_notes: et.extraction_notes,
+              processed_at: et.processed_at,
+              is_processed: true,
+            })
+          }
+
+          successCount++
+        } catch {
+          failCount++
+        }
+      }
+
+      setExtractingId(null)
+      setProcessingId(null)
+
+      if (successCount > 0) {
+        toast.success(`Processed ${successCount} email(s)`, {
+          description: failCount > 0 ? `${failCount} failed` : undefined,
+        })
+      } else if (failCount > 0) {
+        toast.error(`Failed to process ${failCount} email(s)`)
+      }
+
+      return successCount > 0
+    },
+    [onItemUpdate]
+  )
+
+  /**
    * Process (extract) a single unprocessed email
    */
   const processEmail = React.useCallback(
@@ -320,6 +384,7 @@ export function useEmailHubActions({
     linkToTransaction,
     batchSkip,
     batchMarkPending,
+    batchProcess,
     processEmail,
     isProcessing: (id: string) =>
       processingId === id || processingId === "batch",

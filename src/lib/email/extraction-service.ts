@@ -50,6 +50,7 @@ import { kasikornParser } from './extractors/kasikorn';
 import { lazadaParser } from './extractors/lazada';
 import { appleParser } from './extractors/apple';
 import { stripeParser } from './extractors/stripe';
+import { geminiAiParser } from './extractors/gemini-ai';
 
 /**
  * Registry of available email parsers
@@ -199,7 +200,7 @@ export class EmailExtractionService {
    * Extract transaction data from a single email.
    * Normalizes iCloud Private Relay addresses before extraction.
    */
-  extractFromEmail(email: RawEmailData): ExtractionResult {
+  async extractFromEmail(email: RawEmailData): Promise<ExtractionResult> {
     // Normalize iCloud relay address so parsers see the original sender
     const normalizedEmail = {
       ...email,
@@ -219,7 +220,7 @@ export class EmailExtractionService {
     }
 
     try {
-      const result = parser.extract(normalizedEmail);
+      const result = await parser.extract(normalizedEmail);
       return result;
     } catch (error) {
       console.error(`Parser error (${parser.key}):`, error);
@@ -387,7 +388,7 @@ export class EmailExtractionService {
           };
 
           // Extract transaction data first (we need currency for proper classification)
-          const extraction = this.extractFromEmail(rawEmail);
+          const extraction = await this.extractFromEmail(rawEmail);
 
           // Classify email with full context (including extracted currency)
           // This uses the enhanced classification system that considers:
@@ -594,7 +595,7 @@ export class EmailExtractionService {
     };
 
     // Extract first (we need currency for proper classification)
-    const extraction = this.extractFromEmail(rawEmail);
+    const extraction = await this.extractFromEmail(rawEmail);
 
     // Re-classify with full context (including extracted currency)
     const classification = this.classifyEmailWithExtraction(rawEmail, extraction);
@@ -711,3 +712,7 @@ extractionService.registerParser(kasikornParser);
 extractionService.registerParser(lazadaParser);
 extractionService.registerParser(appleParser);
 extractionService.registerParser(stripeParser);
+
+// AI fallback parser — must be registered LAST so it only runs
+// when no regex parser matches
+extractionService.registerParser(geminiAiParser);

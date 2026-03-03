@@ -87,7 +87,7 @@ export async function POST(
     };
 
     // Run extraction pipeline
-    const extraction = extractionService.extractFromEmail(rawEmail);
+    const extraction = await extractionService.extractFromEmail(rawEmail);
     const classification = extractionService.classifyEmailWithExtraction(rawEmail, extraction);
     const confidenceBreakdown = extractionService.calculateConfidenceWithBreakdown(extraction);
     const confidence = confidenceBreakdown.totalScore;

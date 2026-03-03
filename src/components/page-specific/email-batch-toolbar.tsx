@@ -12,12 +12,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { SkipForward, Clock, X } from "lucide-react"
+import { SkipForward, Clock, RefreshCw, X } from "lucide-react"
 
 interface EmailBatchToolbarProps {
   selectedCount: number
   onSkipSelected: () => void
   onMarkPending: () => void
+  onProcessSelected: () => void
   onClearSelection: () => void
   isProcessing: boolean
 }
@@ -26,6 +27,7 @@ export function EmailBatchToolbar({
   selectedCount,
   onSkipSelected,
   onMarkPending,
+  onProcessSelected,
   onClearSelection,
   isProcessing,
 }: EmailBatchToolbarProps) {
@@ -48,6 +50,15 @@ export function EmailBatchToolbar({
         </span>
 
         <div className="flex items-center gap-2 ml-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onProcessSelected}
+            disabled={isProcessing}
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Process Selected
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -84,6 +95,15 @@ export function EmailBatchToolbar({
             {selectedCount} selected
           </span>
           <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onProcessSelected}
+              disabled={isProcessing}
+            >
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Process
+            </Button>
             <Button
               variant="outline"
               size="sm"

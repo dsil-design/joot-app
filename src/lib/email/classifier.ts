@@ -274,7 +274,20 @@ const DEFAULT_CLASSIFICATION_RULES: ClassificationRule[] = [
     enabled: true,
   },
 
-  // Rule 7: Unknown classification defaults to pending review
+  // Rule 7: AI-extracted emails always need manual review
+  {
+    id: 'ai_extracted_review',
+    description: 'AI-extracted emails require manual review',
+    parserKeys: ['gemini-ai'],
+    classifications: null,
+    paymentContexts: null,
+    currencies: null,
+    status: EMAIL_TRANSACTION_STATUS.PENDING_REVIEW,
+    priority: 95,
+    enabled: true,
+  },
+
+  // Rule 8: Unknown classification defaults to pending review
   {
     id: 'unknown_default',
     description: 'Unknown emails need manual review',
@@ -287,7 +300,7 @@ const DEFAULT_CLASSIFICATION_RULES: ClassificationRule[] = [
     enabled: true,
   },
 
-  // Rule 8: Fallback - anything not matched goes to pending review
+  // Rule 9: Fallback - anything not matched goes to pending review
   {
     id: 'fallback_review',
     description: 'Fallback: unmatched emails go to pending review',

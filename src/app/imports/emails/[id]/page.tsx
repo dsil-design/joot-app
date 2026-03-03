@@ -32,7 +32,11 @@ export default function EmailDetailPage({
   const [createDialogData, setCreateDialogData] = React.useState<CreateFromImportData | null>(null)
 
   // Actions
-  const { skip, linkToTransaction, isProcessing } = useEmailHubActions()
+  const { skip, linkToTransaction, processEmail, isProcessing, isExtracting } = useEmailHubActions({
+    onItemUpdate: (_id, data) => {
+      setEmailTx((prev) => prev ? { ...prev, ...data } as EmailTransactionRow : prev)
+    },
+  })
   const { createTransaction } = useTransactions()
 
   // Resolve params
@@ -145,7 +149,9 @@ export default function EmailDetailPage({
           onLink={handleLink}
           onCreateNew={handleCreateNew}
           onSkip={handleSkip}
+          onProcess={(emailId) => processEmail(emailId)}
           isProcessing={isProcessing(emailTx.id)}
+          isProcessingExtraction={isExtracting(emailTx.id)}
         />
       ) : (
         <div className="text-center py-16">

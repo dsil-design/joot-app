@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ConfidenceIndicatorBadgeOnly } from "@/components/ui/confidence-indicator"
-import { ChevronDown, ChevronRight, Zap } from "lucide-react"
+import { ChevronDown, ChevronRight, RefreshCw, Zap } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 
 interface EmailTransactionCardProps {
@@ -173,16 +173,30 @@ export function EmailTransactionCard({
               </p>
             </>
           ) : (
-            <>
-              <p className="text-xs text-muted-foreground italic">
-                No data extracted
-              </p>
-              {data.email_date && (
-                <p className="text-xs text-muted-foreground">
-                  {formatDate(data.email_date)}
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <div>
+                <p className="text-xs text-muted-foreground italic">
+                  No data extracted
                 </p>
+                {data.email_date && (
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(data.email_date)}
+                  </p>
+                )}
+              </div>
+              {onProcess && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onProcess(data.id)}
+                  disabled={isProcessingExtraction}
+                  className="h-7 text-xs"
+                >
+                  <RefreshCw className={cn("h-3 w-3 mr-1", isProcessingExtraction && "animate-spin")} />
+                  {isProcessingExtraction ? "Processing..." : "Retry"}
+                </Button>
               )}
-            </>
+            </div>
           )}
         </div>
 

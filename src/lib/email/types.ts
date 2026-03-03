@@ -129,7 +129,7 @@ export interface EmailParser {
   canParse(email: RawEmailData): boolean;
 
   /** Extract transaction data from email */
-  extract(email: RawEmailData): ExtractionResult;
+  extract(email: RawEmailData): ExtractionResult | Promise<ExtractionResult>;
 }
 
 /**
