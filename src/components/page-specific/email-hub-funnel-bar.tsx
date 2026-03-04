@@ -1,18 +1,12 @@
 "use client"
 
+import { Fragment } from "react"
 import { cn } from "@/lib/utils"
 import type { EmailHubStats } from "@/hooks/use-email-hub-stats"
 
 interface EmailHubFunnelBarProps {
   stats: EmailHubStats | null
   isLoading: boolean
-}
-
-interface FunnelStage {
-  label: string
-  count: number
-  color: string
-  bgColor: string
 }
 
 export function EmailHubFunnelBar({ stats, isLoading }: EmailHubFunnelBarProps) {
@@ -29,7 +23,6 @@ export function EmailHubFunnelBar({ stats, isLoading }: EmailHubFunnelBarProps) 
 
   if (total === 0) return null
 
-  // Count extracted = anything that has been processed (all statuses except brand new)
   const extracted =
     (statusCounts.pending_review || 0) +
     (statusCounts.matched || 0) +
@@ -39,43 +32,55 @@ export function EmailHubFunnelBar({ stats, isLoading }: EmailHubFunnelBarProps) 
   const matched = (statusCounts.matched || 0) + (statusCounts.imported || 0)
   const imported = statusCounts.imported || 0
 
-  const stages: FunnelStage[] = [
-    { label: "Synced", count: total, color: "bg-slate-500", bgColor: "bg-slate-100" },
-    { label: "Extracted", count: extracted, color: "bg-blue-500", bgColor: "bg-blue-100" },
-    { label: "Matched", count: matched, color: "bg-amber-500", bgColor: "bg-amber-100" },
-    { label: "Imported", count: imported, color: "bg-green-500", bgColor: "bg-green-100" },
+  const stages = [
+    { label: "Synced", count: total, color: "bg-slate-400" },
+    { label: "Extracted", count: extracted, color: "bg-blue-400" },
+    { label: "Matched", count: matched, color: "bg-amber-400" },
+    { label: "Imported", count: imported, color: "bg-green-400" },
   ]
 
   return (
-    <div className="hidden md:block">
-      <div className="flex items-center gap-1">
+    <div className="hidden md:block py-2">
+      <div className="flex items-end gap-2">
         {stages.map((stage, i) => {
-          const width = total > 0 ? Math.max((stage.count / total) * 100, 8) : 25
-          const dropOff = i > 0
-            ? ((stages[i - 1].count - stage.count) / stages[i - 1].count) * 100
+          const prevCount = i > 0 ? stages[i - 1].count : 0
+          const dropOff = prevCount > 0
+            ? Math.round(((prevCount - stage.count) / prevCount) * 100)
             : 0
 
           return (
-            <div key={stage.label} className="flex items-center gap-1" style={{ flex: width }}>
-              <div className="flex-1 min-w-0">
-                <div className={cn("h-8 rounded flex items-center justify-center", stage.bgColor)}>
-                  <div
-                    className={cn("h-full rounded transition-all", stage.color)}
-                    style={{ width: total > 0 ? `${(stage.count / total) * 100}%` : "100%", minWidth: "4px", opacity: 0.7 }}
-                  />
+            <Fragment key={stage.label}>
+              {/* Arrow connector with drop-off */}
+              {i > 0 && (
+                <div className="flex flex-col items-center shrink-0 self-end pb-1 gap-0.5">
+                  <span className="text-muted-foreground/30 text-sm leading-none">→</span>
+                  {dropOff > 10 && (
+                    <span className="text-[10px] text-red-500 leading-none whitespace-nowrap">
+                      -{dropOff}%
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs font-medium text-muted-foreground">{stage.label}</span>
-                  <span className="text-xs font-semibold">{stage.count}</span>
-                </div>
-                {dropOff > 10 && i > 0 && (
-                  <span className="text-[10px] text-red-500">-{Math.round(dropOff)}%</span>
-                )}
-              </div>
-              {i < stages.length - 1 && (
-                <div className="text-muted-foreground/30 text-xs px-0.5 shrink-0">&rarr;</div>
               )}
-            </div>
+
+              {/* Stage column: label + count above, solid bar below */}
+              <div
+                className="min-w-0"
+                style={{ flex: `${Math.max(stage.count, 1)} 1 0%` }}
+              >
+                <div className="flex items-baseline justify-between mb-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {stage.label}
+                  </span>
+                  <span className="text-xs font-semibold tabular-nums">
+                    {stage.count}
+                  </span>
+                </div>
+                <div
+                  className={cn("h-4 rounded-md", stage.color)}
+                  style={{ opacity: stage.count === 0 ? 0.15 : 0.6 }}
+                />
+              </div>
+            </Fragment>
           )
         })}
       </div>

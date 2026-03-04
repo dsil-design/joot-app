@@ -14,6 +14,23 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from "@/components/ui/popover"
+import {
+  type DatePresetKey,
+  PRESET_LABELS,
+  getPresetRange,
+  detectPreset,
+} from "@/lib/utils/date-filters"
+
+const PICKER_PRESETS: DatePresetKey[] = [
+  "today",
+  "yesterday",
+  "last-7-days",
+  "last-30-days",
+  "this-month",
+  "last-month",
+  "this-quarter",
+  "this-year",
+]
 
 export interface DateRangePickerProps {
   /** The selected date or date range */
@@ -132,7 +149,7 @@ function formatDateRangeForInput(dateRange: DateRange | undefined): string {
 export function DateRangePicker({
   dateRange,
   onDateRangeChange,
-  placeholder = "Type or pick a date",
+  placeholder = "Pick a date or range",
   disabled = false,
   className,
   label,
@@ -308,28 +325,57 @@ export function DateRangePicker({
                 }
               }}
             >
-              <Calendar
-                mode="range"
-                selected={dateRange}
-                onSelect={handleSelect}
-                numberOfMonths={1}
-                disabled={disabled}
-              />
-              {dateRange?.from && (
-                <div className="border-t p-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      handleClear()
-                      setOpen(false)
-                    }}
-                    className="w-full"
-                  >
-                    Clear
-                  </Button>
+              <div className="flex">
+                <div className="flex flex-col border-r p-2 w-40">
+                  {PICKER_PRESETS.map((key) => {
+                    const active = detectPreset(dateRange) === key
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        className={cn(
+                          "rounded-md px-3 py-1.5 text-left text-sm transition-colors",
+                          active
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-accent"
+                        )}
+                        onClick={() => {
+                          const range = getPresetRange(key)
+                          onDateRangeChange?.(range)
+                          setIsEditing(false)
+                          setOpen(false)
+                        }}
+                      >
+                        {PRESET_LABELS[key]}
+                      </button>
+                    )
+                  })}
                 </div>
-              )}
+                <div>
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={handleSelect}
+                    numberOfMonths={2}
+                    disabled={disabled}
+                  />
+                  {dateRange?.from && (
+                    <div className="border-t p-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          handleClear()
+                          setOpen(false)
+                        }}
+                        className="w-full"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </PopoverContent>
           </Popover>
         </div>
