@@ -21,15 +21,15 @@ Invoke this skill when the user:
 **CRITICAL**: Before starting any implementation work, read these documents:
 
 1. **Task Lists** (Start here - contains specific implementation tasks):
-   - `design-docs/tasks/phase-1-foundation-tasks.md` - Database, navigation, email parsers
-   - `design-docs/tasks/phase-2-core-matching-tasks.md` - Upload, parsing, matching, review
-   - `design-docs/tasks/phase-3-user-experience-tasks.md` - Mobile, polish, accessibility
-   - `design-docs/tasks/phase-4-advanced-features-tasks.md` - Manual linking, history, settings
+   - `docs/phase-1-foundation-tasks.md` - Database, navigation, email parsers
+   - `docs/phase-2-core-matching-tasks.md` - Upload, parsing, matching, review
+   - `docs/phase-3-user-experience-tasks.md` - Mobile, polish, accessibility
+   - `docs/phase-4-advanced-features-tasks.md` - Manual linking, history, settings
 
 2. **Design Specifications**:
-   - `design-docs/email-transaction-linking-system.md` - Complete feature spec
-   - `design-docs/email-transaction-wireframes.md` - UI layouts
-   - `design-docs/email-transaction-implementation-roadmap.md` - Architecture overview
+   - `docs/email-transaction-linking-system.md` - Complete feature spec
+   - `docs/email-transaction-wireframes.md` - UI layouts
+   - `docs/email-transaction-implementation-roadmap.md` - Architecture overview
 
 3. **Existing Code Patterns**:
    - `src/lib/services/email-sync-service.ts` - Existing email sync implementation

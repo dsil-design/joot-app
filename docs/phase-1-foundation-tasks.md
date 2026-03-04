@@ -2,7 +2,7 @@
 
 **Feature:** Email-to-Transaction Linking System
 **Phase:** 1 of 4 — Foundation
-**Status:** `draft`
+**Status:** `completed`
 **Created:** 2025-01-02
 **Target Duration:** 2 weeks
 
@@ -12,9 +12,9 @@
 
 | Input | Path | Intent |
 |-------|------|--------|
-| Main Spec | `design-docs/email-transaction-linking-system.md` | Complete feature specification |
-| Wireframes | `design-docs/email-transaction-wireframes.md` | UI layouts and interactions |
-| Roadmap | `design-docs/email-transaction-implementation-roadmap.md` | 8-week implementation plan |
+| Main Spec | `email-transaction-linking-system.md` | Complete feature specification |
+| Wireframes | `email-transaction-wireframes.md` | UI layouts and interactions |
+| Roadmap | `email-transaction-implementation-roadmap.md` | 8-week implementation plan |
 | Project Standards | `CLAUDE.md` | Codebase conventions and patterns |
 | AI Skill Guide | `.claude/skills/email-linking/SKILL.md` | Code patterns and architecture |
 

@@ -2,7 +2,7 @@
 
 **Feature:** Email-to-Transaction Linking System
 **Phase:** 4 of 4 — Advanced Features
-**Status:** `draft`
+**Status:** `partially_complete` — See [STATUS.md](../STATUS.md) for remaining items
 **Created:** 2025-01-02
 **Target Duration:** 2 weeks
 **Prerequisites:** Phase 3 complete
@@ -13,10 +13,10 @@
 
 | Input | Path | Intent |
 |-------|------|--------|
-| Main Spec | `design-docs/email-transaction-linking-system.md` | Complete feature specification |
-| Wireframes | `design-docs/email-transaction-wireframes.md` | UI layouts and interactions |
-| Roadmap | `design-docs/email-transaction-implementation-roadmap.md` | 8-week implementation plan |
-| Phase 1-3 Tasks | `design-docs/tasks/phase-*.md` | Previous phase work |
+| Main Spec | `email-transaction-linking-system.md` | Complete feature specification |
+| Wireframes | `email-transaction-wireframes.md` | UI layouts and interactions |
+| Roadmap | `email-transaction-implementation-roadmap.md` | 8-week implementation plan |
+| Phase 1-3 Tasks | `phase-*.md` | Previous phase work |
 | AI Skill Guide | `.claude/skills/email-linking/SKILL.md` | Code patterns and architecture |
 
 **Key Constraints:**

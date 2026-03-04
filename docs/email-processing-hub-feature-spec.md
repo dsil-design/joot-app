@@ -4,7 +4,7 @@
 **Feature:** Email Processing Hub (`/imports/emails`)
 **Date:** 2026-03-02
 **Version:** 1.0
-**Status:** Draft — Awaiting Review
+**Status:** Implemented
 
 ---
 
@@ -93,7 +93,7 @@ The Email Hub filtered to `status=pending_review` overlaps with the Review Queue
 
 ## 4. UX Specification
 
-> Full detailed UX spec with wireframes: [`design-docs/email-processing-hub-ux-spec.md`](./email-processing-hub-ux-spec.md)
+> Full detailed UX spec with wireframes: [`email-processing-hub-ux-spec.md`](./email-processing-hub-ux-spec.md)
 
 ### Design Decisions
 

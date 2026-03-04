@@ -2,6 +2,7 @@
 
 **Version:** 1.0
 **Date:** 2026-03-01
+**Status:** Partially Implemented — Superseded by `email-processing-hub-ux-spec.md` for nav structure
 **Scope:** `/imports`, `/imports/statements/[id]`, `/imports/review`
 
 ---

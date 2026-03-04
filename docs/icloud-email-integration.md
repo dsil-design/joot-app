@@ -1,5 +1,7 @@
 # iCloud Email Integration Plan
 
+**Status:** Completed
+
 ## Overview
 
 Add iCloud email folder access to Joot for the transaction import feature. The app will connect via IMAP, sync email metadata from a specific folder, and provide a UI to view synced emails.

@@ -4,7 +4,7 @@
 **Feature:** Email Receipt Import & Statement Matching
 **Date:** 2025-12-31
 **Estimated Duration:** 8 weeks
-**Status:** Planning Phase
+**Status:** Completed — Historical Reference (see [STATUS.md](./STATUS.md) for current state)
 
 ---
 
@@ -476,7 +476,7 @@ joot-app/
 │   │   └── 20250101000003_create_import_activities.sql
 │   └── schema.sql                           # Updated schema
 │
-└── design-docs/
+└── docs/
     ├── email-transaction-linking-system.md  # Main spec
     ├── email-transaction-wireframes.md      # Wireframes
     └── email-transaction-implementation-roadmap.md  # This doc
@@ -1271,8 +1271,8 @@ This roadmap provides a structured, 8-week plan to implement the email-to-transa
 4. Begin Phase 1 implementation
 
 All design artifacts are ready:
-- `/design-docs/email-transaction-linking-system.md` - Full specification
-- `/design-docs/email-transaction-wireframes.md` - Detailed wireframes
-- `/design-docs/email-transaction-implementation-roadmap.md` - This document
+- `/docs/email-transaction-linking-system.md` - Full specification
+- `/docs/email-transaction-wireframes.md` - Detailed wireframes
+- `/docs/email-transaction-implementation-roadmap.md` - This document
 
 Ready to start building!

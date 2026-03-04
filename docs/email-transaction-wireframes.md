@@ -3,6 +3,7 @@
 **Project:** Joot Transaction Tracker
 **Date:** 2025-12-31
 **Version:** 1.0
+**Status:** Superseded by `docs/imports-redesign-wireframes.md` and `email-processing-hub-ux-spec.md`
 
 ---
 

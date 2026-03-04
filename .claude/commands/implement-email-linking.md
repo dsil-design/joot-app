@@ -7,7 +7,7 @@ You are about to implement the Email-to-Transaction Linking feature for Joot.
 Before starting, read these documents in order:
 
 1. **Skill Guide**: `.claude/skills/email-linking/SKILL.md` - Architecture overview and code patterns
-2. **Current Phase Tasks**: `design-docs/tasks/phase-{N}-*-tasks.md` - Specific task requirements
+2. **Current Phase Tasks**: `docs/phase-{N}-*-tasks.md` - Specific task requirements
 
 ## Available Phases
 

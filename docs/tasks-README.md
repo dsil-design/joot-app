@@ -1,7 +1,7 @@
 # Email-to-Transaction Linking — Task Master Index
 
 **Feature:** Email-to-Transaction Linking System
-**Status:** `draft` — All phases pending approval
+**Status:** `archived` — Task tracking was not maintained during implementation; see [STATUS.md](../STATUS.md) for current state
 **Created:** 2025-01-02
 **Total Phases:** 4
 **Total Tasks:** 122
@@ -16,10 +16,10 @@ This directory contains the complete task breakdown for implementing the Email-t
 
 | Document | Path | Purpose |
 |----------|------|---------|
-| Main Spec | `design-docs/email-transaction-linking-system.md` | Complete feature specification |
-| Wireframes | `design-docs/email-transaction-wireframes.md` | UI layouts and interactions |
-| Roadmap | `design-docs/email-transaction-implementation-roadmap.md` | 8-week implementation plan |
-| Design Decisions | `design-docs/README.md` | Finalized design decisions |
+| Main Spec | `email-transaction-linking-system.md` | Complete feature specification |
+| Wireframes | `email-transaction-wireframes.md` | UI layouts and interactions |
+| Roadmap | `email-transaction-implementation-roadmap.md` | 8-week implementation plan |
+| Design Decisions | `STATUS.md` | Finalized design decisions |
 | **AI Skill Guide** | `.claude/skills/email-linking/SKILL.md` | Code patterns for Claude Code |
 | **Slash Command** | `.claude/commands/implement-email-linking.md` | Quick-start implementation command |
 

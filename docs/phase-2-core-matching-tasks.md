@@ -13,10 +13,10 @@
 
 | Input | Path | Intent |
 |-------|------|--------|
-| Main Spec | `design-docs/email-transaction-linking-system.md` | Complete feature specification |
-| Wireframes | `design-docs/email-transaction-wireframes.md` | UI layouts and interactions |
-| Roadmap | `design-docs/email-transaction-implementation-roadmap.md` | 8-week implementation plan |
-| Phase 1 Tasks | `design-docs/tasks/phase-1-foundation-tasks.md` | Foundation work |
+| Main Spec | `email-transaction-linking-system.md` | Complete feature specification |
+| Wireframes | `email-transaction-wireframes.md` | UI layouts and interactions |
+| Roadmap | `email-transaction-implementation-roadmap.md` | 8-week implementation plan |
+| Phase 1 Tasks | `phase-1-foundation-tasks.md` | Foundation work |
 | AI Skill Guide | `.claude/skills/email-linking/SKILL.md` | Code patterns and architecture |
 
 **Key Constraints:**

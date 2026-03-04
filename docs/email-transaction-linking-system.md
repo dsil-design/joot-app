@@ -4,6 +4,7 @@
 **Feature:** Email Receipt Import & Statement Matching
 **Date:** 2025-12-31
 **Version:** 1.0
+**Status:** Implemented — Historical Reference (see [STATUS.md](./STATUS.md) for current state)
 
 ---
 
