@@ -99,6 +99,12 @@ export async function resolveWaitingEmailTransactions(
         .eq('user_id', userId)
 
       if (!updateError) {
+        // Set source reference on the matched transaction
+        await supabase
+          .from('transactions')
+          .update({ source_email_transaction_id: email.id })
+          .eq('id', ranked.bestMatch.targetId)
+
         resolved++
       }
     } else if (ranked.bestMatch && ranked.bestMatch.score >= 55) {

@@ -27,7 +27,7 @@ import {
   CreateFromImportDialog,
   type CreateFromImportData,
 } from "@/components/page-specific/create-from-import-dialog"
-import { RefreshCw, Mail, Inbox, AlertCircle } from "lucide-react"
+import { RefreshCw, Mail, Inbox, AlertCircle, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
 export default function EmailHubPage() {
@@ -37,8 +37,8 @@ export default function EmailHubPage() {
   // Stats
   const { stats, isLoading: statsLoading, refetch: refetchStats } = useEmailHubStats()
 
-  // Email sync
-  const { triggerSync, isSyncing } = useEmailSync()
+  // Email sync & processing
+  const { triggerSync, isSyncing, triggerProcess, isProcessing: isBulkProcessing } = useEmailSync()
 
   // Email transactions with infinite scroll
   const {
@@ -98,11 +98,25 @@ export default function EmailHubPage() {
   // Transaction creation hook
   const { createTransaction } = useTransactions()
 
-  // Handle sync
+  // Handle sync (IMAP fetch only, no AI)
   const handleSyncNow = async () => {
     const result = await triggerSync()
     if (result?.success) {
-      toast.success(`Synced ${result.synced} email(s)`)
+      toast.success(`Synced ${result.synced} email(s)`, {
+        description: result.synced > 0 ? "Use 'Process' to extract data with AI." : undefined,
+      })
+      refresh()
+      refetchStats()
+    }
+  }
+
+  // Handle bulk processing (AI extraction on all unprocessed)
+  const handleProcessAll = async () => {
+    const result = await triggerProcess()
+    if (result?.success) {
+      toast.success(`Processed ${result.processed} email(s)`, {
+        description: `${result.extracted} extracted, ${result.failed} failed, ${result.skipped} skipped`,
+      })
       refresh()
       refetchStats()
     }
@@ -259,19 +273,34 @@ export default function EmailHubPage() {
             Last sync: {syncTimeDisplay}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSyncNow}
-          disabled={isSyncing}
-        >
-          {isSyncing ? (
-            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Mail className="h-4 w-4 mr-2" />
-          )}
-          Sync Now
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncNow}
+            disabled={isSyncing || isBulkProcessing}
+          >
+            {isSyncing ? (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Mail className="h-4 w-4 mr-2" />
+            )}
+            Sync Emails
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleProcessAll}
+            disabled={isBulkProcessing || isSyncing}
+          >
+            {isBulkProcessing ? (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4 mr-2" />
+            )}
+            Process All
+          </Button>
+        </div>
       </div>
 
       {/* Stats Bar */}
@@ -340,7 +369,7 @@ export default function EmailHubPage() {
             <p className="text-muted-foreground mb-4">
               {filters.status !== "all" || filters.classification !== "all" || filters.search
                 ? "Try adjusting your filters to see more results."
-                : "Click 'Sync Now' to fetch your email receipts."}
+                : "Click 'Sync Emails' to fetch from IMAP, then 'Process All' to extract data."}
             </p>
           </div>
         ) : (

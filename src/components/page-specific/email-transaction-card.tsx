@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ConfidenceIndicatorBadgeOnly } from "@/components/ui/confidence-indicator"
-import { ChevronDown, ChevronRight, RefreshCw, Zap } from "lucide-react"
+import { ChevronDown, ChevronRight, Eye, RefreshCw, Zap } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
+import { EmailViewerModal } from "./email-viewer-modal"
 
 interface EmailTransactionCardProps {
   data: EmailTransactionRow
@@ -96,6 +97,8 @@ export function EmailTransactionCard({
   isProcessingExtraction,
   children,
 }: EmailTransactionCardProps) {
+  const [viewerOpen, setViewerOpen] = React.useState(false)
+
   const statusBadge = getStatusBadge(data.status)
   const parserTag = getParserTag(data.from_address)
   const vendorName = data.vendor_name_raw || data.from_name || "Unknown sender"
@@ -150,6 +153,15 @@ export function EmailTransactionCard({
                   {formatDate(data.email_date)}
                 </p>
               )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewerOpen(true)}
+                className="h-7 w-7"
+                title="View Email"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </Button>
               {onProcess && (
                 <Button
                   variant="outline"
@@ -164,14 +176,25 @@ export function EmailTransactionCard({
               )}
             </div>
           ) : extracted ? (
-            <>
-              <p className="text-sm font-semibold">
-                {formatAmount(data.amount, data.currency)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {formatDate(displayDate)}
-              </p>
-            </>
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <div className="text-right">
+                <p className="text-sm font-semibold">
+                  {formatAmount(data.amount, data.currency)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(displayDate)}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewerOpen(true)}
+                className="h-7 w-7"
+                title="View Email"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           ) : (
             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <div>
@@ -184,6 +207,15 @@ export function EmailTransactionCard({
                   </p>
                 )}
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewerOpen(true)}
+                className="h-7 w-7"
+                title="View Email"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </Button>
               {onProcess && (
                 <Button
                   variant="outline"
@@ -233,6 +265,16 @@ export function EmailTransactionCard({
       {isExpanded && children && (
         <div className="border-t px-4 py-4">{children}</div>
       )}
+
+      <EmailViewerModal
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+        emailId={data.id}
+        subject={data.subject}
+        fromName={data.from_name}
+        fromAddress={data.from_address}
+        emailDate={data.email_date}
+      />
     </div>
   )
 }

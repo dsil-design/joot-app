@@ -46,6 +46,12 @@ CREATE TABLE public.transactions (
   transaction_type transaction_type NOT NULL,
   transaction_date DATE NOT NULL DEFAULT CURRENT_DATE,
   source_email_transaction_id UUID REFERENCES public.email_transactions(id) ON DELETE SET NULL,
+  source_statement_upload_id UUID REFERENCES public.statement_uploads(id) ON DELETE SET NULL,
+  source_statement_suggestion_index INTEGER,
+  source_statement_match_confidence INTEGER CHECK (
+    source_statement_match_confidence IS NULL
+    OR (source_statement_match_confidence >= 0 AND source_statement_match_confidence <= 100)
+  ),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
@@ -154,6 +160,8 @@ CREATE INDEX idx_transactions_payment_method_id ON public.transactions(payment_m
 CREATE INDEX idx_transactions_user_date_composite ON public.transactions(user_id, transaction_date DESC);
 CREATE INDEX idx_transactions_source_email ON public.transactions(source_email_transaction_id)
   WHERE source_email_transaction_id IS NOT NULL;
+CREATE INDEX idx_transactions_source_statement ON public.transactions(source_statement_upload_id)
+  WHERE source_statement_upload_id IS NOT NULL;
 CREATE INDEX idx_payment_methods_user_id ON public.payment_methods(user_id);
 CREATE INDEX idx_payment_methods_name ON public.payment_methods(name);
 CREATE INDEX idx_vendors_user_id ON public.vendors(user_id);
@@ -589,6 +597,23 @@ CREATE POLICY "Users can delete own email sync state" ON public.email_sync_state
 CREATE TRIGGER update_email_sync_state_updated_at BEFORE UPDATE ON public.email_sync_state
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Email groups table - consolidates related emails about the same transaction
+CREATE TABLE public.email_groups (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  group_key TEXT NOT NULL,
+  vendor_name TEXT,
+  amount DECIMAL(12, 2),
+  currency TEXT,
+  transaction_date DATE,
+  email_count INTEGER NOT NULL DEFAULT 1,
+  primary_email_transaction_id UUID,  -- FK added after email_transactions table exists
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  UNIQUE(user_id, group_key)
+);
+
 -- Email transactions table - stores parsed email data with match info
 -- Links synced emails to extracted transaction data and tracks matching status
 CREATE TABLE public.email_transactions (
@@ -633,7 +658,7 @@ CREATE TABLE public.email_transactions (
     'skipped'                -- User marked as non-transaction
   )),
 
-  -- Classification
+  -- Classification (coarse, backward-compatible)
   classification TEXT CHECK (classification IS NULL OR classification IN (
     'receipt',               -- Payment confirmation
     'order_confirmation',    -- Order placed, payment pending
@@ -641,6 +666,30 @@ CREATE TABLE public.email_transactions (
     'bill_payment',          -- Bill payment notification
     'unknown'                -- Could not classify
   )),
+
+  -- AI classification (granular, 13 types)
+  ai_classification TEXT CHECK (ai_classification IS NULL OR ai_classification IN (
+    'transaction_receipt',
+    'subscription_charge',
+    'bank_transfer_confirmation',
+    'bill_payment_confirmation',
+    'upcoming_charge_notice',
+    'invoice_available',
+    'refund_notification',
+    'delivery_status',
+    'order_status',
+    'account_notification',
+    'marketing_promotional',
+    'otp_verification',
+    'other_non_transaction'
+  )),
+  ai_suggested_skip BOOLEAN DEFAULT FALSE,
+  ai_reasoning TEXT,
+  parser_key TEXT,
+
+  -- Email group reference
+  email_group_id UUID REFERENCES public.email_groups(id) ON DELETE SET NULL,
+  is_group_primary BOOLEAN DEFAULT TRUE,
 
   -- Extraction metadata
   extraction_confidence INTEGER CHECK (extraction_confidence IS NULL OR (extraction_confidence >= 0 AND extraction_confidence <= 100)),
@@ -655,6 +704,33 @@ CREATE TABLE public.email_transactions (
 
   -- Unique constraint for deduplication
   UNIQUE(user_id, message_id)
+);
+
+-- Add FK from email_groups back to email_transactions
+ALTER TABLE public.email_groups
+  ADD CONSTRAINT email_groups_primary_email_fkey
+  FOREIGN KEY (primary_email_transaction_id)
+  REFERENCES public.email_transactions(id) ON DELETE SET NULL;
+
+-- AI feedback table - stores user corrections for few-shot prompt injection
+CREATE TABLE public.ai_feedback (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  email_transaction_id UUID REFERENCES public.email_transactions(id) ON DELETE CASCADE NOT NULL,
+  feedback_type TEXT NOT NULL CHECK (feedback_type IN (
+    'classification_change',
+    'skip_override',
+    'extraction_correction',
+    'undo_skip'
+  )),
+  original_ai_classification TEXT,
+  original_ai_suggested_skip BOOLEAN,
+  corrected_classification TEXT,
+  corrected_skip BOOLEAN,
+  email_subject TEXT,
+  email_from TEXT,
+  email_body_preview TEXT,  -- First 500 chars
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes for email_transactions
@@ -672,6 +748,44 @@ CREATE INDEX idx_email_trans_pending ON public.email_transactions(user_id, match
   WHERE status = 'pending_review';
 CREATE INDEX idx_email_trans_search ON public.email_transactions
   USING gin(to_tsvector('english', COALESCE(subject, '') || ' ' || COALESCE(description, '')));
+CREATE INDEX idx_email_trans_ai_classification
+  ON public.email_transactions(user_id, ai_classification);
+CREATE INDEX idx_email_trans_ai_skip
+  ON public.email_transactions(user_id, ai_suggested_skip)
+  WHERE ai_suggested_skip = TRUE;
+CREATE INDEX idx_email_trans_group
+  ON public.email_transactions(email_group_id)
+  WHERE email_group_id IS NOT NULL;
+CREATE INDEX idx_email_trans_parser_key
+  ON public.email_transactions(parser_key);
+
+-- Indexes for email_groups
+CREATE INDEX idx_email_groups_user_id ON public.email_groups(user_id);
+CREATE INDEX idx_email_groups_group_key ON public.email_groups(group_key);
+CREATE INDEX idx_email_groups_vendor ON public.email_groups(user_id, vendor_name);
+
+-- Indexes for ai_feedback
+CREATE INDEX idx_ai_feedback_user_id ON public.ai_feedback(user_id);
+CREATE INDEX idx_ai_feedback_email_tx ON public.ai_feedback(email_transaction_id);
+CREATE INDEX idx_ai_feedback_user_recent
+  ON public.ai_feedback(user_id, created_at DESC);
+
+-- Enable RLS for email_groups
+ALTER TABLE public.email_groups ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for email_groups table
+CREATE POLICY "Users can view own email groups" ON public.email_groups
+  FOR SELECT USING ((select auth.uid()) = user_id);
+CREATE POLICY "Users can insert own email groups" ON public.email_groups
+  FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
+CREATE POLICY "Users can update own email groups" ON public.email_groups
+  FOR UPDATE USING ((select auth.uid()) = user_id);
+CREATE POLICY "Users can delete own email groups" ON public.email_groups
+  FOR DELETE USING ((select auth.uid()) = user_id);
+
+-- Trigger for updated_at on email_groups
+CREATE TRIGGER update_email_groups_updated_at BEFORE UPDATE ON public.email_groups
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Enable RLS for email_transactions
 ALTER TABLE public.email_transactions ENABLE ROW LEVEL SECURITY;
@@ -692,6 +806,17 @@ CREATE POLICY "Users can delete own email transactions" ON public.email_transact
 -- Trigger for updated_at on email_transactions
 CREATE TRIGGER update_email_transactions_updated_at BEFORE UPDATE ON public.email_transactions
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Enable RLS for ai_feedback
+ALTER TABLE public.ai_feedback ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for ai_feedback table
+CREATE POLICY "Users can view own AI feedback" ON public.ai_feedback
+  FOR SELECT USING ((select auth.uid()) = user_id);
+CREATE POLICY "Users can insert own AI feedback" ON public.ai_feedback
+  FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
+CREATE POLICY "Users can delete own AI feedback" ON public.ai_feedback
+  FOR DELETE USING ((select auth.uid()) = user_id);
 
 -- Statement uploads table - stores metadata for uploaded statement files and processing results
 -- Files are stored in Supabase Storage; this table tracks metadata and processing status
@@ -959,8 +1084,18 @@ SELECT
   et.matched_at,
   et.updated_at,
   (et.id IS NOT NULL) AS is_processed,
-  COALESCE(et.transaction_date, e.date::date) AS effective_date
+  COALESCE(et.transaction_date, e.date::date) AS effective_date,
+  -- AI classification columns
+  et.ai_classification,
+  et.ai_suggested_skip,
+  et.ai_reasoning,
+  et.parser_key,
+  et.email_group_id,
+  et.is_group_primary,
+  eg.email_count AS group_email_count
 FROM public.emails e
 LEFT JOIN public.email_transactions et
   ON e.message_id = et.message_id
-  AND e.user_id = et.user_id;
+  AND e.user_id = et.user_id
+LEFT JOIN public.email_groups eg
+  ON et.email_group_id = eg.id;

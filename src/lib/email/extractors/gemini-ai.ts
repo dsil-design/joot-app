@@ -14,18 +14,14 @@
  * - Temperature 0.1 for deterministic extraction
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { EmailParser, RawEmailData, ExtractionResult } from '../types';
-
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const MAX_BODY_LENGTH = 8000;
-const REQUEST_TIMEOUT_MS = 15000;
+import { callGemini, isGeminiAvailable, truncateBody } from '../gemini-client';
 
 /**
  * Build the prompt for Gemini
  */
 function buildPrompt(email: RawEmailData): string {
-  const body = (email.text_body || email.html_body || '').slice(0, MAX_BODY_LENGTH);
+  const body = truncateBody(email.text_body, email.html_body);
 
   return `You are a transaction extraction assistant. Analyze this email and extract transaction data if it represents a financial transaction (purchase, payment, subscription, transfer).
 
@@ -96,38 +92,6 @@ function calculateAiConfidence(data: GeminiResponse): number {
 }
 
 /**
- * Call Gemini API with timeout
- */
-async function callGemini(prompt: string): Promise<GeminiResponse> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY not configured');
-  }
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: GEMINI_MODEL,
-    generationConfig: {
-      temperature: 0.1,
-      responseMimeType: 'application/json',
-    },
-  });
-
-  // Race between API call and timeout
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('Gemini API timeout')), REQUEST_TIMEOUT_MS);
-  });
-
-  const result = await Promise.race([
-    model.generateContent(prompt),
-    timeoutPromise,
-  ]);
-
-  const text = result.response.text();
-  return JSON.parse(text) as GeminiResponse;
-}
-
-/**
  * Gemini AI Email Parser implementation
  */
 export const geminiAiParser: EmailParser = {
@@ -139,7 +103,7 @@ export const geminiAiParser: EmailParser = {
    * Since this is registered last, it only runs when no regex parser matches.
    */
   canParse(_email: RawEmailData): boolean {
-    return !!process.env.GEMINI_API_KEY;
+    return isGeminiAvailable();
   },
 
   /**
@@ -148,7 +112,7 @@ export const geminiAiParser: EmailParser = {
   async extract(email: RawEmailData): Promise<ExtractionResult> {
     try {
       const prompt = buildPrompt(email);
-      const response = await callGemini(prompt);
+      const response = await callGemini<GeminiResponse>(prompt);
 
       // Not a transaction — return clean failure
       if (!response.is_transaction) {

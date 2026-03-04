@@ -352,6 +352,26 @@ export function useTransactions() {
               name,
               color
             )
+          ),
+          email_transactions!transactions_source_email_transaction_id_fkey (
+            id,
+            subject,
+            from_address,
+            from_name,
+            email_date,
+            extraction_confidence,
+            match_confidence,
+            match_method,
+            status
+          ),
+          statement_uploads!transactions_source_statement_upload_id_fkey (
+            id,
+            filename,
+            statement_period_start,
+            statement_period_end,
+            payment_methods!statement_uploads_payment_method_id_fkey (
+              name
+            )
           )
         `)
         .eq("user_id", user.id)
@@ -367,12 +387,19 @@ export function useTransactions() {
         return null
       }
 
-      // Transform the data to include tags array and rename joined tables
+      // Transform the data to include tags array, rename joined tables, and extract source references
+      const statementUpload = (data as any).statement_uploads
       const transformed = {
         ...data,
         vendor: (data as any).vendors,
         payment_method: (data as any).payment_methods,
-        tags: (data as any).transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || []
+        tags: (data as any).transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || [],
+        emailSource: (data as any).email_transactions ?? null,
+        statementSource: statementUpload ? {
+          ...statementUpload,
+          payment_method_name: statementUpload.payment_methods?.name ?? null,
+          match_confidence: (data as any).source_statement_match_confidence ?? null,
+        } : null,
       }
 
       return transformed as TransactionWithVendorAndPayment

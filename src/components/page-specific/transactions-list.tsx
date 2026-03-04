@@ -16,13 +16,7 @@ function TransactionCardComponent({ transaction, viewMode, isMobile, onEditTrans
   const { navigateToViewTransaction } = useTransactionFlow()
 
   const handleClick = () => {
-    if (isMobile) {
-      // On mobile, navigate to detail view
-      navigateToViewTransaction(transaction.id, 'transactions')
-    } else {
-      // On desktop, open edit modal
-      onEditTransaction?.(transaction)
-    }
+    navigateToViewTransaction(transaction.id, 'transactions')
   }
 
   return (

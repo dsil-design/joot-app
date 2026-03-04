@@ -13,14 +13,9 @@ const activeSyncs = new Set<string>();
  * POST /api/emails/sync
  *
  * Triggers a manual email sync for the authenticated user.
- * Connects to iCloud IMAP, syncs email metadata, and processes
- * each email through the appropriate parser to extract transaction data.
- *
- * Flow:
- * 1. Sync email metadata from IMAP folder
- * 2. Classify each email to determine parser
- * 3. Extract transaction data using matching parser
- * 4. Store extracted data in email_transactions table
+ * Connects to iCloud IMAP and syncs email metadata into the database.
+ * Does NOT process or extract data — use /api/emails/process or
+ * /api/emails/[id]/extract for that.
  *
  * Returns:
  * - 200: Sync completed successfully
@@ -62,10 +57,10 @@ export async function POST(_request: NextRequest) {
     activeSyncs.add(user.id);
 
     try {
-      console.log(`Email sync with extraction triggered for user ${user.id}`);
+      console.log(`Email sync (IMAP only) triggered for user ${user.id}`);
 
-      // Execute sync with extraction
-      const result = await emailSyncService.executeSyncWithExtraction(user.id);
+      // Execute IMAP sync only — no extraction/AI processing
+      const result = await emailSyncService.executeSync(user.id);
 
       return NextResponse.json({
         success: result.success,
@@ -73,7 +68,6 @@ export async function POST(_request: NextRequest) {
         errors: result.errors,
         lastUid: result.lastUid,
         message: result.message,
-        extraction: result.extraction,
       });
     } finally {
       // Always remove from active syncs when done

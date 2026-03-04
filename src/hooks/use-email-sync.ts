@@ -8,17 +8,26 @@ export interface EmailSyncResult {
   errors: number
   lastUid?: number
   message?: string
-  extraction?: {
-    processed: number
-    errors: number
-  }
+}
+
+export interface EmailProcessResult {
+  success: boolean
+  processed: number
+  extracted: number
+  failed: number
+  skipped: number
+  message?: string
 }
 
 export interface UseEmailSyncResult {
-  /** Trigger a manual sync */
+  /** Trigger a manual IMAP sync (fetch only, no AI) */
   triggerSync: () => Promise<EmailSyncResult | null>
   /** Whether a sync is currently in progress */
   isSyncing: boolean
+  /** Trigger AI processing on all unprocessed emails */
+  triggerProcess: () => Promise<EmailProcessResult | null>
+  /** Whether processing is currently in progress */
+  isProcessing: boolean
   /** Last sync error message, if any */
   syncError: string | null
   /** Result from the last sync attempt */
@@ -50,14 +59,12 @@ export interface UseEmailSyncResult {
  */
 export function useEmailSync(): UseEmailSyncResult {
   const [isSyncing, setIsSyncing] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<EmailSyncResult | null>(null)
 
   const triggerSync = useCallback(async (): Promise<EmailSyncResult | null> => {
-    // Prevent concurrent syncs
-    if (isSyncing) {
-      return null
-    }
+    if (isSyncing) return null
 
     try {
       setIsSyncing(true)
@@ -65,24 +72,15 @@ export function useEmailSync(): UseEmailSyncResult {
 
       const response = await fetch('/api/emails/sync', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        // Handle specific error cases
-        if (response.status === 401) {
-          throw new Error('Please log in to sync emails')
-        }
-        if (response.status === 409) {
-          throw new Error('Sync already in progress')
-        }
-        if (response.status === 503) {
-          throw new Error('Email integration not configured')
-        }
+        if (response.status === 401) throw new Error('Please log in to sync emails')
+        if (response.status === 409) throw new Error('Sync already in progress')
+        if (response.status === 503) throw new Error('Email integration not configured')
         throw new Error(data.error || `Sync failed with status ${response.status}`)
       }
 
@@ -92,12 +90,10 @@ export function useEmailSync(): UseEmailSyncResult {
         errors: data.errors ?? 0,
         lastUid: data.lastUid,
         message: data.message,
-        extraction: data.extraction,
       }
 
       setLastResult(result)
       return result
-
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to sync emails'
       setSyncError(message)
@@ -108,6 +104,43 @@ export function useEmailSync(): UseEmailSyncResult {
     }
   }, [isSyncing])
 
+  const triggerProcess = useCallback(async (): Promise<EmailProcessResult | null> => {
+    if (isProcessing) return null
+
+    try {
+      setIsProcessing(true)
+      setSyncError(null)
+
+      const response = await fetch('/api/emails/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 401) throw new Error('Please log in to process emails')
+        if (response.status === 409) throw new Error('Processing already in progress')
+        throw new Error(data.error || `Processing failed with status ${response.status}`)
+      }
+
+      return {
+        success: data.success,
+        processed: data.processed ?? 0,
+        extracted: data.extracted ?? 0,
+        failed: data.failed ?? 0,
+        skipped: data.skipped ?? 0,
+        message: data.message,
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to process emails'
+      setSyncError(message)
+      return null
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [isProcessing])
+
   const clearError = useCallback(() => {
     setSyncError(null)
   }, [])
@@ -115,6 +148,8 @@ export function useEmailSync(): UseEmailSyncResult {
   return {
     triggerSync,
     isSyncing,
+    triggerProcess,
+    isProcessing,
     syncError,
     lastResult,
     clearError,

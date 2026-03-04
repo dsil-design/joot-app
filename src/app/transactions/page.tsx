@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useTransactions } from "@/hooks/use-transactions"
 import { usePaginatedTransactions } from "@/hooks/use-paginated-transactions"
+import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { TransactionListSkeleton, TransactionLoadingMore } from "@/components/ui/transaction-list-skeleton"
 import { useInView } from "react-intersection-observer"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
@@ -200,6 +201,7 @@ interface TransactionsTableProps {
   selectedIds: Set<string>
   onToggleSelection: (id: string, shiftKey: boolean, ctrlKey: boolean) => void
   onToggleAll: () => void
+  onViewTransaction: (id: string) => void
   onEditTransaction: (transaction: TransactionWithVendorAndPayment) => void
   onDeleteTransaction: (id: string) => void
   sortField: SortField
@@ -216,6 +218,7 @@ function TransactionsTable({
   selectedIds,
   onToggleSelection,
   onToggleAll,
+  onViewTransaction,
   onEditTransaction,
   onDeleteTransaction,
   sortField,
@@ -334,7 +337,7 @@ function TransactionsTable({
     transaction: TransactionWithVendorAndPayment,
     event: React.MouseEvent<HTMLTableRowElement>
   ) => {
-    // Don't navigate/edit if clicking on checkbox or action buttons
+    // Don't navigate if clicking on checkbox or action buttons
     const target = event.target as HTMLElement
     if (
       target.closest('input[type="checkbox"]') ||
@@ -344,10 +347,14 @@ function TransactionsTable({
       return
     }
 
-    // Handle selection with modifiers
+    // Shift/Ctrl+click toggles selection, plain click navigates to detail
     const shiftKey = event.shiftKey
     const ctrlKey = event.ctrlKey || event.metaKey
-    onToggleSelection(transaction.id, shiftKey, ctrlKey)
+    if (shiftKey || ctrlKey) {
+      onToggleSelection(transaction.id, shiftKey, ctrlKey)
+    } else {
+      onViewTransaction(transaction.id)
+    }
   }
 
   const allSelected = transactions.length > 0 && transactions.every(t => selectedIds.has(t.id))
@@ -703,6 +710,7 @@ function TotalsFooter({ totals, totalsCurrency, onTotalsCurrencyChange }: Totals
 export default function AllTransactionsPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const { navigateToViewTransaction } = useTransactionFlow()
 
   // Keep useTransactions for mutations only
   const {
@@ -1591,6 +1599,7 @@ export default function AllTransactionsPage() {
               selectedIds={selectedIds}
               onToggleSelection={handleToggleSelection}
               onToggleAll={handleToggleAll}
+              onViewTransaction={(id) => navigateToViewTransaction(id, 'transactions')}
               onEditTransaction={handleOpenEditModal}
               onDeleteTransaction={handleDeleteSingle}
               sortField={sortField}

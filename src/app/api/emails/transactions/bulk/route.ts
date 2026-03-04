@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { recordFeedback } from '@/lib/email/ai-feedback-service'
+import { AI_FEEDBACK_TYPE } from '@/lib/types/email-imports'
+import type { AiFeedbackType } from '@/lib/types/email-imports'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -67,7 +70,7 @@ export async function POST(request: NextRequest) {
     // Verify all IDs belong to user and none are imported
     const { data: emailTxs, error: fetchError } = await supabase
       .from('email_transactions')
-      .select('id, status')
+      .select('id, status, ai_classification, ai_suggested_skip, subject, from_address')
       .eq('user_id', user.id)
       .in('id', ids)
 
@@ -129,6 +132,26 @@ export async function POST(request: NextRequest) {
         transactions_affected: ids.length,
         metadata: { action, ids },
       })
+
+    // Record feedback for bulk-skip when AI didn't suggest skipping
+    if (action === 'skip') {
+      const txMap = new Map((emailTxs || []).map((t) => [t.id, t]))
+      for (const txId of ids) {
+        const tx = txMap.get(txId)
+        if (tx && !tx.ai_suggested_skip) {
+          await recordFeedback({
+            userId: user.id,
+            emailTransactionId: txId,
+            feedbackType: AI_FEEDBACK_TYPE.SKIP_OVERRIDE as AiFeedbackType,
+            originalAiClassification: tx.ai_classification,
+            originalAiSuggestedSkip: tx.ai_suggested_skip,
+            correctedSkip: true,
+            emailSubject: tx.subject,
+            emailFrom: tx.from_address,
+          }, serviceClient)
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,

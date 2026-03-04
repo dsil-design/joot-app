@@ -17,8 +17,10 @@ import {
   Mail,
   Zap,
   RefreshCw,
+  Eye,
 } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
+import { EmailViewerModal } from "./email-viewer-modal"
 
 interface MatchSuggestion {
   targetId: string
@@ -81,6 +83,7 @@ export function EmailDetailPanel({
   const [matchData, setMatchData] = React.useState<MatchesResponse | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [viewerOpen, setViewerOpen] = React.useState(false)
 
   const isUnprocessed = !emailTransaction.is_processed
 
@@ -155,6 +158,15 @@ export function EmailDetailPanel({
               />
             )}
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setViewerOpen(true)}
+          >
+            <Eye className="h-4 w-4 mr-1" />
+            View Email
+          </Button>
         </div>
 
         {/* Right: Extract Data action */}
@@ -176,6 +188,16 @@ export function EmailDetailPanel({
             </Button>
           )}
         </div>
+
+        <EmailViewerModal
+          open={viewerOpen}
+          onOpenChange={setViewerOpen}
+          emailId={emailTransaction.id}
+          subject={emailTransaction.subject}
+          fromName={emailTransaction.from_name}
+          fromAddress={emailTransaction.from_address}
+          emailDate={emailTransaction.email_date}
+        />
       </div>
     )
   }
@@ -255,6 +277,15 @@ export function EmailDetailPanel({
             />
           )}
         </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setViewerOpen(true)}
+        >
+          <Eye className="h-4 w-4 mr-1" />
+          View Email
+        </Button>
 
         {/* Process Again button */}
         {onProcess && !isActioned && (
@@ -354,6 +385,16 @@ export function EmailDetailPanel({
           </div>
         )}
       </div>
+
+      <EmailViewerModal
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+        emailId={emailTransaction.id}
+        subject={emailTransaction.subject}
+        fromName={emailTransaction.from_name}
+        fromAddress={emailTransaction.from_address}
+        emailDate={emailTransaction.email_date}
+      />
     </div>
   )
 }

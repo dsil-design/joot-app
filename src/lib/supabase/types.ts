@@ -1,5 +1,3 @@
-npm warn exec The following package was not found and will be installed: supabase@2.76.16
-Initialising login role...
 export type Json =
   | string
   | number
@@ -41,6 +39,73 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_feedback: {
+        Row: {
+          corrected_classification: string | null
+          corrected_skip: boolean | null
+          created_at: string | null
+          email_body_preview: string | null
+          email_from: string | null
+          email_subject: string | null
+          email_transaction_id: string
+          feedback_type: string
+          id: string
+          original_ai_classification: string | null
+          original_ai_suggested_skip: boolean | null
+          user_id: string
+        }
+        Insert: {
+          corrected_classification?: string | null
+          corrected_skip?: boolean | null
+          created_at?: string | null
+          email_body_preview?: string | null
+          email_from?: string | null
+          email_subject?: string | null
+          email_transaction_id: string
+          feedback_type: string
+          id?: string
+          original_ai_classification?: string | null
+          original_ai_suggested_skip?: boolean | null
+          user_id: string
+        }
+        Update: {
+          corrected_classification?: string | null
+          corrected_skip?: boolean | null
+          created_at?: string | null
+          email_body_preview?: string | null
+          email_from?: string | null
+          email_subject?: string | null
+          email_transaction_id?: string
+          feedback_type?: string
+          id?: string
+          original_ai_classification?: string | null
+          original_ai_suggested_skip?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_feedback_email_transaction_id_fkey"
+            columns: ["email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_hub_unified"
+            referencedColumns: ["email_transaction_id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_email_transaction_id_fkey"
+            columns: ["email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       currency_configuration: {
         Row: {
           created_at: string | null
@@ -79,6 +144,70 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      email_groups: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          currency: string | null
+          email_count: number
+          group_key: string
+          id: string
+          primary_email_transaction_id: string | null
+          transaction_date: string | null
+          updated_at: string | null
+          user_id: string
+          vendor_name: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          currency?: string | null
+          email_count?: number
+          group_key: string
+          id?: string
+          primary_email_transaction_id?: string | null
+          transaction_date?: string | null
+          updated_at?: string | null
+          user_id: string
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          currency?: string | null
+          email_count?: number
+          group_key?: string
+          id?: string
+          primary_email_transaction_id?: string | null
+          transaction_date?: string | null
+          updated_at?: string | null
+          user_id?: string
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_groups_primary_email_fkey"
+            columns: ["primary_email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_hub_unified"
+            referencedColumns: ["email_transaction_id"]
+          },
+          {
+            foreignKeyName: "email_groups_primary_email_fkey"
+            columns: ["primary_email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_groups_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_sync_state: {
         Row: {
@@ -120,12 +249,16 @@ export type Database = {
       }
       email_transactions: {
         Row: {
+          ai_classification: string | null
+          ai_reasoning: string | null
+          ai_suggested_skip: boolean | null
           amount: number | null
           classification: string | null
           created_at: string | null
           currency: string | null
           description: string | null
           email_date: string | null
+          email_group_id: string | null
           extraction_confidence: number | null
           extraction_notes: string | null
           folder: string
@@ -133,12 +266,14 @@ export type Database = {
           from_name: string | null
           has_attachments: boolean | null
           id: string
+          is_group_primary: boolean | null
           match_confidence: number | null
           match_method: string | null
           matched_at: string | null
           matched_transaction_id: string | null
           message_id: string
           order_id: string | null
+          parser_key: string | null
           processed_at: string | null
           seen: boolean | null
           status: string
@@ -152,12 +287,16 @@ export type Database = {
           vendor_name_raw: string | null
         }
         Insert: {
+          ai_classification?: string | null
+          ai_reasoning?: string | null
+          ai_suggested_skip?: boolean | null
           amount?: number | null
           classification?: string | null
           created_at?: string | null
           currency?: string | null
           description?: string | null
           email_date?: string | null
+          email_group_id?: string | null
           extraction_confidence?: number | null
           extraction_notes?: string | null
           folder?: string
@@ -165,12 +304,14 @@ export type Database = {
           from_name?: string | null
           has_attachments?: boolean | null
           id?: string
+          is_group_primary?: boolean | null
           match_confidence?: number | null
           match_method?: string | null
           matched_at?: string | null
           matched_transaction_id?: string | null
           message_id: string
           order_id?: string | null
+          parser_key?: string | null
           processed_at?: string | null
           seen?: boolean | null
           status?: string
@@ -184,12 +325,16 @@ export type Database = {
           vendor_name_raw?: string | null
         }
         Update: {
+          ai_classification?: string | null
+          ai_reasoning?: string | null
+          ai_suggested_skip?: boolean | null
           amount?: number | null
           classification?: string | null
           created_at?: string | null
           currency?: string | null
           description?: string | null
           email_date?: string | null
+          email_group_id?: string | null
           extraction_confidence?: number | null
           extraction_notes?: string | null
           folder?: string
@@ -197,12 +342,14 @@ export type Database = {
           from_name?: string | null
           has_attachments?: boolean | null
           id?: string
+          is_group_primary?: boolean | null
           match_confidence?: number | null
           match_method?: string | null
           matched_at?: string | null
           matched_transaction_id?: string | null
           message_id?: string
           order_id?: string | null
+          parser_key?: string | null
           processed_at?: string | null
           seen?: boolean | null
           status?: string
@@ -216,6 +363,13 @@ export type Database = {
           vendor_name_raw?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "email_transactions_email_group_id_fkey"
+            columns: ["email_group_id"]
+            isOneToOne: false
+            referencedRelation: "email_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "email_transactions_matched_transaction_id_fkey"
             columns: ["matched_transaction_id"]
@@ -1016,6 +1170,9 @@ export type Database = {
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id: string | null
           source_email_transaction_id: string | null
+          source_statement_match_confidence: number | null
+          source_statement_suggestion_index: number | null
+          source_statement_upload_id: string | null
           transaction_date: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string | null
@@ -1030,6 +1187,9 @@ export type Database = {
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
           source_email_transaction_id?: string | null
+          source_statement_match_confidence?: number | null
+          source_statement_suggestion_index?: number | null
+          source_statement_upload_id?: string | null
           transaction_date?: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string | null
@@ -1044,6 +1204,9 @@ export type Database = {
           original_currency?: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
           source_email_transaction_id?: string | null
+          source_statement_match_confidence?: number | null
+          source_statement_suggestion_index?: number | null
+          source_statement_upload_id?: string | null
           transaction_date?: string
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string | null
@@ -1070,6 +1233,13 @@ export type Database = {
             columns: ["source_email_transaction_id"]
             isOneToOne: false
             referencedRelation: "email_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_source_statement_upload_id_fkey"
+            columns: ["source_statement_upload_id"]
+            isOneToOne: false
+            referencedRelation: "statement_uploads"
             referencedColumns: ["id"]
           },
           {
@@ -1227,20 +1397,27 @@ export type Database = {
       }
       email_hub_unified: {
         Row: {
+          ai_classification: string | null
+          ai_reasoning: string | null
+          ai_suggested_skip: boolean | null
           amount: number | null
           classification: string | null
           created_at: string | null
           currency: string | null
           description: string | null
+          effective_date: string | null
           email_date: string | null
+          email_group_id: string | null
           email_transaction_id: string | null
           extraction_confidence: number | null
           extraction_notes: string | null
           folder: string | null
           from_address: string | null
           from_name: string | null
+          group_email_count: number | null
           has_attachments: boolean | null
           id: string | null
+          is_group_primary: boolean | null
           is_processed: boolean | null
           match_confidence: number | null
           match_method: string | null
@@ -1248,6 +1425,7 @@ export type Database = {
           matched_transaction_id: string | null
           message_id: string | null
           order_id: string | null
+          parser_key: string | null
           processed_at: string | null
           seen: boolean | null
           status: string | null
@@ -1261,6 +1439,13 @@ export type Database = {
           vendor_name_raw: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "email_transactions_email_group_id_fkey"
+            columns: ["email_group_id"]
+            isOneToOne: false
+            referencedRelation: "email_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "email_transactions_matched_transaction_id_fkey"
             columns: ["matched_transaction_id"]
@@ -1603,3 +1788,74 @@ export const Constants = {
     },
   },
 } as const
+
+// ============================================================================
+// Custom Type Aliases (convenience types used throughout the codebase)
+// ============================================================================
+
+// Enum types
+export type CurrencyType = Database["public"]["Enums"]["currency_type"]
+export type TransactionType = Database["public"]["Enums"]["transaction_type"]
+
+// User types
+export type User = Database["public"]["Tables"]["users"]["Row"]
+export type UserInsert = Database["public"]["Tables"]["users"]["Insert"]
+export type UserUpdate = Database["public"]["Tables"]["users"]["Update"]
+
+// Transaction types
+export type Transaction = Database["public"]["Tables"]["transactions"]["Row"]
+export type TransactionInsert = Database["public"]["Tables"]["transactions"]["Insert"]
+export type TransactionUpdate = Database["public"]["Tables"]["transactions"]["Update"]
+
+// Source data interfaces for transaction detail page
+export interface EmailSourceData {
+  id: string
+  subject: string | null
+  from_address: string | null
+  from_name: string | null
+  email_date: string | null
+  extraction_confidence: number | null
+  match_confidence: number | null
+  match_method: string | null
+  status: string
+}
+
+export interface StatementSourceData {
+  id: string
+  filename: string
+  statement_period_start: string | null
+  statement_period_end: string | null
+  payment_method_name: string | null
+  match_confidence: number | null
+  match_method: string | null
+}
+
+// Transaction with related data (for queries with joins)
+export interface TransactionWithVendorAndPayment extends Transaction {
+  vendor: { id: string; name: string } | null
+  payment_method: { id: string; name: string; preferred_currency: string | null } | null
+  tags?: Array<{ id: string; name: string; color: string }>
+  transaction_tags?: Array<{ tag_id: string; tags: { id: string; name: string; color: string } }>
+  emailSource?: EmailSourceData | null
+  statementSource?: StatementSourceData | null
+}
+
+// Exchange rate types
+export type ExchangeRate = Database["public"]["Tables"]["exchange_rates"]["Row"]
+export type ExchangeRateInsert = Database["public"]["Tables"]["exchange_rates"]["Insert"]
+export type ExchangeRateUpdate = Database["public"]["Tables"]["exchange_rates"]["Update"]
+
+// Vendor types
+export type Vendor = Database["public"]["Tables"]["vendors"]["Row"]
+export type VendorInsert = Database["public"]["Tables"]["vendors"]["Insert"]
+export type VendorUpdate = Database["public"]["Tables"]["vendors"]["Update"]
+
+// Payment method types
+export type PaymentMethod = Database["public"]["Tables"]["payment_methods"]["Row"]
+export type PaymentMethodInsert = Database["public"]["Tables"]["payment_methods"]["Insert"]
+export type PaymentMethodUpdate = Database["public"]["Tables"]["payment_methods"]["Update"]
+
+// Tag types
+export type Tag = Database["public"]["Tables"]["tags"]["Row"]
+export type TagInsert = Database["public"]["Tables"]["tags"]["Insert"]
+export type TagUpdate = Database["public"]["Tables"]["tags"]["Update"]

@@ -3,7 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { extractionService } from '@/lib/email/extraction-service';
 import { determineStatusFromConfidence } from '@/lib/email/confidence-scoring';
-import type { RawEmailData, EmailTransactionData } from '@/lib/email/types';
+import { classifyEmail as aiClassifyEmail, classifyAndExtractEmail } from '@/lib/email/ai-classifier';
+import { consolidateEmail } from '@/lib/email/email-consolidation';
+import { normalizeICloudRelay } from '@/lib/email/icloud-relay';
+import { aiClassificationToCoarse } from '@/lib/types/email-imports';
+import type { AiClassification } from '@/lib/types/email-imports';
+import type { RawEmailData, EmailTransactionData, AiClassificationResult, ExtractionResult } from '@/lib/email/types';
 
 /**
  * POST /api/emails/[id]/extract
@@ -86,8 +91,27 @@ export async function POST(
       has_attachments: email.has_attachments ?? false,
     };
 
-    // Run extraction pipeline
-    const extraction = await extractionService.extractFromEmail(rawEmail);
+    // Try regex extraction first, then AI
+    const regexExtraction = await extractionService.extractFromEmail(rawEmail);
+    const regexParser = extractionService.getParserRegistry().findParser({
+      ...rawEmail,
+      from_address: normalizeICloudRelay(rawEmail.from_address || ''),
+    });
+    const parserKey = regexParser?.key || null;
+
+    let extraction: ExtractionResult;
+    let aiResult: AiClassificationResult | null = null;
+
+    if (parserKey && parserKey !== 'gemini-ai') {
+      extraction = regexExtraction;
+      aiResult = await aiClassifyEmail(rawEmail, user.id);
+    } else {
+      const combined = await classifyAndExtractEmail(rawEmail, user.id);
+      extraction = combined.extraction;
+      aiResult = combined.classification;
+    }
+
+    // Classify with full context
     const classification = extractionService.classifyEmailWithExtraction(rawEmail, extraction);
     const confidenceBreakdown = extractionService.calculateConfidenceWithBreakdown(extraction);
     const confidence = confidenceBreakdown.totalScore;
@@ -98,6 +122,9 @@ export async function POST(
       ? `Classified by rule: ${classification.matchedRule.id} (${classification.matchedRule.description})`
       : 'No classification rule matched';
     const paymentInfo = `Payment context: ${classification.paymentContext}`;
+    const aiInfo = aiResult
+      ? `AI: ${aiResult.ai_classification} (skip: ${aiResult.should_skip})`
+      : 'AI: not run';
     const extractionNotes = [
       confidenceBreakdown.summary,
       extraction.notes ? `Parser notes: ${extraction.notes}` : null,
@@ -105,7 +132,12 @@ export async function POST(
       `Scoring: ${confidenceBreakdown.components.map(c => `${c.satisfied ? '✓' : '✗'} ${c.name}: ${c.earnedPoints}/${c.maxPoints}`).join(', ')}`,
       ruleInfo,
       paymentInfo,
+      aiInfo,
     ].filter(Boolean).join(' | ');
+
+    const coarseClassification = aiResult
+      ? aiClassificationToCoarse(aiResult.ai_classification as AiClassification)
+      : classification.classification;
 
     // Prepare insert data
     const transactionData: EmailTransactionData = {
@@ -120,7 +152,11 @@ export async function POST(
       seen: email.seen ?? false,
       has_attachments: email.has_attachments ?? false,
       status,
-      classification: classification.classification,
+      classification: coarseClassification,
+      ai_classification: aiResult?.ai_classification as AiClassification ?? null,
+      ai_suggested_skip: aiResult?.should_skip ?? false,
+      ai_reasoning: aiResult?.reasoning ?? null,
+      parser_key: parserKey,
       extraction_confidence: confidence,
       extraction_notes: extractionNotes,
       synced_at: email.synced_at || new Date().toISOString(),
@@ -152,9 +188,35 @@ export async function POST(
       );
     }
 
+    // Run consolidation
+    if (newRow) {
+      const consolidation = await consolidateEmail({
+        userId: user.id,
+        emailTransactionId: newRow.id,
+        vendorName: extraction.data?.vendor_name_raw,
+        amount: extraction.data?.amount,
+        currency: extraction.data?.currency,
+        transactionDate: extraction.data?.transaction_date,
+        orderId: extraction.data?.order_id,
+        aiHint: aiResult?.related_transaction_hint,
+        supabase: serviceClient,
+      });
+
+      if (consolidation) {
+        await serviceClient
+          .from('email_transactions')
+          .update({
+            email_group_id: consolidation.emailGroupId,
+            is_group_primary: consolidation.isPrimary,
+          })
+          .eq('id', newRow.id);
+      }
+    }
+
     return NextResponse.json({
       action: 'created',
       extraction,
+      aiClassification: aiResult,
       emailTransaction: newRow,
     });
 

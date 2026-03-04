@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     // This includes both processed (email_transactions) and unprocessed (emails only) rows
     const { data: emails, error: emailsError } = await supabase
       .from('email_hub_unified')
-      .select('status, classification, extraction_confidence, email_date, amount, currency, processed_at, matched_at, is_processed')
+      .select('status, classification, ai_classification, ai_suggested_skip, extraction_confidence, email_date, amount, currency, processed_at, matched_at, is_processed, email_group_id, is_group_primary, parser_key')
       .eq('user_id', user.id)
       .gte('email_date', cutoffDate)
 
@@ -69,12 +69,19 @@ export async function GET(request: NextRequest) {
     // Aggregate in JS (more flexible than complex SQL through Supabase client)
     const statusCounts: Record<string, number> = {}
     const classificationCounts: Record<string, number> = {}
+    const aiClassificationCounts: Record<string, number> = {}
     const confidenceBuckets = { high: 0, medium: 0, low: 0 }
     const monthlyMap = new Map<string, { received: number; extracted: number; matched: number; imported: number }>()
 
     // Extraction tracking
     let notExtractedCount = 0
     let unprocessedCount = 0
+
+    // AI tracking
+    let aiSuggestedSkipCount = 0
+    let autoSkippedCount = 0
+    let groupCount = 0
+    const groupIds = new Set<string>()
 
     // Waiting summary
     let waitingCount = 0
@@ -90,6 +97,24 @@ export async function GET(request: NextRequest) {
       if (email.is_processed) {
         const classification = email.classification || 'unknown'
         classificationCounts[classification] = (classificationCounts[classification] || 0) + 1
+
+        // AI classification counts
+        if (email.ai_classification) {
+          aiClassificationCounts[email.ai_classification] = (aiClassificationCounts[email.ai_classification] || 0) + 1
+        }
+
+        // AI skip tracking
+        if (email.ai_suggested_skip) {
+          aiSuggestedSkipCount++
+          if (email.status === 'skipped') {
+            autoSkippedCount++
+          }
+        }
+
+        // Group tracking
+        if (email.email_group_id) {
+          groupIds.add(email.email_group_id)
+        }
       }
 
       // Track unprocessed and unextracted
@@ -162,6 +187,14 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
 
+    // Count feedback entries
+    const { count: feedbackCount } = await supabase
+      .from('ai_feedback')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+
+    groupCount = groupIds.size
+
     return NextResponse.json({
       total: (emails || []).length,
       total_synced_emails: totalSyncedEmails || 0,
@@ -169,6 +202,7 @@ export async function GET(request: NextRequest) {
       unprocessed: unprocessedCount,
       status_counts: statusCounts,
       classification_counts: classificationCounts,
+      ai_classification_counts: aiClassificationCounts,
       confidence_buckets: confidenceBuckets,
       monthly_trend: monthlyTrend,
       sync: syncState ? {
@@ -179,6 +213,13 @@ export async function GET(request: NextRequest) {
         count: waitingCount,
         total_amount: waitingTotalAmount,
         primary_currency: primaryCurrency,
+      },
+      ai_stats: {
+        suggested_skip_count: aiSuggestedSkipCount,
+        auto_skipped_count: autoSkippedCount,
+        feedback_count: feedbackCount || 0,
+        auto_skip_enabled: (feedbackCount || 0) >= 10,
+        group_count: groupCount,
       },
     })
   } catch (error) {

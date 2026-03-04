@@ -5,7 +5,7 @@
  * Each parser implements extraction logic and returns ExtractionResult.
  */
 
-import type { EmailClassification, EmailTransactionStatus } from '../types/email-imports';
+import type { EmailClassification, EmailTransactionStatus, AiClassification } from '../types/email-imports';
 
 /**
  * Extracted transaction data from an email
@@ -185,6 +185,16 @@ export interface EmailTransactionData {
   status: EmailTransactionStatus;
   classification: EmailClassification | null;
 
+  // AI classification
+  ai_classification?: AiClassification | null;
+  ai_suggested_skip?: boolean;
+  ai_reasoning?: string | null;
+  parser_key?: string | null;
+
+  // Email group
+  email_group_id?: string | null;
+  is_group_primary?: boolean;
+
   // Extraction metadata
   extraction_confidence?: number | null;
   extraction_notes?: string | null;
@@ -192,6 +202,29 @@ export interface EmailTransactionData {
   // Timestamps
   synced_at?: string;
   processed_at?: string | null;
+}
+
+/**
+ * AI classification result from Gemini classifier
+ */
+export interface AiClassificationResult {
+  /** Granular AI classification */
+  ai_classification: AiClassification;
+
+  /** Whether AI recommends skipping this email */
+  should_skip: boolean;
+
+  /** AI's reasoning for the classification and skip decision */
+  reasoning: string;
+
+  /** Hint for email consolidation (grouping related emails) */
+  related_transaction_hint?: {
+    vendor_name?: string;
+    amount?: number;
+    currency?: string;
+    approximate_date?: string;
+    reference_id?: string;
+  } | null;
 }
 
 /**

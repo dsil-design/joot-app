@@ -146,6 +146,17 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         )
       }
+
+      // Set source references on the transaction (both email and statement)
+      await serviceClient
+        .from('transactions')
+        .update({
+          source_email_transaction_id: parsed.emailId,
+          source_statement_upload_id: parsed.statementId,
+          source_statement_suggestion_index: parsed.index,
+          source_statement_match_confidence: suggestions[parsed.index].confidence ?? null,
+        })
+        .eq('id', transactionId)
     } else if (parsed.type === 'statement') {
       // --- STATEMENT link ---
       const { data: statement, error: fetchError } = await serviceClient
@@ -193,6 +204,16 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         )
       }
+
+      // Set statement source reference on the transaction
+      await serviceClient
+        .from('transactions')
+        .update({
+          source_statement_upload_id: parsed.statementId,
+          source_statement_suggestion_index: parsed.index,
+          source_statement_match_confidence: suggestions[parsed.index].confidence ?? null,
+        })
+        .eq('id', transactionId)
     } else {
       // --- EMAIL link ---
       const { error: updateError } = await serviceClient
@@ -213,6 +234,12 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         )
       }
+
+      // Set source reference on the transaction
+      await serviceClient
+        .from('transactions')
+        .update({ source_email_transaction_id: parsed.emailId })
+        .eq('id', transactionId)
     }
 
     // Log activity

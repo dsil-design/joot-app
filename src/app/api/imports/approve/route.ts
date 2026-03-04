@@ -176,6 +176,9 @@ export async function POST(request: NextRequest) {
                   transaction_type: 'expense' as const,
                   transaction_date: suggestion.transaction_date,
                   description: suggestion.description || 'Imported from statement',
+                  source_statement_upload_id: statement.id,
+                  source_statement_suggestion_index: idx,
+                  source_statement_match_confidence: suggestion.confidence ?? null,
                 })
 
               if (insertError) {
@@ -235,6 +238,7 @@ export async function POST(request: NextRequest) {
                 transaction_type: 'expense' as const,
                 transaction_date: row.transaction_date ?? row.email_date?.split('T')[0] ?? new Date().toISOString().split('T')[0],
                 description: row.description || row.subject || 'Imported from email',
+                source_email_transaction_id: row.id,
               })
               .select('id')
               .single()
@@ -325,6 +329,10 @@ export async function POST(request: NextRequest) {
             transaction_type: 'expense' as const,
             transaction_date: suggestion.transaction_date,
             description: suggestion.description || 'Imported from cross-source match',
+            source_email_transaction_id: merged.emailId,
+            source_statement_upload_id: merged.statementId,
+            source_statement_suggestion_index: merged.index,
+            source_statement_match_confidence: suggestion.confidence ?? null,
           })
           .select('id')
           .single()

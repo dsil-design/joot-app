@@ -19,7 +19,10 @@ import { emailSyncService } from '../services/email-sync-service';
 import {
   EMAIL_TRANSACTION_STATUS,
   IMPORT_ACTIVITY_TYPE,
+  AUTO_SKIP_FEEDBACK_THRESHOLD,
+  aiClassificationToCoarse,
 } from '../types/email-imports';
+import type { AiClassification, EmailTransactionStatus } from '../types/email-imports';
 import type {
   RawEmailData,
   ExtractionResult,
@@ -28,6 +31,7 @@ import type {
   EmailTransactionData,
   EmailParser,
   ExtractionServiceConfig,
+  AiClassificationResult,
 } from './types';
 import {
   calculateConfidenceScore,
@@ -45,6 +49,9 @@ import {
 import { normalizeICloudRelay } from './icloud-relay';
 import { rankMatches, canAutoApprove } from '../matching/match-ranker';
 import type { SourceTransaction, TargetTransaction } from '../matching/match-scorer';
+import { classifyEmail as aiClassifyEmail, classifyAndExtractEmail } from './ai-classifier';
+import { consolidateEmail } from './email-consolidation';
+import { getFeedbackCount } from './ai-feedback-service';
 
 // Import parsers
 import { grabParser } from './extractors/grab';
@@ -376,6 +383,12 @@ export class EmailExtractionService {
           })
           .eq('id', emailTransactionId);
 
+        // Set source reference on the matched transaction
+        await supabase
+          .from('transactions')
+          .update({ source_email_transaction_id: emailTransactionId })
+          .eq('id', ranked.bestMatch.targetId);
+
         console.log(
           `Auto-matched email transaction ${emailTransactionId} → ${ranked.bestMatch.targetId} (score: ${ranked.bestMatch.score})`
         );
@@ -439,6 +452,10 @@ export class EmailExtractionService {
 
       const existingMessageIds = new Set(existingTransactions?.map(t => t.message_id) || []);
 
+      // Pre-fetch feedback count for auto-skip threshold (cached for batch)
+      const feedbackCount = await getFeedbackCount(userId, supabase);
+      const autoSkipEnabled = feedbackCount >= AUTO_SKIP_FEEDBACK_THRESHOLD;
+
       // Process each email
       for (const email of emails) {
         // Skip if already processed
@@ -485,36 +502,65 @@ export class EmailExtractionService {
             has_attachments: email.has_attachments ?? false,
           };
 
-          // Extract transaction data first (we need currency for proper classification)
-          const extraction = await this.extractFromEmail(rawEmail);
+          // ---- NEW FLOW: Try regex parsers first, then AI ----
 
-          // Classify email with full context (including extracted currency)
-          // This uses the enhanced classification system that considers:
-          // - Parser type (grab, bolt, bangkok-bank, etc.)
-          // - Payment context (e-wallet vs credit card)
-          // - Currency (THB vs USD)
+          // Step 1: Try regex extraction
+          const regexExtraction = await this.extractFromEmail(rawEmail);
+          const regexParser = this.parserRegistry.findParser({
+            ...rawEmail,
+            from_address: normalizeICloudRelay(rawEmail.from_address || ''),
+          });
+          const parserKey = regexParser?.key || null;
+
+          let extraction: ExtractionResult;
+          let aiResult: AiClassificationResult | null = null;
+
+          if (parserKey && parserKey !== 'gemini-ai') {
+            // Step 2a: Regex parser matched — use regex extraction, run AI classification only
+            extraction = regexExtraction;
+            aiResult = await aiClassifyEmail(rawEmail, userId);
+          } else {
+            // Step 2b: No regex match — use combined AI extraction + classification
+            const combined = await classifyAndExtractEmail(rawEmail, userId);
+            extraction = combined.extraction;
+            aiResult = combined.classification;
+          }
+
+          // Step 3: Classify email with full context (backward-compatible coarse classification)
           const classification = this.classifyEmailWithExtraction(rawEmail, extraction);
 
           // Calculate confidence with detailed breakdown
           const confidenceBreakdown = this.calculateConfidenceWithBreakdown(extraction);
           const confidence = confidenceBreakdown.totalScore;
 
-          // Determine final status based on:
-          // 1. Classification rules (parser + payment context + currency)
-          // 2. Confidence score (low confidence = pending review)
-          const status = determineStatusFromConfidence(
+          // Determine initial status from classification rules
+          let status: EmailTransactionStatus = determineStatusFromConfidence(
             confidence,
             classification.status
           );
 
+          // Step 4: Apply auto-skip logic
+          const aiSuggestedSkip = aiResult?.should_skip ?? false;
+          if (autoSkipEnabled && aiSuggestedSkip && !extraction.success) {
+            // Auto-skip: AI suggests skip AND no regex extraction AND enough feedback
+            status = EMAIL_TRANSACTION_STATUS.SKIPPED;
+          }
+
           // Build extraction notes combining parser notes with score breakdown
-          // Include classification rule info for debugging
           const ruleInfo = classification.matchedRule
             ? `Classified by rule: ${classification.matchedRule.id} (${classification.matchedRule.description})`
             : 'No classification rule matched';
           const paymentInfo = `Payment context: ${classification.paymentContext}`;
+          const aiInfo = aiResult
+            ? `AI: ${aiResult.ai_classification} (skip: ${aiResult.should_skip})`
+            : 'AI: not run';
           const extractionNotes = this.buildExtractionNotes(extraction, confidenceBreakdown)
-            + ` | ${ruleInfo} | ${paymentInfo}`;
+            + ` | ${ruleInfo} | ${paymentInfo} | ${aiInfo}`;
+
+          // Map AI classification to coarse for backward compat
+          const coarseClassification = aiResult
+            ? aiClassificationToCoarse(aiResult.ai_classification as AiClassification)
+            : classification.classification;
 
           // Prepare data for database
           const transactionData: EmailTransactionData = {
@@ -529,7 +575,11 @@ export class EmailExtractionService {
             seen: email.seen ?? false,
             has_attachments: email.has_attachments ?? false,
             status,
-            classification: classification.classification,
+            classification: coarseClassification,
+            ai_classification: aiResult?.ai_classification as AiClassification ?? null,
+            ai_suggested_skip: aiSuggestedSkip,
+            ai_reasoning: aiResult?.reasoning ?? null,
+            parser_key: parserKey,
             extraction_confidence: confidence,
             extraction_notes: extractionNotes,
             synced_at: email.synced_at || new Date().toISOString(),
@@ -563,9 +613,38 @@ export class EmailExtractionService {
             continue;
           }
 
-          // Try to auto-match against existing transactions
+          // Step 5: Consolidation — group related emails
           if (insertedRow) {
-            await this.tryAutoMatch(supabase, insertedRow.id, userId, extraction);
+            const consolidation = await consolidateEmail({
+              userId,
+              emailTransactionId: insertedRow.id,
+              vendorName: extraction.data?.vendor_name_raw,
+              amount: extraction.data?.amount,
+              currency: extraction.data?.currency,
+              transactionDate: extraction.data?.transaction_date,
+              orderId: extraction.data?.order_id,
+              aiHint: aiResult?.related_transaction_hint,
+              supabase,
+            });
+
+            if (consolidation) {
+              await supabase
+                .from('email_transactions')
+                .update({
+                  email_group_id: consolidation.emailGroupId,
+                  is_group_primary: consolidation.isPrimary,
+                })
+                .eq('id', insertedRow.id);
+
+              transactionData.email_group_id = consolidation.emailGroupId;
+              transactionData.is_group_primary = consolidation.isPrimary;
+            }
+
+            // Step 6: Auto-match only for primary group emails (or ungrouped)
+            const shouldAutoMatch = !consolidation || consolidation.isPrimary;
+            if (shouldAutoMatch && status !== EMAIL_TRANSACTION_STATUS.SKIPPED) {
+              await this.tryAutoMatch(supabase, insertedRow.id, userId, extraction);
+            }
           }
 
           result.extracted++;
@@ -699,8 +778,25 @@ export class EmailExtractionService {
       has_attachments: emailTx.has_attachments ?? false,
     };
 
-    // Extract first (we need currency for proper classification)
-    const extraction = await this.extractFromEmail(rawEmail);
+    // Try regex extraction first
+    const regexExtraction = await this.extractFromEmail(rawEmail);
+    const regexParser = this.parserRegistry.findParser({
+      ...rawEmail,
+      from_address: normalizeICloudRelay(rawEmail.from_address || ''),
+    });
+    const parserKey = regexParser?.key || null;
+
+    let extraction: ExtractionResult;
+    let aiResult: AiClassificationResult | null = null;
+
+    if (parserKey && parserKey !== 'gemini-ai') {
+      extraction = regexExtraction;
+      aiResult = await aiClassifyEmail(rawEmail, userId);
+    } else {
+      const combined = await classifyAndExtractEmail(rawEmail, userId);
+      extraction = combined.extraction;
+      aiResult = combined.classification;
+    }
 
     // Re-classify with full context (including extracted currency)
     const classification = this.classifyEmailWithExtraction(rawEmail, extraction);
@@ -714,8 +810,11 @@ export class EmailExtractionService {
       ? `Classified by rule: ${classification.matchedRule.id} (${classification.matchedRule.description})`
       : 'No classification rule matched';
     const paymentInfo = `Payment context: ${classification.paymentContext}`;
+    const aiInfo = aiResult
+      ? `AI: ${aiResult.ai_classification} (skip: ${aiResult.should_skip})`
+      : 'AI: not run';
     const extractionNotes = this.buildExtractionNotes(extraction, confidenceBreakdown)
-      + ` | ${ruleInfo} | ${paymentInfo}`;
+      + ` | ${ruleInfo} | ${paymentInfo} | ${aiInfo}`;
 
     // Determine status based on confidence and classification
     const status = determineStatusFromConfidence(
@@ -723,9 +822,17 @@ export class EmailExtractionService {
       classification.status
     );
 
+    const coarseClassification = aiResult
+      ? aiClassificationToCoarse(aiResult.ai_classification as AiClassification)
+      : classification.classification;
+
     // Update the email transaction
     const updateData: Record<string, unknown> = {
-      classification: classification.classification,
+      classification: coarseClassification,
+      ai_classification: aiResult?.ai_classification ?? null,
+      ai_suggested_skip: aiResult?.should_skip ?? false,
+      ai_reasoning: aiResult?.reasoning ?? null,
+      parser_key: parserKey,
       extraction_confidence: confidence,
       extraction_notes: extractionNotes,
       processed_at: new Date().toISOString(),
@@ -747,6 +854,29 @@ export class EmailExtractionService {
       .from('email_transactions')
       .update(updateData)
       .eq('id', emailTransactionId);
+
+    // Run consolidation
+    const consolidation = await consolidateEmail({
+      userId,
+      emailTransactionId,
+      vendorName: extraction.data?.vendor_name_raw,
+      amount: extraction.data?.amount,
+      currency: extraction.data?.currency,
+      transactionDate: extraction.data?.transaction_date,
+      orderId: extraction.data?.order_id,
+      aiHint: aiResult?.related_transaction_hint,
+      supabase,
+    });
+
+    if (consolidation) {
+      await supabase
+        .from('email_transactions')
+        .update({
+          email_group_id: consolidation.emailGroupId,
+          is_group_primary: consolidation.isPrimary,
+        })
+        .eq('id', emailTransactionId);
+    }
 
     // Try to auto-match if not already matched
     if (!emailTx.matched_transaction_id) {

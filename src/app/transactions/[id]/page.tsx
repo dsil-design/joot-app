@@ -8,10 +8,10 @@
 
 import * as React from "react"
 import { useParams, useSearchParams } from "next/navigation"
-import { ArrowLeft, Edit } from "lucide-react"
+import { ArrowLeft, Edit, Mail, FileText } from "lucide-react"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
-import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
+import type { TransactionWithVendorAndPayment, EmailSourceData, StatementSourceData } from "@/lib/supabase/types"
 import { format, parseISO } from "date-fns"
 import { formatInTimeZone } from "date-fns-tz"
 import { Button } from "@/components/ui/button"
@@ -85,6 +85,142 @@ function FieldTags({ label, tags }: FieldTagsProps) {
       ) : (
         <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-500">
           <p className="leading-[20px] whitespace-pre">No tags</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatStatementPeriod(start: string | null, end: string | null): string | null {
+  if (!start && !end) return null
+  if (start && end) {
+    const s = format(parseISO(start), "MMM d")
+    const e = format(parseISO(end), "MMM d, yyyy")
+    return `${s} – ${e}`
+  }
+  if (start) return `From ${format(parseISO(start), "MMM d, yyyy")}`
+  if (end) return `Through ${format(parseISO(end), "MMM d, yyyy")}`
+  return null
+}
+
+function MatchMethodBadge({ method, status }: { method: string | null; status: string | null }) {
+  if (status === "imported") {
+    return (
+      <Badge className="bg-blue-100 text-blue-700 border-0 text-[12px] font-normal">
+        Created from email
+      </Badge>
+    )
+  }
+  if (method === "auto") {
+    return (
+      <Badge className="bg-green-100 text-green-700 border-0 text-[12px] font-normal">
+        Auto-matched
+      </Badge>
+    )
+  }
+  if (method === "manual") {
+    return (
+      <Badge className="bg-gray-100 text-gray-500 border-0 text-[12px] font-normal">
+        Manually linked
+      </Badge>
+    )
+  }
+  return null
+}
+
+function EmailSourceCard({ source }: { source: EmailSourceData }) {
+  const handleClick = () => {
+    window.location.href = `/imports/emails?id=${source.id}`
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      className="bg-zinc-50 rounded-lg border border-zinc-200 p-4 w-full text-left hover:bg-zinc-100 transition-colors"
+    >
+      <div className="flex items-start gap-3">
+        <Mail className="size-4 text-zinc-400 mt-0.5 shrink-0" strokeWidth={1.5} />
+        <div className="flex flex-col gap-1 min-w-0">
+          <p className="text-[14px] font-normal text-zinc-950 truncate">
+            {source.subject || "No subject"}
+          </p>
+          {source.from_address && (
+            <p className="text-[14px] font-normal text-zinc-500 truncate">
+              {source.from_name ? `${source.from_name} <${source.from_address}>` : source.from_address}
+            </p>
+          )}
+          {source.email_date && (
+            <p className="text-[14px] font-normal text-zinc-500">
+              {format(parseISO(source.email_date), "MMM d, yyyy")}
+            </p>
+          )}
+          {source.extraction_confidence !== null && (
+            <p className="text-[14px] font-normal text-zinc-500">
+              {source.extraction_confidence}% extraction confidence
+            </p>
+          )}
+          <div className="mt-1">
+            <MatchMethodBadge method={source.match_method} status={source.status} />
+          </div>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function StatementSourceCard({ source }: { source: StatementSourceData }) {
+  const periodLabel = formatStatementPeriod(
+    source.statement_period_start,
+    source.statement_period_end
+  )
+
+  return (
+    <div className="bg-zinc-50 rounded-lg border border-zinc-200 p-4 w-full">
+      <div className="flex items-start gap-3">
+        <FileText className="size-4 text-zinc-400 mt-0.5 shrink-0" strokeWidth={1.5} />
+        <div className="flex flex-col gap-1 min-w-0">
+          <p className="text-[14px] font-normal text-zinc-950 truncate">
+            {source.filename}
+          </p>
+          {periodLabel && (
+            <p className="text-[14px] font-normal text-zinc-500">{periodLabel}</p>
+          )}
+          {source.payment_method_name && (
+            <p className="text-[14px] font-normal text-zinc-500">
+              {source.payment_method_name}
+            </p>
+          )}
+          {source.match_confidence !== null && (
+            <p className="text-[14px] font-normal text-zinc-500">
+              {source.match_confidence}% match confidence
+            </p>
+          )}
+          <div className="mt-1">
+            <MatchMethodBadge method={source.match_method} status={null} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TransactionSources({ emailSource, statementSource }: { emailSource: EmailSourceData | null; statementSource: StatementSourceData | null }) {
+  const hasNoSources = !emailSource && !statementSource
+
+  return (
+    <div className="content-stretch flex flex-col gap-2 items-start justify-start relative shrink-0 w-full">
+      <div className="w-full border-t border-zinc-200 mb-2" />
+      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-950">
+        <p className="leading-[20px] whitespace-pre">Sources</p>
+      </div>
+      {hasNoSources ? (
+        <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-500">
+          <p className="leading-[20px] whitespace-pre">Manually entered</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 w-full">
+          {emailSource && <EmailSourceCard source={emailSource} />}
+          {statementSource && <StatementSourceCard source={statementSource} />}
         </div>
       )}
     </div>
@@ -353,6 +489,10 @@ export default function ViewTransactionPage() {
             <FieldTags
               label="Tags"
               tags={transaction.tags}
+            />
+            <TransactionSources
+              emailSource={transaction.emailSource ?? null}
+              statementSource={transaction.statementSource ?? null}
             />
           </div>
           <div className="h-10 shrink-0 w-full" />

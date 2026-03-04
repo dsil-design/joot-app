@@ -57,6 +57,12 @@ export async function GET(request: NextRequest) {
       ? (Math.max(1, parseInt(page, 10)) - 1) * limit
       : parseInt(searchParams.get('offset') || '0', 10);
 
+    // New AI filters
+    const aiClassification = searchParams.get('ai_classification');
+    const aiSuggestedSkip = searchParams.get('ai_suggested_skip');
+    const groupId = searchParams.get('group_id');
+    const hasGroup = searchParams.get('has_group');
+
     // Validate status if provided
     const validStatuses = [
       'unprocessed',
@@ -173,7 +179,14 @@ export async function GET(request: NextRequest) {
         updated_at,
         is_processed,
         email_transaction_id,
-        effective_date
+        effective_date,
+        ai_classification,
+        ai_suggested_skip,
+        ai_reasoning,
+        parser_key,
+        email_group_id,
+        is_group_primary,
+        group_email_count
       `, { count: 'exact' })
       .eq('user_id', user.id)
       .order(orderColumn, { ascending: orderAscending, nullsFirst: false })
@@ -223,6 +236,30 @@ export async function GET(request: NextRequest) {
       query = query.or(
         `subject.ilike.%${search}%,description.ilike.%${search}%,vendor_name_raw.ilike.%${search}%,order_id.ilike.%${search}%,from_address.ilike.%${search}%,from_name.ilike.%${search}%`
       );
+    }
+
+    // Apply AI classification filter
+    if (aiClassification) {
+      query = query.eq('ai_classification', aiClassification);
+    }
+
+    // Apply AI suggested skip filter
+    if (aiSuggestedSkip === 'true') {
+      query = query.eq('ai_suggested_skip', true);
+    } else if (aiSuggestedSkip === 'false') {
+      query = query.eq('ai_suggested_skip', false);
+    }
+
+    // Apply group filter
+    if (groupId) {
+      query = query.eq('email_group_id', groupId);
+    }
+
+    // Apply has_group filter
+    if (hasGroup === 'true') {
+      query = query.not('email_group_id', 'is', null);
+    } else if (hasGroup === 'false') {
+      query = query.is('email_group_id', null);
     }
 
     const { data: emails, error, count } = await query;
