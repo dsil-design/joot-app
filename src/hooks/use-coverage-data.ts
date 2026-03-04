@@ -34,6 +34,14 @@ export interface CoveragePaymentMethod {
   aggregates: PaymentMethodAggregates
 }
 
+export interface PendingUpload {
+  id: string
+  filename: string
+  status: string
+  paymentMethodName: string
+  createdAt: string
+}
+
 export interface CoverageData {
   paymentMethods: CoveragePaymentMethod[]
   months: string[]
@@ -43,6 +51,7 @@ export interface CoverageData {
   overallCoveragePercent: number
   lastEmailSync: string | null
   emailsPendingReview: number
+  pendingUploads: PendingUpload[]
 }
 
 export interface UseCoverageDataResult {
@@ -90,8 +99,9 @@ export function useCoverageData(): UseCoverageDataResult {
     const hasProcessing = Object.values(data.cells).some(pmCells =>
       Object.values(pmCells).some(cell => cell.status === 'processing')
     )
+    const hasPendingUploads = (data.pendingUploads?.length ?? 0) > 0
 
-    if (hasProcessing) {
+    if (hasProcessing || hasPendingUploads) {
       pollingRef.current = setInterval(() => {
         fetchData()
       }, 10000)

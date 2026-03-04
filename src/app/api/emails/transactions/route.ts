@@ -11,8 +11,8 @@ import { createClient } from '@/lib/supabase/server';
  * - status: Filter by status ('pending_review', 'matched', 'waiting_for_statement',
  *           'ready_to_import', 'imported', 'skipped')
  * - currency: Filter by currency code (e.g., 'USD', 'THB')
- * - dateFrom: Filter by transaction date >= value (ISO date string)
- * - dateTo: Filter by transaction date <= value (ISO date string)
+ * - dateFrom: Filter by effective date >= value (transaction_date if extracted, else email_date)
+ * - dateTo: Filter by effective date <= value (transaction_date if extracted, else email_date)
  * - search: Search in subject, description, and vendor name
  * - classification: Filter by classification ('receipt', 'order_confirmation', 'bank_transfer', 'bill_payment', 'unknown')
  * - confidence: Filter by confidence bucket ('high' >= 90, 'medium' 55-89, 'low' < 55)
@@ -172,7 +172,8 @@ export async function GET(request: NextRequest) {
         created_at,
         updated_at,
         is_processed,
-        email_transaction_id
+        email_transaction_id,
+        effective_date
       `, { count: 'exact' })
       .eq('user_id', user.id)
       .order(orderColumn, { ascending: orderAscending, nullsFirst: false })
@@ -188,12 +189,12 @@ export async function GET(request: NextRequest) {
       query = query.eq('currency', currency.toUpperCase());
     }
 
-    // Apply date range filters (on transaction_date)
+    // Apply date range filters (on effective_date: transaction_date if extracted, else email_date)
     if (dateFrom) {
-      query = query.gte('transaction_date', dateFrom);
+      query = query.gte('effective_date', dateFrom);
     }
     if (dateTo) {
-      query = query.lte('transaction_date', dateTo);
+      query = query.lte('effective_date', dateTo);
     }
 
     // Apply classification filter

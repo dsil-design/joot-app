@@ -10,7 +10,8 @@ import { BillingCycleDialog } from '@/components/page-specific/billing-cycle-dia
 import { RecentActivityFeed } from '@/components/page-specific/recent-activity-feed'
 import { useCoverageData } from '@/hooks/use-coverage-data'
 import { useEmailSync } from '@/hooks/use-email-sync'
-import { Upload, ChevronDown, ChevronUp } from 'lucide-react'
+import { Upload, ChevronDown, ChevronUp, Loader2, FileText } from 'lucide-react'
+import Link from 'next/link'
 import type { CoveragePaymentMethod } from '@/hooks/use-coverage-data'
 
 export default function CoveragePage() {
@@ -32,6 +33,31 @@ export default function CoveragePage() {
 
   // Recent activity toggle
   const [showActivity, setShowActivity] = useState(false)
+
+  /**
+   * Try to extract a month/year from a statement filename.
+   * Common patterns: "20251018-statements-..." or "...October_2025..." or "...2025-10-14..."
+   */
+  function formatUploadDate(filename: string, createdAt: string): string | null {
+    // Pattern: YYYYMMDD at start
+    const yyyymmdd = filename.match(/^(\d{4})(\d{2})\d{2}/)
+    if (yyyymmdd) {
+      const d = new Date(parseInt(yyyymmdd[1]), parseInt(yyyymmdd[2]) - 1)
+      return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    }
+    // Pattern: YYYY-MM-DD
+    const isoDash = filename.match(/(\d{4})-(\d{2})-\d{2}/)
+    if (isoDash) {
+      const d = new Date(parseInt(isoDash[1]), parseInt(isoDash[2]) - 1)
+      return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    }
+    // Pattern: month name + year (e.g. "October_2025", "October 2025")
+    const monthName = filename.match(/(January|February|March|April|May|June|July|August|September|October|November|December)[_\s-]?(\d{4})/i)
+    if (monthName) {
+      return `${monthName[1]} ${monthName[2]}`
+    }
+    return null
+  }
 
   const handleSyncNow = async () => {
     const result = await triggerSync()
@@ -81,6 +107,53 @@ export default function CoveragePage() {
           <Button variant="link" size="sm" className="ml-2 text-destructive" onClick={() => refetch()}>
             Retry
           </Button>
+        </div>
+      )}
+
+      {/* Pending uploads banner */}
+      {coverage && coverage.pendingUploads?.length > 0 && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm font-medium text-blue-900 mb-2">
+            {coverage.pendingUploads.length === 1
+              ? 'You have an uploaded statement ready to process'
+              : `You have ${coverage.pendingUploads.length} uploaded statements ready to process`}
+          </p>
+          <div className="space-y-2">
+            {coverage.pendingUploads.map(upload => (
+              <Link
+                key={upload.id}
+                href={`/imports/statements/${upload.id}`}
+                className="flex items-center gap-3 rounded-md bg-white/70 p-3 hover:bg-white transition-colors"
+              >
+                {upload.status === 'processing' ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600 shrink-0" />
+                ) : (
+                  <FileText className="h-4 w-4 text-blue-600 shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-medium text-blue-900">
+                      {upload.paymentMethodName}
+                    </span>
+                    {formatUploadDate(upload.filename, upload.createdAt) && (
+                      <span className="text-sm text-blue-700">
+                        &middot; {formatUploadDate(upload.filename, upload.createdAt)}
+                      </span>
+                    )}
+                    <span className="text-xs text-blue-600">
+                      {upload.status === 'processing' ? 'Processing...' : 'Pending'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-500 truncate">
+                    {upload.filename}
+                  </p>
+                </div>
+                <span className="text-xs text-blue-500">
+                  View &rarr;
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

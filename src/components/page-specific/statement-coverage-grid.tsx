@@ -27,7 +27,7 @@ function getCellHref(cell: CellData): string | null {
   switch (cell.status) {
     case 'done':
     case 'processing':
-      return cell.statementId ? `/imports/statements/${cell.statementId}/results` : null
+      return cell.statementId ? `/imports/statements/${cell.statementId}` : null
     case 'pending_review':
       return cell.statementId
         ? `/imports/review?statementUploadId=${cell.statementId}`

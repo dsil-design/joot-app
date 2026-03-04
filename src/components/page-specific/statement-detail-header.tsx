@@ -56,7 +56,7 @@ export function StatementDetailHeader({
       {/* Back link and title */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/imports">
+          <Link href="/imports/statements">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

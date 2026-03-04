@@ -33,6 +33,7 @@ export async function GET() {
       .from('statement_uploads')
       .select(`
         id,
+        filename,
         payment_method_id,
         status,
         statement_period_start,
@@ -151,14 +152,24 @@ export async function GET() {
     for (const stmt of statements || []) {
       if (!stmt.payment_method_id) continue
 
-      // Determine which month this statement covers
+      // Determine which month this statement covers.
+      // Use statement_period_end (closing date) since that's how users think of
+      // billing cycles — e.g. a Sep 18–Oct 17 cycle is the "October statement".
       let stmtMonth: string | null = null
-      if (stmt.statement_period_start) {
+      if (stmt.statement_period_end) {
+        const d = new Date(stmt.statement_period_end)
+        stmtMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      } else if (stmt.statement_period_start) {
         const d = new Date(stmt.statement_period_start)
         stmtMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      } else if (stmt.created_at) {
-        const d = new Date(stmt.created_at)
-        stmtMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      } else if (stmt.status === 'completed' || stmt.status === 'failed') {
+        // Only fall back to created_at for completed/failed statements
+        // Pending/processing statements without a period shouldn't appear in the grid
+        // since we don't yet know which month they belong to
+        if (stmt.created_at) {
+          const d = new Date(stmt.created_at)
+          stmtMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        }
       }
 
       if (!stmtMonth || !months.includes(stmtMonth)) continue
@@ -175,10 +186,19 @@ export async function GET() {
       const newCount = stmt.transactions_new ?? 0
       const tooltipCounts: TooltipCounts = { extracted, matched, newCount }
 
-      if (stmt.status === 'processing') {
+      if (stmt.status === 'pending' || stmt.status === 'processing') {
         cells[stmt.payment_method_id][stmtMonth] = {
           status: 'processing',
           statementId: stmt.id,
+        }
+      } else if (stmt.status === 'failed') {
+        // Only show failed if no better status already occupies the cell
+        const existing = cells[stmt.payment_method_id][stmtMonth]
+        if (existing.status === 'missing') {
+          cells[stmt.payment_method_id][stmtMonth] = {
+            status: 'missing',
+            statementId: stmt.id,
+          }
         }
       } else if (stmt.status === 'completed') {
         // Check if there are pending suggestions
@@ -254,6 +274,24 @@ export async function GET() {
       }
     })
 
+    // Collect pending/processing uploads that couldn't be placed in the grid
+    // (no statement_period_start yet — haven't been processed)
+    const pendingUploads = (statements || [])
+      .filter(s =>
+        (s.status === 'pending' || s.status === 'processing') &&
+        !s.statement_period_start
+      )
+      .map(s => {
+        const pm = (paymentMethods || []).find(p => p.id === s.payment_method_id)
+        return {
+          id: s.id,
+          filename: s.filename,
+          status: s.status,
+          paymentMethodName: pm?.name ?? 'Unknown',
+          createdAt: s.created_at,
+        }
+      })
+
     return NextResponse.json({
       paymentMethods: paymentMethodsResponse,
       months,
@@ -263,6 +301,7 @@ export async function GET() {
       overallCoveragePercent,
       lastEmailSync: syncState?.last_sync_at ?? null,
       emailsPendingReview: emailsPendingReview ?? 0,
+      pendingUploads,
     })
   } catch (error) {
     console.error('Coverage API error:', error)

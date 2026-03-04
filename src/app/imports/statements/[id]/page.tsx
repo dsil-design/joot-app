@@ -20,7 +20,7 @@ import {
 import { useMatchActions } from '@/hooks/use-match-actions'
 import { useTransactions } from '@/hooks'
 import { toast } from 'sonner'
-import { RefreshCw, XCircle } from 'lucide-react'
+import { FileText, RefreshCw, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
@@ -79,6 +79,26 @@ export default function StatementDetailPage() {
   const { linkToExisting } = useMatchActions({})
   const { createTransaction } = useTransactions()
 
+  const [isProcessing, setIsProcessing] = React.useState(false)
+
+  const triggerProcessing = React.useCallback(async () => {
+    setIsProcessing(true)
+    try {
+      const response = await fetch(`/api/statements/${statementId}/process`, {
+        method: 'POST',
+      })
+      if (response.ok || response.status === 202) {
+        // Refresh to get processing status
+        const data = await fetchResults(statementId)
+        if (data) setResult(data)
+      }
+    } catch {
+      // Will show on next poll
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [statementId])
+
   // Fetch on mount
   React.useEffect(() => {
     const load = async () => {
@@ -88,6 +108,23 @@ export default function StatementDetailPage() {
         setError('Statement not found')
       } else {
         setResult(data)
+        // Auto-trigger processing for pending statements
+        if (data.status === 'pending') {
+          setIsProcessing(true)
+          try {
+            const response = await fetch(`/api/statements/${statementId}/process`, {
+              method: 'POST',
+            })
+            if (response.ok || response.status === 202) {
+              const refreshed = await fetchResults(statementId)
+              if (refreshed) setResult(refreshed)
+            }
+          } catch {
+            // Will show pending state with manual button
+          } finally {
+            setIsProcessing(false)
+          }
+        }
       }
       setIsLoading(false)
     }
@@ -200,6 +237,52 @@ export default function StatementDetailPage() {
   const pmName = statement.payment_method?.name || 'Unknown'
   const pmId = statement.payment_method?.id || ''
 
+  // Pending state
+  if (status === 'pending') {
+    return (
+      <div className="space-y-6">
+        <StatementDetailHeader
+          paymentMethodName={pmName}
+          period={statement.period}
+          status={status}
+          filename={statement.filename}
+          stats={{ extracted: 0, matched: 0, unmatched: 0 }}
+          matchRate={0}
+        />
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="py-8">
+            <div className="flex flex-col items-center gap-4 text-center">
+              {isProcessing ? (
+                <>
+                  <RefreshCw className="h-8 w-8 animate-spin text-amber-600" />
+                  <div>
+                    <p className="font-medium text-amber-900">Starting processing...</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      This may take a moment
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <FileText className="h-8 w-8 text-amber-600" />
+                  <div>
+                    <p className="font-medium text-amber-900">Statement uploaded</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Ready to extract and match transactions
+                    </p>
+                  </div>
+                  <Button onClick={triggerProcessing}>
+                    Process Statement
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   // Processing state
   if (status === 'processing') {
     return (
@@ -224,6 +307,45 @@ export default function StatementDetailPage() {
                 <p className="text-sm text-blue-700">{result.progress.message}</p>
               </>
             )}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Failed state
+  if (status === 'failed') {
+    return (
+      <div className="space-y-6">
+        <StatementDetailHeader
+          paymentMethodName={pmName}
+          period={statement.period}
+          status={status}
+          filename={statement.filename}
+          stats={{ extracted: 0, matched: 0, unmatched: 0 }}
+          matchRate={0}
+        />
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardContent className="py-8">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <XCircle className="h-8 w-8 text-destructive/70" />
+              <div>
+                <p className="font-medium text-destructive">Processing failed</p>
+                {result.error && (
+                  <p className="text-sm text-muted-foreground mt-1">{result.error}</p>
+                )}
+              </div>
+              <Button variant="outline" onClick={triggerProcessing} disabled={isProcessing}>
+                {isProcessing ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                    Retrying...
+                  </>
+                ) : (
+                  'Retry Processing'
+                )}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

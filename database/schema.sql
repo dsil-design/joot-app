@@ -958,7 +958,8 @@ SELECT
   et.processed_at,
   et.matched_at,
   et.updated_at,
-  (et.id IS NOT NULL) AS is_processed
+  (et.id IS NOT NULL) AS is_processed,
+  COALESCE(et.transaction_date, e.date::date) AS effective_date
 FROM public.emails e
 LEFT JOIN public.email_transactions et
   ON e.message_id = et.message_id

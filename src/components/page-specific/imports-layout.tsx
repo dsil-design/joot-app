@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, LayoutDashboard, ClipboardCheck, Mail } from 'lucide-react'
+import { ArrowLeft, LayoutDashboard, FileText, ClipboardCheck, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
 import { MainNavigation } from '@/components/page-specific/main-navigation'
@@ -22,6 +22,11 @@ const navigationItems = [
     name: 'Coverage',
     href: '/imports',
     icon: LayoutDashboard,
+  },
+  {
+    name: 'Statements',
+    href: '/imports/statements',
+    icon: FileText,
   },
   {
     name: 'Review',
@@ -75,7 +80,9 @@ export function ImportsLayout({ children, user }: ImportsLayoutProps) {
             <nav className="hidden md:flex md:flex-col gap-2 md:w-64 flex-shrink-0">
               {navigationItems.map((item) => {
                 const Icon = item.icon
-                const isActive = pathname === item.href
+                const isActive = item.href === '/imports'
+                  ? pathname === '/imports'
+                  : pathname?.startsWith(item.href) ?? false
 
                 return (
                   <Link
@@ -99,7 +106,9 @@ export function ImportsLayout({ children, user }: ImportsLayoutProps) {
             <nav className="flex md:hidden gap-2 overflow-x-auto pb-2">
               {navigationItems.map((item) => {
                 const Icon = item.icon
-                const isActive = pathname === item.href
+                const isActive = item.href === '/imports'
+                  ? pathname === '/imports'
+                  : pathname?.startsWith(item.href) ?? false
 
                 return (
                   <Link

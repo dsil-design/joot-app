@@ -38,6 +38,7 @@ export interface EmailTransactionRow {
   updated_at: string | null
   is_processed: boolean
   email_transaction_id: string | null
+  effective_date: string | null
 }
 
 /**

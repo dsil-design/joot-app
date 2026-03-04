@@ -8,11 +8,13 @@ interface ResolveResult {
 }
 
 /**
- * Resolves waiting email transactions against statement entries.
+ * Resolves unmatched email transactions against existing transactions.
  *
  * Called after a statement is processed. Finds email transactions in
- * "waiting_for_statement" status that overlap with the statement period,
- * runs match scoring, and auto-approves high-confidence matches.
+ * "waiting_for_statement" or "ready_to_import" status that overlap with
+ * the statement period, runs match scoring, and auto-approves high-confidence
+ * matches. This covers both THB receipts waiting for a statement AND USD
+ * receipts that could match a credit card transaction.
  */
 export async function resolveWaitingEmailTransactions(
   userId: string,
@@ -20,7 +22,8 @@ export async function resolveWaitingEmailTransactions(
   periodEnd: string,
   supabase: SupabaseClient
 ): Promise<ResolveResult> {
-  // Find waiting email transactions in the period
+  // Find unmatched email transactions in the period
+  // Include both waiting_for_statement (THB CC) and ready_to_import (USD, e-wallet, etc.)
   const { data: waitingEmails, error: fetchError } = await supabase
     .from('email_transactions')
     .select(`
@@ -28,7 +31,7 @@ export async function resolveWaitingEmailTransactions(
       vendors:vendor_id (id, name)
     `)
     .eq('user_id', userId)
-    .eq('status', 'waiting_for_statement')
+    .in('status', ['waiting_for_statement', 'ready_to_import'])
     .gte('transaction_date', periodStart)
     .lte('transaction_date', periodEnd)
 
@@ -78,7 +81,8 @@ export async function resolveWaitingEmailTransactions(
       description: email.description || undefined,
     }
 
-    const ranked = await rankMatches(source, targets)
+    // Pass supabase for cross-currency exchange rate lookups
+    const ranked = await rankMatches(source, targets, { supabase })
 
     if (canAutoApprove(ranked) && ranked.bestMatch) {
       // Auto-link this email transaction
@@ -97,6 +101,15 @@ export async function resolveWaitingEmailTransactions(
       if (!updateError) {
         resolved++
       }
+    } else if (ranked.bestMatch && ranked.bestMatch.score >= 55) {
+      // Medium confidence — store hint for user review
+      await supabase
+        .from('email_transactions')
+        .update({
+          match_confidence: ranked.bestMatch.score,
+        })
+        .eq('id', email.id)
+        .eq('user_id', userId)
     }
   }
 

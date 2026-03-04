@@ -1,3 +1,5 @@
+npm warn exec The following package was not found and will be installed: supabase@2.76.16
+Initialising login role...
 export type Json =
   | string
   | number

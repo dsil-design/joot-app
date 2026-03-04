@@ -12,6 +12,8 @@
  * 5. Log extraction activities for audit trail
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { createServiceRoleClient } from '../supabase/server';
 import { emailSyncService } from '../services/email-sync-service';
 import {
@@ -41,6 +43,8 @@ import {
   type PaymentContext,
 } from './classifier';
 import { normalizeICloudRelay } from './icloud-relay';
+import { rankMatches, canAutoApprove } from '../matching/match-ranker';
+import type { SourceTransaction, TargetTransaction } from '../matching/match-scorer';
 
 // Import parsers
 import { grabParser } from './extractors/grab';
@@ -297,6 +301,100 @@ export class EmailExtractionService {
   }
 
   /**
+   * Try to auto-match an email transaction against existing transactions.
+   *
+   * Runs the matching algorithm and, if a high-confidence single match is found,
+   * automatically links the email transaction. Never throws — matching failures
+   * are logged but don't break the extraction pipeline.
+   */
+  private async tryAutoMatch(
+    supabase: SupabaseClient,
+    emailTransactionId: string,
+    userId: string,
+    extraction: ExtractionResult
+  ): Promise<void> {
+    try {
+      // Skip if extraction failed or missing required fields
+      if (!extraction.success || !extraction.data) return;
+      const { amount, currency, transaction_date, vendor_name_raw } = extraction.data;
+      if (!amount || !transaction_date) return;
+
+      const txDateStr = transaction_date.toISOString().split('T')[0];
+
+      // Build source transaction
+      const source: SourceTransaction = {
+        amount: Number(amount),
+        currency: currency || 'USD',
+        date: txDateStr,
+        vendor: vendor_name_raw || '',
+        description: extraction.data.description || undefined,
+      };
+
+      // Query candidate transactions within ±7 days
+      const dateFrom = new Date(transaction_date);
+      dateFrom.setDate(dateFrom.getDate() - 7);
+      const dateTo = new Date(transaction_date);
+      dateTo.setDate(dateTo.getDate() + 7);
+
+      const { data: candidates, error: candError } = await supabase
+        .from('transactions')
+        .select(`
+          id, description, amount, original_currency, transaction_date,
+          vendor_id, vendors:vendor_id (id, name)
+        `)
+        .eq('user_id', userId)
+        .gte('transaction_date', dateFrom.toISOString().split('T')[0])
+        .lte('transaction_date', dateTo.toISOString().split('T')[0])
+        .order('transaction_date', { ascending: false })
+        .limit(50);
+
+      if (candError || !candidates || candidates.length === 0) return;
+
+      // Build target transactions
+      const targets: TargetTransaction[] = candidates.map((tx) => ({
+        id: tx.id,
+        amount: Number(tx.amount),
+        currency: tx.original_currency,
+        date: tx.transaction_date,
+        vendor: (tx.vendors as { name: string } | null)?.name || tx.description || '',
+        description: tx.description || undefined,
+      }));
+
+      // Rank matches — pass supabase for cross-currency conversion
+      const ranked = await rankMatches(source, targets, { supabase });
+
+      if (canAutoApprove(ranked) && ranked.bestMatch) {
+        // High confidence single winner — auto-link
+        await supabase
+          .from('email_transactions')
+          .update({
+            matched_transaction_id: ranked.bestMatch.targetId,
+            status: EMAIL_TRANSACTION_STATUS.MATCHED,
+            match_method: 'auto',
+            match_confidence: ranked.bestMatch.score,
+            matched_at: new Date().toISOString(),
+          })
+          .eq('id', emailTransactionId);
+
+        console.log(
+          `Auto-matched email transaction ${emailTransactionId} → ${ranked.bestMatch.targetId} (score: ${ranked.bestMatch.score})`
+        );
+      } else if (ranked.bestMatch && ranked.bestMatch.score >= 55) {
+        // Medium confidence — store hint but don't change status
+        await supabase
+          .from('email_transactions')
+          .update({
+            match_confidence: ranked.bestMatch.score,
+          })
+          .eq('id', emailTransactionId);
+      }
+    } catch (error) {
+      // Never let matching failures break the extraction pipeline
+      console.error(`Auto-match failed for email transaction ${emailTransactionId}:`, error);
+    }
+  }
+
+  /**
    * Process new emails from the emails table and extract transaction data
    *
    * This is called after email sync to process newly synced emails.
@@ -448,10 +546,12 @@ export class EmailExtractionService {
             transactionData.order_id = extraction.data.order_id || null;
           }
 
-          // Insert into email_transactions
-          const { error: insertError } = await supabase
+          // Insert into email_transactions and get back the new row's ID
+          const { data: insertedRow, error: insertError } = await supabase
             .from('email_transactions')
-            .insert(transactionData);
+            .insert(transactionData)
+            .select('id')
+            .single();
 
           if (insertError) {
             result.failed++;
@@ -461,6 +561,11 @@ export class EmailExtractionService {
               errors: [`Database insert failed: ${insertError.message}`],
             });
             continue;
+          }
+
+          // Try to auto-match against existing transactions
+          if (insertedRow) {
+            await this.tryAutoMatch(supabase, insertedRow.id, userId, extraction);
           }
 
           result.extracted++;
@@ -642,6 +747,11 @@ export class EmailExtractionService {
       .from('email_transactions')
       .update(updateData)
       .eq('id', emailTransactionId);
+
+    // Try to auto-match if not already matched
+    if (!emailTx.matched_transaction_id) {
+      await this.tryAutoMatch(supabase, emailTransactionId, userId, extraction);
+    }
 
     return extraction;
   }

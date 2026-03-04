@@ -154,8 +154,8 @@ export async function GET(
       description: tx.description || undefined,
     }))
 
-    // Rank matches
-    const ranked = await rankMatches(source, targets)
+    // Rank matches (pass supabase for cross-currency exchange rate lookups)
+    const ranked = await rankMatches(source, targets, { supabase })
 
     // Enrich suggestions with transaction details
     const enrichedSuggestions = ranked.suggestions.map((suggestion) => {
