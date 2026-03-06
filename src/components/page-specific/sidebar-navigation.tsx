@@ -92,6 +92,7 @@ export function SidebarNavigation({ user }: SidebarNavigationProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
+              suppressHydrationWarning
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 w-full"
             >
               <Avatar className="h-8 w-8 shrink-0">

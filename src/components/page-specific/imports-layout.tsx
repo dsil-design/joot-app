@@ -54,10 +54,10 @@ function useReviewBadgeCount() {
     let cancelled = false
     async function fetchCount() {
       try {
-        const res = await fetch('/api/imports/queue?page=1&limit=1&status=pending')
+        const res = await fetch('/api/imports/status-counts')
         if (!res.ok) return
         const data = await res.json()
-        if (!cancelled) setCount(data.stats?.pending ?? 0)
+        if (!cancelled) setCount(data.pendingReviewCount ?? 0)
       } catch {
         // silently fail
       }

@@ -24,7 +24,7 @@ export async function GET() {
     }
 
     // Fetch counts for each status
-    const [pendingResult, waitingResult, matchedResult, syncStateResult, totalSyncedResult] = await Promise.all([
+    const [pendingResult, waitingResult, matchedResult, syncStateResult, totalSyncedResult, pendingEmailReviewResult, pendingStatementsResult] = await Promise.all([
       // Pending review count
       supabase
         .from('email_transactions')
@@ -61,6 +61,20 @@ export async function GET() {
         .from('emails')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id),
+
+      // Pending review queue: email transactions in reviewable states
+      supabase
+        .from('email_transactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement']),
+
+      // Pending review queue: completed statements (each has pending suggestions)
+      supabase
+        .from('statement_uploads')
+        .select('transactions_extracted, transactions_matched', { count: 'exact' })
+        .eq('user_id', user.id)
+        .eq('status', 'completed'),
     ]);
 
     // Handle any errors
@@ -80,12 +94,23 @@ export async function GET() {
       console.error('Error fetching total synced:', totalSyncedResult.error);
     }
 
+    // Calculate pending review count across both sources
+    const pendingEmailCount = pendingEmailReviewResult.count ?? 0;
+    // For statements, sum up extracted transactions (approximation of pending suggestions)
+    let pendingStatementCount = 0;
+    if (pendingStatementsResult.data) {
+      for (const stmt of pendingStatementsResult.data) {
+        pendingStatementCount += (stmt.transactions_extracted ?? 0);
+      }
+    }
+
     return NextResponse.json({
       counts: {
         pending: pendingResult.count ?? 0,
         waiting: waitingResult.count ?? 0,
         matched: matchedResult.count ?? 0,
       },
+      pendingReviewCount: pendingEmailCount + pendingStatementCount,
       sync: {
         lastSyncedAt: syncStateResult.data?.last_sync_at ?? null,
         folder: syncStateResult.data?.folder ?? 'Transactions',
