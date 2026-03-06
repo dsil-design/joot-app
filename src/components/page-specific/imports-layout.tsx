@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, LayoutDashboard, FileText, ClipboardCheck, Mail, Brain } from 'lucide-react'
@@ -19,9 +20,14 @@ interface ImportsLayoutProps {
 
 const navigationItems = [
   {
-    name: 'Coverage',
+    name: 'Overview',
     href: '/imports',
     icon: LayoutDashboard,
+  },
+  {
+    name: 'Emails',
+    href: '/imports/emails',
+    icon: Mail,
   },
   {
     name: 'Statements',
@@ -32,11 +38,7 @@ const navigationItems = [
     name: 'Review',
     href: '/imports/review',
     icon: ClipboardCheck,
-  },
-  {
-    name: 'Emails',
-    href: '/imports/emails',
-    icon: Mail,
+    hasBadge: true,
   },
   {
     name: 'AI Journal',
@@ -45,8 +47,31 @@ const navigationItems = [
   },
 ]
 
+function useReviewBadgeCount() {
+  const [count, setCount] = React.useState(0)
+
+  React.useEffect(() => {
+    let cancelled = false
+    async function fetchCount() {
+      try {
+        const res = await fetch('/api/imports/queue?page=1&limit=1&status=pending')
+        if (!res.ok) return
+        const data = await res.json()
+        if (!cancelled) setCount(data.stats?.pending ?? 0)
+      } catch {
+        // silently fail
+      }
+    }
+    fetchCount()
+    return () => { cancelled = true }
+  }, [])
+
+  return count
+}
+
 export function ImportsLayout({ children, user }: ImportsLayoutProps) {
   const pathname = usePathname()
+  const reviewBadgeCount = useReviewBadgeCount()
 
   return (
     <div className="min-h-screen bg-background">
@@ -88,6 +113,7 @@ export function ImportsLayout({ children, user }: ImportsLayoutProps) {
                 const isActive = item.href === '/imports'
                   ? pathname === '/imports'
                   : pathname?.startsWith(item.href) ?? false
+                const badgeCount = item.hasBadge ? reviewBadgeCount : 0
 
                 return (
                   <Link
@@ -102,6 +128,11 @@ export function ImportsLayout({ children, user }: ImportsLayoutProps) {
                   >
                     <Icon className="h-5 w-5" />
                     {item.name}
+                    {badgeCount > 0 && (
+                      <span className="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 min-w-[1.25rem] text-center">
+                        {badgeCount}
+                      </span>
+                    )}
                   </Link>
                 )
               })}
@@ -114,6 +145,7 @@ export function ImportsLayout({ children, user }: ImportsLayoutProps) {
                 const isActive = item.href === '/imports'
                   ? pathname === '/imports'
                   : pathname?.startsWith(item.href) ?? false
+                const badgeCount = item.hasBadge ? reviewBadgeCount : 0
 
                 return (
                   <Link
@@ -128,6 +160,11 @@ export function ImportsLayout({ children, user }: ImportsLayoutProps) {
                   >
                     <Icon className="h-4 w-4" />
                     {item.name}
+                    {badgeCount > 0 && (
+                      <span className="text-xs font-semibold bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
+                        {badgeCount}
+                      </span>
+                    )}
                   </Link>
                 )
               })}

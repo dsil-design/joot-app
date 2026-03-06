@@ -31,7 +31,7 @@ export async function GET() {
         transactions_new,
         uploaded_at,
         extraction_error,
-        payment_methods(id, name)
+        payment_methods(id, name, type)
       `)
       .eq('user_id', user.id)
       .order('uploaded_at', { ascending: false })

@@ -50,6 +50,8 @@ export async function POST(request: NextRequest) {
     let body: {
       emailIds?: string[]
       createTransactions?: boolean
+      scope?: 'high-confidence-pending'
+      minConfidence?: number
     }
 
     try {
@@ -61,7 +63,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { emailIds, createTransactions = false } = body
+    let { emailIds, createTransactions = false } = body
+
+    // Scope-based approval: fetch all qualifying IDs server-side
+    if (body.scope === 'high-confidence-pending' && !emailIds) {
+      const minConf = body.minConfidence ?? 90
+      // Fetch IDs from the queue API logic
+      const { fetchStatementQueueItems } = await import('@/lib/imports/statement-queue-builder')
+      const { fetchEmailQueueItems } = await import('@/lib/imports/email-queue-builder')
+      const { aggregateQueueItems } = await import('@/lib/imports/queue-aggregator')
+
+      const [stmtItems, emailItemsList] = await Promise.all([
+        fetchStatementQueueItems(supabase, user.id, {}),
+        fetchEmailQueueItems(supabase, user.id, {}),
+      ])
+
+      const result = await aggregateQueueItems(supabase, stmtItems, emailItemsList, {
+        statusFilter: 'pending',
+        currencyFilter: 'all',
+        confidenceFilter: 'all',
+        sourceFilter: 'all',
+        searchQuery: '',
+      })
+
+      emailIds = result.items
+        .filter(item => item.status === 'pending' && item.confidence >= minConf)
+        .map(item => item.id)
+
+      if (emailIds.length === 0) {
+        return NextResponse.json({
+          success: true,
+          results: { approved: 0, failed: 0, skipped: 0, transactions_created: 0, total_amount: 0, scopeIds: [] },
+        })
+      }
+    }
 
     // Validate emailIds
     if (!emailIds || !Array.isArray(emailIds) || emailIds.length === 0) {

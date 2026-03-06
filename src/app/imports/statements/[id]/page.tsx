@@ -18,16 +18,16 @@ import {
   type CreateFromImportData,
 } from '@/components/page-specific/create-from-import-dialog'
 import { useMatchActions } from '@/hooks/use-match-actions'
-import { useTransactions } from '@/hooks'
+import { useCreateAndLink } from '@/hooks/use-create-and-link'
 import { toast } from 'sonner'
-import { FileText, RefreshCw, XCircle } from 'lucide-react'
+import { FileText, RefreshCw, XCircle, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
 interface StatementInfo {
   id: string
   filename: string
-  payment_method: { id: string; name: string } | null
+  payment_method: { id: string; name: string; type?: string } | null
   period: { start: string | null; end: string | null }
   processed_at: string | null
 }
@@ -69,6 +69,9 @@ export default function StatementDetailPage() {
   const [error, setError] = React.useState<string | null>(null)
   const [highlightedMatchId, setHighlightedMatchId] = React.useState<string | null>(null)
 
+  // Review callout state
+  const [calloutDismissed, setCalloutDismissed] = React.useState(false)
+
   // Dialog state
   const [linkDialogOpen, setLinkDialogOpen] = React.useState(false)
   const [linkingItem, setLinkingItem] = React.useState<LinkSourceItem | null>(null)
@@ -77,7 +80,7 @@ export default function StatementDetailPage() {
 
   // Hooks
   const { linkToExisting } = useMatchActions({})
-  const { createTransaction } = useTransactions()
+  const { createAndLink } = useCreateAndLink(linkToExisting)
 
   const [isProcessing, setIsProcessing] = React.useState(false)
 
@@ -181,35 +184,7 @@ export default function StatementDetailPage() {
     setCreateDialogOpen(true)
   }
 
-  const handleCreateConfirm = async (
-    compositeId: string,
-    transactionData: {
-      description: string
-      amount: number
-      currency: string
-      date: string
-      vendorId?: string
-      paymentMethodId?: string
-      tagIds?: string[]
-      transactionType: string
-    }
-  ) => {
-    const result = await createTransaction({
-      description: transactionData.description,
-      amount: transactionData.amount,
-      originalCurrency: transactionData.currency as 'USD' | 'THB',
-      transactionDate: transactionData.date,
-      transactionType: transactionData.transactionType as 'expense' | 'income',
-      vendorId: transactionData.vendorId,
-      paymentMethodId: transactionData.paymentMethodId,
-      tagIds: transactionData.tagIds,
-    })
-
-    if (!result) throw new Error('Failed to create transaction')
-
-    await linkToExisting(compositeId, result.id)
-    toast.success('Transaction created and linked')
-  }
+  const handleCreateConfirm = createAndLink
 
   // Loading state
   if (isLoading) {
@@ -229,7 +204,7 @@ export default function StatementDetailPage() {
         <XCircle className="h-12 w-12 mx-auto text-destructive/50 mb-4" />
         <h3 className="text-lg font-medium mb-2">{error || 'Not found'}</h3>
         <Button asChild variant="outline">
-          <Link href="/imports">Back to Coverage</Link>
+          <Link href="/imports">Back to Overview</Link>
         </Button>
       </div>
     )
@@ -371,6 +346,40 @@ export default function StatementDetailPage() {
         matchRate={matchRate}
       />
 
+      {/* Review in Queue callout */}
+      {status === 'completed' && extracted > 0 && !calloutDismissed && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm font-medium text-blue-900">
+                {extracted} transaction{extracted !== 1 ? 's' : ''} extracted.
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  asChild
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Link href={`/imports/review?statementUploadId=${statementId}`}>
+                    Review {extracted} items in queue
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCalloutDismissed(true)}
+                  className="text-blue-700 hover:text-blue-900"
+                >
+                  Inspect individually
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabs */}
       {status === 'completed' && (
         <Tabs defaultValue="statement" className="w-full">
@@ -388,6 +397,7 @@ export default function StatementDetailPage() {
               <CardContent className="pt-4">
                 <StatementTransactionList
                   statementId={statementId}
+                  paymentMethodType={statement.payment_method?.type}
                   onLinkClick={handleLinkClick}
                   onCreateClick={handleCreateClick}
                   highlightedMatchId={highlightedMatchId}

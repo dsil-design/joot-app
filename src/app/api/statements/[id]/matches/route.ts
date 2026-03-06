@@ -141,7 +141,8 @@ export async function GET(
         created_at,
         payment_methods (
           id,
-          name
+          name,
+          type
         )
       `)
       .eq('id', statementId)

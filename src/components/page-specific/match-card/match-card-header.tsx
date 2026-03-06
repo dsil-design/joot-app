@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { File, Mail } from "lucide-react"
+import { File, Mail, GitMerge } from "lucide-react"
 import type { MatchCardData, MatchCardVariant, VariantConfig, MatchCardCallbacks } from "./types"
 
 /**
@@ -46,28 +46,28 @@ export function MatchCardHeader({
   const isRejected = data.status === "rejected"
   const isPending = data.status === "pending"
 
-  const isEmail = data.source === "email"
-  const isMerged = data.source === "merged"
   const source = data.sourceStatement || data.statementTransaction.sourceFilename
-  const SourceIcon = isEmail ? Mail : File
 
   return (
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-2 min-w-0">
-        {/* Source badge */}
-        {isMerged ? (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        {/* Source provenance pill */}
+        {data.source === "merged" ? (
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+            <GitMerge className="h-3 w-3 shrink-0" />
+            Cross-Source
+          </span>
+        ) : data.source === "email" ? (
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-600">
             <Mail className="h-3 w-3 shrink-0" />
-            <span>+</span>
+            Email Receipt
+          </span>
+        ) : source ? (
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
             <File className="h-3 w-3 shrink-0" />
-            <span className="truncate">Cross-Source Match</span>
+            <span className="truncate max-w-[140px]">{source}</span>
           </span>
-        ) : source && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <SourceIcon className="h-3 w-3 shrink-0" />
-            <span className="truncate">{source}</span>
-          </span>
-        )}
+        ) : null}
 
         {/* Classification badge for email/merged items */}
         {(isEmail || isMerged) && data.emailMetadata?.classification && data.emailMetadata.classification !== "unknown" && (

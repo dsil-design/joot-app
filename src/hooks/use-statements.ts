@@ -15,7 +15,7 @@ export interface StatementUpload {
   transactions_new: number | null
   uploaded_at: string
   extraction_error: string | null
-  payment_methods: { id: string; name: string } | null
+  payment_methods: { id: string; name: string; type?: string } | null
 }
 
 export interface StatementsStats {
@@ -30,6 +30,7 @@ export interface StatementsStats {
 export interface PaymentMethodGroup {
   paymentMethodId: string
   paymentMethodName: string
+  paymentMethodType: string
   statements: StatementUpload[]
 }
 
@@ -88,11 +89,13 @@ export function useStatements() {
     for (const stmt of statements) {
       const pmId = stmt.payment_method_id ?? 'unknown'
       const pmName = stmt.payment_methods?.name ?? 'Unknown'
+      const pmType = stmt.payment_methods?.type ?? 'credit_card'
 
       if (!groupMap.has(pmId)) {
         groupMap.set(pmId, {
           paymentMethodId: pmId,
           paymentMethodName: pmName,
+          paymentMethodType: pmType,
           statements: [],
         })
       }

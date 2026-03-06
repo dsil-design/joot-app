@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmailDetailPanel } from "@/components/page-specific/email-detail-panel"
 import { useEmailHubActions } from "@/hooks/use-email-hub-actions"
-import { useTransactions } from "@/hooks"
+import { useCreateAndLink } from "@/hooks/use-create-and-link"
 import {
   CreateFromImportDialog,
   type CreateFromImportData,
@@ -17,7 +17,6 @@ import {
 } from "@/components/page-specific/link-to-existing-dialog"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { ArrowLeft } from "lucide-react"
-import { toast } from "sonner"
 
 export default function EmailDetailPage({
   params,
@@ -42,7 +41,11 @@ export default function EmailDetailPage({
       setEmailTx((prev) => prev ? { ...prev, ...data } as EmailTransactionRow : prev)
     },
   })
-  const { createTransaction } = useTransactions()
+  const { createAndLink } = useCreateAndLink(async (compositeId, txId) => {
+    const emailId = compositeId.replace("email:", "")
+    await linkToTransaction(emailId, txId)
+    router.push(backUrl)
+  })
 
   // Resolve params
   React.useEffect(() => {
@@ -93,37 +96,7 @@ export default function EmailDetailPage({
     setCreateDialogOpen(true)
   }
 
-  const handleCreateConfirm = async (
-    compositeId: string,
-    transactionData: {
-      description: string
-      amount: number
-      currency: string
-      date: string
-      vendorId?: string
-      paymentMethodId?: string
-      tagIds?: string[]
-      transactionType: string
-    }
-  ) => {
-    const result = await createTransaction({
-      description: transactionData.description,
-      amount: transactionData.amount,
-      originalCurrency: transactionData.currency as "USD" | "THB",
-      transactionDate: transactionData.date,
-      transactionType: transactionData.transactionType as "expense" | "income",
-      vendorId: transactionData.vendorId,
-      paymentMethodId: transactionData.paymentMethodId,
-      tagIds: transactionData.tagIds,
-    })
-
-    if (!result) throw new Error("Failed to create transaction")
-
-    const emailId = compositeId.replace("email:", "")
-    await linkToTransaction(emailId, result.id)
-    toast.success("Transaction created and linked")
-    router.push(backUrl)
-  }
+  const handleCreateConfirm = createAndLink
 
   const handleSearchExisting = (_emailId: string) => {
     setLinkDialogOpen(true)

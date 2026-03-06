@@ -8,7 +8,7 @@ import { useInfiniteScroll, LoadMoreTrigger } from '@/hooks/use-infinite-scroll'
 import { cleanStatementDescription } from '@/lib/utils/statement-description'
 import { formatMatchAmount, formatMatchDate } from '@/lib/utils/match-formatting'
 import { cn } from '@/lib/utils'
-import { Link2, Plus } from 'lucide-react'
+import { Link2, Plus, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 
 interface StatementTransaction {
   index: number
@@ -25,6 +25,7 @@ interface StatementTransaction {
 
 interface StatementTransactionListProps {
   statementId: string
+  paymentMethodType?: string
   onLinkClick?: (item: StatementTransaction) => void
   onCreateClick?: (item: StatementTransaction) => void
   highlightedMatchId?: string | null
@@ -46,13 +47,30 @@ function getStatusBadge(status: string) {
   }
 }
 
+function TransactionTypeIndicator({ type }: { type: string }) {
+  const isCredit = type === 'credit' || type === 'transfer_in'
+  const isTransfer = type === 'transfer_in' || type === 'transfer_out'
+  const Icon = isCredit ? ArrowDownLeft : ArrowUpRight
+
+  return (
+    <span className={cn(
+      "flex items-center gap-0.5 text-[10px] font-medium",
+      isTransfer ? "text-zinc-400" : isCredit ? "text-green-600" : "text-zinc-500"
+    )}>
+      <Icon className="h-3 w-3" />
+    </span>
+  )
+}
+
 export function StatementTransactionList({
   statementId,
+  paymentMethodType,
   onLinkClick,
   onCreateClick,
   highlightedMatchId,
   onRowClick,
 }: StatementTransactionListProps) {
+  const isBankAccount = paymentMethodType === 'bank_account'
   const highlightRef = React.useRef<HTMLDivElement>(null)
 
   const {
@@ -130,8 +148,16 @@ export function StatementTransactionList({
               {formatMatchDate(item.date)}
             </span>
 
+            {/* Direction indicator for bank statements */}
+            {isBankAccount && item.type && (
+              <TransactionTypeIndicator type={item.type} />
+            )}
+
             {/* Description */}
-            <span className="flex-1 min-w-0 truncate">
+            <span className={cn(
+              "flex-1 min-w-0 truncate",
+              isBankAccount && (item.type === 'transfer_in' || item.type === 'transfer_out') && "text-muted-foreground"
+            )}>
               {cleanStatementDescription(item.description)}
             </span>
 

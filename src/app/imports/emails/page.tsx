@@ -8,7 +8,7 @@ import { useEmailHubStats } from "@/hooks/use-email-hub-stats"
 import { useEmailTransactions, fetchAllFilteredIds, type EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { useEmailSync } from "@/hooks/use-email-sync"
 import { useEmailHubActions } from "@/hooks/use-email-hub-actions"
-import { useTransactions } from "@/hooks"
+import { useCreateAndLink } from "@/hooks/use-create-and-link"
 import { EmailHubFilterBar } from "@/components/page-specific/email-hub-filter-bar"
 import { EmailHubStatsBar } from "@/components/page-specific/email-hub-stats-bar"
 import {
@@ -97,8 +97,12 @@ export default function EmailHubPage() {
     },
   })
 
-  // Transaction creation hook
-  const { createTransaction } = useTransactions()
+  // Create + link hook
+  const { createAndLink } = useCreateAndLink(async (compositeId, txId) => {
+    const emailId = compositeId.replace("email:", "")
+    await linkToTransaction(emailId, txId)
+    refetchStats()
+  })
 
   // Handle sync (IMAP fetch only, no AI)
   const handleSyncNow = async () => {
@@ -203,38 +207,7 @@ export default function EmailHubPage() {
   }
 
   // Handle create+link confirmation
-  const handleCreateConfirm = async (
-    compositeId: string,
-    transactionData: {
-      description: string
-      amount: number
-      currency: string
-      date: string
-      vendorId?: string
-      paymentMethodId?: string
-      tagIds?: string[]
-      transactionType: string
-    }
-  ) => {
-    const result = await createTransaction({
-      description: transactionData.description,
-      amount: transactionData.amount,
-      originalCurrency: transactionData.currency as "USD" | "THB",
-      transactionDate: transactionData.date,
-      transactionType: transactionData.transactionType as "expense" | "income",
-      vendorId: transactionData.vendorId,
-      paymentMethodId: transactionData.paymentMethodId,
-      tagIds: transactionData.tagIds,
-    })
-
-    if (!result) throw new Error("Failed to create transaction")
-
-    // Extract emailId from compositeId
-    const emailId = compositeId.replace("email:", "")
-    await linkToTransaction(emailId, result.id)
-    toast.success("Transaction created and linked")
-    refetchStats()
-  }
+  const handleCreateConfirm = createAndLink
 
   // Handle process (extract) for unprocessed emails
   const handleProcess = (emailId: string) => {

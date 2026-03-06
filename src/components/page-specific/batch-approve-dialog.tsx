@@ -30,36 +30,20 @@ export interface BatchApproveItem {
 /**
  * BatchApproveDialog props
  */
+export interface SourceBreakdown {
+  email: number
+  statement: number
+  merged: number
+}
+
 export interface BatchApproveDialogProps {
-  /**
-   * Whether the dialog is open
-   */
   open: boolean
-
-  /**
-   * Callback when dialog closed
-   */
   onOpenChange: (open: boolean) => void
-
-  /**
-   * Items to approve
-   */
   items: BatchApproveItem[]
-
-  /**
-   * Callback when confirmed
-   */
   onConfirm: () => Promise<void>
-
-  /**
-   * Title override
-   */
   title?: string
-
-  /**
-   * Description override
-   */
   description?: string
+  sourceBreakdown?: SourceBreakdown
 }
 
 /**
@@ -106,6 +90,7 @@ export function BatchApproveDialog({
   onConfirm,
   title = "Approve All High-Confidence Matches",
   description,
+  sourceBreakdown,
 }: BatchApproveDialogProps) {
   const [isProcessing, setIsProcessing] = React.useState(false)
   const [progress, setProgress] = React.useState(0)
@@ -196,6 +181,17 @@ export function BatchApproveDialog({
               ))}
             </div>
           </div>
+
+          {/* Source breakdown */}
+          {sourceBreakdown && (sourceBreakdown.email > 0 || sourceBreakdown.statement > 0 || sourceBreakdown.merged > 0) && (
+            <div className="text-sm text-muted-foreground">
+              {[
+                sourceBreakdown.statement > 0 && `${sourceBreakdown.statement} from statements`,
+                sourceBreakdown.email > 0 && `${sourceBreakdown.email} from emails`,
+                sourceBreakdown.merged > 0 && `${sourceBreakdown.merged} cross-source`,
+              ].filter(Boolean).join(", ")}
+            </div>
+          )}
 
           {/* Preview list */}
           <div>

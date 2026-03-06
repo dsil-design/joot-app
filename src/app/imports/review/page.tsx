@@ -20,6 +20,7 @@ import {
 import {
   BatchApproveDialog,
   type BatchApproveItem,
+  type SourceBreakdown,
 } from "@/components/page-specific/batch-approve-dialog"
 import {
   LinkToExistingDialog,
@@ -34,8 +35,7 @@ import {
   LoadMoreTrigger,
 } from "@/hooks/use-infinite-scroll"
 import { useMatchActions } from "@/hooks/use-match-actions"
-import { useTransactions } from "@/hooks"
-import { toast } from "sonner"
+import { useCreateAndLink } from "@/hooks/use-create-and-link"
 import {
   ContextBreadcrumb,
 } from "@/components/page-specific/context-breadcrumb"
@@ -44,26 +44,22 @@ import {
   FileText,
   Clock,
   AlertCircle,
-  ArrowLeft,
+  CalendarDays,
   RefreshCw,
 } from "lucide-react"
 import Link from "next/link"
 import { getConfidenceLevel } from "@/components/ui/confidence-indicator"
 
-/**
- * Summary stats for the review queue
- */
 interface QueueStats {
   total: number
   pending: number
   highConfidence: number
   mediumConfidence: number
   lowConfidence: number
+  thisWeekCount?: number
+  resolvedCount?: number
 }
 
-/**
- * Fetch matches from API
- */
 async function fetchMatches(
   page: number,
   limit: number,
@@ -95,19 +91,16 @@ async function fetchMatches(
 
   try {
     const response = await fetch(`/api/imports/queue?${params.toString()}`)
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch review queue')
-    }
+    if (!response.ok) throw new Error('Failed to fetch review queue')
 
     const data = await response.json()
 
-    // Transform API response to MatchCardData format
     const items: MatchCardData[] = data.items.map((item: {
       id: string
       statementTransaction: { date: string; description: string; amount: number; currency: string; sourceFilename?: string }
       statementFilename: string
       paymentMethod: { id: string; name: string } | null
+      paymentMethodType?: string
       matchedTransaction?: { id: string; date: string; amount: number; currency: string; vendor_name?: string; description?: string; payment_method_name?: string }
       confidence: number
       confidenceLevel: 'high' | 'medium' | 'low' | 'none'
@@ -154,50 +147,31 @@ async function fetchMatches(
         highConfidence: 0,
         mediumConfidence: 0,
         lowConfidence: 0,
+        thisWeekCount: 0,
+        resolvedCount: 0,
       },
     }
   }
 }
 
-/**
- * Review Queue Page
- *
- * Main page for reviewing and approving/rejecting matches.
- * Features:
- * - Filter bar with status, currency, confidence, date range, search
- * - Summary stats cards
- * - Infinite scroll list of match cards
- * - Batch approve functionality
- * - Responsive design
- */
 export default function ReviewQueuePage() {
-  // Filter state
   const [filters, setFilters] = useReviewQueueFilters()
-
-  // Selection state for batch operations
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
-
-  // Batch approve dialog
   const [batchDialogOpen, setBatchDialogOpen] = React.useState(false)
-
-  // Link to existing dialog
   const [linkDialogOpen, setLinkDialogOpen] = React.useState(false)
   const [linkingItemId, setLinkingItemId] = React.useState<string | null>(null)
-
-  // Create from import dialog
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [createDialogData, setCreateDialogData] = React.useState<CreateFromImportData | null>(null)
-
-  // Stats state
   const [stats, setStats] = React.useState<QueueStats>({
     total: 0,
     pending: 0,
     highConfidence: 0,
     mediumConfidence: 0,
     lowConfidence: 0,
+    thisWeekCount: 0,
+    resolvedCount: 0,
   })
 
-  // Infinite scroll
   const {
     items,
     isLoading,
@@ -229,7 +203,6 @@ export default function ReviewQueuePage() {
     keyExtractor: (item) => item.id,
   })
 
-  // Match actions hook
   const {
     approve,
     reject,
@@ -253,26 +226,20 @@ export default function ReviewQueuePage() {
     },
   })
 
-  // Handle selection change
   const handleSelectionChange = (id: string, selected: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      if (selected) {
-        next.add(id)
-      } else {
-        next.delete(id)
-      }
+      if (selected) next.add(id)
+      else next.delete(id)
       return next
     })
   }
 
-  // Handle "Link to Existing" click
   const handleLinkManually = (id: string) => {
     setLinkingItemId(id)
     setLinkDialogOpen(true)
   }
 
-  // Handle link confirmation (supports multiple transaction IDs)
   const handleLinkConfirm = async (transactionIds: string[]) => {
     if (!linkingItemId) return
     for (const txId of transactionIds) {
@@ -282,10 +249,8 @@ export default function ReviewQueuePage() {
     setLinkingItemId(null)
   }
 
-  // Transaction creation hook
-  const { createTransaction } = useTransactions()
+  const { createAndLink } = useCreateAndLink(linkToExisting)
 
-  // Handle "Create as New" click - opens pre-filled dialog
   const handleCreateAsNew = (id: string) => {
     const item = items.find((i) => i.id === id)
     if (!item) return
@@ -299,48 +264,12 @@ export default function ReviewQueuePage() {
     setCreateDialogOpen(true)
   }
 
-  // Handle create+link confirmation from dialog
-  const handleCreateConfirm = async (
-    compositeId: string,
-    transactionData: {
-      description: string
-      amount: number
-      currency: string
-      date: string
-      vendorId?: string
-      paymentMethodId?: string
-      tagIds?: string[]
-      transactionType: string
-    }
-  ) => {
-    // Step 1: Create the transaction via Supabase
-    const result = await createTransaction({
-      description: transactionData.description,
-      amount: transactionData.amount,
-      originalCurrency: transactionData.currency as "USD" | "THB",
-      transactionDate: transactionData.date,
-      transactionType: transactionData.transactionType as "expense" | "income",
-      vendorId: transactionData.vendorId,
-      paymentMethodId: transactionData.paymentMethodId,
-      tagIds: transactionData.tagIds,
-    })
+  const handleCreateConfirm = createAndLink
 
-    if (!result) {
-      throw new Error("Failed to create transaction")
-    }
-
-    // Step 2: Link the import item to the new transaction
-    await linkToExisting(compositeId, result.id)
-
-    toast.success("Transaction created and linked")
-  }
-
-  // Handle "Import as New" click (legacy - for ready-to-import variant)
   const handleImport = (id: string) => {
     handleCreateAsNew(id)
   }
 
-  // Get the linking item data for the dialog
   const linkingItem: LinkSourceItem | null = React.useMemo(() => {
     if (!linkingItemId) return null
     const item = items.find((i) => i.id === linkingItemId)
@@ -354,21 +283,23 @@ export default function ReviewQueuePage() {
     }
   }, [linkingItemId, items])
 
-  // Get high-confidence items for batch approve
-  const highConfidenceItems = items.filter(
+  // Split items into matches and new transactions
+  const matchItems = items.filter((item) => !item.isNew)
+  const newItems = items.filter((item) => item.isNew)
+
+  // High-confidence items for batch approve (matches section only)
+  const highConfidenceItems = matchItems.filter(
     (item) =>
       item.status === "pending" &&
       getConfidenceLevel(item.confidence) === "high"
   )
 
-  // Handle batch approve
   const handleBatchApprove = async () => {
     const ids = highConfidenceItems.map((item) => item.id)
     await batchApprove(ids)
     setBatchDialogOpen(false)
   }
 
-  // Batch approve items for dialog
   const batchApproveItems: BatchApproveItem[] = highConfidenceItems.map(
     (item) => ({
       id: item.id,
@@ -380,26 +311,50 @@ export default function ReviewQueuePage() {
     })
   )
 
+  const batchSourceBreakdown: SourceBreakdown = React.useMemo(() => {
+    const breakdown = { email: 0, statement: 0, merged: 0 }
+    for (const item of highConfidenceItems) {
+      if (item.source === "email") breakdown.email++
+      else if (item.source === "merged") breakdown.merged++
+      else breakdown.statement++
+    }
+    return breakdown
+  }, [highConfidenceItems])
+
+  // Stat card click handlers
+  const handleStatClick = (filter: Partial<ReviewQueueFilters>) => {
+    setFilters({ ...filters, ...filter })
+  }
+
+  // Ready to approve count (pending + high confidence)
+  const readyToApprove = items.filter(
+    (item) => item.status === "pending" && getConfidenceLevel(item.confidence) === "high"
+  ).length
+
+  const renderMatchCard = (item: MatchCardData) => (
+    <MatchCard
+      key={item.id}
+      data={item}
+      selected={selectedIds.has(item.id)}
+      loading={isProcessing(item.id)}
+      onApprove={(id) => approve(id)}
+      onReject={(id) => reject(id)}
+      onLinkManually={handleLinkManually}
+      onImport={handleImport}
+      onCreateAsNew={handleCreateAsNew}
+      onSelectionChange={handleSelectionChange}
+    />
+  )
+
   return (
     <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            asChild
-          >
-            <Link href="/imports">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Review Queue</h1>
-            <p className="text-sm text-muted-foreground">
-              Review and approve transaction matches
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">Review Queue</h1>
+          <p className="text-sm text-muted-foreground">
+            Review and approve transaction matches
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -414,49 +369,40 @@ export default function ReviewQueuePage() {
             />
             Refresh
           </Button>
-
-          {highConfidenceItems.length > 0 && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setBatchDialogOpen(true)}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Approve All High ({highConfidenceItems.length})
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Stats cards */}
+      {/* Stats cards — user-facing labels */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
-          icon={<FileText className="h-5 w-5" />}
-          label="Total"
-          value={stats.total}
-          isLoading={isInitialLoading}
-        />
-        <StatCard
           icon={<Clock className="h-5 w-5" />}
-          label="Pending"
+          label="Pending Review"
           value={stats.pending}
           isLoading={isInitialLoading}
-          className="text-amber-600"
+          className="text-amber-600 cursor-pointer hover:ring-1 hover:ring-amber-200 rounded-lg"
+          onClick={() => handleStatClick({ status: "pending" })}
         />
         <StatCard
           icon={<CheckCircle2 className="h-5 w-5" />}
-          label="High Confidence"
-          value={stats.highConfidence}
+          label="Ready to Approve"
+          value={readyToApprove}
           isLoading={isInitialLoading}
-          className="text-green-600"
+          className="text-green-600 cursor-pointer hover:ring-1 hover:ring-green-200 rounded-lg"
+          onClick={() => handleStatClick({ status: "pending", confidence: "high" })}
         />
         <StatCard
-          icon={<AlertCircle className="h-5 w-5" />}
-          label="Needs Review"
-          value={stats.mediumConfidence + stats.lowConfidence}
+          icon={<CalendarDays className="h-5 w-5" />}
+          label="This Week"
+          value={stats.thisWeekCount ?? 0}
           isLoading={isInitialLoading}
-          className="text-red-600"
+          className="cursor-pointer hover:ring-1 hover:ring-zinc-200 rounded-lg"
+        />
+        <StatCard
+          icon={<FileText className="h-5 w-5" />}
+          label="Resolved"
+          value={stats.resolvedCount ?? 0}
+          isLoading={isInitialLoading}
+          className="text-zinc-500 cursor-pointer hover:ring-1 hover:ring-zinc-200 rounded-lg"
         />
       </div>
 
@@ -491,17 +437,15 @@ export default function ReviewQueuePage() {
         </div>
       )}
 
-      {/* Match cards list */}
-      <div className="space-y-4">
+      {/* Match cards — two-section layout */}
+      <div className="space-y-6">
         {isInitialLoading ? (
-          // Loading skeletons
           <>
             <MatchCardSkeleton />
             <MatchCardSkeleton />
             <MatchCardSkeleton />
           </>
         ) : items.length === 0 ? (
-          // Empty state
           <div className="text-center py-16">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-medium mb-2">No matches to review</h3>
@@ -513,25 +457,46 @@ export default function ReviewQueuePage() {
                 : "Upload a statement to start matching transactions."}
             </p>
             <Button asChild variant="outline">
-              <Link href="/imports">← Coverage</Link>
+              <Link href="/imports">← Overview</Link>
             </Button>
           </div>
         ) : (
-          // Match cards
-          items.map((item) => (
-            <MatchCard
-              key={item.id}
-              data={item}
-              selected={selectedIds.has(item.id)}
-              loading={isProcessing(item.id)}
-              onApprove={(id) => approve(id)}
-              onReject={(id) => reject(id)}
-              onLinkManually={handleLinkManually}
-              onImport={handleImport}
-              onCreateAsNew={handleCreateAsNew}
-              onSelectionChange={handleSelectionChange}
-            />
-          ))
+          <>
+            {/* Proposed Matches section */}
+            {matchItems.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Proposed Matches ({matchItems.length})
+                  </h2>
+                  {highConfidenceItems.length > 0 && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setBatchDialogOpen(true)}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Approve All High ({highConfidenceItems.length})
+                    </Button>
+                  )}
+                </div>
+                {matchItems.map(renderMatchCard)}
+              </div>
+            )}
+
+            {/* New Transactions section */}
+            {newItems.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    New Transactions ({newItems.length})
+                  </h2>
+                </div>
+                {newItems.map(renderMatchCard)}
+              </div>
+            )}
+          </>
         )}
 
         {/* Load more trigger */}
@@ -548,6 +513,7 @@ export default function ReviewQueuePage() {
         onOpenChange={setBatchDialogOpen}
         items={batchApproveItems}
         onConfirm={handleBatchApprove}
+        sourceBreakdown={batchSourceBreakdown}
       />
 
       {/* Link to existing dialog */}
@@ -574,4 +540,3 @@ export default function ReviewQueuePage() {
     </div>
   )
 }
-

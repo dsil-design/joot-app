@@ -8,11 +8,37 @@ import { useStatements } from '@/hooks/use-statements'
 import { StatementsStatsBar } from '@/components/page-specific/statements-stats-bar'
 import { StatementRow } from '@/components/page-specific/statement-row'
 import { UploadStatementDialog } from '@/components/page-specific/upload-statement-dialog'
+import { cn } from '@/lib/utils'
+import Link from 'next/link'
+
+type TypeFilter = 'all' | 'credit_card' | 'bank_account'
+
+const typeFilterTabs: { value: TypeFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'credit_card', label: 'Credit Cards' },
+  { value: 'bank_account', label: 'Bank Accounts' },
+]
 
 export default function StatementsPage() {
   const { groups, stats, isLoading, error, refetch, triggerProcessing } = useStatements()
 
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+
+  // Filter groups by payment method type
+  const filteredGroups = typeFilter === 'all'
+    ? groups
+    : groups.filter(g => g.paymentMethodType === typeFilter)
+
+  // Count by type for tab labels
+  const creditCardCount = groups.filter(g => g.paymentMethodType === 'credit_card').reduce((sum, g) => sum + g.statements.length, 0)
+  const bankAccountCount = groups.filter(g => g.paymentMethodType === 'bank_account').reduce((sum, g) => sum + g.statements.length, 0)
+
+  const tabCounts: Record<TypeFilter, number> = {
+    all: stats.total,
+    credit_card: creditCardCount,
+    bank_account: bankAccountCount,
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,6 +57,29 @@ export default function StatementsPage() {
       ) : stats.total > 0 ? (
         <StatementsStatsBar stats={stats} />
       ) : null}
+
+      {/* Type filter tabs */}
+      {!isLoading && stats.total > 0 && (
+        <div className="flex items-center gap-2">
+          {typeFilterTabs.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => setTypeFilter(tab.value)}
+              className={cn(
+                "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
+                typeFilter === tab.value
+                  ? "bg-zinc-900 text-white"
+                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+              )}
+            >
+              {tab.label}
+              <span className="ml-1.5 text-xs opacity-70">
+                {tabCounts[tab.value]}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Error state */}
       {error && (
@@ -66,8 +115,15 @@ export default function StatementsPage() {
         </div>
       )}
 
+      {/* Filtered empty state */}
+      {!isLoading && stats.total > 0 && filteredGroups.length === 0 && (
+        <div className="text-center py-8 text-sm text-muted-foreground">
+          No {typeFilter === 'credit_card' ? 'credit card' : 'bank account'} statements found.
+        </div>
+      )}
+
       {/* Grouped list */}
-      {!isLoading && groups.map(group => (
+      {!isLoading && filteredGroups.map(group => (
         <div key={group.paymentMethodId}>
           <h3 className="text-sm font-medium text-muted-foreground mb-3">
             {group.paymentMethodName}
@@ -77,6 +133,7 @@ export default function StatementsPage() {
               <StatementRow
                 key={stmt.id}
                 statement={stmt}
+                paymentMethodType={group.paymentMethodType}
                 onProcess={triggerProcessing}
               />
             ))}

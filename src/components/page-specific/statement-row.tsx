@@ -5,11 +5,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
-import { Loader2 } from 'lucide-react'
+import { Loader2, CreditCard, Landmark } from 'lucide-react'
 import type { StatementUpload } from '@/hooks/use-statements'
 
 interface StatementRowProps {
   statement: StatementUpload
+  paymentMethodType?: string
   onProcess: (id: string) => void
 }
 
@@ -36,7 +37,8 @@ function getStatusBadge(status: string) {
   }
 }
 
-export function StatementRow({ statement, onProcess }: StatementRowProps) {
+export function StatementRow({ statement, paymentMethodType, onProcess }: StatementRowProps) {
+  const TypeIcon = paymentMethodType === 'bank_account' ? Landmark : CreditCard
   const extracted = statement.transactions_extracted ?? 0
   const matched = statement.transactions_matched ?? 0
   const newCount = statement.transactions_new ?? 0
@@ -49,6 +51,7 @@ export function StatementRow({ statement, onProcess }: StatementRowProps) {
           {/* Left side: file info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
+              <TypeIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
               <span className="text-sm font-medium truncate">{statement.filename}</span>
               {getStatusBadge(statement.status)}
             </div>
