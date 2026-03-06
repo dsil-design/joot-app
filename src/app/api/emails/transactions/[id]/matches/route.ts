@@ -73,7 +73,8 @@ export async function GET(
         .select(`
           id, description, amount, original_currency, transaction_date,
           vendor_id, vendors:vendor_id (id, name),
-          payment_methods:payment_method_id (id, name)
+          payment_methods:payment_method_id (id, name),
+          source_email_transaction_id, source_statement_upload_id
         `)
         .eq('id', emailTx.matched_transaction_id)
         .single()
@@ -118,7 +119,8 @@ export async function GET(
       .select(`
         id, description, amount, original_currency, transaction_date,
         vendor_id, vendors:vendor_id (id, name),
-        payment_methods:payment_method_id (id, name)
+        payment_methods:payment_method_id (id, name),
+        source_email_transaction_id, source_statement_upload_id
       `)
       .eq('user_id', user.id)
       .gte('transaction_date', dateFrom.toISOString().split('T')[0])

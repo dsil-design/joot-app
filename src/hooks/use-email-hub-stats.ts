@@ -36,7 +36,7 @@ const emptyStats: EmailHubStats = {
 /**
  * Hook to fetch email hub statistics
  */
-export function useEmailHubStats(period: string = "30d"): UseEmailHubStatsResult {
+export function useEmailHubStats(): UseEmailHubStatsResult {
   const [stats, setStats] = React.useState<EmailHubStats | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -46,7 +46,7 @@ export function useEmailHubStats(period: string = "30d"): UseEmailHubStatsResult
     setError(null)
 
     try {
-      const response = await fetch(`/api/emails/stats?period=${period}`)
+      const response = await fetch("/api/emails/stats")
       if (!response.ok) {
         throw new Error("Failed to fetch email statistics")
       }
@@ -58,7 +58,7 @@ export function useEmailHubStats(period: string = "30d"): UseEmailHubStatsResult
     } finally {
       setIsLoading(false)
     }
-  }, [period])
+  }, [])
 
   React.useEffect(() => {
     fetchStats()

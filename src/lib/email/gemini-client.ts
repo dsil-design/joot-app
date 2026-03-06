@@ -1,58 +1,139 @@
 /**
- * Shared Gemini AI Client
+ * Shared AI Client
  *
- * Provides a shared utility for calling Google Gemini API.
- * Used by both the AI extractor (gemini-ai.ts) and the AI classifier (ai-classifier.ts).
+ * Provides a shared utility for calling Anthropic Claude API.
+ * Used by the AI extractor, AI classifier, and AI analysis service.
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Anthropic from '@anthropic-ai/sdk';
 
-export const GEMINI_MODEL = 'gemini-2.5-flash';
+export const AI_MODEL = 'claude-haiku-4-5-20251001';
 export const MAX_BODY_LENGTH = 8000;
 export const REQUEST_TIMEOUT_MS = 15000;
 
 /**
- * Call Gemini API with timeout and JSON response parsing
+ * Token usage metadata returned alongside parsed AI responses
  */
-export async function callGemini<T>(prompt: string): Promise<T> {
-  const apiKey = process.env.GEMINI_API_KEY;
+export interface GeminiTokenUsage {
+  promptTokens: number;
+  responseTokens: number;
+}
+
+/**
+ * Result from callGemini including parsed data and token usage
+ */
+export interface GeminiResult<T> {
+  data: T;
+  tokenUsage: GeminiTokenUsage;
+  durationMs: number;
+}
+
+/**
+ * Call Claude API with timeout and JSON response parsing.
+ * Returns parsed data, token usage, and call duration.
+ */
+export async function callGemini<T>(prompt: string): Promise<GeminiResult<T>> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY not configured');
+    throw new Error('ANTHROPIC_API_KEY not configured');
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: GEMINI_MODEL,
-    generationConfig: {
-      temperature: 0.1,
-      responseMimeType: 'application/json',
-    },
-  });
+  const client = new Anthropic({ apiKey });
 
   // Race between API call and timeout
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('Gemini API timeout')), REQUEST_TIMEOUT_MS);
+    setTimeout(() => reject(new Error('Claude API timeout')), REQUEST_TIMEOUT_MS);
   });
 
+  const startTime = Date.now();
   const result = await Promise.race([
-    model.generateContent(prompt),
+    client.messages.create({
+      model: AI_MODEL,
+      max_tokens: 1024,
+      messages: [
+        {
+          role: 'user',
+          content: prompt + '\n\nIMPORTANT: Respond with ONLY valid JSON, no markdown code fences or extra text.',
+        },
+      ],
+    }),
     timeoutPromise,
   ]);
+  const durationMs = Date.now() - startTime;
 
-  const text = result.response.text();
-  return JSON.parse(text) as T;
+  // Extract text from response
+  const textBlock = result.content.find((block) => block.type === 'text');
+  if (!textBlock || textBlock.type !== 'text') {
+    throw new Error('No text content in Claude response');
+  }
+
+  // Strip markdown code fences if present
+  let text = textBlock.text.trim();
+  if (text.startsWith('```')) {
+    text = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
+  }
+
+  const parsed = JSON.parse(text) as T;
+
+  const tokenUsage: GeminiTokenUsage = {
+    promptTokens: result.usage?.input_tokens ?? 0,
+    responseTokens: result.usage?.output_tokens ?? 0,
+  };
+
+  return { data: parsed, tokenUsage, durationMs };
 }
 
 /**
- * Check if Gemini API is available (API key configured)
+ * Check if AI API is available (API key configured)
  */
 export function isGeminiAvailable(): boolean {
-  return !!process.env.GEMINI_API_KEY;
+  return !!process.env.ANTHROPIC_API_KEY;
 }
 
 /**
- * Truncate email body to max length for API calls
+ * Convert HTML to plain text by stripping tags, styles, and scripts.
+ */
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|div|tr|li|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&\w+;/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n/g, '\n')
+    .trim();
+}
+
+/**
+ * Truncate email body to max length for API calls.
+ *
+ * Prefers text_body when it contains meaningful content. Falls back to
+ * stripping HTML to plain text — this avoids sending raw CSS/markup that
+ * wastes the token budget and hides the actual email content.
  */
 export function truncateBody(textBody: string | null, htmlBody: string | null): string {
-  return (textBody || htmlBody || '').slice(0, MAX_BODY_LENGTH);
+  // Check if text body has meaningful content (not just "enable HTML" boilerplate)
+  const textUsable = textBody
+    && textBody.length > 50
+    && !/please enable html/i.test(textBody);
+
+  if (textUsable) {
+    return textBody!.slice(0, MAX_BODY_LENGTH);
+  }
+
+  // Strip HTML to plain text to avoid wasting tokens on CSS/markup
+  if (htmlBody) {
+    return htmlToPlainText(htmlBody).slice(0, MAX_BODY_LENGTH);
+  }
+
+  return (textBody || '').slice(0, MAX_BODY_LENGTH);
 }

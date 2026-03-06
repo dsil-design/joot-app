@@ -13,6 +13,7 @@ interface ActiveFilterChipsProps {
   searchKeyword?: string
   vendorIds?: string[]
   paymentMethodIds?: string[]
+  sourceType?: "any" | "email" | "statement" | "none"
   vendors?: Array<{ id: string; name: string }>
   paymentMethods?: Array<{ id: string; name: string }>
   onDateRangeClick?: () => void
@@ -23,6 +24,7 @@ interface ActiveFilterChipsProps {
   onRemovePaymentMethod?: (paymentMethodId: string) => void
   onRemoveAllVendors?: () => void
   onRemoveAllPaymentMethods?: () => void
+  onRemoveSourceType?: () => void
   onClearAll: () => void
   resultCount: number
 }
@@ -33,6 +35,7 @@ export function ActiveFilterChips({
   searchKeyword,
   vendorIds = [],
   paymentMethodIds = [],
+  sourceType,
   vendors = [],
   paymentMethods = [],
   onDateRangeClick,
@@ -43,6 +46,7 @@ export function ActiveFilterChips({
   onRemovePaymentMethod,
   onRemoveAllVendors,
   onRemoveAllPaymentMethods,
+  onRemoveSourceType,
   onClearAll,
   resultCount,
 }: ActiveFilterChipsProps) {
@@ -51,7 +55,8 @@ export function ActiveFilterChips({
     transactionType !== 'all' ||
     searchKeyword ||
     vendorIds.length > 0 ||
-    paymentMethodIds.length > 0
+    paymentMethodIds.length > 0 ||
+    sourceType
 
   if (!hasFilters) return null
 
@@ -176,6 +181,26 @@ export function ActiveFilterChips({
                 onClick={onRemoveAllPaymentMethods}
                 className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
                 aria-label="Remove all payment method filters"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+
+          {/* Source Type Chip */}
+          {sourceType && (
+            <Badge
+              variant="secondary"
+              className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
+            >
+              {sourceType === 'any' && 'Source: Any'}
+              {sourceType === 'email' && 'Source: Email'}
+              {sourceType === 'statement' && 'Source: Statement'}
+              {sourceType === 'none' && 'Unlinked'}
+              <button
+                onClick={onRemoveSourceType}
+                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                aria-label="Remove source filter"
               >
                 <X className="h-3 w-3" />
               </button>

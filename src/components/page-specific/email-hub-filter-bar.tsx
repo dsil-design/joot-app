@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
-import { Search, X, Filter } from "lucide-react"
+import { Search, X, Filter, Play, ArrowUpDown } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 import {
   type EmailHubFilters,
@@ -24,10 +24,18 @@ import {
   defaultEmailHubFilters,
   hasActiveFilters,
 } from "@/hooks/use-email-hub-filters"
+import {
+  type DatePresetKey,
+  PRESET_LABELS,
+  getPresetRange,
+  detectPreset,
+} from "@/lib/utils/date-filters"
 
 interface EmailHubFilterBarProps {
   filters: EmailHubFilters
   onFiltersChange: (filters: EmailHubFilters) => void
+  onSortToggle: () => void
+  totalMatches?: number | null
   className?: string
 }
 
@@ -71,33 +79,60 @@ const sortOptions: Array<{ value: EmailHubSort; label: string }> = [
   { value: "confidence_desc", label: "Highest Confidence" },
 ]
 
+const DATE_PRESET_TOGGLES: Array<{ value: DatePresetKey; label: string }> = [
+  { value: "this-month", label: PRESET_LABELS["this-month"] },
+  { value: "last-month", label: PRESET_LABELS["last-month"] },
+  { value: "last-30-days", label: PRESET_LABELS["last-30-days"] },
+  { value: "this-year", label: PRESET_LABELS["this-year"] },
+  { value: "last-year", label: PRESET_LABELS["last-year"] },
+  { value: "all-time", label: PRESET_LABELS["all-time"] },
+]
+
+/** Check if two filter objects differ (excluding dateRange which uses deep compare) */
+function filtersChanged(a: EmailHubFilters, b: EmailHubFilters): boolean {
+  return (
+    a.status !== b.status ||
+    a.classification !== b.classification ||
+    a.currency !== b.currency ||
+    a.confidence !== b.confidence ||
+    a.search !== b.search ||
+    a.sort !== b.sort ||
+    a.dateRange?.from?.getTime() !== b.dateRange?.from?.getTime() ||
+    a.dateRange?.to?.getTime() !== b.dateRange?.to?.getTime()
+  )
+}
+
 export function EmailHubFilterBar({
   filters,
   onFiltersChange,
+  onSortToggle,
+  totalMatches,
   className,
 }: EmailHubFilterBarProps) {
-  const [searchInput, setSearchInput] = React.useState(filters.search)
+  // Draft state — changes don't take effect until Apply
+  const [draft, setDraft] = React.useState<EmailHubFilters>(filters)
 
-  // Debounced search
+  // Sync draft when filters change externally (e.g. stat card click)
   React.useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (searchInput !== filters.search) {
-        onFiltersChange({ ...filters, search: searchInput })
-      }
-    }, 300)
-    return () => clearTimeout(timeoutId)
-  }, [searchInput, filters, onFiltersChange])
+    setDraft(filters)
+  }, [filters])
 
-  const handleFilterChange = (
-    key: keyof EmailHubFilters,
-    value: string | DateRange | undefined
-  ) => {
-    onFiltersChange({ ...filters, [key]: value })
+  const isDirty = filtersChanged(draft, filters)
+
+  const handleApply = () => {
+    onFiltersChange(draft)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && isDirty) {
+      handleApply()
+    }
   }
 
   const handleClearAll = () => {
-    setSearchInput("")
-    onFiltersChange(defaultEmailHubFilters)
+    const cleared = defaultEmailHubFilters
+    setDraft(cleared)
+    onFiltersChange(cleared)
   }
 
   const activeFilterCount = [
@@ -109,25 +144,28 @@ export function EmailHubFilterBar({
     filters.search !== "",
   ].filter(Boolean).length
 
+  const activePreset = detectPreset(draft.dateRange)
+
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-4", className)} onKeyDown={handleKeyDown}>
+      {/* Main filters row */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search vendor, subject..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search vendor, subject, ID..."
+            value={draft.search}
+            onChange={(e) => setDraft({ ...draft, search: e.target.value })}
             className="pl-9"
           />
         </div>
 
         {/* Status */}
         <Select
-          value={filters.status}
-          onValueChange={(value) => handleFilterChange("status", value as EmailHubStatus)}
+          value={draft.status}
+          onValueChange={(value) => setDraft({ ...draft, status: value as EmailHubStatus })}
         >
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Status" />
@@ -141,8 +179,8 @@ export function EmailHubFilterBar({
 
         {/* Classification */}
         <Select
-          value={filters.classification}
-          onValueChange={(value) => handleFilterChange("classification", value as EmailHubClassification)}
+          value={draft.classification}
+          onValueChange={(value) => setDraft({ ...draft, classification: value as EmailHubClassification })}
         >
           <SelectTrigger className="w-[170px]">
             <SelectValue placeholder="Type" />
@@ -156,8 +194,8 @@ export function EmailHubFilterBar({
 
         {/* Currency */}
         <Select
-          value={filters.currency}
-          onValueChange={(value) => handleFilterChange("currency", value as EmailHubCurrency)}
+          value={draft.currency}
+          onValueChange={(value) => setDraft({ ...draft, currency: value as EmailHubCurrency })}
         >
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Currency" />
@@ -171,8 +209,8 @@ export function EmailHubFilterBar({
 
         {/* Confidence */}
         <Select
-          value={filters.confidence}
-          onValueChange={(value) => handleFilterChange("confidence", value as EmailHubConfidence)}
+          value={draft.confidence}
+          onValueChange={(value) => setDraft({ ...draft, confidence: value as EmailHubConfidence })}
         >
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Confidence" />
@@ -186,8 +224,8 @@ export function EmailHubFilterBar({
 
         {/* Sort */}
         <Select
-          value={filters.sort}
-          onValueChange={(value) => handleFilterChange("sort", value as EmailHubSort)}
+          value={draft.sort}
+          onValueChange={(value) => setDraft({ ...draft, sort: value as EmailHubSort })}
         >
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Sort" />
@@ -198,15 +236,42 @@ export function EmailHubFilterBar({
             ))}
           </SelectContent>
         </Select>
+      </div>
 
-        {/* Date range */}
+      {/* Date section */}
+      <div className="border-t pt-4 flex flex-wrap items-center gap-2">
+        {DATE_PRESET_TOGGLES.map((preset) => (
+          <Button
+            key={preset.value}
+            variant={activePreset === preset.value ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              const range = getPresetRange(preset.value)
+              setDraft({ ...draft, dateRange: range })
+            }}
+          >
+            {preset.label}
+          </Button>
+        ))}
         <DateRangePicker
-          dateRange={filters.dateRange}
-          onDateRangeChange={(range: DateRange | undefined) => handleFilterChange("dateRange", range)}
+          dateRange={draft.dateRange}
+          onDateRangeChange={(range: DateRange | undefined) => setDraft({ ...draft, dateRange: range })}
           className="w-[260px]"
+          placeholder="Custom range..."
         />
+      </div>
 
-        {/* Clear all */}
+      {/* Actions row */}
+      <div className="flex items-center gap-3">
+        <Button
+          size="sm"
+          onClick={handleApply}
+          disabled={!isDirty}
+        >
+          <Play className="h-3.5 w-3.5 mr-1.5" />
+          Apply
+        </Button>
+
         {hasActiveFilters(filters) && (
           <Button
             variant="ghost"
@@ -218,16 +283,27 @@ export function EmailHubFilterBar({
             Clear All
           </Button>
         )}
-      </div>
 
-      {activeFilterCount > 0 && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Filter className="h-4 w-4" />
-          <span>
-            {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
-          </span>
-        </div>
-      )}
+        {activeFilterCount > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            <span>
+              {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
+              {totalMatches != null && `, ${totalMatches.toLocaleString()} match${totalMatches !== 1 ? "es" : ""}`}
+            </span>
+          </div>
+        )}
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onSortToggle}
+          className="ml-auto text-muted-foreground hover:text-foreground"
+        >
+          <ArrowUpDown className="h-4 w-4 mr-1.5" />
+          {filters.sort === "email_date_asc" ? "Oldest First" : "Newest First"}
+        </Button>
+      </div>
     </div>
   )
 }

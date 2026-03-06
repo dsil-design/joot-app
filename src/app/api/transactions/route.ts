@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server"
 
 export const dynamic = "force-dynamic"
 
+type SourceType = "any" | "email" | "statement" | "none"
+
 interface TransactionFilters {
   datePreset?: string
   dateFrom?: string
@@ -11,6 +13,7 @@ interface TransactionFilters {
   vendorIds?: string[]
   paymentMethodIds?: string[]
   transactionType?: "all" | "expense" | "income"
+  sourceType?: SourceType
 }
 
 export async function GET(request: NextRequest) {
@@ -48,6 +51,7 @@ export async function GET(request: NextRequest) {
       vendorIds: searchParams.get("vendorIds")?.split(",").filter(Boolean).slice(0, 50),
       paymentMethodIds: searchParams.get("paymentMethodIds")?.split(",").filter(Boolean).slice(0, 50),
       transactionType: (searchParams.get("transactionType") as "all" | "expense" | "income") || "all",
+      sourceType: (searchParams.get("sourceType") as SourceType) || undefined,
     }
 
     // Build base query (without tags for now)
@@ -78,6 +82,12 @@ export async function GET(request: NextRequest) {
       case "vendor":
         // Note: Sorting by joined table is complex in Supabase, will need client-side fallback
         query = query.order("vendor_id", { ascending: isAscending })
+        query = query.order("id", { ascending: isAscending })
+        break
+      case "sources":
+        // Sort by source columns — linked transactions sort after/before unlinked
+        query = query.order("source_email_transaction_id", { ascending: isAscending, nullsFirst: !isAscending })
+        query = query.order("source_statement_upload_id", { ascending: isAscending, nullsFirst: !isAscending })
         query = query.order("id", { ascending: isAscending })
         break
       default:
@@ -155,6 +165,24 @@ export async function GET(request: NextRequest) {
       query = query.ilike("description", `%${filters.searchKeyword}%`)
     }
 
+    // Apply source type filter
+    if (filters.sourceType) {
+      switch (filters.sourceType) {
+        case "any":
+          query = query.or("source_email_transaction_id.not.is.null,source_statement_upload_id.not.is.null")
+          break
+        case "email":
+          query = query.not("source_email_transaction_id", "is", null)
+          break
+        case "statement":
+          query = query.not("source_statement_upload_id", "is", null)
+          break
+        case "none":
+          query = query.is("source_email_transaction_id", null).is("source_statement_upload_id", null)
+          break
+      }
+    }
+
     // Fetch one extra to determine if there's a next page
     query = query.limit(pageSize + 1)
 
@@ -229,6 +257,24 @@ export async function GET(request: NextRequest) {
     }
     if (filters.searchKeyword) {
       totalsQuery = totalsQuery.ilike("description", `%${filters.searchKeyword}%`)
+    }
+
+    // Apply source type filter to totals
+    if (filters.sourceType) {
+      switch (filters.sourceType) {
+        case "any":
+          totalsQuery = totalsQuery.or("source_email_transaction_id.not.is.null,source_statement_upload_id.not.is.null")
+          break
+        case "email":
+          totalsQuery = totalsQuery.not("source_email_transaction_id", "is", null)
+          break
+        case "statement":
+          totalsQuery = totalsQuery.not("source_statement_upload_id", "is", null)
+          break
+        case "none":
+          totalsQuery = totalsQuery.is("source_email_transaction_id", null).is("source_statement_upload_id", null)
+          break
+      }
     }
 
     const { data: totalsData, error: totalsError } = await totalsQuery

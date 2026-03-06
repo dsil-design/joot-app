@@ -1,13 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 /**
  * GET /api/emails/stats
  *
- * Returns aggregated statistics for email transactions.
- *
- * Query Parameters:
- * - period: '7d' | '30d' | '90d' | 'ytd' (default: '30d')
+ * Returns aggregated statistics for all email transactions (no date cutoff).
  *
  * Returns:
  * - status_counts: { [status]: number }
@@ -17,7 +14,7 @@ import { createClient } from '@/lib/supabase/server'
  * - sync: { last_sync_at, folder }
  * - waiting_summary: { count, total_amount, primary_currency }
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -26,37 +23,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Parse period
-    const { searchParams } = new URL(request.url)
-    const period = searchParams.get('period') || '30d'
-
-    const validPeriods = ['7d', '30d', '90d', 'ytd']
-    if (!validPeriods.includes(period)) {
-      return NextResponse.json(
-        { error: `Invalid period. Must be one of: ${validPeriods.join(', ')}` },
-        { status: 400 }
-      )
-    }
-
-    // Calculate date cutoff
-    const now = new Date()
-    let cutoffDate: string
-    if (period === 'ytd') {
-      cutoffDate = `${now.getFullYear()}-01-01`
-    } else {
-      const days = parseInt(period)
-      const cutoff = new Date(now)
-      cutoff.setDate(cutoff.getDate() - days)
-      cutoffDate = cutoff.toISOString().split('T')[0]
-    }
-
-    // Fetch all rows from the unified view for the period
+    // Fetch all rows from the unified view (no date cutoff — counts reflect entire database)
     // This includes both processed (email_transactions) and unprocessed (emails only) rows
-    const { data: emails, error: emailsError } = await supabase
+    // Use pagination to avoid Supabase's default 1,000 row limit
+    const PAGE_SIZE = 1000
+
+    const { data: firstPage, error: emailsError } = await supabase
       .from('email_hub_unified')
       .select('status, classification, ai_classification, ai_suggested_skip, extraction_confidence, email_date, amount, currency, processed_at, matched_at, is_processed, email_group_id, is_group_primary, parser_key')
       .eq('user_id', user.id)
-      .gte('email_date', cutoffDate)
+      .range(0, PAGE_SIZE - 1)
 
     if (emailsError) {
       console.error('Error fetching email stats:', emailsError)
@@ -65,6 +41,27 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    let allEmails = firstPage || []
+
+    // Paginate through remaining rows if we hit the page size
+    if (allEmails.length === PAGE_SIZE) {
+      let pageOffset = PAGE_SIZE
+      while (true) {
+        const { data: nextPage } = await supabase
+          .from('email_hub_unified')
+          .select('status, classification, ai_classification, ai_suggested_skip, extraction_confidence, email_date, amount, currency, processed_at, matched_at, is_processed, email_group_id, is_group_primary, parser_key')
+          .eq('user_id', user.id)
+          .range(pageOffset, pageOffset + PAGE_SIZE - 1)
+
+        if (!nextPage || nextPage.length === 0) break
+        allEmails = allEmails.concat(nextPage)
+        if (nextPage.length < PAGE_SIZE) break
+        pageOffset += PAGE_SIZE
+      }
+    }
+
+    const emails = allEmails
 
     // Aggregate in JS (more flexible than complex SQL through Supabase client)
     const statusCounts: Record<string, number> = {}

@@ -72,6 +72,7 @@ export const AI_FEEDBACK_TYPE = {
   SKIP_OVERRIDE: 'skip_override',
   EXTRACTION_CORRECTION: 'extraction_correction',
   UNDO_SKIP: 'undo_skip',
+  SKIP_REASON: 'skip_reason',
 } as const;
 
 export type AiFeedbackType = typeof AI_FEEDBACK_TYPE[keyof typeof AI_FEEDBACK_TYPE];

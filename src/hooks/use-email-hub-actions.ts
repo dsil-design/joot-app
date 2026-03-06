@@ -2,6 +2,34 @@
 
 import * as React from "react"
 import { toast } from "sonner"
+import { SkipFeedbackToast } from "@/components/page-specific/skip-feedback-toast"
+
+/** Split array into chunks of given size */
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size))
+  }
+  return chunks
+}
+
+const SKIP_FEEDBACK_DURATION = 10_000
+
+/** Submit skip reason feedback for one or more email transactions */
+async function submitSkipFeedback(emailTransactionIds: string[], reason: string) {
+  await Promise.allSettled(
+    emailTransactionIds.map((id) =>
+      fetch(`/api/emails/transactions/${id}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          feedback_type: "skip_reason",
+          reason,
+        }),
+      })
+    )
+  )
+}
 
 interface PendingUndo {
   id: string
@@ -28,6 +56,7 @@ export function useEmailHubActions({
 }: UseEmailHubActionsOptions = {}) {
   const [processingId, setProcessingId] = React.useState<string | null>(null)
   const [extractingId, setExtractingId] = React.useState<string | null>(null)
+  const [feedbackProcessingId, setFeedbackProcessingId] = React.useState<string | null>(null)
   const pendingUndosRef = React.useRef<Map<string, PendingUndo>>(new Map())
   const undoSkipRef = React.useRef<(id: string) => void>(() => {})
 
@@ -59,13 +88,16 @@ export function useEmailHubActions({
           throw new Error(data.error || "Failed to skip")
         }
 
+        const result = await response.json()
+        const emailTxId = result.emailTransactionId || id
+
         setProcessingId(null)
 
-        // Toast with undo
+        // Set up undo timer
         const timeoutId = setTimeout(() => {
           clearPendingUndo(id)
           onItemRemove?.(id)
-        }, undoDuration)
+        }, SKIP_FEEDBACK_DURATION)
 
         pendingUndosRef.current.set(id, {
           id,
@@ -74,14 +106,21 @@ export function useEmailHubActions({
           timeoutId,
         })
 
-        toast.success("Email skipped", {
-          description: "Marked as non-transaction.",
-          action: {
-            label: "Undo",
-            onClick: () => undoSkipRef.current(id),
-          },
-          duration: undoDuration,
-        })
+        // Custom toast with feedback options
+        const toastId = toast.custom(
+          (t) =>
+            SkipFeedbackToast({
+              emailTransactionIds: [emailTxId],
+              count: 1,
+              onSubmitFeedback: (ids, reason) => submitSkipFeedback(ids, reason),
+              onUndo: () => {
+                toast.dismiss(t)
+                undoSkipRef.current(id)
+              },
+              onDismiss: () => toast.dismiss(t),
+            }),
+          { duration: SKIP_FEEDBACK_DURATION }
+        )
 
         return true
       } catch (error) {
@@ -94,7 +133,7 @@ export function useEmailHubActions({
         return false
       }
     },
-    [clearPendingUndo, onItemRemove, onStatusChange, undoDuration]
+    [clearPendingUndo, onItemRemove, onStatusChange]
   )
 
   /**
@@ -170,34 +209,56 @@ export function useEmailHubActions({
   )
 
   /**
-   * Batch skip multiple email transactions
+   * Batch skip multiple email transactions.
+   * Handles arbitrarily large lists by chunking into groups of 50 for the API.
    */
   const batchSkip = React.useCallback(
     async (ids: string[]) => {
       setProcessingId("batch")
       ids.forEach((id) => onStatusChange?.(id, "skipped"))
 
-      try {
-        const response = await fetch("/api/emails/transactions/bulk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "skip", ids }),
-        })
+      const chunks = chunkArray(ids, 50)
+      let totalUpdated = 0
+      const allEmailTxIds: string[] = []
 
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || "Failed to batch skip")
+      try {
+        for (const chunk of chunks) {
+          const response = await fetch("/api/emails/transactions/bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "skip", ids: chunk }),
+          })
+
+          if (!response.ok) {
+            const data = await response.json()
+            throw new Error(data.error || "Failed to batch skip")
+          }
+
+          const result = await response.json()
+          totalUpdated += result.updated || chunk.length
+          if (result.emailTransactionIds) {
+            allEmailTxIds.push(...result.emailTransactionIds)
+          }
         }
 
-        const result = await response.json()
         setProcessingId(null)
-
-        toast.success(`${result.updated} email(s) skipped`)
 
         // Remove after delay
         setTimeout(() => {
           ids.forEach((id) => onItemRemove?.(id))
-        }, 1000)
+        }, SKIP_FEEDBACK_DURATION)
+
+        // Custom toast with feedback for the whole batch
+        toast.custom(
+          (t) =>
+            SkipFeedbackToast({
+              emailTransactionIds: allEmailTxIds,
+              count: totalUpdated,
+              onSubmitFeedback: (txIds, reason) => submitSkipFeedback(txIds, reason),
+              onDismiss: () => toast.dismiss(t),
+            }),
+          { duration: SKIP_FEEDBACK_DURATION }
+        )
 
         return true
       } catch (error) {
@@ -213,29 +274,36 @@ export function useEmailHubActions({
   )
 
   /**
-   * Batch mark as pending
+   * Batch mark as pending.
+   * Handles arbitrarily large lists by chunking into groups of 50 for the API.
    */
   const batchMarkPending = React.useCallback(
     async (ids: string[]) => {
       setProcessingId("batch")
       ids.forEach((id) => onStatusChange?.(id, "pending_review"))
 
-      try {
-        const response = await fetch("/api/emails/transactions/bulk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "mark_pending", ids }),
-        })
+      const chunks = chunkArray(ids, 50)
+      let totalUpdated = 0
 
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || "Failed to update")
+      try {
+        for (const chunk of chunks) {
+          const response = await fetch("/api/emails/transactions/bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "mark_pending", ids: chunk }),
+          })
+
+          if (!response.ok) {
+            const data = await response.json()
+            throw new Error(data.error || "Failed to update")
+          }
+
+          const result = await response.json()
+          totalUpdated += result.updated || chunk.length
         }
 
-        const result = await response.json()
         setProcessingId(null)
-
-        toast.success(`${result.updated} email(s) marked as pending`)
+        toast.success(`${totalUpdated} email(s) marked as pending`)
         return true
       } catch (error) {
         setProcessingId(null)
@@ -249,13 +317,20 @@ export function useEmailHubActions({
   )
 
   /**
-   * Batch process (extract) multiple emails
+   * Batch process (extract) multiple emails.
+   * Handles arbitrarily large lists — processes sequentially, keeps
+   * processingId="batch" for the entire run, and shows a single toast
+   * at the end with a running progress toast during processing.
    */
   const batchProcess = React.useCallback(
     async (ids: string[]) => {
       setProcessingId("batch")
       let successCount = 0
       let failCount = 0
+      const total = ids.length
+
+      // Show a persistent progress toast
+      const progressToastId = toast.loading(`Processing 0 / ${total} emails...`)
 
       for (const emailId of ids) {
         setExtractingId(emailId)
@@ -266,38 +341,47 @@ export function useEmailHubActions({
 
           if (!response.ok) {
             failCount++
-            continue
+          } else {
+            const result = await response.json()
+            const et = result.emailTransaction
+
+            if (et) {
+              onItemUpdate?.(emailId, {
+                email_transaction_id: et.id,
+                status: et.status,
+                classification: et.classification,
+                vendor_name_raw: et.vendor_name_raw,
+                amount: et.amount,
+                currency: et.currency,
+                transaction_date: et.transaction_date,
+                description: et.description,
+                order_id: et.order_id,
+                extraction_confidence: et.extraction_confidence,
+                extraction_notes: et.extraction_notes,
+                ai_reasoning: et.ai_reasoning,
+                processed_at: et.processed_at,
+                is_processed: true,
+              })
+            }
+
+            successCount++
           }
-
-          const result = await response.json()
-          const et = result.emailTransaction
-
-          if (et) {
-            onItemUpdate?.(emailId, {
-              email_transaction_id: et.id,
-              status: et.status,
-              classification: et.classification,
-              vendor_name_raw: et.vendor_name_raw,
-              amount: et.amount,
-              currency: et.currency,
-              transaction_date: et.transaction_date,
-              description: et.description,
-              order_id: et.order_id,
-              extraction_confidence: et.extraction_confidence,
-              extraction_notes: et.extraction_notes,
-              processed_at: et.processed_at,
-              is_processed: true,
-            })
-          }
-
-          successCount++
         } catch {
           failCount++
         }
+
+        // Update progress toast
+        const done = successCount + failCount
+        toast.loading(`Processing ${done} / ${total} emails...`, {
+          id: progressToastId,
+        })
       }
 
       setExtractingId(null)
       setProcessingId(null)
+
+      // Dismiss progress toast and show final result
+      toast.dismiss(progressToastId)
 
       if (successCount > 0) {
         toast.success(`Processed ${successCount} email(s)`, {
@@ -346,8 +430,12 @@ export function useEmailHubActions({
             order_id: et.order_id,
             extraction_confidence: et.extraction_confidence,
             extraction_notes: et.extraction_notes,
+            ai_reasoning: et.ai_reasoning,
             processed_at: et.processed_at,
             is_processed: true,
+            matched_transaction_id: et.matched_transaction_id,
+            match_confidence: et.match_confidence,
+            matched_at: et.matched_at,
           })
         }
 
@@ -363,6 +451,78 @@ export function useEmailHubActions({
         setExtractingId(null)
         const message = error instanceof Error ? error.message : "Failed to process"
         toast.error("Failed to process email", { description: message })
+        return null
+      }
+    },
+    [onItemUpdate]
+  )
+
+  /**
+   * Reprocess an email with user feedback that it IS a transaction
+   */
+  const processWithFeedback = React.useCallback(
+    async (
+      emailId: string,
+      feedback: {
+        emailTransactionId: string
+        originalClassification: string | null
+        originalSkip: boolean | null
+        subject: string | null
+        fromAddress: string | null
+        userHint?: string
+      }
+    ) => {
+      setFeedbackProcessingId(emailId)
+
+      try {
+        const response = await fetch(`/api/emails/${emailId}/extract`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ feedback }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || "Failed to reprocess with feedback")
+        }
+
+        const result = await response.json()
+        const et = result.emailTransaction
+
+        if (et) {
+          onItemUpdate?.(emailId, {
+            email_transaction_id: et.id,
+            status: et.status,
+            classification: et.classification,
+            vendor_name_raw: et.vendor_name_raw,
+            amount: et.amount,
+            currency: et.currency,
+            transaction_date: et.transaction_date,
+            description: et.description,
+            order_id: et.order_id,
+            extraction_confidence: et.extraction_confidence,
+            extraction_notes: et.extraction_notes,
+            ai_reasoning: et.ai_reasoning,
+            processed_at: et.processed_at,
+            is_processed: true,
+            matched_transaction_id: et.matched_transaction_id,
+            match_confidence: et.match_confidence,
+            matched_at: et.matched_at,
+          })
+        }
+
+        setFeedbackProcessingId(null)
+        toast.success("Email reprocessed with feedback", {
+          description: et?.amount
+            ? `Extracted ${et.currency} ${et.amount} from ${et.vendor_name_raw || "email"}`
+            : "Reprocessed but no transaction data found",
+        })
+
+        return result
+      } catch (error) {
+        setFeedbackProcessingId(null)
+        const message = error instanceof Error ? error.message : "Failed to reprocess"
+        toast.error("Failed to reprocess", { description: message })
         return null
       }
     },
@@ -386,8 +546,10 @@ export function useEmailHubActions({
     batchMarkPending,
     batchProcess,
     processEmail,
+    processWithFeedback,
     isProcessing: (id: string) =>
       processingId === id || processingId === "batch",
     isExtracting: (id: string) => extractingId === id,
+    isFeedbackProcessing: (id: string) => feedbackProcessingId === id,
   }
 }

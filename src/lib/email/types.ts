@@ -225,6 +225,12 @@ export interface AiClassificationResult {
     approximate_date?: string;
     reference_id?: string;
   } | null;
+
+  /** Token usage from the Gemini API call (for journal logging) */
+  promptTokens?: number;
+  responseTokens?: number;
+  durationMs?: number;
+  feedbackExamplesUsed?: number;
 }
 
 /**

@@ -74,11 +74,13 @@ export async function deleteEmailsBeforeCutoff(
   const cutoffStr = cutoffDate.toISOString();
 
   // Delete email_transactions first (references emails via message_id)
+  // Preserve any that are linked to transactions (matched_transaction_id is set)
   const { data: deletedTx } = await supabase
     .from('email_transactions')
     .delete()
     .eq('user_id', userId)
     .lt('email_date', cutoffStr)
+    .is('matched_transaction_id', null)
     .select('id');
 
   // Delete emails

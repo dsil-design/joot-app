@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Set source references on the transaction (both email and statement)
-      await serviceClient
+      const { error: txUpdateError } = await serviceClient
         .from('transactions')
         .update({
           source_email_transaction_id: parsed.emailId,
@@ -157,6 +157,14 @@ export async function POST(request: NextRequest) {
           source_statement_match_confidence: suggestions[parsed.index].confidence ?? null,
         })
         .eq('id', transactionId)
+
+      if (txUpdateError) {
+        console.error('Error setting source references on transaction (merged):', txUpdateError)
+        return NextResponse.json(
+          { error: 'Failed to set source references on transaction' },
+          { status: 500 }
+        )
+      }
     } else if (parsed.type === 'statement') {
       // --- STATEMENT link ---
       const { data: statement, error: fetchError } = await serviceClient
@@ -206,7 +214,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Set statement source reference on the transaction
-      await serviceClient
+      const { error: txUpdateError } = await serviceClient
         .from('transactions')
         .update({
           source_statement_upload_id: parsed.statementId,
@@ -214,6 +222,14 @@ export async function POST(request: NextRequest) {
           source_statement_match_confidence: suggestions[parsed.index].confidence ?? null,
         })
         .eq('id', transactionId)
+
+      if (txUpdateError) {
+        console.error('Error setting statement source on transaction:', txUpdateError)
+        return NextResponse.json(
+          { error: 'Failed to set source reference on transaction' },
+          { status: 500 }
+        )
+      }
     } else {
       // --- EMAIL link ---
       const { error: updateError } = await serviceClient
@@ -235,11 +251,15 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Set source reference on the transaction
-      await serviceClient
+      // Set source reference on the transaction (non-fatal — link is already established)
+      const { error: txUpdateError } = await serviceClient
         .from('transactions')
         .update({ source_email_transaction_id: parsed.emailId })
         .eq('id', transactionId)
+
+      if (txUpdateError) {
+        console.error('Error setting email source on transaction (non-fatal):', JSON.stringify(txUpdateError))
+      }
     }
 
     // Log activity

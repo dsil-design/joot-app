@@ -81,10 +81,10 @@ export function clearFeedbackCache(userId: string): void {
 export async function recordFeedback(
   params: RecordFeedbackParams,
   supabase?: SupabaseClient
-): Promise<void> {
+): Promise<string | null> {
   const client = supabase || createServiceRoleClient();
 
-  await client.from('ai_feedback').insert({
+  const { data, error } = await client.from('ai_feedback').insert({
     user_id: params.userId,
     email_transaction_id: params.emailTransactionId,
     feedback_type: params.feedbackType,
@@ -95,10 +95,17 @@ export async function recordFeedback(
     email_subject: params.emailSubject ?? null,
     email_from: params.emailFrom ?? null,
     email_body_preview: params.emailBodyPreview?.slice(0, 500) ?? null,
-  });
+  }).select('id').single();
 
   // Invalidate cache so next batch uses updated feedback
   clearFeedbackCache(params.userId);
+
+  if (error) {
+    console.error('Failed to record AI feedback:', error);
+    return null;
+  }
+
+  return data?.id ?? null;
 }
 
 /**

@@ -57,6 +57,9 @@ export async function GET(request: NextRequest) {
       ? (Math.max(1, parseInt(page, 10)) - 1) * limit
       : parseInt(searchParams.get('offset') || '0', 10);
 
+    // Fields mode (ids-only for select-all)
+    const fields = searchParams.get('fields');
+
     // New AI filters
     const aiClassification = searchParams.get('ai_classification');
     const aiSuggestedSkip = searchParams.get('ai_suggested_skip');
@@ -145,9 +148,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Build query (uses email_hub_unified view which LEFT JOINs emails + email_transactions)
-    let query = supabase
-      .from('email_hub_unified')
-      .select(`
+    const selectFields = fields === 'ids'
+      ? 'id'
+      : `
         id,
         message_id,
         uid,
@@ -187,10 +190,19 @@ export async function GET(request: NextRequest) {
         email_group_id,
         is_group_primary,
         group_email_count
-      `, { count: 'exact' })
-      .eq('user_id', user.id)
-      .order(orderColumn, { ascending: orderAscending, nullsFirst: false })
-      .range(offset, offset + limit - 1);
+      `;
+
+    let query = supabase
+      .from('email_hub_unified')
+      .select(selectFields, { count: fields === 'ids' ? undefined : 'exact' })
+      .eq('user_id', user.id);
+
+    // Only apply pagination and sorting for non-ids queries
+    if (fields !== 'ids') {
+      query = query
+        .order(orderColumn, { ascending: orderAscending, nullsFirst: false })
+        .range(offset, offset + limit - 1);
+    }
 
     // Apply status filter
     if (status) {
@@ -232,10 +244,16 @@ export async function GET(request: NextRequest) {
 
     // Apply search filter
     if (search) {
-      // Search in subject, description, vendor_name_raw, order_id, from_address, and from_name
-      query = query.or(
-        `subject.ilike.%${search}%,description.ilike.%${search}%,vendor_name_raw.ilike.%${search}%,order_id.ilike.%${search}%,from_address.ilike.%${search}%,from_name.ilike.%${search}%`
-      );
+      // Check if search is a full UUID — if so, match by ID directly
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidPattern.test(search)) {
+        query = query.or(`id.eq.${search},email_transaction_id.eq.${search}`);
+      } else {
+        // Text search in subject, description, vendor_name_raw, order_id, from_address, from_name
+        query = query.or(
+          `subject.ilike.%${search}%,description.ilike.%${search}%,vendor_name_raw.ilike.%${search}%,order_id.ilike.%${search}%,from_address.ilike.%${search}%,from_name.ilike.%${search}%`
+        );
+      }
     }
 
     // Apply AI classification filter
@@ -270,6 +288,17 @@ export async function GET(request: NextRequest) {
         { error: 'Failed to fetch email transactions' },
         { status: 500 }
       );
+    }
+
+    // Return just IDs for select-all mode
+    if (fields === 'ids') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows = (emails || []) as any[]
+      const uniqueIds = [...new Set(rows.map((e) => e.id) as string[])]
+      return NextResponse.json({
+        ids: uniqueIds,
+        total: uniqueIds.length,
+      });
     }
 
     const total = count || 0;

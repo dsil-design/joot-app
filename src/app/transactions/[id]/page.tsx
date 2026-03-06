@@ -8,7 +8,7 @@
 
 import * as React from "react"
 import { useParams, useSearchParams } from "next/navigation"
-import { ArrowLeft, Edit, Mail, FileText } from "lucide-react"
+import { ArrowLeft, Edit, FileText, Copy, Check } from "lucide-react"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
 import type { TransactionWithVendorAndPayment, EmailSourceData, StatementSourceData } from "@/lib/supabase/types"
@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { MainLayout } from "@/components/layouts/MainLayout"
 import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
 import { formatCurrency } from "@/lib/utils"
+import { EmailSourceCard } from "@/components/page-specific/email-source-card"
 
 
 function EditIcon() {
@@ -103,14 +104,8 @@ function formatStatementPeriod(start: string | null, end: string | null): string
   return null
 }
 
-function MatchMethodBadge({ method, status }: { method: string | null; status: string | null }) {
-  if (status === "imported") {
-    return (
-      <Badge className="bg-blue-100 text-blue-700 border-0 text-[12px] font-normal">
-        Created from email
-      </Badge>
-    )
-  }
+
+function StatementMatchBadge({ method }: { method: string | null }) {
   if (method === "auto") {
     return (
       <Badge className="bg-green-100 text-green-700 border-0 text-[12px] font-normal">
@@ -126,46 +121,6 @@ function MatchMethodBadge({ method, status }: { method: string | null; status: s
     )
   }
   return null
-}
-
-function EmailSourceCard({ source }: { source: EmailSourceData }) {
-  const handleClick = () => {
-    window.location.href = `/imports/emails?id=${source.id}`
-  }
-
-  return (
-    <button
-      onClick={handleClick}
-      className="bg-zinc-50 rounded-lg border border-zinc-200 p-4 w-full text-left hover:bg-zinc-100 transition-colors"
-    >
-      <div className="flex items-start gap-3">
-        <Mail className="size-4 text-zinc-400 mt-0.5 shrink-0" strokeWidth={1.5} />
-        <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-[14px] font-normal text-zinc-950 truncate">
-            {source.subject || "No subject"}
-          </p>
-          {source.from_address && (
-            <p className="text-[14px] font-normal text-zinc-500 truncate">
-              {source.from_name ? `${source.from_name} <${source.from_address}>` : source.from_address}
-            </p>
-          )}
-          {source.email_date && (
-            <p className="text-[14px] font-normal text-zinc-500">
-              {format(parseISO(source.email_date), "MMM d, yyyy")}
-            </p>
-          )}
-          {source.extraction_confidence !== null && (
-            <p className="text-[14px] font-normal text-zinc-500">
-              {source.extraction_confidence}% extraction confidence
-            </p>
-          )}
-          <div className="mt-1">
-            <MatchMethodBadge method={source.match_method} status={source.status} />
-          </div>
-        </div>
-      </div>
-    </button>
-  )
 }
 
 function StatementSourceCard({ source }: { source: StatementSourceData }) {
@@ -196,10 +151,33 @@ function StatementSourceCard({ source }: { source: StatementSourceData }) {
             </p>
           )}
           <div className="mt-1">
-            <MatchMethodBadge method={source.match_method} status={null} />
+            <StatementMatchBadge method={source.match_method} />
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function TransactionId({ id }: { id: string }) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(id)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 pt-2">
+      <span className="text-[12px] text-zinc-400 font-mono">{id}</span>
+      <button
+        onClick={handleCopy}
+        className="text-zinc-400 hover:text-zinc-600 transition-colors p-0.5"
+        aria-label="Copy transaction ID"
+      >
+        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+      </button>
     </div>
   )
 }
@@ -232,7 +210,7 @@ export default function ViewTransactionPage() {
   const searchParams = useSearchParams()
   const id = params?.id as string
   const source = searchParams?.get('from') as 'home' | 'transactions' | null
-  const { navigateBack, navigateToHome, navigateToTransactions, isPending } = useTransactionFlow()
+  const { navigateBack, isPending } = useTransactionFlow()
   const { getTransactionById } = useTransactions()
   
   const [transaction, setTransaction] = React.useState<TransactionWithVendorAndPayment | null>(null)
@@ -240,6 +218,9 @@ export default function ViewTransactionPage() {
   const [exchangeRateTimestamp, setExchangeRateTimestamp] = React.useState<string | null>(null)
   const [isUsingLatestRate, setIsUsingLatestRate] = React.useState(false)
   const [fallbackRateDate, setFallbackRateDate] = React.useState<string | null>(null)
+  const [rateIsInterpolated, setRateIsInterpolated] = React.useState(false)
+  const [rateInterpolatedFromDate, setRateInterpolatedFromDate] = React.useState<string | null>(null)
+  const [rateSource, setRateSource] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -271,6 +252,9 @@ export default function ViewTransactionPage() {
             setExchangeRateTimestamp(rateMetadata.timestamp)
             setIsUsingLatestRate(rateMetadata.isUsingLatestRate)
             setFallbackRateDate(rateMetadata.fallbackDate)
+            setRateIsInterpolated(rateMetadata.isInterpolated)
+            setRateInterpolatedFromDate(rateMetadata.interpolatedFromDate)
+            setRateSource(rateMetadata.source)
           }
         } else {
           setError("Transaction not found")
@@ -319,7 +303,10 @@ export default function ViewTransactionPage() {
   const formatExchangeRateTimestamp = (
     timestamp: string | null,
     usingLatest: boolean,
-    fallbackDate: string | null
+    fallbackDate: string | null,
+    isInterpolated: boolean = false,
+    interpolatedFromDate: string | null = null,
+    source: string | null = null,
   ): string | undefined => {
     if (!timestamp) return undefined
 
@@ -331,33 +318,29 @@ export default function ViewTransactionPage() {
 
       if (fallbackDate) {
         // For past dates when using a fallback rate (e.g., weekend or missing data)
-        // Format: "*using rate for Oct 3 instead"
         const date = parseISO(fallbackDate)
         const formattedDate = format(date, "MMM d")
         return `*using rate for ${formattedDate} instead`
       }
 
-      // Get the user's timezone from the browser
-      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      // Rate matched the exact transaction date
+      if (isInterpolated && interpolatedFromDate) {
+        // Weekend/holiday rate interpolated from a business day
+        const fromDate = parseISO(interpolatedFromDate)
+        const formattedDate = format(fromDate, "MMM d, yyyy")
+        return `ECB rate from ${formattedDate}`
+      }
 
-      // Format: "as of 2:12pm, March 14, 2024"
-      const time = formatInTimeZone(parseISO(timestamp), userTimezone, "h:mmaaa")
-      const date = formatInTimeZone(parseISO(timestamp), userTimezone, "MMMM d, yyyy")
-
-      return `as of ${time}, ${date}`
+      // Direct ECB rate for this date
+      const sourceLabel = source === "ECB" ? "ECB rate" : "Rate"
+      return `${sourceLabel} for this date`
     } catch {
       return undefined
     }
   }
 
   const handleBackClick = () => {
-    if (source === 'home') {
-      navigateToHome()
-    } else if (source === 'transactions') {
-      navigateToTransactions()
-    } else {
-      navigateBack() // Fallback to browser back
-    }
+    navigateBack() // Use browser back to preserve scroll position, filters, etc.
   }
 
   const handleEditClick = () => {
@@ -481,7 +464,7 @@ export default function ViewTransactionPage() {
                 <FieldValuePair
                   label="Exchange rate"
                   value={formatExchangeRate(transaction, exchangeRate)}
-                  secondaryText={formatExchangeRateTimestamp(exchangeRateTimestamp, isUsingLatestRate, fallbackRateDate)}
+                  secondaryText={formatExchangeRateTimestamp(exchangeRateTimestamp, isUsingLatestRate, fallbackRateDate, rateIsInterpolated, rateInterpolatedFromDate, rateSource)}
                   showAsterisk={isUsingLatestRate || !!fallbackRateDate}
                 />
               </div>
@@ -495,6 +478,7 @@ export default function ViewTransactionPage() {
               statementSource={transaction.statementSource ?? null}
             />
           </div>
+          <TransactionId id={transaction.id} />
           <div className="h-10 shrink-0 w-full" />
         </div>
       </div>

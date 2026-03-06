@@ -39,6 +39,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_analysis_runs: {
+        Row: {
+          ai_calls_made: number | null
+          completed_at: string | null
+          created_at: string | null
+          duration_ms: number | null
+          id: string
+          journal_entries_analyzed: number | null
+          journal_from: string | null
+          journal_to: string | null
+          patterns: Json | null
+          previous_run_id: string | null
+          recommendations: Json | null
+          run_type: string
+          started_at: string | null
+          status: string
+          summary: Json | null
+          user_id: string
+        }
+        Insert: {
+          ai_calls_made?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          id?: string
+          journal_entries_analyzed?: number | null
+          journal_from?: string | null
+          journal_to?: string | null
+          patterns?: Json | null
+          previous_run_id?: string | null
+          recommendations?: Json | null
+          run_type: string
+          started_at?: string | null
+          status?: string
+          summary?: Json | null
+          user_id: string
+        }
+        Update: {
+          ai_calls_made?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          id?: string
+          journal_entries_analyzed?: number | null
+          journal_from?: string | null
+          journal_to?: string | null
+          patterns?: Json | null
+          previous_run_id?: string | null
+          recommendations?: Json | null
+          run_type?: string
+          started_at?: string | null
+          status?: string
+          summary?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_analysis_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_feedback: {
         Row: {
           corrected_classification: string | null
@@ -99,6 +164,182 @@ export type Database = {
           },
           {
             foreignKeyName: "ai_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_insights: {
+        Row: {
+          analysis_run_id: string
+          created_at: string | null
+          description: string
+          dismissed_at: string | null
+          email_count: number | null
+          evidence: Json | null
+          format_consistency_pct: number | null
+          id: string
+          implemented_at: string | null
+          insight_type: string
+          severity: string
+          status: string
+          target_sender: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          analysis_run_id: string
+          created_at?: string | null
+          description: string
+          dismissed_at?: string | null
+          email_count?: number | null
+          evidence?: Json | null
+          format_consistency_pct?: number | null
+          id?: string
+          implemented_at?: string | null
+          insight_type: string
+          severity?: string
+          status?: string
+          target_sender?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          analysis_run_id?: string
+          created_at?: string | null
+          description?: string
+          dismissed_at?: string | null
+          email_count?: number | null
+          evidence?: Json | null
+          format_consistency_pct?: number | null
+          id?: string
+          implemented_at?: string | null
+          insight_type?: string
+          severity?: string
+          status?: string
+          target_sender?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_analysis_run_id_fkey"
+            columns: ["analysis_run_id"]
+            isOneToOne: false
+            referencedRelation: "ai_analysis_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_journal: {
+        Row: {
+          ai_classification: string | null
+          ai_confidence: number | null
+          ai_extracted_amount: number | null
+          ai_extracted_currency: string | null
+          ai_extracted_date: string | null
+          ai_extracted_vendor: string | null
+          ai_reasoning: string | null
+          ai_suggested_skip: boolean | null
+          body_length: number | null
+          created_at: string | null
+          duration_ms: number | null
+          email_date: string | null
+          email_id: string | null
+          email_transaction_id: string | null
+          feedback_examples_used: number | null
+          feedback_id: string | null
+          final_confidence: number | null
+          final_parser_key: string | null
+          final_status: string | null
+          from_address: string | null
+          from_name: string | null
+          id: string
+          invocation_type: string
+          prompt_tokens: number | null
+          regex_extraction_success: boolean | null
+          regex_parser_attempted: string | null
+          response_tokens: number | null
+          subject: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_classification?: string | null
+          ai_confidence?: number | null
+          ai_extracted_amount?: number | null
+          ai_extracted_currency?: string | null
+          ai_extracted_date?: string | null
+          ai_extracted_vendor?: string | null
+          ai_reasoning?: string | null
+          ai_suggested_skip?: boolean | null
+          body_length?: number | null
+          created_at?: string | null
+          duration_ms?: number | null
+          email_date?: string | null
+          email_id?: string | null
+          email_transaction_id?: string | null
+          feedback_examples_used?: number | null
+          feedback_id?: string | null
+          final_confidence?: number | null
+          final_parser_key?: string | null
+          final_status?: string | null
+          from_address?: string | null
+          from_name?: string | null
+          id?: string
+          invocation_type: string
+          prompt_tokens?: number | null
+          regex_extraction_success?: boolean | null
+          regex_parser_attempted?: string | null
+          response_tokens?: number | null
+          subject?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_classification?: string | null
+          ai_confidence?: number | null
+          ai_extracted_amount?: number | null
+          ai_extracted_currency?: string | null
+          ai_extracted_date?: string | null
+          ai_extracted_vendor?: string | null
+          ai_reasoning?: string | null
+          ai_suggested_skip?: boolean | null
+          body_length?: number | null
+          created_at?: string | null
+          duration_ms?: number | null
+          email_date?: string | null
+          email_id?: string | null
+          email_transaction_id?: string | null
+          feedback_examples_used?: number | null
+          feedback_id?: string | null
+          final_confidence?: number | null
+          final_parser_key?: string | null
+          final_status?: string | null
+          from_address?: string | null
+          from_name?: string | null
+          id?: string
+          invocation_type?: string
+          prompt_tokens?: number | null
+          regex_extraction_success?: boolean | null
+          regex_parser_attempted?: string | null
+          response_tokens?: number | null
+          subject?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_journal_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1788,74 +2029,3 @@ export const Constants = {
     },
   },
 } as const
-
-// ============================================================================
-// Custom Type Aliases (convenience types used throughout the codebase)
-// ============================================================================
-
-// Enum types
-export type CurrencyType = Database["public"]["Enums"]["currency_type"]
-export type TransactionType = Database["public"]["Enums"]["transaction_type"]
-
-// User types
-export type User = Database["public"]["Tables"]["users"]["Row"]
-export type UserInsert = Database["public"]["Tables"]["users"]["Insert"]
-export type UserUpdate = Database["public"]["Tables"]["users"]["Update"]
-
-// Transaction types
-export type Transaction = Database["public"]["Tables"]["transactions"]["Row"]
-export type TransactionInsert = Database["public"]["Tables"]["transactions"]["Insert"]
-export type TransactionUpdate = Database["public"]["Tables"]["transactions"]["Update"]
-
-// Source data interfaces for transaction detail page
-export interface EmailSourceData {
-  id: string
-  subject: string | null
-  from_address: string | null
-  from_name: string | null
-  email_date: string | null
-  extraction_confidence: number | null
-  match_confidence: number | null
-  match_method: string | null
-  status: string
-}
-
-export interface StatementSourceData {
-  id: string
-  filename: string
-  statement_period_start: string | null
-  statement_period_end: string | null
-  payment_method_name: string | null
-  match_confidence: number | null
-  match_method: string | null
-}
-
-// Transaction with related data (for queries with joins)
-export interface TransactionWithVendorAndPayment extends Transaction {
-  vendor: { id: string; name: string } | null
-  payment_method: { id: string; name: string; preferred_currency: string | null } | null
-  tags?: Array<{ id: string; name: string; color: string }>
-  transaction_tags?: Array<{ tag_id: string; tags: { id: string; name: string; color: string } }>
-  emailSource?: EmailSourceData | null
-  statementSource?: StatementSourceData | null
-}
-
-// Exchange rate types
-export type ExchangeRate = Database["public"]["Tables"]["exchange_rates"]["Row"]
-export type ExchangeRateInsert = Database["public"]["Tables"]["exchange_rates"]["Insert"]
-export type ExchangeRateUpdate = Database["public"]["Tables"]["exchange_rates"]["Update"]
-
-// Vendor types
-export type Vendor = Database["public"]["Tables"]["vendors"]["Row"]
-export type VendorInsert = Database["public"]["Tables"]["vendors"]["Insert"]
-export type VendorUpdate = Database["public"]["Tables"]["vendors"]["Update"]
-
-// Payment method types
-export type PaymentMethod = Database["public"]["Tables"]["payment_methods"]["Row"]
-export type PaymentMethodInsert = Database["public"]["Tables"]["payment_methods"]["Insert"]
-export type PaymentMethodUpdate = Database["public"]["Tables"]["payment_methods"]["Update"]
-
-// Tag types
-export type Tag = Database["public"]["Tables"]["tags"]["Row"]
-export type TagInsert = Database["public"]["Tables"]["tags"]["Insert"]
-export type TagUpdate = Database["public"]["Tables"]["tags"]["Update"]

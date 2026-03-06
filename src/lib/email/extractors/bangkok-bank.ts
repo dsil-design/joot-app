@@ -35,7 +35,7 @@ const BBL_SUBJECT_PATTERNS = {
 
 // Amount extraction patterns
 // THB amount in format "X,XXX.XX Baht" or "X,XXX.XX บาท"
-const THB_AMOUNT_PATTERN = /(?:amount|จำนวนเงิน)[:\s]*(?:THB\s*)?([\d,]+(?:\.\d{2})?)\s*(?:baht|บาท)?/gi;
+const THB_AMOUNT_PATTERN = /(?:amount|จำนวนเงิน)[:\s]*(?:\(?(?:baht|บาท|THB)\)?\s*)?([\d,]+(?:\.\d{2})?)\s*(?:baht|บาท)?/gi;
 const SIMPLE_AMOUNT_PATTERN = /([\d,]+(?:\.\d{2})?)\s*(?:baht|บาท)/gi;
 
 // Reference number pattern

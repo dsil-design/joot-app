@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { extractionService } from '@/lib/email/extraction-service';
+import { recordFeedback } from '@/lib/email/ai-feedback-service';
 import { determineStatusFromConfidence } from '@/lib/email/confidence-scoring';
-import { classifyEmail as aiClassifyEmail, classifyAndExtractEmail } from '@/lib/email/ai-classifier';
 import { consolidateEmail } from '@/lib/email/email-consolidation';
-import { normalizeICloudRelay } from '@/lib/email/icloud-relay';
 import { aiClassificationToCoarse } from '@/lib/types/email-imports';
 import type { AiClassification } from '@/lib/types/email-imports';
-import type { RawEmailData, EmailTransactionData, AiClassificationResult, ExtractionResult } from '@/lib/email/types';
+import type { RawEmailData, EmailTransactionData } from '@/lib/email/types';
 
 /**
  * POST /api/emails/[id]/extract
@@ -24,6 +23,24 @@ export async function POST(
 ) {
   try {
     const { id: emailId } = await params;
+
+    // Parse optional feedback from request body
+    let feedback: {
+      emailTransactionId: string;
+      originalClassification: string | null;
+      originalSkip: boolean | null;
+      subject: string | null;
+      fromAddress: string | null;
+      userHint?: string;
+    } | null = null;
+    try {
+      const body = await request.json();
+      if (body?.feedback) {
+        feedback = body.feedback;
+      }
+    } catch {
+      // No body or invalid JSON — that's fine, backward compatible
+    }
 
     // Auth check
     const supabase = await createClient();
@@ -59,8 +76,29 @@ export async function POST(
       .single();
 
     if (existingTx) {
+      // Record feedback if provided (before reprocessing so it's available as a few-shot example)
+      let feedbackId: string | null = null;
+      if (feedback) {
+        feedbackId = await recordFeedback({
+          userId: user.id,
+          emailTransactionId: feedback.emailTransactionId,
+          feedbackType: 'skip_override',
+          originalAiClassification: feedback.originalClassification,
+          originalAiSuggestedSkip: feedback.originalSkip,
+          correctedClassification: null,
+          correctedSkip: false,
+          emailSubject: feedback.subject,
+          emailFrom: feedback.fromAddress,
+          emailBodyPreview: feedback.userHint || null,
+        }, serviceClient);
+      }
+
       // Reprocess existing email transaction
-      const extraction = await extractionService.reprocessEmailTransaction(user.id, existingTx.id);
+      const extraction = await extractionService.reprocessEmailTransaction(
+        user.id,
+        existingTx.id,
+        { feedbackId: feedbackId ?? undefined, userHint: feedback?.userHint }
+      );
 
       // Fetch the updated row
       const { data: updatedRow } = await serviceClient
@@ -91,25 +129,8 @@ export async function POST(
       has_attachments: email.has_attachments ?? false,
     };
 
-    // Try regex extraction first, then AI
-    const regexExtraction = await extractionService.extractFromEmail(rawEmail);
-    const regexParser = extractionService.getParserRegistry().findParser({
-      ...rawEmail,
-      from_address: normalizeICloudRelay(rawEmail.from_address || ''),
-    });
-    const parserKey = regexParser?.key || null;
-
-    let extraction: ExtractionResult;
-    let aiResult: AiClassificationResult | null = null;
-
-    if (parserKey && parserKey !== 'gemini-ai') {
-      extraction = regexExtraction;
-      aiResult = await aiClassifyEmail(rawEmail, user.id);
-    } else {
-      const combined = await classifyAndExtractEmail(rawEmail, user.id);
-      extraction = combined.extraction;
-      aiResult = combined.classification;
-    }
+    // Try regex extraction first, fall back to AI if extraction fails
+    const { extraction, aiResult, parserKey } = await extractionService.extractWithAiFallback(rawEmail, user.id);
 
     // Classify with full context
     const classification = extractionService.classifyEmailWithExtraction(rawEmail, extraction);
@@ -211,13 +232,26 @@ export async function POST(
           })
           .eq('id', newRow.id);
       }
+
+      // Auto-match against existing transactions (same as batch processing)
+      const shouldAutoMatch = !consolidation || consolidation.isPrimary;
+      if (shouldAutoMatch && status !== 'skipped') {
+        await extractionService.tryAutoMatch(serviceClient, newRow.id, user.id, extraction);
+      }
     }
+
+    // Re-fetch the row to include any updates from auto-match/consolidation
+    const { data: finalRow } = await serviceClient
+      .from('email_transactions')
+      .select('*')
+      .eq('id', newRow.id)
+      .single();
 
     return NextResponse.json({
       action: 'created',
       extraction,
       aiClassification: aiResult,
-      emailTransaction: newRow,
+      emailTransaction: finalRow ?? newRow,
     });
 
   } catch (error) {

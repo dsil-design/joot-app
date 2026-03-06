@@ -84,8 +84,10 @@ type LayoutMode = "cards" | "table"
 type TotalsCurrency = "USD" | "THB"
 type TransactionType = "all" | "expense" | "income"
 type ConversionCurrency = "USD" | "THB"
-type SortField = "date" | "description" | "vendor" | "amount"
+type SortField = "date" | "description" | "vendor" | "amount" | "sources"
 type SortDirection = "asc" | "desc"
+
+type SourceType = "any" | "email" | "statement" | "none"
 
 interface TransactionFilters {
   dateRange?: DateRange
@@ -94,6 +96,7 @@ interface TransactionFilters {
   vendorIds: string[]
   paymentMethodIds: string[]
   transactionType: TransactionType
+  sourceType?: SourceType
 }
 
 interface TransactionTotals {
@@ -361,7 +364,7 @@ function TransactionsTable({
   const someSelected = transactions.some(t => selectedIds.has(t.id)) && !allSelected
 
   // Calculate colspan based on visible columns
-  const totalColumns = 8 + (showExchangeRates ? 2 : 0) // Checkbox + 6 base columns + actions + optional exchange rate columns
+  const totalColumns = 9 + (showExchangeRates ? 2 : 0) // Checkbox + 7 base columns (incl. Sources) + actions + optional exchange rate columns
 
   // Sortable column header component
   const SortableHeader = ({ field, children, className }: { field: SortField; children: React.ReactNode; className?: string }) => {
@@ -404,6 +407,7 @@ function TransactionsTable({
             <SortableHeader field="vendor">Vendor</SortableHeader>
             <TableHead className="font-medium text-foreground">Payment Method</TableHead>
             <SortableHeader field="amount">Amount</SortableHeader>
+            <SortableHeader field="sources">Sources</SortableHeader>
             {showExchangeRates && (
               <>
                 <TableHead className="font-medium text-foreground">Exchange Rate</TableHead>
@@ -426,8 +430,8 @@ function TransactionsTable({
               return (
                 <TableRow
                   key={transaction.id}
-                  className={`cursor-pointer hover:bg-accent/50 ${
-                    isSelected ? "bg-blue-50 hover:bg-blue-100" : ""
+                  className={`cursor-pointer hover:bg-accent/50 active:bg-accent transition-colors ${
+                    isSelected ? "bg-blue-50 hover:bg-blue-100 active:bg-blue-200" : ""
                   }`}
                   onClick={(e) => handleRowClick(transaction, e)}
                 >
@@ -477,6 +481,24 @@ function TransactionsTable({
                   </TableCell>
                   <TableCell className="font-medium whitespace-nowrap">
                     {formatAmount(transaction)}
+                  </TableCell>
+                  <TableCell>
+                    {(transaction as any).source_email_transaction_id || (transaction as any).source_statement_upload_id ? (
+                      <div className="flex flex-wrap gap-1">
+                        {(transaction as any).source_email_transaction_id && (
+                          <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs">
+                            Email
+                          </Badge>
+                        )}
+                        {(transaction as any).source_statement_upload_id && (
+                          <Badge variant="secondary" className="bg-slate-100 text-slate-800 border border-slate-200 text-xs">
+                            Statement
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
                   </TableCell>
                   {showExchangeRates && (
                     <>
@@ -707,6 +729,67 @@ function TotalsFooter({ totals, totalsCurrency, onTotalsCurrencyChange }: Totals
   )
 }
 
+// Session storage key for preserving list state across navigation
+const TX_LIST_STATE_KEY = 'joot:transactions-list-state'
+
+interface SavedListState {
+  viewMode: ViewMode
+  desktopLayoutMode: LayoutMode
+  totalsCurrency: TotalsCurrency
+  showExchangeRates: boolean
+  conversionCurrency: ConversionCurrency
+  sortField: SortField
+  sortDirection: SortDirection
+  filters: {
+    datePreset?: DatePresetKey
+    customDateFrom?: string
+    customDateTo?: string
+    searchKeyword: string
+    vendorIds: string[]
+    paymentMethodIds: string[]
+    transactionType: TransactionType
+    sourceType?: SourceType
+  }
+  scrollY: number
+}
+
+function saveListState(state: SavedListState) {
+  try {
+    sessionStorage.setItem(TX_LIST_STATE_KEY, JSON.stringify(state))
+  } catch { /* quota exceeded or private browsing */ }
+}
+
+function loadListState(): SavedListState | null {
+  try {
+    const raw = sessionStorage.getItem(TX_LIST_STATE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function restoreFilters(saved: SavedListState['filters']): TransactionFilters {
+  const datePreset = saved.datePreset || 'this-month'
+  let dateRange: DateRange | undefined
+  if (datePreset === 'custom' && saved.customDateFrom) {
+    dateRange = {
+      from: new Date(saved.customDateFrom),
+      to: saved.customDateTo ? new Date(saved.customDateTo) : undefined,
+    }
+  } else {
+    dateRange = getPresetRange(datePreset)
+  }
+  return {
+    dateRange,
+    datePreset,
+    searchKeyword: saved.searchKeyword || "",
+    vendorIds: saved.vendorIds || [],
+    paymentMethodIds: saved.paymentMethodIds || [],
+    transactionType: saved.transactionType || "all",
+    sourceType: saved.sourceType || undefined,
+  }
+}
+
 export default function AllTransactionsPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
@@ -730,21 +813,26 @@ export default function AllTransactionsPage() {
     initials: string
   } | null>(null)
 
-  const [viewMode, setViewMode] = React.useState<ViewMode>("recorded")
+  // Restore saved state from sessionStorage (survives back navigation)
+  const savedState = React.useMemo(() => loadListState(), [])
+
+  const [viewMode, setViewMode] = React.useState<ViewMode>(savedState?.viewMode ?? "recorded")
   const [layoutMode, setLayoutMode] = React.useState<LayoutMode>("cards")
-  const [desktopLayoutMode, setDesktopLayoutMode] = React.useState<LayoutMode>("table")
+  const [desktopLayoutMode, setDesktopLayoutMode] = React.useState<LayoutMode>(savedState?.desktopLayoutMode ?? "table")
   const [isMobile, setIsMobile] = React.useState(false)
-  const [totalsCurrency, setTotalsCurrency] = React.useState<TotalsCurrency>("USD")
-  const [showExchangeRates, setShowExchangeRates] = React.useState<boolean>(false)
-  const [conversionCurrency, setConversionCurrency] = React.useState<ConversionCurrency>("USD")
-  const [filters, setFilters] = React.useState<TransactionFilters>({
-    dateRange: getPresetRange('this-month'),
-    datePreset: 'this-month',
-    searchKeyword: "",
-    vendorIds: [],
-    paymentMethodIds: [],
-    transactionType: "all",
-  })
+  const [totalsCurrency, setTotalsCurrency] = React.useState<TotalsCurrency>(savedState?.totalsCurrency ?? "USD")
+  const [showExchangeRates, setShowExchangeRates] = React.useState<boolean>(savedState?.showExchangeRates ?? false)
+  const [conversionCurrency, setConversionCurrency] = React.useState<ConversionCurrency>(savedState?.conversionCurrency ?? "USD")
+  const [filters, setFilters] = React.useState<TransactionFilters>(
+    savedState ? restoreFilters(savedState.filters) : {
+      dateRange: getPresetRange('this-month'),
+      datePreset: 'this-month',
+      searchKeyword: "",
+      vendorIds: [],
+      paymentMethodIds: [],
+      transactionType: "all",
+    }
+  )
 
   // Convert filters to API format
   const apiFilters = React.useMemo(() => ({
@@ -755,11 +843,12 @@ export default function AllTransactionsPage() {
     vendorIds: filters.vendorIds.length > 0 ? filters.vendorIds : undefined,
     paymentMethodIds: filters.paymentMethodIds.length > 0 ? filters.paymentMethodIds : undefined,
     transactionType: filters.transactionType !== "all" ? filters.transactionType : undefined,
+    sourceType: filters.sourceType || undefined,
   }), [filters])
 
   // Sorting state (needs to be declared before usePaginatedTransactions)
-  const [sortField, setSortField] = React.useState<SortField>("date")
-  const [sortDirection, setSortDirection] = React.useState<SortDirection>("desc")
+  const [sortField, setSortField] = React.useState<SortField>(savedState?.sortField ?? "date")
+  const [sortDirection, setSortDirection] = React.useState<SortDirection>(savedState?.sortDirection ?? "desc")
 
   // Use paginated transactions hook
   const {
@@ -792,6 +881,46 @@ export default function AllTransactionsPage() {
       fetchNextPage()
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  // Persist list state to sessionStorage so back-navigation restores it
+  const pendingScrollRestore = React.useRef(savedState?.scrollY ?? 0)
+
+  React.useEffect(() => {
+    saveListState({
+      viewMode,
+      desktopLayoutMode,
+      totalsCurrency,
+      showExchangeRates,
+      conversionCurrency,
+      sortField,
+      sortDirection,
+      filters: {
+        datePreset: filters.datePreset,
+        customDateFrom: filters.datePreset === 'custom' && filters.dateRange?.from
+          ? filters.dateRange.from.toISOString() : undefined,
+        customDateTo: filters.datePreset === 'custom' && filters.dateRange?.to
+          ? filters.dateRange.to.toISOString() : undefined,
+        searchKeyword: filters.searchKeyword,
+        vendorIds: filters.vendorIds,
+        paymentMethodIds: filters.paymentMethodIds,
+        transactionType: filters.transactionType,
+        sourceType: filters.sourceType,
+      },
+      scrollY: window.scrollY,
+    })
+  }, [viewMode, desktopLayoutMode, totalsCurrency, showExchangeRates, conversionCurrency, sortField, sortDirection, filters])
+
+  // Restore scroll position after data loads
+  React.useEffect(() => {
+    if (pendingScrollRestore.current > 0 && !isLoading && allTransactions.length > 0) {
+      const y = pendingScrollRestore.current
+      pendingScrollRestore.current = 0
+      // Wait for DOM to paint, then scroll
+      requestAnimationFrame(() => {
+        window.scrollTo(0, y)
+      })
+    }
+  }, [isLoading, allTransactions.length])
 
   const [showAdvancedFilters, setShowAdvancedFilters] = React.useState(false)
   const [showCustomDateRange, setShowCustomDateRange] = React.useState(false)
@@ -1070,6 +1199,7 @@ export default function AllTransactionsPage() {
       vendorIds: [],
       paymentMethodIds: [],
       transactionType: "all",
+      sourceType: undefined,
     })
     setShowAdvancedFilters(false)
   }
@@ -1084,7 +1214,8 @@ export default function AllTransactionsPage() {
 
   // Check if any filters are active
   const hasActiveFilters = filters.dateRange || filters.searchKeyword ||
-    filters.vendorIds.length > 0 || filters.paymentMethodIds.length > 0 || filters.transactionType !== "all"
+    filters.vendorIds.length > 0 || filters.paymentMethodIds.length > 0 || filters.transactionType !== "all" ||
+    filters.sourceType
 
   // Check if there are transactions without payment methods (for "None" option)
   const [hasNoneTransactions, setHasNoneTransactions] = React.useState(false)
@@ -1512,6 +1643,8 @@ export default function AllTransactionsPage() {
           onRemovePaymentMethod={handleRemovePaymentMethod}
           onRemoveAllVendors={handleRemoveAllVendors}
           onRemoveAllPaymentMethods={handleRemoveAllPaymentMethods}
+          sourceType={filters.sourceType}
+          onRemoveSourceType={() => setFilters({ ...filters, sourceType: undefined })}
           onClearAll={handleClearAll}
           resultCount={allTransactions.length}
         />
@@ -1531,7 +1664,7 @@ export default function AllTransactionsPage() {
           open={showCustomDateRange}
           onOpenChange={setShowCustomDateRange}
         >
-          <DialogContent className="max-w-md">
+          <DialogContent className="sm:max-w-fit">
             <DialogHeader>
               <DialogTitle className="text-xl font-medium text-zinc-950">
                 Select Custom Date Range
@@ -1578,6 +1711,25 @@ export default function AllTransactionsPage() {
                       viewMode={viewMode}
                       isMobile={isMobile}
                       onEditTransaction={handleOpenEditModal}
+                      onBeforeNavigate={() => {
+                        saveListState({
+                          viewMode, desktopLayoutMode, totalsCurrency, showExchangeRates, conversionCurrency,
+                          sortField, sortDirection,
+                          filters: {
+                            datePreset: filters.datePreset,
+                            customDateFrom: filters.datePreset === 'custom' && filters.dateRange?.from
+                              ? filters.dateRange.from.toISOString() : undefined,
+                            customDateTo: filters.datePreset === 'custom' && filters.dateRange?.to
+                              ? filters.dateRange.to.toISOString() : undefined,
+                            searchKeyword: filters.searchKeyword,
+                            vendorIds: filters.vendorIds,
+                            paymentMethodIds: filters.paymentMethodIds,
+                            transactionType: filters.transactionType,
+                            sourceType: filters.sourceType,
+                          },
+                          scrollY: window.scrollY,
+                        })
+                      }}
                     />
                   </React.Fragment>
                 ))}
@@ -1599,7 +1751,27 @@ export default function AllTransactionsPage() {
               selectedIds={selectedIds}
               onToggleSelection={handleToggleSelection}
               onToggleAll={handleToggleAll}
-              onViewTransaction={(id) => navigateToViewTransaction(id, 'transactions')}
+              onViewTransaction={(id) => {
+                // Save scroll position before navigating away
+                saveListState({
+                  viewMode, desktopLayoutMode, totalsCurrency, showExchangeRates, conversionCurrency,
+                  sortField, sortDirection,
+                  filters: {
+                    datePreset: filters.datePreset,
+                    customDateFrom: filters.datePreset === 'custom' && filters.dateRange?.from
+                      ? filters.dateRange.from.toISOString() : undefined,
+                    customDateTo: filters.datePreset === 'custom' && filters.dateRange?.to
+                      ? filters.dateRange.to.toISOString() : undefined,
+                    searchKeyword: filters.searchKeyword,
+                    vendorIds: filters.vendorIds,
+                    paymentMethodIds: filters.paymentMethodIds,
+                    transactionType: filters.transactionType,
+                    sourceType: filters.sourceType,
+                  },
+                  scrollY: window.scrollY,
+                })
+                navigateToViewTransaction(id, 'transactions')
+              }}
               onEditTransaction={handleOpenEditModal}
               onDeleteTransaction={handleDeleteSingle}
               sortField={sortField}

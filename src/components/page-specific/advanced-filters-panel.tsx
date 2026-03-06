@@ -10,6 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import type { DateRange } from "react-day-picker"
 
 type TransactionType = "all" | "expense" | "income"
+type SourceType = "any" | "email" | "statement" | "none"
 
 interface TransactionFilters {
   dateRange?: DateRange
@@ -17,6 +18,7 @@ interface TransactionFilters {
   vendorIds: string[]
   paymentMethodIds: string[]
   transactionType: TransactionType
+  sourceType?: SourceType
 }
 
 interface AdvancedFiltersPanelProps {
@@ -55,6 +57,7 @@ export function AdvancedFiltersPanel({
       vendorIds: [],
       paymentMethodIds: [],
       transactionType: "all",
+      sourceType: undefined,
     })
   }
 
@@ -192,6 +195,43 @@ export function AdvancedFiltersPanel({
                   allowAdd={false}
                   className="bg-background"
                 />
+              </div>
+
+              {/* Sources Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Sources
+                </label>
+                <ToggleGroup
+                  type="single"
+                  value={localFilters.sourceType || "all"}
+                  onValueChange={(value: string) => {
+                    if (value) {
+                      setLocalFilters({
+                        ...localFilters,
+                        sourceType: value === "all" ? undefined : value as SourceType,
+                      })
+                    }
+                  }}
+                  variant="outline"
+                  className="justify-start gap-0 flex-wrap"
+                >
+                  <ToggleGroupItem value="all" aria-label="All sources" className="h-10 px-4">
+                    All
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="any" aria-label="Any source" className="h-10 px-4">
+                    Any Source
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="email" aria-label="Email source" className="h-10 px-4">
+                    Email
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="statement" aria-label="Statement source" className="h-10 px-4">
+                    Statement
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="none" aria-label="No source" className="h-10 px-4">
+                    Unlinked
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
             </div>
 

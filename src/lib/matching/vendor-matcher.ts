@@ -82,7 +82,7 @@ const DEFAULT_ALIASES: Map<string, string[]> = new Map([
   ['lyft', ['lyft ride']],
   ['mcdonalds', ["mcdonald's", 'mcd', 'mcds']],
   ['7-eleven', ['7-11', '7 eleven', 'seven eleven']],
-  ['grab', ['grab*', 'grabpay', 'grabfood']],
+  ['grab', ['grab*', 'grabpay', 'grabfood', 'grab taxi', 'grab food', 'grab express']],
   ['line', ['line pay', 'linepay', 'line man']],
   ['lazada', ['lazada.co.th', 'lazada thailand']],
   ['shopee', ['shopee.co.th', 'shopeepay']],
@@ -274,6 +274,20 @@ export function compareVendors(
       isMatch: false,
       matchType: 'none',
       reason: 'No exact or alias match found (strict mode)',
+    };
+  }
+
+  // Prefix/substring match — one name fully starts with or contains the other
+  // (e.g., "grab" matches "grab taxi", "grab food")
+  const shorter = normalizedSource.length <= normalizedTarget.length ? normalizedSource : normalizedTarget;
+  const longer = normalizedSource.length <= normalizedTarget.length ? normalizedTarget : normalizedSource;
+  if (shorter.length >= 3 && (longer.startsWith(shorter + ' ') || longer === shorter)) {
+    return {
+      score: SCORE_THRESHOLDS.GOOD_SIMILARITY.score,
+      similarity: Math.round((shorter.length / longer.length) * 100),
+      isMatch: true,
+      matchType: 'fuzzy',
+      reason: `Prefix match: "${shorter}" in "${longer}"`,
     };
   }
 

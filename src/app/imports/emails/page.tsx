@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { LoadMoreTrigger } from "@/hooks/use-infinite-scroll"
 import { useEmailHubFilters, type EmailHubStatus } from "@/hooks/use-email-hub-filters"
 import { useEmailHubStats } from "@/hooks/use-email-hub-stats"
-import { useEmailTransactions, type EmailTransactionRow } from "@/hooks/use-email-transactions"
+import { useEmailTransactions, fetchAllFilteredIds, type EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { useEmailSync } from "@/hooks/use-email-sync"
 import { useEmailHubActions } from "@/hooks/use-email-hub-actions"
 import { useTransactions } from "@/hooks"
@@ -17,8 +17,6 @@ import {
 } from "@/components/page-specific/email-transaction-card"
 import { EmailDetailPanel } from "@/components/page-specific/email-detail-panel"
 import { EmailBatchToolbar } from "@/components/page-specific/email-batch-toolbar"
-import { WaitingCallout } from "@/components/page-specific/waiting-callout"
-import { EmailHubFunnelBar } from "@/components/page-specific/email-hub-funnel-bar"
 import {
   LinkToExistingDialog,
   type LinkSourceItem,
@@ -61,6 +59,8 @@ export default function EmailHubPage() {
 
   // Selection state
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
+  const [isAllSelected, setIsAllSelected] = React.useState(false)
+  const [isSelectingAll, setIsSelectingAll] = React.useState(false)
 
   // Dialog states
   const [linkDialogOpen, setLinkDialogOpen] = React.useState(false)
@@ -76,8 +76,10 @@ export default function EmailHubPage() {
     batchMarkPending,
     batchProcess,
     processEmail,
+    processWithFeedback,
     isProcessing,
     isExtracting,
+    isFeedbackProcessing,
   } = useEmailHubActions({
     onStatusChange: (id, status) => {
       updateItemByKey(id, (item) => ({ ...item, status }))
@@ -140,6 +142,21 @@ export default function EmailHubPage() {
       else next.delete(id)
       return next
     })
+    if (!selected) setIsAllSelected(false)
+  }
+
+  // Handle select all filtered results
+  const handleSelectAll = async () => {
+    setIsSelectingAll(true)
+    try {
+      const allIds = await fetchAllFilteredIds(filters)
+      setSelectedIds(new Set(allIds))
+      setIsAllSelected(true)
+    } catch {
+      toast.error("Failed to select all")
+    } finally {
+      setIsSelectingAll(false)
+    }
   }
 
   // Handle link action from detail panel
@@ -172,6 +189,13 @@ export default function EmailHubPage() {
       amount: item.amount || 0,
       currency: item.currency || "USD",
       date: item.transaction_date || new Date().toISOString().split("T")[0],
+      smartHints: {
+        vendorId: item.vendor_id || undefined,
+        vendorNameRaw: item.vendor_name_raw || undefined,
+        parserKey: item.parser_key || undefined,
+        description: item.description || undefined,
+        extractionConfidence: item.extraction_confidence || undefined,
+      },
     })
     setCreateDialogOpen(true)
   }
@@ -215,34 +239,48 @@ export default function EmailHubPage() {
     processEmail(emailId).then(() => refetchStats())
   }
 
+  // Handle feedback reprocess with user hint
+  const handleFeedbackReprocess = (emailId: string, userHint: string) => {
+    const item = items.find((i) => i.id === emailId)
+    if (!item) return
+    processWithFeedback(emailId, {
+      emailTransactionId: item.email_transaction_id || item.id,
+      originalClassification: item.ai_classification || item.classification || null,
+      originalSkip: item.ai_suggested_skip ?? null,
+      subject: item.subject || null,
+      fromAddress: item.from_address || null,
+      userHint,
+    }).then(() => refetchStats())
+  }
+
   // Handle skip
   const handleSkip = (emailId: string) => {
     skip(emailId).then(() => refetchStats())
   }
 
-  // Handle batch operations
-  const handleBatchSkip = () => {
+  // Handle batch operations (chunking handled inside the hooks)
+  const handleBatchSkip = async () => {
     const ids = Array.from(selectedIds)
-    batchSkip(ids).then(() => {
-      setSelectedIds(new Set())
-      refetchStats()
-    })
+    await batchSkip(ids)
+    setSelectedIds(new Set())
+    setIsAllSelected(false)
+    refetchStats()
   }
 
-  const handleBatchMarkPending = () => {
+  const handleBatchMarkPending = async () => {
     const ids = Array.from(selectedIds)
-    batchMarkPending(ids).then(() => {
-      setSelectedIds(new Set())
-      refetchStats()
-    })
+    await batchMarkPending(ids)
+    setSelectedIds(new Set())
+    setIsAllSelected(false)
+    refetchStats()
   }
 
-  const handleBatchProcess = () => {
+  const handleBatchProcess = async () => {
     const ids = Array.from(selectedIds)
-    batchProcess(ids).then(() => {
-      setSelectedIds(new Set())
-      refetchStats()
-    })
+    await batchProcess(ids)
+    setSelectedIds(new Set())
+    setIsAllSelected(false)
+    refetchStats()
   }
 
   // Get linking item for dialog
@@ -310,30 +348,33 @@ export default function EmailHubPage() {
         onFilterByStatus={handleFilterByStatus}
       />
 
-      {/* Funnel Bar (desktop only) */}
-      <EmailHubFunnelBar stats={stats} isLoading={statsLoading} />
-
-      {/* Waiting Callout */}
-      <WaitingCallout
-        stats={stats}
-        onViewWaiting={() => setFilters({ ...filters, status: "waiting_for_statement" })}
-      />
-
       {/* Filter Bar */}
       <EmailHubFilterBar
         filters={filters}
         onFiltersChange={setFilters}
+        onSortToggle={() => {
+          const newSort = filters.sort === "email_date_desc" ? "email_date_asc" : "email_date_desc"
+          setFilters({ ...filters, sort: newSort })
+        }}
+        totalMatches={total}
       />
 
       {/* Batch Toolbar */}
       {selectedIds.size > 0 && (
         <EmailBatchToolbar
           selectedCount={selectedIds.size}
+          totalFilteredCount={total}
+          isAllSelected={isAllSelected}
+          onSelectAll={handleSelectAll}
           onSkipSelected={handleBatchSkip}
           onMarkPending={handleBatchMarkPending}
           onProcessSelected={handleBatchProcess}
-          onClearSelection={() => setSelectedIds(new Set())}
+          onClearSelection={() => {
+            setSelectedIds(new Set())
+            setIsAllSelected(false)
+          }}
           isProcessing={isProcessing("batch")}
+          isSelectingAll={isSelectingAll}
         />
       )}
 
@@ -382,7 +423,9 @@ export default function EmailHubPage() {
               onToggleExpand={() => handleToggleExpand(item.id)}
               onToggleSelect={(selected) => handleToggleSelect(item.id, selected)}
               onProcess={handleProcess}
+              onFeedbackReprocess={handleFeedbackReprocess}
               isProcessingExtraction={isExtracting(item.id)}
+              isFeedbackProcessing={isFeedbackProcessing(item.id)}
             >
               <EmailDetailPanel
                 emailTransaction={item}
@@ -390,8 +433,10 @@ export default function EmailHubPage() {
                 onCreateNew={handleCreateNew}
                 onSkip={handleSkip}
                 onProcess={handleProcess}
+                onFeedbackReprocess={handleFeedbackReprocess}
                 isProcessing={isProcessing(item.id)}
                 isProcessingExtraction={isExtracting(item.id)}
+                isFeedbackProcessing={isFeedbackProcessing(item.id)}
               />
             </EmailTransactionCard>
           ))

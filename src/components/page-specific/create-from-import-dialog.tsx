@@ -22,10 +22,27 @@ import {
   FileText,
   DollarSign,
   Calendar,
+  Sparkles,
 } from "lucide-react"
 import { useVendorSearch } from "@/hooks/use-vendor-search"
 import { usePaymentMethodOptions, useTagOptions } from "@/hooks"
 import { toast } from "sonner"
+
+/**
+ * AI smart pre-fill hints from email extraction context
+ */
+export interface SmartPreFillHints {
+  /** Vendor ID from parser mapping (already validated in DB) */
+  vendorId?: string
+  /** Raw vendor name from email (for fuzzy matching) */
+  vendorNameRaw?: string
+  /** Parser key used for extraction (e.g., 'bangkok-bank', 'grab') */
+  parserKey?: string
+  /** Description from parser (e.g., "Breakfast: Restaurant Name") */
+  description?: string
+  /** Extraction confidence (0-100) */
+  extractionConfidence?: number
+}
 
 /**
  * Statement data used to pre-fill the form
@@ -37,6 +54,8 @@ export interface CreateFromImportData {
   currency: string
   date: string
   paymentMethodId?: string
+  /** AI-driven smart pre-fill hints */
+  smartHints?: SmartPreFillHints
 }
 
 export interface CreateFromImportDialogProps {
@@ -68,10 +87,39 @@ function formatAmount(amount: number, currency: string): string {
 }
 
 /**
+ * Map parser keys to payment method name patterns for auto-matching.
+ * Keys are parser keys, values are substrings to match against payment method names (case-insensitive).
+ */
+const PARSER_PAYMENT_METHOD_MAP: Record<string, string[]> = {
+  "bangkok-bank": ["bangkok bank", "bbl", "bualuang"],
+  kasikorn: ["kasikorn", "kbank", "k plus", "kplus"],
+  grab: ["grab"],
+  bolt: ["bolt"],
+  apple: ["apple"],
+  stripe: ["stripe"],
+  lazada: ["lazada"],
+}
+
+/**
+ * Sparkle indicator for AI-prefilled fields
+ */
+function AiPrefillIndicator({ tooltip }: { tooltip?: string }) {
+  return (
+    <span
+      className="inline-flex items-center text-purple-500"
+      title={tooltip || "Smart pre-fill from email"}
+    >
+      <Sparkles className="h-3.5 w-3.5" />
+    </span>
+  )
+}
+
+/**
  * CreateFromImportDialog
  *
  * Pre-filled form dialog for creating a new transaction from a statement entry.
  * Allows user to assign vendor, tags, edit description before saving.
+ * Supports AI-driven smart pre-fill with visual indicators.
  */
 export function CreateFromImportDialog({
   open,
@@ -89,8 +137,11 @@ export function CreateFromImportDialog({
   const [tags, setTags] = React.useState<string[]>([])
   const [isSaving, setIsSaving] = React.useState(false)
 
+  // Track which fields were AI-prefilled (cleared when user modifies)
+  const [aiPrefilled, setAiPrefilled] = React.useState<Set<string>>(new Set())
+
   // Hooks for selectors
-  const { searchVendors, createVendor } = useVendorSearch()
+  const { searchVendors, getVendorById, createVendor } = useVendorSearch()
   const {
     options: paymentOptions,
     addCustomOption: addPaymentMethod,
@@ -102,9 +153,80 @@ export function CreateFromImportDialog({
     loading: tagsLoading,
   } = useTagOptions()
 
+  // Clear AI indicator when user changes a field
+  const clearAiFlag = React.useCallback((field: string) => {
+    setAiPrefilled((prev) => {
+      if (!prev.has(field)) return prev
+      const next = new Set(prev)
+      next.delete(field)
+      return next
+    })
+  }, [])
+
+  // Resolve smart pre-fill: vendor by ID, payment method by parser key
+  const resolveSmartPreFills = React.useCallback(
+    async (hints: SmartPreFillHints) => {
+      const prefilledFields = new Set<string>()
+
+      // 1. Resolve vendor
+      if (hints.vendorId) {
+        const vendorData = await getVendorById(hints.vendorId)
+        if (vendorData) {
+          setVendor(vendorData.id)
+          setVendorLabel(vendorData.name)
+          prefilledFields.add("vendor")
+        }
+      } else if (hints.vendorNameRaw) {
+        // Fuzzy search for exact match
+        const results = await searchVendors(hints.vendorNameRaw, 5)
+        const exactMatch = results.find(
+          (v) =>
+            v.name.toLowerCase() === hints.vendorNameRaw!.toLowerCase()
+        )
+        if (exactMatch) {
+          setVendor(exactMatch.id)
+          setVendorLabel(exactMatch.name)
+          prefilledFields.add("vendor")
+        }
+      }
+
+      // 2. Resolve payment method by parser key
+      if (hints.parserKey && PARSER_PAYMENT_METHOD_MAP[hints.parserKey]) {
+        const patterns = PARSER_PAYMENT_METHOD_MAP[hints.parserKey]
+        const matched = paymentOptions.find((opt) =>
+          patterns.some((p) => opt.label.toLowerCase().includes(p))
+        )
+        if (matched) {
+          setPaymentMethod(matched.value)
+          prefilledFields.add("paymentMethod")
+        }
+      }
+
+      // 3. Pre-fill description only from dedicated parsers with high confidence
+      if (
+        hints.description &&
+        hints.parserKey &&
+        hints.parserKey !== "gemini-ai" &&
+        (hints.extractionConfidence ?? 0) >= 75
+      ) {
+        setDescription(hints.description)
+        prefilledFields.add("description")
+      }
+
+      if (prefilledFields.size > 0) {
+        setAiPrefilled(prefilledFields)
+      }
+    },
+    [getVendorById, searchVendors, paymentOptions]
+  )
+
   // Pre-fill form when data changes
   React.useEffect(() => {
     if (data && open) {
+      // Reset AI flags
+      setAiPrefilled(new Set())
+
+      // Standard pre-fills from extraction
       setDescription(data.description)
       setAmount(Math.abs(data.amount).toString())
       setDate(new Date(data.date + "T00:00:00"))
@@ -112,13 +234,19 @@ export function CreateFromImportDialog({
       setVendor("")
       setVendorLabel("")
       setTags([])
+
+      // Smart pre-fills from AI hints (async)
+      if (data.smartHints) {
+        resolveSmartPreFills(data.smartHints)
+      }
     }
-  }, [data, open])
+  }, [data, open, resolveSmartPreFills])
 
   // Reset on close
   React.useEffect(() => {
     if (!open) {
       setIsSaving(false)
+      setAiPrefilled(new Set())
     }
   }, [open])
 
@@ -137,6 +265,7 @@ export function CreateFromImportDialog({
     if (newVendor) {
       setVendor(newVendor.id)
       setVendorLabel(newVendor.name)
+      clearAiFlag("vendor")
       toast.success(`Added vendor: ${vendorName}`)
       return newVendor.id
     }
@@ -148,6 +277,7 @@ export function CreateFromImportDialog({
     const newMethod = await addPaymentMethod(methodName)
     if (newMethod) {
       setPaymentMethod(newMethod)
+      clearAiFlag("paymentMethod")
       toast.success(`Added payment method: ${methodName}`)
       return newMethod
     }
@@ -189,6 +319,7 @@ export function CreateFromImportDialog({
   }
 
   const isValid = description.trim() && amount && parseFloat(amount) > 0
+  const hasAnyPrefill = aiPrefilled.size > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -202,6 +333,20 @@ export function CreateFromImportDialog({
             Create a new transaction from this statement entry.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Smart pre-fill banner */}
+        {hasAnyPrefill && (
+          <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 dark:border-purple-800 dark:bg-purple-950/30">
+            <Sparkles className="h-4 w-4 text-purple-500 shrink-0" />
+            <p className="text-xs text-purple-700 dark:text-purple-300">
+              Some fields were smart-filled from the email.{" "}
+              <span className="text-purple-500">
+                <Sparkles className="inline h-3 w-3" />
+              </span>{" "}
+              indicates an AI suggestion.
+            </p>
+          </div>
+        )}
 
         {/* Source info */}
         {data && (
@@ -232,13 +377,33 @@ export function CreateFromImportDialog({
         <div className="space-y-4">
           {/* Description */}
           <div className="space-y-1.5">
-            <Label htmlFor="create-description">Description</Label>
-            <Input
-              id="create-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Transaction description"
-            />
+            <div className="flex items-center justify-between">
+              <Label htmlFor="create-description">Description</Label>
+              {aiPrefilled.has("description") && (
+                <AiPrefillIndicator tooltip="Description suggested from email parser" />
+              )}
+            </div>
+            <div className="relative">
+              <Input
+                id="create-description"
+                value={description}
+                onChange={(e) => {
+                  setDescription(e.target.value)
+                  clearAiFlag("description")
+                }}
+                placeholder="Transaction description"
+                className={
+                  aiPrefilled.has("description")
+                    ? "border-purple-300 bg-purple-50/50 pr-8 dark:border-purple-700 dark:bg-purple-950/20"
+                    : undefined
+                }
+              />
+              {aiPrefilled.has("description") && (
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-purple-500">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Amount */}
@@ -269,37 +434,75 @@ export function CreateFromImportDialog({
 
           {/* Vendor */}
           <div className="space-y-1.5">
-            <Label>Vendor</Label>
-            <SearchableComboBox
-              value={vendor}
-              selectedLabel={vendorLabel}
-              onValueChange={setVendor}
-              onSearch={handleSearchVendors}
-              onAddNew={handleAddVendor}
-              placeholder="Search for vendor..."
-              searchPlaceholder="Type to search..."
-              emptyMessage="No vendors found."
-              label="Search or add a vendor"
-              className="w-full"
-            />
+            <div className="flex items-center justify-between">
+              <Label>Vendor</Label>
+              {aiPrefilled.has("vendor") && (
+                <AiPrefillIndicator tooltip="Vendor matched from email" />
+              )}
+            </div>
+            <div className="relative">
+              <SearchableComboBox
+                value={vendor}
+                selectedLabel={vendorLabel}
+                onValueChange={(val) => {
+                  setVendor(val)
+                  clearAiFlag("vendor")
+                }}
+                onSearch={handleSearchVendors}
+                onAddNew={handleAddVendor}
+                placeholder="Search for vendor..."
+                searchPlaceholder="Type to search..."
+                emptyMessage="No vendors found."
+                label="Search or add a vendor"
+                className={
+                  aiPrefilled.has("vendor")
+                    ? "w-full border-purple-300 dark:border-purple-700 [&>button]:bg-purple-50/50 dark:[&>button]:bg-purple-950/20"
+                    : "w-full"
+                }
+              />
+              {aiPrefilled.has("vendor") && (
+                <span className="absolute right-8 top-1/2 -translate-y-1/2 text-purple-500 pointer-events-none z-10">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Payment Method */}
           <div className="space-y-1.5">
-            <Label>Payment Method</Label>
-            <ComboBox
-              options={paymentOptions}
-              value={paymentMethod}
-              onValueChange={setPaymentMethod}
-              onAddNew={handleAddPaymentMethod}
-              allowAdd={true}
-              placeholder="Select payment method"
-              searchPlaceholder="Search..."
-              addNewLabel="Add payment method"
-              label="Select or add a payment method"
-              disabled={paymentsLoading}
-              className="w-full"
-            />
+            <div className="flex items-center justify-between">
+              <Label>Payment Method</Label>
+              {aiPrefilled.has("paymentMethod") && (
+                <AiPrefillIndicator tooltip="Payment method inferred from email source" />
+              )}
+            </div>
+            <div className="relative">
+              <ComboBox
+                options={paymentOptions}
+                value={paymentMethod}
+                onValueChange={(val) => {
+                  setPaymentMethod(val)
+                  clearAiFlag("paymentMethod")
+                }}
+                onAddNew={handleAddPaymentMethod}
+                allowAdd={true}
+                placeholder="Select payment method"
+                searchPlaceholder="Search..."
+                addNewLabel="Add payment method"
+                label="Select or add a payment method"
+                disabled={paymentsLoading}
+                className={
+                  aiPrefilled.has("paymentMethod")
+                    ? "w-full border-purple-300 dark:border-purple-700 [&>button]:bg-purple-50/50 dark:[&>button]:bg-purple-950/20"
+                    : "w-full"
+                }
+              />
+              {aiPrefilled.has("paymentMethod") && (
+                <span className="absolute right-8 top-1/2 -translate-y-1/2 text-purple-500 pointer-events-none z-10">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Tags */}

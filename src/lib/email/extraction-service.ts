@@ -52,6 +52,8 @@ import type { SourceTransaction, TargetTransaction } from '../matching/match-sco
 import { classifyEmail as aiClassifyEmail, classifyAndExtractEmail } from './ai-classifier';
 import { consolidateEmail } from './email-consolidation';
 import { getFeedbackCount } from './ai-feedback-service';
+import { logJournalEntry, getInvocationType } from './ai-journal-service';
+import { triggerBatchAnalysis } from './ai-analysis-service';
 
 // Import parsers
 import { grabParser } from './extractors/grab';
@@ -274,6 +276,53 @@ export class EmailExtractionService {
   }
 
   /**
+   * Try regex extraction first, fall back to AI if regex parser matched but extraction failed.
+   *
+   * Three paths:
+   * 1. Regex parser matched AND extraction succeeded → use regex result, run AI classification only
+   * 2. Regex parser matched BUT extraction failed → fall back to combined AI extraction+classification
+   * 3. No regex parser matched → use combined AI extraction+classification (existing behavior)
+   */
+  async extractWithAiFallback(
+    rawEmail: RawEmailData,
+    userId: string,
+    userHint?: string
+  ): Promise<{ extraction: ExtractionResult; aiResult: AiClassificationResult | null; parserKey: string | null }> {
+    const regexExtraction = await this.extractFromEmail(rawEmail);
+    const regexParser = this.parserRegistry.findParser({
+      ...rawEmail,
+      from_address: normalizeICloudRelay(rawEmail.from_address || ''),
+    });
+    const parserKey = regexParser?.key || null;
+
+    let extraction: ExtractionResult;
+    let aiResult: AiClassificationResult | null = null;
+
+    if (parserKey && parserKey !== 'gemini-ai' && regexExtraction.success) {
+      // Path 1: Regex matched and extracted successfully — only classify with AI
+      extraction = regexExtraction;
+      aiResult = await aiClassifyEmail(rawEmail, userId);
+    } else if (parserKey && parserKey !== 'gemini-ai' && !regexExtraction.success) {
+      // Path 2: Regex parser matched but extraction failed — fall back to AI extraction
+      const combined = await classifyAndExtractEmail(rawEmail, userId, userHint);
+      extraction = combined.extraction;
+      aiResult = combined.classification;
+      // Annotate notes so the user knows what happened
+      const fallbackNote = `Regex parser "${parserKey}" matched but extraction failed (${regexExtraction.errors?.join('; ') || 'unknown reason'}). Fell back to AI extraction.`;
+      extraction.notes = extraction.notes
+        ? `${fallbackNote} ${extraction.notes}`
+        : fallbackNote;
+    } else {
+      // Path 3: No regex parser matched — use combined AI
+      const combined = await classifyAndExtractEmail(rawEmail, userId, userHint);
+      extraction = combined.extraction;
+      aiResult = combined.classification;
+    }
+
+    return { extraction, aiResult, parserKey };
+  }
+
+  /**
    * Build extraction notes combining parser notes with score breakdown
    *
    * Creates a comprehensive note string for the extraction_notes column
@@ -314,7 +363,7 @@ export class EmailExtractionService {
    * automatically links the email transaction. Never throws — matching failures
    * are logged but don't break the extraction pipeline.
    */
-  private async tryAutoMatch(
+  async tryAutoMatch(
     supabase: SupabaseClient,
     emailTransactionId: string,
     userId: string,
@@ -502,29 +551,8 @@ export class EmailExtractionService {
             has_attachments: email.has_attachments ?? false,
           };
 
-          // ---- NEW FLOW: Try regex parsers first, then AI ----
-
-          // Step 1: Try regex extraction
-          const regexExtraction = await this.extractFromEmail(rawEmail);
-          const regexParser = this.parserRegistry.findParser({
-            ...rawEmail,
-            from_address: normalizeICloudRelay(rawEmail.from_address || ''),
-          });
-          const parserKey = regexParser?.key || null;
-
-          let extraction: ExtractionResult;
-          let aiResult: AiClassificationResult | null = null;
-
-          if (parserKey && parserKey !== 'gemini-ai') {
-            // Step 2a: Regex parser matched — use regex extraction, run AI classification only
-            extraction = regexExtraction;
-            aiResult = await aiClassifyEmail(rawEmail, userId);
-          } else {
-            // Step 2b: No regex match — use combined AI extraction + classification
-            const combined = await classifyAndExtractEmail(rawEmail, userId);
-            extraction = combined.extraction;
-            aiResult = combined.classification;
-          }
+          // ---- Try regex parsers first, fall back to AI if extraction fails ----
+          const { extraction, aiResult, parserKey } = await this.extractWithAiFallback(rawEmail, userId);
 
           // Step 3: Classify email with full context (backward-compatible coarse classification)
           const classification = this.classifyEmailWithExtraction(rawEmail, extraction);
@@ -613,7 +641,31 @@ export class EmailExtractionService {
             continue;
           }
 
-          // Step 5: Consolidation — group related emails
+          // Step 5: Log to AI journal (fire-and-forget)
+          if (insertedRow && aiResult) {
+            // Path 1 = regex matched + succeeded (invocationType=classification_only)
+            // Path 2 = regex matched + failed (invocationType=fallback_extraction)
+            // Path 3 = no regex match (invocationType=combined_extraction)
+            const hadRegexParser = parserKey !== null && parserKey !== 'gemini-ai';
+            // In path 1, extraction notes won't contain "Fell back" — that's the path 2 marker
+            const regexSuccess = hadRegexParser && !extraction.notes?.includes('Fell back to AI');
+            logJournalEntry({
+              userId,
+              invocationType: getInvocationType(parserKey, regexSuccess, false),
+              emailId: email.id,
+              emailTransactionId: insertedRow.id,
+              rawEmail,
+              regexParserAttempted: hadRegexParser ? parserKey : null,
+              regexExtractionSuccess: regexSuccess,
+              aiResult,
+              extraction,
+              finalParserKey: parserKey,
+              finalConfidence: confidence,
+              finalStatus: status,
+            }, supabase);
+          }
+
+          // Step 6: Consolidation — group related emails
           if (insertedRow) {
             const consolidation = await consolidateEmail({
               userId,
@@ -640,7 +692,7 @@ export class EmailExtractionService {
               transactionData.is_group_primary = consolidation.isPrimary;
             }
 
-            // Step 6: Auto-match only for primary group emails (or ungrouped)
+            // Step 7: Auto-match only for primary group emails (or ungrouped)
             const shouldAutoMatch = !consolidation || consolidation.isPrimary;
             if (shouldAutoMatch && status !== EMAIL_TRANSACTION_STATUS.SKIPPED) {
               await this.tryAutoMatch(supabase, insertedRow.id, userId, extraction);
@@ -658,6 +710,11 @@ export class EmailExtractionService {
 
       // Log activity
       await this.logActivity(userId, result);
+
+      // Trigger batch analysis if new journal entries were written (fire-and-forget)
+      if (result.extracted > 0) {
+        triggerBatchAnalysis(userId);
+      }
 
     } catch (error) {
       result.errors.push(`Batch processing error: ${error instanceof Error ? error.message : String(error)}`);
@@ -716,7 +773,7 @@ export class EmailExtractionService {
    *
    * Used when user wants to retry extraction or when new parsers are added.
    */
-  async reprocessEmailTransaction(userId: string, emailTransactionId: string): Promise<ExtractionResult> {
+  async reprocessEmailTransaction(userId: string, emailTransactionId: string, options?: { feedbackId?: string; userHint?: string }): Promise<ExtractionResult> {
     const supabase = createServiceRoleClient();
 
     // Get the email transaction
@@ -778,25 +835,8 @@ export class EmailExtractionService {
       has_attachments: emailTx.has_attachments ?? false,
     };
 
-    // Try regex extraction first
-    const regexExtraction = await this.extractFromEmail(rawEmail);
-    const regexParser = this.parserRegistry.findParser({
-      ...rawEmail,
-      from_address: normalizeICloudRelay(rawEmail.from_address || ''),
-    });
-    const parserKey = regexParser?.key || null;
-
-    let extraction: ExtractionResult;
-    let aiResult: AiClassificationResult | null = null;
-
-    if (parserKey && parserKey !== 'gemini-ai') {
-      extraction = regexExtraction;
-      aiResult = await aiClassifyEmail(rawEmail, userId);
-    } else {
-      const combined = await classifyAndExtractEmail(rawEmail, userId);
-      extraction = combined.extraction;
-      aiResult = combined.classification;
-    }
+    // Try regex extraction first, fall back to AI if extraction fails
+    const { extraction, aiResult, parserKey } = await this.extractWithAiFallback(rawEmail, userId, options?.userHint);
 
     // Re-classify with full context (including extracted currency)
     const classification = this.classifyEmailWithExtraction(rawEmail, extraction);
@@ -854,6 +894,26 @@ export class EmailExtractionService {
       .from('email_transactions')
       .update(updateData)
       .eq('id', emailTransactionId);
+
+    // Log to AI journal (fire-and-forget)
+    if (aiResult) {
+      const hadRegexParser = parserKey !== null && parserKey !== 'gemini-ai';
+      const regexSuccess = hadRegexParser && !extraction.notes?.includes('Fell back to AI');
+      logJournalEntry({
+        userId,
+        invocationType: 'reprocess',
+        emailTransactionId,
+        feedbackId: options?.feedbackId,
+        rawEmail,
+        regexParserAttempted: hadRegexParser ? parserKey : null,
+        regexExtractionSuccess: regexSuccess,
+        aiResult,
+        extraction,
+        finalParserKey: parserKey,
+        finalConfidence: confidence,
+        finalStatus: status,
+      }, supabase);
+    }
 
     // Run consolidation
     const consolidation = await consolidateEmail({

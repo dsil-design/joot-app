@@ -24,7 +24,7 @@ export async function GET(
 
     const { id } = await params;
 
-    // Fetch email by ID (RLS ensures user can only access their own emails)
+    // Try fetching email directly by emails.id
     const { data: email, error } = await supabase
       .from('emails')
       .select('*')
@@ -32,14 +32,43 @@ export async function GET(
       .eq('user_id', user.id)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Email not found' },
-          { status: 404 }
-        );
+    if (email) {
+      return NextResponse.json({ email });
+    }
+
+    // If not found, the id might be an email_transactions.id — look up via message_id
+    if (error?.code === 'PGRST116') {
+      const { data: et } = await supabase
+        .from('email_transactions')
+        .select('message_id')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (et?.message_id) {
+        const { data: emailByMsgId, error: msgError } = await supabase
+          .from('emails')
+          .select('*')
+          .eq('message_id', et.message_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (emailByMsgId) {
+          return NextResponse.json({ email: emailByMsgId });
+        }
+
+        if (msgError) {
+          console.error('Error fetching email by message_id:', msgError);
+        }
       }
 
+      return NextResponse.json(
+        { error: 'Email not found' },
+        { status: 404 }
+      );
+    }
+
+    if (error) {
       console.error('Error fetching email:', error);
       return NextResponse.json(
         { error: 'Failed to fetch email' },

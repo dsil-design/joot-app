@@ -112,7 +112,7 @@ export const geminiAiParser: EmailParser = {
   async extract(email: RawEmailData): Promise<ExtractionResult> {
     try {
       const prompt = buildPrompt(email);
-      const response = await callGemini<GeminiResponse>(prompt);
+      const { data: response } = await callGemini<GeminiResponse>(prompt);
 
       // Not a transaction — return clean failure
       if (!response.is_transaction) {
@@ -155,7 +155,7 @@ export const geminiAiParser: EmailParser = {
           description: response.description || undefined,
           order_id: response.order_id || undefined,
         },
-        notes: `AI extraction (gemini-2.5-flash). ${response.confidence_notes || ''}`.trim(),
+        notes: `AI extraction (claude-haiku-4.5). ${response.confidence_notes || ''}`.trim(),
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

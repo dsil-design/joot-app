@@ -10,6 +10,7 @@ interface TransactionFilters {
   vendorIds?: string[]
   paymentMethodIds?: string[]
   transactionType?: "all" | "expense" | "income"
+  sourceType?: "any" | "email" | "statement" | "none"
 }
 
 interface TransactionTotals {
@@ -64,6 +65,7 @@ export function usePaginatedTransactions({
       if (filters.vendorIds?.length) params.set("vendorIds", filters.vendorIds.join(","))
       if (filters.paymentMethodIds?.length) params.set("paymentMethodIds", filters.paymentMethodIds.join(","))
       if (filters.transactionType) params.set("transactionType", filters.transactionType)
+      if (filters.sourceType) params.set("sourceType", filters.sourceType)
 
       const response = await fetch(`/api/transactions?${params.toString()}`)
 
@@ -80,9 +82,15 @@ export function usePaginatedTransactions({
     gcTime: 5 * 60 * 1000, // 5 minutes (replaces cacheTime)
   })
 
-  // Flatten all pages into a single array
+  // Flatten all pages into a single array, deduplicating by ID
   const allTransactions = useMemo(() => {
-    return query.data?.pages.flatMap(page => page.items) ?? []
+    const items = query.data?.pages.flatMap(page => page.items) ?? []
+    const seen = new Set<string>()
+    return items.filter(item => {
+      if (seen.has(item.id)) return false
+      seen.add(item.id)
+      return true
+    })
   }, [query.data?.pages])
 
   // Get total count from first page

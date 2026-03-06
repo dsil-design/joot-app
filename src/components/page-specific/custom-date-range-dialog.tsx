@@ -329,7 +329,7 @@ export function CustomDateRangeDialog({
         </p>
       )}
 
-      {/* Single-Month Calendar */}
+      {/* Dual-Month Calendar */}
       <div className="flex justify-center py-2">
         <Calendar
           mode="range"
@@ -337,9 +337,11 @@ export function CustomDateRangeDialog({
           onSelect={handleCalendarSelect}
           month={calendarMonth}
           onMonthChange={setCalendarMonth}
-          numberOfMonths={1}
+          numberOfMonths={2}
+          fixedWeeks
           showOutsideDays={false}
           className="rounded-md border"
+          classNames={{ months: "flex flex-row gap-4 relative" }}
         />
       </div>
 

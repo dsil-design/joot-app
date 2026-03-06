@@ -110,7 +110,8 @@ The related_transaction_hint helps group related emails. Extract any vendor, amo
 
 function buildCombinedPrompt(
   email: RawEmailData,
-  feedbackExamples: FeedbackExample[]
+  feedbackExamples: FeedbackExample[],
+  userHint?: string
 ): string {
   const body = truncateBody(email.text_body, email.html_body);
 
@@ -143,7 +144,7 @@ ${CLASSIFICATION_CATEGORIES}
 
 ${SKIP_GUIDANCE}
 
-${fewShotSection}**Email to classify and extract:**
+${fewShotSection}${userHint ? `**User correction:** ${userHint}\n\n` : ''}**Email to classify and extract:**
 - From: ${email.from_name || ''} <${email.from_address || ''}>
 - Subject: ${email.subject || '(no subject)'}
 - Date: ${email.email_date.toISOString()}
@@ -246,13 +247,17 @@ export async function classifyEmail(
   try {
     const feedbackExamples = await getRecentFeedback(userId);
     const prompt = buildClassificationPrompt(email, feedbackExamples);
-    const response = await callGemini<ClassificationOnlyResponse>(prompt);
+    const { data: response, tokenUsage, durationMs } = await callGemini<ClassificationOnlyResponse>(prompt);
 
     return {
       ai_classification: normalizeClassification(response.ai_classification),
       should_skip: response.should_skip ?? false,
       reasoning: response.reasoning || '',
       related_transaction_hint: response.related_transaction_hint || null,
+      promptTokens: tokenUsage.promptTokens,
+      responseTokens: tokenUsage.responseTokens,
+      durationMs,
+      feedbackExamplesUsed: feedbackExamples.length,
     };
   } catch (error) {
     console.error('AI classification error:', error);
@@ -272,7 +277,8 @@ export async function classifyEmail(
  */
 export async function classifyAndExtractEmail(
   email: RawEmailData,
-  userId: string
+  userId: string,
+  userHint?: string
 ): Promise<{ classification: AiClassificationResult; extraction: ExtractionResult }> {
   if (!isGeminiAvailable()) {
     return {
@@ -291,8 +297,8 @@ export async function classifyAndExtractEmail(
 
   try {
     const feedbackExamples = await getRecentFeedback(userId);
-    const prompt = buildCombinedPrompt(email, feedbackExamples);
-    const response = await callGemini<CombinedResponse>(prompt);
+    const prompt = buildCombinedPrompt(email, feedbackExamples, userHint);
+    const { data: response, tokenUsage, durationMs } = await callGemini<CombinedResponse>(prompt);
 
     // Build classification result
     const classification: AiClassificationResult = {
@@ -300,6 +306,10 @@ export async function classifyAndExtractEmail(
       should_skip: response.should_skip ?? false,
       reasoning: response.reasoning || '',
       related_transaction_hint: response.related_transaction_hint || null,
+      promptTokens: tokenUsage.promptTokens,
+      responseTokens: tokenUsage.responseTokens,
+      durationMs,
+      feedbackExamplesUsed: feedbackExamples.length,
     };
 
     // Build extraction result
@@ -347,7 +357,7 @@ export async function classifyAndExtractEmail(
           description: ext.description || undefined,
           order_id: ext.order_id || undefined,
         },
-        notes: `AI combined extraction+classification (gemini-2.5-flash). ${ext.confidence_notes || ''}`.trim(),
+        notes: `AI combined extraction+classification (claude-haiku-4.5). ${ext.confidence_notes || ''}`.trim(),
       };
     }
 

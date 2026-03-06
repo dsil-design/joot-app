@@ -35,35 +35,99 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch the email transaction
-    const { data: emailTx, error: fetchError } = await supabase
+    const serviceClient = createServiceRoleClient()
+
+    // The id may be an emails.id (from the unified view) or an
+    // email_transactions.id. Try email_transactions first, then
+    // fall back to looking up via the emails table.
+    let emailTxId: string | null = null
+
+    // Try direct lookup in email_transactions
+    const { data: directTx } = await supabase
       .from('email_transactions')
-      .select('id, status, user_id')
+      .select('id, status')
       .eq('id', id)
       .eq('user_id', user.id)
       .single()
 
-    if (fetchError || !emailTx) {
-      return NextResponse.json(
-        { error: 'Email transaction not found' },
-        { status: 404 }
-      )
+    if (directTx) {
+      if (directTx.status === 'imported') {
+        return NextResponse.json(
+          { error: 'Cannot skip an already imported transaction' },
+          { status: 400 }
+        )
+      }
+      emailTxId = directTx.id
+    } else {
+      // Look up the email by emails.id, then find/create email_transactions row
+      const { data: email } = await serviceClient
+        .from('emails')
+        .select('id, message_id, user_id, subject, from_address, from_name, date, uid, folder, seen, has_attachments, synced_at')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single()
+
+      if (!email) {
+        return NextResponse.json(
+          { error: 'Email not found' },
+          { status: 404 }
+        )
+      }
+
+      // Check if an email_transactions row exists for this message_id
+      const { data: existingTx } = await serviceClient
+        .from('email_transactions')
+        .select('id, status')
+        .eq('message_id', email.message_id)
+        .eq('user_id', user.id)
+        .single()
+
+      if (existingTx) {
+        if (existingTx.status === 'imported') {
+          return NextResponse.json(
+            { error: 'Cannot skip an already imported transaction' },
+            { status: 400 }
+          )
+        }
+        emailTxId = existingTx.id
+      } else {
+        // No email_transactions row — create one with status 'skipped'
+        const { data: newRow, error: insertError } = await serviceClient
+          .from('email_transactions')
+          .insert({
+            user_id: user.id,
+            message_id: email.message_id,
+            uid: email.uid,
+            folder: email.folder,
+            subject: email.subject,
+            from_address: email.from_address,
+            from_name: email.from_name,
+            email_date: email.date || new Date().toISOString(),
+            seen: email.seen ?? false,
+            has_attachments: email.has_attachments ?? false,
+            status: 'skipped',
+            synced_at: email.synced_at || new Date().toISOString(),
+            processed_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single()
+
+        if (insertError || !newRow) {
+          console.error('Error creating skipped email transaction:', insertError)
+          return NextResponse.json(
+            { error: 'Failed to skip email' },
+            { status: 500 }
+          )
+        }
+        emailTxId = newRow.id
+      }
     }
 
-    // Cannot skip imported items
-    if (emailTx.status === 'imported') {
-      return NextResponse.json(
-        { error: 'Cannot skip an already imported transaction' },
-        { status: 400 }
-      )
-    }
-
-    // Update status
-    const serviceClient = createServiceRoleClient()
+    // Update status (may already be 'skipped' if just created)
     const { error: updateError } = await serviceClient
       .from('email_transactions')
       .update({ status: 'skipped' })
-      .eq('id', id)
+      .eq('id', emailTxId)
       .eq('user_id', user.id)
 
     if (updateError) {
@@ -80,7 +144,7 @@ export async function POST(
       .insert({
         user_id: user.id,
         activity_type: 'transaction_skipped',
-        email_transaction_id: id,
+        email_transaction_id: emailTxId,
         description: 'Email transaction marked as skipped',
         transactions_affected: 1,
       })
@@ -88,6 +152,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       id,
+      emailTransactionId: emailTxId,
       status: 'skipped',
     })
   } catch (error) {

@@ -10,6 +10,7 @@ const VALID_FEEDBACK_TYPES = [
   'skip_override',
   'extraction_correction',
   'undo_skip',
+  'skip_reason',
 ]
 
 /**
@@ -45,6 +46,7 @@ export async function POST(
     let body: {
       feedback_type?: string
       corrections?: { classification?: string; skip?: boolean }
+      reason?: string
     }
     try {
       body = await request.json()
@@ -84,6 +86,11 @@ export async function POST(
 
     const bodyPreview = emailData?.[0]?.text_body?.slice(0, 500) ?? null
 
+    // For skip_reason feedback, store the reason as the body preview
+    const feedbackBodyPreview = body.feedback_type === 'skip_reason' && body.reason
+      ? body.reason
+      : bodyPreview
+
     await recordFeedback({
       userId: user.id,
       emailTransactionId: id,
@@ -94,7 +101,7 @@ export async function POST(
       correctedSkip: body.corrections?.skip ?? null,
       emailSubject: emailTx.subject,
       emailFrom: emailTx.from_address,
-      emailBodyPreview: bodyPreview,
+      emailBodyPreview: feedbackBodyPreview,
     }, serviceClient)
 
     return NextResponse.json({ success: true })

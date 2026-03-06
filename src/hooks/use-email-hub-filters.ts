@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import type { DateRange } from "react-day-picker"
+import { getPresetRange } from "@/lib/utils/date-filters"
 
 /**
  * Email hub filter types
@@ -45,7 +46,7 @@ export const defaultEmailHubFilters: EmailHubFilters = {
   currency: "all",
   confidence: "all",
   search: "",
-  dateRange: undefined,
+  dateRange: getPresetRange("this-month"),
   sort: "email_date_desc",
 }
 
@@ -119,10 +120,12 @@ export function filtersToUrlParams(filters: EmailHubFilters): URLSearchParams {
   if (filters.search) params.set("search", filters.search)
   if (filters.sort !== "email_date_desc") params.set("sort", filters.sort)
   if (filters.dateRange?.from) {
-    params.set("from", filters.dateRange.from.toISOString().split("T")[0])
+    const d = filters.dateRange.from
+    params.set("from", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
   }
   if (filters.dateRange?.to) {
-    params.set("to", filters.dateRange.to.toISOString().split("T")[0])
+    const d = filters.dateRange.to
+    params.set("to", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
   }
 
   return params
@@ -138,7 +141,8 @@ export function hasActiveFilters(filters: EmailHubFilters): boolean {
     filters.currency !== "all" ||
     filters.confidence !== "all" ||
     filters.search !== "" ||
-    filters.dateRange !== undefined
+    filters.dateRange?.from?.getTime() !== defaultEmailHubFilters.dateRange?.from?.getTime() ||
+    filters.dateRange?.to?.getTime() !== defaultEmailHubFilters.dateRange?.to?.getTime()
   )
 }
 

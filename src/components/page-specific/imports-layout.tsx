@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, LayoutDashboard, FileText, ClipboardCheck, Mail } from 'lucide-react'
+import { ArrowLeft, LayoutDashboard, FileText, ClipboardCheck, Mail, Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
 import { MainNavigation } from '@/components/page-specific/main-navigation'
@@ -37,6 +37,11 @@ const navigationItems = [
     name: 'Emails',
     href: '/imports/emails',
     icon: Mail,
+  },
+  {
+    name: 'AI Journal',
+    href: '/imports/ai-journal',
+    icon: Brain,
   },
 ]
 

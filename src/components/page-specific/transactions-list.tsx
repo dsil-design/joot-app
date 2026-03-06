@@ -10,12 +10,14 @@ interface TransactionCardProps {
   viewMode: "recorded" | "all-usd" | "all-thb"
   isMobile: boolean
   onEditTransaction?: (transaction: TransactionWithVendorAndPayment) => void
+  onBeforeNavigate?: () => void
 }
 
-function TransactionCardComponent({ transaction, viewMode, isMobile, onEditTransaction }: TransactionCardProps) {
+function TransactionCardComponent({ transaction, viewMode, isMobile, onEditTransaction, onBeforeNavigate }: TransactionCardProps) {
   const { navigateToViewTransaction } = useTransactionFlow()
 
   const handleClick = () => {
+    onBeforeNavigate?.()
     navigateToViewTransaction(transaction.id, 'transactions')
   }
 
@@ -35,9 +37,10 @@ interface TransactionGroupProps {
   viewMode: "recorded" | "all-usd" | "all-thb"
   isMobile: boolean
   onEditTransaction?: (transaction: TransactionWithVendorAndPayment) => void
+  onBeforeNavigate?: () => void
 }
 
-export function TransactionGroup({ date, transactions, viewMode, isMobile, onEditTransaction }: TransactionGroupProps) {
+export function TransactionGroup({ date, transactions, viewMode, isMobile, onEditTransaction, onBeforeNavigate }: TransactionGroupProps) {
   return (
     <>
       <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-black text-[20px] text-nowrap">
@@ -51,6 +54,7 @@ export function TransactionGroup({ date, transactions, viewMode, isMobile, onEdi
             viewMode={viewMode}
             isMobile={isMobile}
             onEditTransaction={onEditTransaction}
+            onBeforeNavigate={onBeforeNavigate}
           />
         ))}
       </div>

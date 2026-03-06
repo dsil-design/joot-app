@@ -85,10 +85,12 @@ async function fetchMatches(
   if (filters.search) params.set("search", filters.search)
   if (filters.statementUploadId) params.set("statementUploadId", filters.statementUploadId)
   if (filters.dateRange?.from) {
-    params.set("from", filters.dateRange.from.toISOString().split("T")[0])
+    const d = filters.dateRange.from
+    params.set("from", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
   }
   if (filters.dateRange?.to) {
-    params.set("to", filters.dateRange.to.toISOString().split("T")[0])
+    const d = filters.dateRange.to
+    params.set("to", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
   }
 
   try {

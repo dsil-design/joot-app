@@ -12,24 +12,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { SkipForward, Clock, RefreshCw, X } from "lucide-react"
+import { SkipForward, Clock, RefreshCw, X, CheckSquare } from "lucide-react"
 
 interface EmailBatchToolbarProps {
   selectedCount: number
+  totalFilteredCount: number | null
+  isAllSelected: boolean
+  onSelectAll: () => void
   onSkipSelected: () => void
   onMarkPending: () => void
   onProcessSelected: () => void
   onClearSelection: () => void
   isProcessing: boolean
+  isSelectingAll: boolean
 }
 
 export function EmailBatchToolbar({
   selectedCount,
+  totalFilteredCount,
+  isAllSelected,
+  onSelectAll,
   onSkipSelected,
   onMarkPending,
   onProcessSelected,
   onClearSelection,
   isProcessing,
+  isSelectingAll,
 }: EmailBatchToolbarProps) {
   const [confirmOpen, setConfirmOpen] = React.useState(false)
 
@@ -48,6 +56,34 @@ export function EmailBatchToolbar({
         <span className="text-sm font-medium">
           {selectedCount} selected
         </span>
+
+        {!isAllSelected && totalFilteredCount != null && totalFilteredCount > selectedCount && (
+          <Button
+            variant="link"
+            size="sm"
+            className="text-xs px-1"
+            onClick={onSelectAll}
+            disabled={isSelectingAll}
+          >
+            {isSelectingAll ? (
+              <>
+                <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                Selecting...
+              </>
+            ) : (
+              <>
+                <CheckSquare className="h-3 w-3 mr-1" />
+                Select all {totalFilteredCount}
+              </>
+            )}
+          </Button>
+        )}
+
+        {isAllSelected && (
+          <span className="text-xs text-muted-foreground">
+            All {selectedCount} filtered results selected
+          </span>
+        )}
 
         <div className="flex items-center gap-2 ml-auto">
           <Button
@@ -90,11 +126,24 @@ export function EmailBatchToolbar({
 
       {/* Mobile: fixed bottom bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] z-50">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium shrink-0">
-            {selectedCount} selected
-          </span>
-          <div className="flex items-center gap-2 ml-auto">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium shrink-0">
+              {selectedCount} selected
+            </span>
+            {!isAllSelected && totalFilteredCount != null && totalFilteredCount > selectedCount && (
+              <Button
+                variant="link"
+                size="sm"
+                className="text-xs px-1"
+                onClick={onSelectAll}
+                disabled={isSelectingAll}
+              >
+                {isSelectingAll ? "Selecting..." : `Select all ${totalFilteredCount}`}
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"

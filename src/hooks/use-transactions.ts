@@ -353,7 +353,7 @@ export function useTransactions() {
               color
             )
           ),
-          email_transactions!transactions_source_email_transaction_id_fkey (
+          email_transactions!email_transactions_matched_transaction_id_fkey(
             id,
             subject,
             from_address,
@@ -394,7 +394,9 @@ export function useTransactions() {
         vendor: (data as any).vendors,
         payment_method: (data as any).payment_methods,
         tags: (data as any).transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || [],
-        emailSource: (data as any).email_transactions ?? null,
+        emailSource: Array.isArray((data as any).email_transactions)
+          ? (data as any).email_transactions[0] ?? null
+          : (data as any).email_transactions ?? null,
         statementSource: statementUpload ? {
           ...statementUpload,
           payment_method_name: statementUpload.payment_methods?.name ?? null,

@@ -4,6 +4,8 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Input } from "@/components/ui/input"
 import { ConfidenceIndicator } from "@/components/ui/confidence-indicator"
 import { cn } from "@/lib/utils"
 import {
@@ -18,6 +20,12 @@ import {
   Zap,
   RefreshCw,
   Eye,
+  Copy,
+  Check,
+  Info,
+  AlertTriangle,
+  Bot,
+  Send,
 } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { EmailViewerModal } from "./email-viewer-modal"
@@ -36,6 +44,8 @@ interface MatchSuggestion {
     transaction_date: string
     vendors: { name: string } | null
     payment_methods: { name: string } | null
+    source_email_transaction_id: string | null
+    source_statement_upload_id: string | null
   } | null
 }
 
@@ -50,6 +60,8 @@ interface MatchesResponse {
     transaction_date: string
     vendors: { name: string } | null
     payment_methods: { name: string } | null
+    source_email_transaction_id: string | null
+    source_statement_upload_id: string | null
   } | null
   stats: {
     totalCandidates: number
@@ -67,8 +79,10 @@ interface EmailDetailPanelProps {
   onCreateNew: (emailId: string) => void
   onSkip: (emailId: string) => void
   onProcess?: (emailId: string) => void
+  onFeedbackReprocess?: (emailId: string, userHint: string) => void
   isProcessing: boolean
   isProcessingExtraction?: boolean
+  isFeedbackProcessing?: boolean
 }
 
 export function EmailDetailPanel({
@@ -77,8 +91,10 @@ export function EmailDetailPanel({
   onCreateNew,
   onSkip,
   onProcess,
+  onFeedbackReprocess,
   isProcessing,
   isProcessingExtraction,
+  isFeedbackProcessing,
 }: EmailDetailPanelProps) {
   const [matchData, setMatchData] = React.useState<MatchesResponse | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
@@ -117,7 +133,7 @@ export function EmailDetailPanel({
 
     fetchMatches()
     return () => { cancelled = true }
-  }, [emailTransaction.id, emailTransaction.email_transaction_id, isUnprocessed])
+  }, [emailTransaction.id, emailTransaction.email_transaction_id, emailTransaction.status, isUnprocessed])
 
   const isActioned = ["matched", "imported", "skipped"].includes(emailTransaction.status)
 
@@ -167,6 +183,8 @@ export function EmailDetailPanel({
             <Eye className="h-4 w-4 mr-1" />
             View Email
           </Button>
+
+          <CopyableId id={emailTransaction.id} />
         </div>
 
         {/* Right: Extract Data action */}
@@ -186,6 +204,13 @@ export function EmailDetailPanel({
               <Zap className="h-4 w-4 mr-1" />
               {isProcessingExtraction ? "Extracting..." : "Extract Data"}
             </Button>
+          )}
+          {onFeedbackReprocess && (
+            <UserHintInput
+              emailId={emailTransaction.id}
+              onFeedbackReprocess={onFeedbackReprocess}
+              isFeedbackProcessing={isFeedbackProcessing}
+            />
           )}
         </div>
 
@@ -269,10 +294,18 @@ export function EmailDetailPanel({
             <DetailRow
               label="Extraction"
               value={
-                <ConfidenceIndicator
-                  score={emailTransaction.extraction_confidence}
-                  size="sm"
-                />
+                <span className="flex items-center gap-1.5">
+                  <ConfidenceIndicator
+                    score={emailTransaction.extraction_confidence}
+                    size="sm"
+                  />
+                  {isAiError(emailTransaction.ai_reasoning) && (
+                    <Badge variant="outline" className="text-[10px] px-1 py-0 border-destructive text-destructive">
+                      <AlertTriangle className="h-3 w-3 mr-0.5" />
+                      AI error
+                    </Badge>
+                  )}
+                </span>
               }
             />
           )}
@@ -300,6 +333,8 @@ export function EmailDetailPanel({
             {isProcessingExtraction ? "Processing..." : "Process Again"}
           </Button>
         )}
+
+        <CopyableId id={emailTransaction.id} />
       </div>
 
       {/* Right: Match Suggestions */}
@@ -307,6 +342,16 @@ export function EmailDetailPanel({
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
           {isActioned ? "Linked Transaction" : "Match Suggestions"}
         </h4>
+
+        <AiReasoningCallout emailTransaction={emailTransaction} />
+
+        {onFeedbackReprocess && (
+          <UserHintInput
+            emailId={emailTransaction.id}
+            onFeedbackReprocess={onFeedbackReprocess}
+            isFeedbackProcessing={isFeedbackProcessing}
+          />
+        )}
 
         {isLoading ? (
           <div className="space-y-3">
@@ -399,6 +444,29 @@ export function EmailDetailPanel({
   )
 }
 
+function CopyableId({ id }: { id: string }) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(id)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 pt-2">
+      <span className="text-[12px] text-muted-foreground font-mono">{id}</span>
+      <button
+        onClick={handleCopy}
+        className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+        aria-label="Copy email ID"
+      >
+        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+      </button>
+    </div>
+  )
+}
+
 function DetailRow({
   icon,
   label,
@@ -413,6 +481,32 @@ function DetailRow({
       {icon && <span className="text-muted-foreground mt-0.5">{icon}</span>}
       <span className="text-muted-foreground shrink-0 w-20">{label}</span>
       <span className="font-medium break-words min-w-0">{value}</span>
+    </div>
+  )
+}
+
+function SourceBadges({ transaction }: {
+  transaction: {
+    source_email_transaction_id: string | null
+    source_statement_upload_id: string | null
+  }
+}) {
+  const hasEmail = !!transaction.source_email_transaction_id
+  const hasStatement = !!transaction.source_statement_upload_id
+  if (!hasEmail && !hasStatement) return null
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {hasEmail && (
+        <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] px-1.5 py-0">
+          Email
+        </Badge>
+      )}
+      {hasStatement && (
+        <Badge variant="secondary" className="bg-slate-100 text-slate-800 border border-slate-200 text-[10px] px-1.5 py-0">
+          Statement
+        </Badge>
+      )}
     </div>
   )
 }
@@ -443,11 +537,15 @@ function SuggestionCard({
         <span className="text-sm font-medium">{vendorName}</span>
         <ConfidenceIndicator score={suggestion.score} size="sm" showProgressBar={false} />
       </div>
+      {tx.description && (
+        <p className="text-xs text-muted-foreground">{tx.description}</p>
+      )}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span>{formatAmount(tx.amount, tx.original_currency)}</span>
         <span>{new Date(tx.transaction_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
         {pmName && <span>{pmName}</span>}
       </div>
+      <SourceBadges transaction={tx} />
       {suggestion.reasons.length > 0 && (
         <p className="text-xs text-muted-foreground">{suggestion.reasons[0]}</p>
       )}
@@ -474,6 +572,8 @@ function LinkedTransactionCard({ transaction }: {
     transaction_date: string
     vendors: { name: string } | null
     payment_methods: { name: string } | null
+    source_email_transaction_id?: string | null
+    source_statement_upload_id?: string | null
   }
 }) {
   const vendorName = (transaction.vendors as { name: string } | null)?.name || transaction.description || "Unknown"
@@ -487,16 +587,147 @@ function LinkedTransactionCard({ transaction }: {
           Linked
         </Badge>
       </div>
+      {transaction.description && (
+        <p className="text-xs text-muted-foreground">{transaction.description}</p>
+      )}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span>{formatAmount(transaction.amount, transaction.original_currency)}</span>
         <span>{new Date(transaction.transaction_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
         {pmName && <span>{pmName}</span>}
       </div>
+      <SourceBadges transaction={{
+        source_email_transaction_id: transaction.source_email_transaction_id ?? null,
+        source_statement_upload_id: transaction.source_statement_upload_id ?? null,
+      }} />
       <Button variant="ghost" size="sm" asChild>
         <a href={`/transactions/${transaction.id}`}>
           <ExternalLink className="h-3.5 w-3.5 mr-1" />
           View Transaction
         </a>
+      </Button>
+    </div>
+  )
+}
+
+function isAiError(reasoning: string | null | undefined): boolean {
+  if (!reasoning) return false
+  return (
+    reasoning.startsWith("Error:") ||
+    reasoning.startsWith("Classification error:") ||
+    reasoning.includes("Gemini API timeout") ||
+    reasoning.includes("GEMINI_API_KEY not configured")
+  )
+}
+
+function AiReasoningCallout({
+  emailTransaction,
+}: {
+  emailTransaction: EmailTransactionRow
+}) {
+  const reasoning = emailTransaction.ai_reasoning
+  if (!reasoning) return null
+
+  const hasError = isAiError(reasoning)
+  const hasExtractionData = emailTransaction.amount != null
+
+  // AI error: show destructive alert
+  if (hasError) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>AI Processing Error</AlertTitle>
+        <AlertDescription>{reasoning}</AlertDescription>
+      </Alert>
+    )
+  }
+
+  // No extraction data: show prominent info callout with AI reasoning
+  if (!hasExtractionData) {
+    return (
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>AI Analysis</AlertTitle>
+        <AlertDescription>{reasoning}</AlertDescription>
+      </Alert>
+    )
+  }
+
+  // Has extraction data: show collapsible details
+  return (
+    <details className="text-xs text-muted-foreground">
+      <summary className="cursor-pointer flex items-center gap-1 hover:text-foreground transition-colors">
+        <Bot className="h-3.5 w-3.5" />
+        AI Analysis
+      </summary>
+      <p className="mt-1 pl-5">{reasoning}</p>
+    </details>
+  )
+}
+
+function UserHintInput({
+  emailId,
+  onFeedbackReprocess,
+  isFeedbackProcessing,
+}: {
+  emailId: string
+  onFeedbackReprocess: (emailId: string, userHint: string) => void
+  isFeedbackProcessing?: boolean
+}) {
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false)
+  const [feedbackText, setFeedbackText] = React.useState("")
+
+  const handleSubmit = () => {
+    if (feedbackText.trim()) {
+      onFeedbackReprocess(emailId, feedbackText.trim())
+      setFeedbackOpen(false)
+      setFeedbackText("")
+    }
+  }
+
+  if (!feedbackOpen) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setFeedbackOpen(true)}
+        disabled={isFeedbackProcessing}
+        className="h-7 text-xs"
+      >
+        <Bot className={cn("h-3 w-3 mr-1", isFeedbackProcessing && "animate-spin")} />
+        {isFeedbackProcessing ? "Processing..." : "Message AI"}
+      </Button>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        value={feedbackText}
+        onChange={(e) => setFeedbackText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && feedbackText.trim()) handleSubmit()
+          if (e.key === "Escape") {
+            setFeedbackOpen(false)
+            setFeedbackText("")
+          }
+        }}
+        placeholder="e.g. this is a bank transfer for THB 500"
+        className="h-7 text-xs flex-1"
+        autoFocus
+        disabled={isFeedbackProcessing}
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleSubmit}
+        disabled={!feedbackText.trim() || isFeedbackProcessing}
+        className="h-7 px-2"
+      >
+        {isFeedbackProcessing ? (
+          <Bot className="h-3 w-3 animate-spin" />
+        ) : (
+          <Send className="h-3 w-3" />
+        )}
       </Button>
     </div>
   )

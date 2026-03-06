@@ -67,58 +67,100 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify all IDs belong to user and none are imported
-    const { data: emailTxs, error: fetchError } = await supabase
-      .from('email_transactions')
-      .select('id, status, ai_classification, ai_suggested_skip, subject, from_address')
+    const serviceClient = createServiceRoleClient()
+    const newStatus = action === 'skip' ? 'skipped' : 'pending_review'
+
+    // IDs come from the email_hub_unified view where id = emails.id.
+    // We need to resolve these to email_transactions rows. Use the
+    // unified view itself to map emails.id → email_transaction_id.
+    const { data: viewRows, error: viewError } = await serviceClient
+      .from('email_hub_unified')
+      .select('id, email_transaction_id, status, ai_classification, ai_suggested_skip, subject, from_address, message_id, uid, folder, email_date, seen, has_attachments, synced_at')
       .eq('user_id', user.id)
       .in('id', ids)
 
-    if (fetchError) {
-      console.error('Error fetching email transactions:', fetchError)
+    if (viewError) {
+      console.error('Error fetching from unified view:', viewError)
       return NextResponse.json(
-        { error: 'Failed to verify email transactions' },
+        { error: 'Failed to verify emails' },
         { status: 500 }
       )
     }
 
-    // Check all IDs were found (belong to user)
-    const foundIds = new Set((emailTxs || []).map((t) => t.id))
+    // Check all IDs were found
+    const foundIds = new Set((viewRows || []).map((r) => r.id))
     const missingIds = ids.filter((id) => !foundIds.has(id))
     if (missingIds.length > 0) {
       return NextResponse.json(
-        { error: `Some email transactions not found: ${missingIds.slice(0, 3).join(', ')}...` },
+        { error: `Some emails not found: ${missingIds.slice(0, 3).join(', ')}...` },
         { status: 404 }
       )
     }
 
     // Reject any imported rows
-    const importedIds = (emailTxs || []).filter((t) => t.status === 'imported').map((t) => t.id)
-    if (importedIds.length > 0) {
+    const importedRows = (viewRows || []).filter((r) => r.status === 'imported')
+    if (importedRows.length > 0) {
       return NextResponse.json(
-        { error: `Cannot modify imported transactions. ${importedIds.length} item(s) are already imported.` },
+        { error: `Cannot modify imported transactions. ${importedRows.length} item(s) are already imported.` },
         { status: 400 }
       )
     }
 
-    // Determine new status
-    const newStatus = action === 'skip' ? 'skipped' : 'pending_review'
+    // Split into rows that have email_transactions and those that don't
+    const withTx = (viewRows || []).filter((r) => r.email_transaction_id)
+    const withoutTx = (viewRows || []).filter((r) => !r.email_transaction_id)
 
-    // Batch update
-    const serviceClient = createServiceRoleClient()
-    const { error: updateError, count } = await serviceClient
-      .from('email_transactions')
-      .update({ status: newStatus })
-      .eq('user_id', user.id)
-      .in('id', ids)
-      .not('status', 'eq', 'imported')
+    let updatedCount = 0
 
-    if (updateError) {
-      console.error('Error in bulk update:', updateError)
-      return NextResponse.json(
-        { error: 'Failed to update email transactions' },
-        { status: 500 }
-      )
+    // Update existing email_transactions rows
+    if (withTx.length > 0) {
+      const txIds = withTx.map((r) => r.email_transaction_id as string)
+      const { error: updateError, count } = await serviceClient
+        .from('email_transactions')
+        .update({ status: newStatus })
+        .eq('user_id', user.id)
+        .in('id', txIds)
+        .not('status', 'eq', 'imported')
+
+      if (updateError) {
+        console.error('Error in bulk update:', updateError)
+        return NextResponse.json(
+          { error: 'Failed to update email transactions' },
+          { status: 500 }
+        )
+      }
+      updatedCount += count || txIds.length
+    }
+
+    // For unprocessed emails (no email_transactions row), create rows
+    // with the target status. Only meaningful for 'skip' — mark_pending
+    // on unprocessed rows is a no-op since they're already not processed.
+    if (withoutTx.length > 0 && action === 'skip') {
+      const inserts = withoutTx.map((r) => ({
+        user_id: user.id,
+        message_id: r.message_id!,
+        uid: r.uid!,
+        folder: r.folder || 'INBOX',
+        subject: r.subject,
+        from_address: r.from_address,
+        email_date: r.email_date || new Date().toISOString(),
+        seen: r.seen ?? false,
+        has_attachments: r.has_attachments ?? false,
+        status: 'skipped' as const,
+        synced_at: r.synced_at || new Date().toISOString(),
+        processed_at: new Date().toISOString(),
+      }))
+
+      const { error: insertError, count: insertCount } = await serviceClient
+        .from('email_transactions')
+        .insert(inserts)
+
+      if (insertError) {
+        console.error('Error creating skipped email transactions:', insertError)
+        // Continue — some may have been updated already
+      } else {
+        updatedCount += insertCount || inserts.length
+      }
     }
 
     // Log activity
@@ -128,34 +170,38 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         activity_type: activityType,
-        description: `Bulk ${action}: ${ids.length} email transaction(s)`,
+        description: `Bulk ${action}: ${ids.length} email(s)`,
         transactions_affected: ids.length,
         metadata: { action, ids },
       })
 
     // Record feedback for bulk-skip when AI didn't suggest skipping
     if (action === 'skip') {
-      const txMap = new Map((emailTxs || []).map((t) => [t.id, t]))
-      for (const txId of ids) {
-        const tx = txMap.get(txId)
-        if (tx && !tx.ai_suggested_skip) {
+      for (const row of withTx) {
+        if (!row.ai_suggested_skip) {
           await recordFeedback({
             userId: user.id,
-            emailTransactionId: txId,
+            emailTransactionId: row.email_transaction_id!,
             feedbackType: AI_FEEDBACK_TYPE.SKIP_OVERRIDE as AiFeedbackType,
-            originalAiClassification: tx.ai_classification,
-            originalAiSuggestedSkip: tx.ai_suggested_skip,
+            originalAiClassification: row.ai_classification,
+            originalAiSuggestedSkip: row.ai_suggested_skip,
             correctedSkip: true,
-            emailSubject: tx.subject,
-            emailFrom: tx.from_address,
+            emailSubject: row.subject,
+            emailFrom: row.from_address,
           }, serviceClient)
         }
       }
     }
 
+    // Return email_transaction IDs for client-side feedback
+    const emailTransactionIds = withTx
+      .map((r) => r.email_transaction_id as string)
+      .filter(Boolean)
+
     return NextResponse.json({
       success: true,
-      updated: count || ids.length,
+      updated: updatedCount,
+      emailTransactionIds,
       action,
     })
   } catch (error) {

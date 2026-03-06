@@ -166,6 +166,24 @@ export async function POST(request: NextRequest) {
             suggestion.status = 'approved'
             hasChanges = true
 
+            // If suggestion already has a matched transaction (pre-matched), set the FK on it
+            if (!createTransactions && suggestion.matched_transaction_id) {
+              const { error: fkError } = await serviceClient
+                .from('transactions')
+                .update({
+                  source_statement_upload_id: statement.id,
+                  source_statement_suggestion_index: idx,
+                  source_statement_match_confidence: suggestion.confidence ?? null,
+                })
+                .eq('id', suggestion.matched_transaction_id)
+                .eq('user_id', user.id)
+
+              if (fkError) {
+                console.error('Error setting statement FK on matched transaction:', fkError)
+                results.errors.push(`Failed to set source reference: ${fkError.message}`)
+              }
+            }
+
             if (createTransactions && suggestion.amount && suggestion.transaction_date) {
               const { error: insertError } = await serviceClient
                 .from('transactions')
@@ -250,7 +268,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Update email_transactions status
-            await serviceClient
+            const { error: emailStatusError } = await serviceClient
               .from('email_transactions')
               .update({
                 status: 'imported',
@@ -259,6 +277,11 @@ export async function POST(request: NextRequest) {
                 matched_at: new Date().toISOString(),
               })
               .eq('id', row.id)
+
+            if (emailStatusError) {
+              console.error('Error updating email_transaction status:', emailStatusError)
+              results.errors.push(`Failed to update email status for ${row.id}: ${emailStatusError.message}`)
+            }
 
             results.success++
             results.transactionsCreated++
@@ -350,15 +373,20 @@ export async function POST(request: NextRequest) {
           matched_transaction_id: newTx.id,
         }
 
-        await serviceClient
+        const { error: stmtUpdateError } = await serviceClient
           .from('statement_uploads')
           .update({
             extraction_log: { ...extractionLog, suggestions } as unknown as Json,
           })
           .eq('id', statement.id)
 
+        if (stmtUpdateError) {
+          console.error('Error updating statement suggestion (merged):', stmtUpdateError)
+          results.errors.push(`Failed to update statement for merged ID ${merged.id}: ${stmtUpdateError.message}`)
+        }
+
         // Update email_transaction
-        await serviceClient
+        const { error: emailUpdateError } = await serviceClient
           .from('email_transactions')
           .update({
             matched_transaction_id: newTx.id,
@@ -368,6 +396,11 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', merged.emailId)
           .eq('user_id', user.id)
+
+        if (emailUpdateError) {
+          console.error('Error updating email_transaction (merged):', emailUpdateError)
+          results.errors.push(`Failed to update email for merged ID ${merged.id}: ${emailUpdateError.message}`)
+        }
 
         results.success++
         results.transactionsCreated++

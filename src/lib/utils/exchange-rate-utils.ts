@@ -83,6 +83,9 @@ export async function getExchangeRateWithMetadata(
   timestamp: string | null
   isUsingLatestRate: boolean
   fallbackDate: string | null
+  isInterpolated: boolean
+  interpolatedFromDate: string | null
+  source: string | null
 }> {
   const today = new Date().toISOString().split('T')[0]
   const isTodayOrFuture = transactionDate >= today
@@ -93,7 +96,7 @@ export async function getExchangeRateWithMetadata(
     // For today/future dates, fetch the latest available rate
     const { data: latestRateData } = await supabase
       .from("exchange_rates")
-      .select("rate, created_at, date")
+      .select("rate, created_at, date, is_interpolated, interpolated_from_date, source")
       .eq("from_currency", fromCurrency)
       .eq("to_currency", toCurrency)
       .order("date", { ascending: false })
@@ -105,7 +108,10 @@ export async function getExchangeRateWithMetadata(
         rate: latestRateData.rate,
         timestamp: latestRateData.created_at,
         isUsingLatestRate: true,
-        fallbackDate: null
+        fallbackDate: null,
+        isInterpolated: latestRateData.is_interpolated ?? false,
+        interpolatedFromDate: latestRateData.interpolated_from_date,
+        source: latestRateData.source,
       }
     }
 
@@ -113,14 +119,17 @@ export async function getExchangeRateWithMetadata(
       rate: null,
       timestamp: null,
       isUsingLatestRate: true,
-      fallbackDate: null
+      fallbackDate: null,
+      isInterpolated: false,
+      interpolatedFromDate: null,
+      source: null,
     }
   }
 
   // For past dates, try to get the exact date's rate
   const { data: rateData } = await supabase
     .from("exchange_rates")
-    .select("rate, created_at, date")
+    .select("rate, created_at, date, is_interpolated, interpolated_from_date, source")
     .eq("from_currency", fromCurrency)
     .eq("to_currency", toCurrency)
     .eq("date", transactionDate)
@@ -132,7 +141,10 @@ export async function getExchangeRateWithMetadata(
       rate: rateData.rate,
       timestamp: rateData.created_at,
       isUsingLatestRate: false,
-      fallbackDate: null
+      fallbackDate: null,
+      isInterpolated: rateData.is_interpolated ?? false,
+      interpolatedFromDate: rateData.interpolated_from_date,
+      source: rateData.source,
     }
   }
 
@@ -155,7 +167,7 @@ export async function getExchangeRateWithMetadata(
   // No exact rate found - fetch the most recent rate before this date
   const { data: fallbackRateData } = await supabase
     .from("exchange_rates")
-    .select("rate, created_at, date")
+    .select("rate, created_at, date, source")
     .eq("from_currency", fromCurrency)
     .eq("to_currency", toCurrency)
     .lt("date", transactionDate)
@@ -168,7 +180,10 @@ export async function getExchangeRateWithMetadata(
       rate: fallbackRateData.rate,
       timestamp: fallbackRateData.created_at,
       isUsingLatestRate: false,
-      fallbackDate: fallbackRateData.date
+      fallbackDate: fallbackRateData.date,
+      isInterpolated: false,
+      interpolatedFromDate: null,
+      source: fallbackRateData.source,
     }
   }
 
@@ -176,6 +191,9 @@ export async function getExchangeRateWithMetadata(
     rate: null,
     timestamp: null,
     isUsingLatestRate: false,
-    fallbackDate: null
+    fallbackDate: null,
+    isInterpolated: false,
+    interpolatedFromDate: null,
+    source: null,
   }
 }

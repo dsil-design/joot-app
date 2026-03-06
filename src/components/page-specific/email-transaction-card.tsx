@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ConfidenceIndicatorBadgeOnly } from "@/components/ui/confidence-indicator"
-import { ChevronDown, ChevronRight, Eye, RefreshCw, Zap } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Bot, ChevronDown, ChevronRight, Eye, RefreshCw, Send, Zap } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { EmailViewerModal } from "./email-viewer-modal"
 
@@ -17,7 +18,9 @@ interface EmailTransactionCardProps {
   onToggleExpand: () => void
   onToggleSelect: (selected: boolean) => void
   onProcess?: (emailId: string) => void
+  onFeedbackReprocess?: (emailId: string, userHint: string) => void
   isProcessingExtraction?: boolean
+  isFeedbackProcessing?: boolean
   children?: React.ReactNode
 }
 
@@ -94,10 +97,14 @@ export function EmailTransactionCard({
   onToggleExpand,
   onToggleSelect,
   onProcess,
+  onFeedbackReprocess,
   isProcessingExtraction,
+  isFeedbackProcessing,
   children,
 }: EmailTransactionCardProps) {
   const [viewerOpen, setViewerOpen] = React.useState(false)
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false)
+  const [feedbackText, setFeedbackText] = React.useState("")
 
   const statusBadge = getStatusBadge(data.status)
   const parserTag = getParserTag(data.from_address)
@@ -142,6 +149,76 @@ export function EmailTransactionCard({
           <p className="text-xs text-muted-foreground truncate">
             {data.description || data.subject || "No description"}
           </p>
+          {data.is_processed && !extracted && data.ai_reasoning && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1 min-w-0 mt-0.5">
+              <Bot className="h-3 w-3 shrink-0" />
+              <span className="truncate">{data.ai_reasoning}</span>
+            </p>
+          )}
+          {onFeedbackReprocess && (
+            <div className="mt-0.5 space-y-1">
+              {!feedbackOpen ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setFeedbackOpen(true)
+                  }}
+                  disabled={isFeedbackProcessing}
+                  className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                >
+                  {isFeedbackProcessing ? (
+                    <Bot className="h-3 w-3 mr-0.5 animate-spin" />
+                  ) : (
+                    <Bot className="h-3 w-3 mr-0.5" />
+                  )}
+                  {isFeedbackProcessing ? "Processing..." : "Message AI"}
+                </Button>
+              ) : (
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <Input
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && feedbackText.trim()) {
+                        onFeedbackReprocess(data.id, feedbackText.trim())
+                        setFeedbackOpen(false)
+                        setFeedbackText("")
+                      }
+                      if (e.key === "Escape") {
+                        setFeedbackOpen(false)
+                        setFeedbackText("")
+                      }
+                    }}
+                    placeholder="e.g. bank transfer for $50"
+                    className="h-6 text-xs flex-1"
+                    autoFocus
+                    disabled={isFeedbackProcessing}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (feedbackText.trim()) {
+                        onFeedbackReprocess(data.id, feedbackText.trim())
+                        setFeedbackOpen(false)
+                        setFeedbackText("")
+                      }
+                    }}
+                    disabled={!feedbackText.trim() || isFeedbackProcessing}
+                    className="h-6 px-1.5"
+                  >
+                    {isFeedbackProcessing ? (
+                      <Bot className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Send className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Amount + Date / Process button */}
