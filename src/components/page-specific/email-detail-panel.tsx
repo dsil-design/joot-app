@@ -26,6 +26,7 @@ import {
   AlertTriangle,
   Bot,
   Send,
+  Search,
 } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { EmailViewerModal } from "./email-viewer-modal"
@@ -78,6 +79,7 @@ interface EmailDetailPanelProps {
   onLink: (emailId: string, txId: string) => void
   onCreateNew: (emailId: string) => void
   onSkip: (emailId: string) => void
+  onSearchExisting?: (emailId: string) => void
   onProcess?: (emailId: string) => void
   onFeedbackReprocess?: (emailId: string, userHint: string) => void
   isProcessing: boolean
@@ -90,6 +92,7 @@ export function EmailDetailPanel({
   onLink,
   onCreateNew,
   onSkip,
+  onSearchExisting,
   onProcess,
   onFeedbackReprocess,
   isProcessing,
@@ -377,7 +380,7 @@ export function EmailDetailPanel({
 
             {/* Action buttons */}
             {!isActioned && (
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-2 flex-wrap">
                 <Button
                   variant="outline"
                   size="sm"
@@ -387,6 +390,17 @@ export function EmailDetailPanel({
                   <PlusCircle className="h-4 w-4 mr-1" />
                   Create New
                 </Button>
+                {onSearchExisting && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSearchExisting(emailTransaction.id)}
+                    disabled={isProcessing}
+                  >
+                    <Search className="h-4 w-4 mr-1" />
+                    Search Existing
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -406,7 +420,7 @@ export function EmailDetailPanel({
               No matching transactions found in your records.
             </p>
             {!isActioned && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   variant="default"
                   size="sm"
@@ -416,6 +430,17 @@ export function EmailDetailPanel({
                   <PlusCircle className="h-4 w-4 mr-1" />
                   Create Transaction
                 </Button>
+                {onSearchExisting && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSearchExisting(emailTransaction.id)}
+                    disabled={isProcessing}
+                  >
+                    <Search className="h-4 w-4 mr-1" />
+                    Search Existing
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

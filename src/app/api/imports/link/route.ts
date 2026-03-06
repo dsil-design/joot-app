@@ -232,6 +232,40 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // --- EMAIL link ---
+      // The emailId may be an emails.id (from the unified view) or an
+      // email_transactions.id. Resolve to the actual email_transactions row.
+      let emailTxId = parsed.emailId
+
+      const { data: directTx } = await serviceClient
+        .from('email_transactions')
+        .select('id')
+        .eq('id', parsed.emailId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (!directTx) {
+        // Probably an emails.id — look up the email_transactions row via message_id
+        const { data: email } = await serviceClient
+          .from('emails')
+          .select('message_id')
+          .eq('id', parsed.emailId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (email) {
+          const { data: etxRow } = await serviceClient
+            .from('email_transactions')
+            .select('id')
+            .eq('message_id', email.message_id)
+            .eq('user_id', user.id)
+            .single()
+
+          if (etxRow) {
+            emailTxId = etxRow.id
+          }
+        }
+      }
+
       const { error: updateError } = await serviceClient
         .from('email_transactions')
         .update({
@@ -240,7 +274,7 @@ export async function POST(request: NextRequest) {
           match_method: 'manual',
           matched_at: new Date().toISOString(),
         })
-        .eq('id', parsed.emailId)
+        .eq('id', emailTxId)
         .eq('user_id', user.id)
 
       if (updateError) {
@@ -251,14 +285,14 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Set source reference on the transaction (non-fatal — link is already established)
+      // Set source reference on the transaction
       const { error: txUpdateError } = await serviceClient
         .from('transactions')
-        .update({ source_email_transaction_id: parsed.emailId })
+        .update({ source_email_transaction_id: emailTxId })
         .eq('id', transactionId)
 
       if (txUpdateError) {
-        console.error('Error setting email source on transaction (non-fatal):', JSON.stringify(txUpdateError))
+        console.error('Error setting email source on transaction:', JSON.stringify(txUpdateError))
       }
     }
 

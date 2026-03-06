@@ -164,16 +164,18 @@ export default function EmailHubPage() {
     linkToTransaction(emailId, txId).then(() => refetchStats())
   }
 
-  // Handle "Link to Existing" - opens search dialog
-  const handleLinkManually = (emailId: string) => {
+  // Handle "Search Existing" from detail panel - opens search dialog
+  const handleSearchExisting = (emailId: string) => {
     setLinkingItemId(emailId)
     setLinkDialogOpen(true)
   }
 
-  // Handle link dialog confirmation
-  const handleLinkConfirm = async (transactionId: string) => {
+  // Handle link dialog confirmation (supports multiple transaction IDs)
+  const handleLinkConfirm = async (transactionIds: string[]) => {
     if (!linkingItemId) return
-    await linkToTransaction(linkingItemId, transactionId)
+    for (const txId of transactionIds) {
+      await linkToTransaction(linkingItemId, txId)
+    }
     setLinkDialogOpen(false)
     setLinkingItemId(null)
     refetchStats()
@@ -432,6 +434,7 @@ export default function EmailHubPage() {
                 onLink={handleLink}
                 onCreateNew={handleCreateNew}
                 onSkip={handleSkip}
+                onSearchExisting={handleSearchExisting}
                 onProcess={handleProcess}
                 onFeedbackReprocess={handleFeedbackReprocess}
                 isProcessing={isProcessing(item.id)}

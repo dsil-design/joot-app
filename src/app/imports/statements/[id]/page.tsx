@@ -159,9 +159,11 @@ export default function StatementDetailPage() {
     setLinkDialogOpen(true)
   }
 
-  const handleLinkConfirm = async (transactionId: string) => {
+  const handleLinkConfirm = async (transactionIds: string[]) => {
     if (!linkingItem) return
-    await linkToExisting(linkingItem.id, transactionId)
+    for (const txId of transactionIds) {
+      await linkToExisting(linkingItem.id, txId)
+    }
     setLinkDialogOpen(false)
     setLinkingItem(null)
     toast.success('Transaction linked')

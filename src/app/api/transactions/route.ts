@@ -159,10 +159,40 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Apply search keyword filter (description only - vendor/payment method search not supported in joined queries)
-    // For better search, consider using PostgreSQL full-text search
+    // Apply search keyword filter
+    // Searches description, vendor name (via vendor_id lookup), amount, and transaction ID
     if (filters.searchKeyword) {
-      query = query.ilike("description", `%${filters.searchKeyword}%`)
+      const keyword = filters.searchKeyword
+
+      // Check if the keyword looks like a UUID (transaction ID search)
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (uuidPattern.test(keyword)) {
+        query = query.eq("id", keyword)
+      } else {
+        // Check if keyword looks like a number (amount search)
+        const numericValue = parseFloat(keyword.replace(/[,$฿]/g, ""))
+        const isNumeric = !isNaN(numericValue) && /^[\d,$฿.]+$/.test(keyword)
+
+        if (isNumeric) {
+          // Search by amount (exact match on absolute value)
+          query = query.eq("amount", numericValue)
+        } else {
+          // Text search: look up matching vendor IDs first, then OR with description
+          const { data: matchingVendors } = await supabase
+            .from("vendors")
+            .select("id")
+            .eq("user_id", user.id)
+            .ilike("name", `%${keyword}%`)
+
+          const vendorIds = matchingVendors?.map((v: { id: string }) => v.id) || []
+
+          if (vendorIds.length > 0) {
+            query = query.or(`description.ilike.%${keyword}%,vendor_id.in.(${vendorIds.join(",")})`)
+          } else {
+            query = query.ilike("description", `%${keyword}%`)
+          }
+        }
+      }
     }
 
     // Apply source type filter

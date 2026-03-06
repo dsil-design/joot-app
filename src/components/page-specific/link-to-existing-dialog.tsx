@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import {
   Calendar,
   DollarSign,
@@ -19,11 +21,14 @@ import {
   Loader2,
   Search,
   Store,
+  Mail,
+  Tag,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 /**
- * Statement transaction info displayed at the top of the dialog
+ * Statement/email transaction info displayed at the top of the dialog
  */
 export interface LinkSourceItem {
   id: string
@@ -43,6 +48,10 @@ interface TransactionResult {
   original_currency: string
   transaction_date: string
   vendor?: { id: string; name: string } | null
+  payment_method?: { id: string; name: string } | null
+  source_email_transaction_id?: string | null
+  source_statement_upload_id?: string | null
+  tags?: { id: string; name: string; color?: string }[]
 }
 
 /**
@@ -52,16 +61,12 @@ export interface LinkToExistingDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   item: LinkSourceItem | null
-  onConfirm: (transactionId: string) => Promise<void>
+  onConfirm: (transactionIds: string[]) => Promise<void>
 }
 
 function formatAmount(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Math.abs(amount))
+  const sym = currency === "THB" ? "\u0E3F" : currency === "USD" ? "$" : (currency || "")
+  return `${sym}${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function formatDate(dateString: string): string {
@@ -77,10 +82,40 @@ function formatDate(dateString: string): string {
   }
 }
 
+function SourceBadges({ transaction }: {
+  transaction: {
+    source_email_transaction_id?: string | null
+    source_statement_upload_id?: string | null
+  }
+}) {
+  const hasEmail = !!transaction.source_email_transaction_id
+  const hasStatement = !!transaction.source_statement_upload_id
+  if (!hasEmail && !hasStatement) return null
+
+  return (
+    <>
+      {hasEmail && (
+        <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] px-1.5 py-0">
+          <Mail className="h-2.5 w-2.5 mr-0.5" />
+          Email
+        </Badge>
+      )}
+      {hasStatement && (
+        <Badge variant="secondary" className="bg-slate-100 text-slate-800 border border-slate-200 text-[10px] px-1.5 py-0">
+          <FileText className="h-2.5 w-2.5 mr-0.5" />
+          Statement
+        </Badge>
+      )}
+    </>
+  )
+}
+
 /**
  * LinkToExistingDialog
  *
- * Dialog for searching and linking a statement transaction to an existing transaction.
+ * Modal for searching and linking an email to one or more existing transactions.
+ * Supports text search (description, vendor, amount, ID), date range filtering,
+ * and checkbox multi-selection.
  */
 export function LinkToExistingDialog({
   open,
@@ -89,26 +124,80 @@ export function LinkToExistingDialog({
   onConfirm,
 }: LinkToExistingDialogProps) {
   const [search, setSearch] = React.useState("")
+  const [dateFrom, setDateFrom] = React.useState("")
+  const [dateTo, setDateTo] = React.useState("")
   const [results, setResults] = React.useState<TransactionResult[]>([])
-  const [selectedId, setSelectedId] = React.useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
   const [isSearching, setIsSearching] = React.useState(false)
   const [isLinking, setIsLinking] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [hasSearched, setHasSearched] = React.useState(false)
   const debounceRef = React.useRef<NodeJS.Timeout | null>(null)
 
   // Reset state when dialog opens/closes
   React.useEffect(() => {
     if (!open) {
       setSearch("")
+      setDateFrom("")
+      setDateTo("")
       setResults([])
-      setSelectedId(null)
+      setSelectedIds(new Set())
       setError(null)
       setIsSearching(false)
       setIsLinking(false)
+      setHasSearched(false)
     }
   }, [open])
 
   // Debounced search
+  const executeSearch = React.useCallback(
+    async (searchText: string, fromDate: string, toDate: string) => {
+      const hasFilters = searchText.trim() || fromDate || toDate
+      if (!hasFilters) {
+        setResults([])
+        setHasSearched(false)
+        return
+      }
+
+      setIsSearching(true)
+      setError(null)
+
+      try {
+        const params = new URLSearchParams({
+          pageSize: "20",
+          sortField: "date",
+          sortDirection: "desc",
+          datePreset: "all-time",
+        })
+
+        if (searchText.trim()) {
+          params.set("searchKeyword", searchText.trim())
+        }
+        if (fromDate) {
+          params.set("datePreset", "custom")
+          params.set("dateFrom", fromDate)
+        }
+        if (toDate) {
+          params.set("datePreset", "custom")
+          params.set("dateTo", toDate)
+        }
+
+        const response = await fetch(`/api/transactions?${params}`)
+        if (!response.ok) throw new Error("Failed to search transactions")
+
+        const data = await response.json()
+        setResults(data.items || [])
+        setHasSearched(true)
+      } catch {
+        setError("Failed to search transactions")
+        setResults([])
+      } finally {
+        setIsSearching(false)
+      }
+    },
+    []
+  )
+
   React.useEffect(() => {
     if (!open) return
 
@@ -116,34 +205,8 @@ export function LinkToExistingDialog({
       clearTimeout(debounceRef.current)
     }
 
-    if (!search.trim()) {
-      setResults([])
-      return
-    }
-
-    debounceRef.current = setTimeout(async () => {
-      setIsSearching(true)
-      setError(null)
-
-      try {
-        const params = new URLSearchParams({
-          searchKeyword: search.trim(),
-          pageSize: "10",
-          sortField: "date",
-          sortDirection: "desc",
-        })
-
-        const response = await fetch(`/api/transactions?${params}`)
-        if (!response.ok) throw new Error("Failed to search transactions")
-
-        const data = await response.json()
-        setResults(data.items || [])
-      } catch {
-        setError("Failed to search transactions")
-        setResults([])
-      } finally {
-        setIsSearching(false)
-      }
+    debounceRef.current = setTimeout(() => {
+      executeSearch(search, dateFrom, dateTo)
     }, 300)
 
     return () => {
@@ -151,19 +214,28 @@ export function LinkToExistingDialog({
         clearTimeout(debounceRef.current)
       }
     }
-  }, [search, open])
+  }, [search, dateFrom, dateTo, open, executeSearch])
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const handleConfirm = async () => {
-    if (!selectedId) return
+    if (selectedIds.size === 0) return
 
     setIsLinking(true)
     setError(null)
 
     try {
-      await onConfirm(selectedId)
+      await onConfirm(Array.from(selectedIds))
       onOpenChange(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to link transaction")
+      setError(err instanceof Error ? err.message : "Failed to link transaction(s)")
     } finally {
       setIsLinking(false)
     }
@@ -171,14 +243,14 @@ export function LinkToExistingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <LinkIcon className="h-5 w-5 text-blue-500" />
-            Link to Existing Transaction
+            <Search className="h-5 w-5 text-blue-500" />
+            Search &amp; Link Transaction
           </DialogTitle>
           <DialogDescription>
-            Search for an existing transaction to link this statement entry to.
+            Search your transactions by description, vendor, amount, or ID. Select one or more to link.
           </DialogDescription>
         </DialogHeader>
 
@@ -186,7 +258,7 @@ export function LinkToExistingDialog({
         {item && (
           <div className="bg-muted/50 rounded-lg p-3 space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Statement entry:
+              Linking email:
             </p>
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -199,80 +271,173 @@ export function LinkToExistingDialog({
                 <DollarSign className="h-3.5 w-3.5" />
                 {formatAmount(item.amount, item.currency)}
               </span>
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5" />
-                {formatDate(item.date)}
-              </span>
+              {item.date && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {formatDate(item.date)}
+                </span>
+              )}
             </div>
           </div>
         )}
 
-        {/* Search input */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search transactions..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        {/* Search fields */}
+        <div className="space-y-2">
+          {/* Text search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by description, vendor, amount, or transaction ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {/* Date range */}
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                type="date"
+                placeholder="From date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="pl-9 text-sm"
+              />
+            </div>
+            <div className="flex-1 relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                type="date"
+                placeholder="To date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="pl-9 text-sm"
+              />
+            </div>
+            {(dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => { setDateFrom(""); setDateTo("") }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Results */}
-        <div className="max-h-[250px] overflow-y-auto space-y-1">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-1 border rounded-md p-1">
           {isSearching && (
-            <div className="flex items-center justify-center py-6">
+            <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           )}
 
-          {!isSearching && search.trim() && results.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-6">
+          {!isSearching && !hasSearched && (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Enter a search term or date range to find transactions.
+            </p>
+          )}
+
+          {!isSearching && hasSearched && results.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">
               No transactions found
             </p>
           )}
 
           {!isSearching &&
-            results.map((tx) => (
-              <button
-                key={tx.id}
-                type="button"
-                onClick={() => setSelectedId(tx.id)}
-                className={cn(
-                  "w-full text-left rounded-lg border p-3 transition-colors",
-                  selectedId === tx.id
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
-                    : "border-transparent hover:bg-muted/50"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  {tx.vendor?.name ? (
-                    <>
-                      <Store className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium truncate">
-                        {tx.vendor.name}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium truncate">
+            results.map((tx) => {
+              const isSelected = selectedIds.has(tx.id)
+              return (
+                <div
+                  key={tx.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => toggleSelection(tx.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleSelection(tx.id) } }}
+                  className={cn(
+                    "w-full text-left rounded-lg border p-3 transition-colors flex gap-3 items-start cursor-pointer",
+                    isSelected
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
+                      : "border-transparent hover:bg-muted/50"
+                  )}
+                >
+                  {/* Checkbox */}
+                  <div className="pt-0.5 shrink-0">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleSelection(tx.id)}
+                    />
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    {/* Primary: vendor or description */}
+                    <div className="flex items-center gap-2">
+                      {tx.vendor?.name ? (
+                        <>
+                          <Store className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-medium truncate">
+                            {tx.vendor.name}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-sm font-medium truncate">
+                          {tx.description || "No description"}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Description (when vendor is shown) */}
+                    {tx.vendor?.name && tx.description && (
+                      <p className="text-xs text-muted-foreground truncate">
                         {tx.description}
+                      </p>
+                    )}
+
+                    {/* Amount, date, badges row */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-medium">
+                        {formatAmount(tx.amount, tx.original_currency)}
                       </span>
-                    </>
-                  )}
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(tx.transaction_date)}
+                      </span>
+                      <SourceBadges transaction={tx} />
+                      {tx.tags && tx.tags.length > 0 && (
+                        <>
+                          {tx.tags.slice(0, 2).map((tag) => (
+                            <Badge
+                              key={tag.id}
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0"
+                              style={tag.color ? { borderColor: tag.color, color: tag.color } : undefined}
+                            >
+                              <Tag className="h-2.5 w-2.5 mr-0.5" />
+                              {tag.name}
+                            </Badge>
+                          ))}
+                          {tx.tags.length > 2 && (
+                            <span className="text-[10px] text-muted-foreground">
+                              +{tx.tags.length - 2}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Transaction ID (truncated) */}
+                    <p className="text-[10px] text-muted-foreground/60 font-mono truncate">
+                      {tx.id}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1 ml-6">
-                  <span>
-                    {formatAmount(tx.amount, tx.original_currency)}
-                  </span>
-                  <span>{formatDate(tx.transaction_date)}</span>
-                  {tx.vendor?.name && tx.description && (
-                    <span className="truncate">{tx.description}</span>
-                  )}
-                </div>
-              </button>
-            ))}
+              )
+            })}
         </div>
 
         {/* Error */}
@@ -280,31 +445,38 @@ export function LinkToExistingDialog({
           <p className="text-sm text-destructive">{error}</p>
         )}
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isLinking}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={!selectedId || isLinking}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {isLinking ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Linking...
-              </>
-            ) : (
-              <>
-                <LinkIcon className="h-4 w-4 mr-2" />
-                Link
-              </>
-            )}
-          </Button>
+        <DialogFooter className="flex items-center justify-between sm:justify-between">
+          <span className="text-sm text-muted-foreground">
+            {selectedIds.size > 0
+              ? `${selectedIds.size} transaction${selectedIds.size > 1 ? "s" : ""} selected`
+              : ""}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isLinking}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={selectedIds.size === 0 || isLinking}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isLinking ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Linking...
+                </>
+              ) : (
+                <>
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                  Link {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                </>
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

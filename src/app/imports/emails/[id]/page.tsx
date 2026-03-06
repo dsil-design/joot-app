@@ -11,6 +11,10 @@ import {
   CreateFromImportDialog,
   type CreateFromImportData,
 } from "@/components/page-specific/create-from-import-dialog"
+import {
+  LinkToExistingDialog,
+  type LinkSourceItem,
+} from "@/components/page-specific/link-to-existing-dialog"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
@@ -30,6 +34,7 @@ export default function EmailDetailPage({
   // Dialogs
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [createDialogData, setCreateDialogData] = React.useState<CreateFromImportData | null>(null)
+  const [linkDialogOpen, setLinkDialogOpen] = React.useState(false)
 
   // Actions
   const { skip, linkToTransaction, processEmail, isProcessing, isExtracting } = useEmailHubActions({
@@ -120,6 +125,30 @@ export default function EmailDetailPage({
     router.push(backUrl)
   }
 
+  const handleSearchExisting = (_emailId: string) => {
+    setLinkDialogOpen(true)
+  }
+
+  const handleLinkConfirm = async (transactionIds: string[]) => {
+    if (!emailTx) return
+    for (const txId of transactionIds) {
+      await linkToTransaction(emailTx.id, txId)
+    }
+    setLinkDialogOpen(false)
+    router.push(backUrl)
+  }
+
+  const linkingItem: LinkSourceItem | null = React.useMemo(() => {
+    if (!emailTx) return null
+    return {
+      id: emailTx.id,
+      description: emailTx.description || emailTx.subject || "",
+      amount: emailTx.amount || 0,
+      currency: emailTx.currency || "USD",
+      date: emailTx.transaction_date || "",
+    }
+  }, [emailTx])
+
   const handleSkip = async (emailId: string) => {
     await skip(emailId)
     router.push(backUrl)
@@ -149,6 +178,7 @@ export default function EmailDetailPage({
           onLink={handleLink}
           onCreateNew={handleCreateNew}
           onSkip={handleSkip}
+          onSearchExisting={handleSearchExisting}
           onProcess={(emailId) => processEmail(emailId)}
           isProcessing={isProcessing(emailTx.id)}
           isProcessingExtraction={isExtracting(emailTx.id)}
@@ -168,6 +198,14 @@ export default function EmailDetailPage({
         }}
         data={createDialogData}
         onConfirm={handleCreateConfirm}
+      />
+
+      {/* Link to existing dialog */}
+      <LinkToExistingDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        item={linkingItem}
+        onConfirm={handleLinkConfirm}
       />
     </div>
   )

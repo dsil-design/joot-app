@@ -107,12 +107,12 @@ export function useEmailHubActions({
         })
 
         // Custom toast with feedback options
-        const toastId = toast.custom(
+        toast.custom(
           (t) =>
-            SkipFeedbackToast({
+            React.createElement(SkipFeedbackToast, {
               emailTransactionIds: [emailTxId],
               count: 1,
-              onSubmitFeedback: (ids, reason) => submitSkipFeedback(ids, reason),
+              onSubmitFeedback: (ids: string[], reason: string) => submitSkipFeedback(ids, reason),
               onUndo: () => {
                 toast.dismiss(t)
                 undoSkipRef.current(id)
@@ -251,10 +251,10 @@ export function useEmailHubActions({
         // Custom toast with feedback for the whole batch
         toast.custom(
           (t) =>
-            SkipFeedbackToast({
+            React.createElement(SkipFeedbackToast, {
               emailTransactionIds: allEmailTxIds,
               count: totalUpdated,
-              onSubmitFeedback: (txIds, reason) => submitSkipFeedback(txIds, reason),
+              onSubmitFeedback: (txIds: string[], reason: string) => submitSkipFeedback(txIds, reason),
               onDismiss: () => toast.dismiss(t),
             }),
           { duration: SKIP_FEEDBACK_DURATION }

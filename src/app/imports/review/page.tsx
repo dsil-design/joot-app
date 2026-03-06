@@ -272,10 +272,12 @@ export default function ReviewQueuePage() {
     setLinkDialogOpen(true)
   }
 
-  // Handle link confirmation
-  const handleLinkConfirm = async (transactionId: string) => {
+  // Handle link confirmation (supports multiple transaction IDs)
+  const handleLinkConfirm = async (transactionIds: string[]) => {
     if (!linkingItemId) return
-    await linkToExisting(linkingItemId, transactionId)
+    for (const txId of transactionIds) {
+      await linkToExisting(linkingItemId, txId)
+    }
     setLinkDialogOpen(false)
     setLinkingItemId(null)
   }
