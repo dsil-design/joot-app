@@ -68,6 +68,71 @@ export async function findCrossSourcePairs(
     return []
   }
 
+  // Pre-fetch all needed exchange rates in batch to avoid O(n*m) DB queries.
+  // Collect unique (fromCurrency, toCurrency, date) combinations, then fetch
+  // rates for the full date range in a single query per currency pair.
+  const rateCache = new Map<string, { rate: number; rateDate: string } | null>()
+  const currencyPairs = new Set<string>()
+  const allDates: string[] = []
+
+  for (const email of emailCandidates) {
+    for (const stmt of statementCandidates) {
+      const from = email.currency.toUpperCase()
+      const to = stmt.currency.toUpperCase()
+      if (from === to) continue
+      currencyPairs.add(`${from}:${to}`)
+      allDates.push(email.date)
+    }
+  }
+
+  // Fetch rates for each currency pair covering the full date range
+  if (currencyPairs.size > 0 && allDates.length > 0) {
+    const sortedDates = [...new Set(allDates)].sort()
+    const minDate = sortedDates[0]
+    const maxDate = sortedDates[sortedDates.length - 1]
+
+    // Expand range to allow fallback lookups (30 days before, 7 days after)
+    const rangeStart = new Date(minDate)
+    rangeStart.setDate(rangeStart.getDate() - 30)
+    const rangeEnd = new Date(maxDate)
+    rangeEnd.setDate(rangeEnd.getDate() + 7)
+    const rangeStartStr = rangeStart.toISOString().split('T')[0]
+    const rangeEndStr = rangeEnd.toISOString().split('T')[0]
+
+    for (const pair of currencyPairs) {
+      const [from, to] = pair.split(':')
+      const { data: rates } = await supabase
+        .from('exchange_rates')
+        .select('rate, date')
+        .eq('from_currency', from)
+        .eq('to_currency', to)
+        .gte('date', rangeStartStr)
+        .lte('date', rangeEndStr)
+        .order('date', { ascending: false })
+
+      if (rates) {
+        // For each unique email date, find the best rate (exact or nearest)
+        for (const date of sortedDates) {
+          const cacheKey = `${from}:${to}:${date}`
+          const exact = rates.find(r => r.date === date)
+          if (exact) {
+            rateCache.set(cacheKey, { rate: exact.rate, rateDate: exact.date })
+          } else {
+            // Find nearest earlier rate
+            const earlier = rates.find(r => r.date <= date)
+            if (earlier) {
+              rateCache.set(cacheKey, { rate: earlier.rate, rateDate: earlier.date })
+            } else {
+              // Find nearest future rate
+              const future = [...rates].reverse().find(r => r.date > date)
+              rateCache.set(cacheKey, future ? { rate: future.rate, rateDate: future.date } : null)
+            }
+          }
+        }
+      }
+    }
+  }
+
   const results: PairResult[] = []
   const usedStatements = new Set<number>()
 
@@ -85,39 +150,38 @@ export async function findCrossSourcePairs(
       if (usedStatements.has(si)) continue
 
       const stmt = statementCandidates[si]
+      const from = email.currency.toUpperCase()
+      const to = stmt.currency.toUpperCase()
 
-      // Skip same-currency pairs — different matching concern
-      if (email.currency.toUpperCase() === stmt.currency.toUpperCase()) continue
+      // Skip same-currency pairs
+      if (from === to) continue
 
       // Check date proximity
       const daysDiff = calculateDaysDiff(email.date, stmt.date)
       if (daysDiff > maxDaysDiff) continue
 
-      // Convert email amount to statement currency
-      const conversion = await convertAmount(
-        supabase,
-        email.amount,
-        email.currency,
-        stmt.currency,
-        email.date
-      )
-      if (!conversion) continue
+      // Look up pre-fetched rate
+      const cacheKey = `${from}:${to}:${email.date}`
+      const cached = rateCache.get(cacheKey)
+      if (!cached) continue
+
+      const convertedAmount = email.amount * cached.rate
 
       // Check amount tolerance
-      if (!isWithinConversionTolerance(email.amount, conversion.convertedAmount, stmt.amount, tolerance)) {
+      if (!isWithinConversionTolerance(email.amount, convertedAmount, stmt.amount, tolerance)) {
         continue
       }
 
-      const percentDiff = (Math.abs(conversion.convertedAmount - stmt.amount) / Math.abs(stmt.amount)) * 100
+      const percentDiff = (Math.abs(convertedAmount - stmt.amount) / Math.abs(stmt.amount)) * 100
 
       // Pick tightest percentage diff
       if (!bestMatch || percentDiff < bestMatch.percentDiff) {
         bestMatch = {
           stmtIdx: si,
           stmt,
-          convertedAmount: conversion.convertedAmount,
-          rate: conversion.rate,
-          rateDate: conversion.rateDate,
+          convertedAmount,
+          rate: cached.rate,
+          rateDate: cached.rateDate,
           percentDiff,
         }
       }

@@ -15,8 +15,56 @@ import {
   FileText,
   CreditCard,
   ArrowLeftRight,
+  ExternalLink,
 } from "lucide-react"
+import Link from "next/link"
+import { parseImportId } from "@/lib/utils/import-id"
 import type { MatchCardData } from "./types"
+
+/**
+ * Build a link to the source page (statement or email) from the queue item ID.
+ */
+function getSourceLink(id: string): string | null {
+  const parsed = parseImportId(id)
+  if (!parsed) return null
+  if (parsed.type === "statement") {
+    return `/imports/statements/${parsed.statementId}/results`
+  }
+  if (parsed.type === "email") {
+    return `/imports/emails/${parsed.emailId}`
+  }
+  if (parsed.type === "merged") {
+    // Default to statement for merged items
+    return `/imports/statements/${parsed.statementId}/results`
+  }
+  return null
+}
+
+function getMergedEmailLink(id: string): string | null {
+  const parsed = parseImportId(id)
+  if (parsed?.type === "merged") {
+    return `/imports/emails/${parsed.emailId}`
+  }
+  return null
+}
+
+function SourceLabel({ label, href }: { label: string; href: string | null }) {
+  return (
+    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+      {label}
+      {href && (
+        <Link
+          href={href}
+          className="inline-flex items-center text-muted-foreground/60 hover:text-foreground transition-colors"
+          title={`View ${label.toLowerCase()}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink className="h-3 w-3" />
+        </Link>
+      )}
+    </p>
+  )
+}
 
 interface MatchCardPanelsProps {
   data: MatchCardData
@@ -35,9 +83,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Left panel: Email data */}
           <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              From Email
-            </p>
+            <SourceLabel label="From Email" href={getMergedEmailLink(data.id)} />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(data.mergedEmailData.date)}</span>
             </TransactionDetailRow>
@@ -61,9 +107,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
 
           {/* Right panel: Statement data */}
           <div className="space-y-1.5 md:border-l md:pl-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              From Statement
-            </p>
+            <SourceLabel label="From Statement" href={getSourceLink(data.id)} />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(data.statementTransaction.date)}</span>
             </TransactionDetailRow>
@@ -117,9 +161,10 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {/* Left panel: Statement data */}
       <div className="space-y-1.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {isEmail ? "From Email" : "From Statement"}
-        </p>
+        <SourceLabel
+          label={isEmail ? "From Email" : "From Statement"}
+          href={getSourceLink(data.id)}
+        />
         <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
           <span>{formatMatchDate(data.statementTransaction.date)}</span>
         </TransactionDetailRow>
@@ -145,7 +190,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
       {data.matchedTransaction && !data.isNew && (
         <div className="space-y-1.5 md:border-l md:pl-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Matched Transaction
+            Matched Joot Transaction
           </p>
           <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
             <span>{formatMatchDate(data.matchedTransaction.date)}</span>

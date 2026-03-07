@@ -90,7 +90,12 @@ async function fetchMatches(
   }
 
   try {
-    const response = await fetch(`/api/imports/queue?${params.toString()}`)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+    const response = await fetch(`/api/imports/queue?${params.toString()}`, {
+      signal: controller.signal,
+    })
+    clearTimeout(timeoutId)
     if (!response.ok) throw new Error('Failed to fetch review queue')
 
     const data = await response.json()
@@ -353,7 +358,7 @@ export default function ReviewQueuePage() {
         <div>
           <h1 className="text-2xl font-bold">Review Queue</h1>
           <p className="text-sm text-muted-foreground">
-            Review and approve transaction matches
+            Review and link transaction matches
           </p>
         </div>
 
@@ -384,7 +389,7 @@ export default function ReviewQueuePage() {
         />
         <StatCard
           icon={<CheckCircle2 className="h-5 w-5" />}
-          label="Ready to Approve"
+          label="Ready to Link"
           value={readyToApprove}
           isLoading={isInitialLoading}
           className="text-green-600 cursor-pointer hover:ring-1 hover:ring-green-200 rounded-lg"
@@ -477,7 +482,7 @@ export default function ReviewQueuePage() {
                       className="bg-green-600 hover:bg-green-700"
                     >
                       <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Approve All High ({highConfidenceItems.length})
+                      Link All High ({highConfidenceItems.length})
                     </Button>
                   )}
                 </div>

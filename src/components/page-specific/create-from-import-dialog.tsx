@@ -163,62 +163,9 @@ export function CreateFromImportDialog({
     })
   }, [])
 
-  // Resolve smart pre-fill: vendor by ID, payment method by parser key
-  const resolveSmartPreFills = React.useCallback(
-    async (hints: SmartPreFillHints) => {
-      const prefilledFields = new Set<string>()
-
-      // 1. Resolve vendor
-      if (hints.vendorId) {
-        const vendorData = await getVendorById(hints.vendorId)
-        if (vendorData) {
-          setVendor(vendorData.id)
-          setVendorLabel(vendorData.name)
-          prefilledFields.add("vendor")
-        }
-      } else if (hints.vendorNameRaw) {
-        // Fuzzy search for exact match
-        const results = await searchVendors(hints.vendorNameRaw, 5)
-        const exactMatch = results.find(
-          (v) =>
-            v.name.toLowerCase() === hints.vendorNameRaw!.toLowerCase()
-        )
-        if (exactMatch) {
-          setVendor(exactMatch.id)
-          setVendorLabel(exactMatch.name)
-          prefilledFields.add("vendor")
-        }
-      }
-
-      // 2. Resolve payment method by parser key
-      if (hints.parserKey && PARSER_PAYMENT_METHOD_MAP[hints.parserKey]) {
-        const patterns = PARSER_PAYMENT_METHOD_MAP[hints.parserKey]
-        const matched = paymentOptions.find((opt) =>
-          patterns.some((p) => opt.label.toLowerCase().includes(p))
-        )
-        if (matched) {
-          setPaymentMethod(matched.value)
-          prefilledFields.add("paymentMethod")
-        }
-      }
-
-      // 3. Pre-fill description only from dedicated parsers with high confidence
-      if (
-        hints.description &&
-        hints.parserKey &&
-        hints.parserKey !== "gemini-ai" &&
-        (hints.extractionConfidence ?? 0) >= 75
-      ) {
-        setDescription(hints.description)
-        prefilledFields.add("description")
-      }
-
-      if (prefilledFields.size > 0) {
-        setAiPrefilled(prefilledFields)
-      }
-    },
-    [getVendorById, searchVendors, paymentOptions]
-  )
+  // Keep a ref to paymentOptions so the effect doesn't re-trigger on every render
+  const paymentOptionsRef = React.useRef(paymentOptions)
+  paymentOptionsRef.current = paymentOptions
 
   // Pre-fill form when data changes
   React.useEffect(() => {
@@ -237,10 +184,62 @@ export function CreateFromImportDialog({
 
       // Smart pre-fills from AI hints (async)
       if (data.smartHints) {
-        resolveSmartPreFills(data.smartHints)
+        const hints = data.smartHints
+        const resolve = async () => {
+          const prefilledFields = new Set<string>()
+
+          // 1. Resolve vendor
+          if (hints.vendorId) {
+            const vendorData = await getVendorById(hints.vendorId)
+            if (vendorData) {
+              setVendor(vendorData.id)
+              setVendorLabel(vendorData.name)
+              prefilledFields.add("vendor")
+            }
+          } else if (hints.vendorNameRaw) {
+            const results = await searchVendors(hints.vendorNameRaw, 5)
+            const exactMatch = results.find(
+              (v) =>
+                v.name.toLowerCase() === hints.vendorNameRaw!.toLowerCase()
+            )
+            if (exactMatch) {
+              setVendor(exactMatch.id)
+              setVendorLabel(exactMatch.name)
+              prefilledFields.add("vendor")
+            }
+          }
+
+          // 2. Resolve payment method by parser key
+          if (hints.parserKey && PARSER_PAYMENT_METHOD_MAP[hints.parserKey]) {
+            const patterns = PARSER_PAYMENT_METHOD_MAP[hints.parserKey]
+            const matched = paymentOptionsRef.current.find((opt) =>
+              patterns.some((p) => opt.label.toLowerCase().includes(p))
+            )
+            if (matched) {
+              setPaymentMethod(matched.value)
+              prefilledFields.add("paymentMethod")
+            }
+          }
+
+          // 3. Pre-fill description only from dedicated parsers with high confidence
+          if (
+            hints.description &&
+            hints.parserKey &&
+            hints.parserKey !== "gemini-ai" &&
+            (hints.extractionConfidence ?? 0) >= 75
+          ) {
+            setDescription(hints.description)
+            prefilledFields.add("description")
+          }
+
+          if (prefilledFields.size > 0) {
+            setAiPrefilled(prefilledFields)
+          }
+        }
+        resolve()
       }
     }
-  }, [data, open, resolveSmartPreFills])
+  }, [data, open, getVendorById, searchVendors])
 
   // Reset on close
   React.useEffect(() => {

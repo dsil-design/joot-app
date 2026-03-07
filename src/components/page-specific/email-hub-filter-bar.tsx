@@ -43,7 +43,7 @@ const statusOptions: Array<{ value: EmailHubStatus; label: string }> = [
   { value: "all", label: "All Statuses" },
   { value: "unprocessed", label: "Unprocessed" },
   { value: "pending_review", label: "Pending Review" },
-  { value: "matched", label: "Matched" },
+  { value: "matched", label: "Linked" },
   { value: "waiting_for_statement", label: "Waiting" },
   { value: "ready_to_import", label: "Ready to Import" },
   { value: "imported", label: "Imported" },

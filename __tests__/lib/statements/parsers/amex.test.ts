@@ -732,6 +732,77 @@ describe('American Express Statement Parser', () => {
       expect(grabTx!.foreignTransaction).toBeDefined();
       expect(grabTx!.foreignTransaction!.originalCurrency).toBe('THB');
     });
+
+    it('should use USD amount (not foreign amount) for multi-line foreign transactions', () => {
+      // Multi-line format where foreign currency amount appears before USD amount
+      // Needs 3+ standalone date lines to trigger multi-line parser
+      const foreignMultiLine = `
+AMERICAN EXPRESS
+Platinum Card
+Member Since: 2018
+Statement Period: Sep 1, 2025 - Sep 30, 2025
+
+09/27/25
+SHEETZLINDENPA
+800-487-5444
+$15.46
+
+10/02/25
+GRABBANGKOKTH TAXICAB & LIMOUSINE
+296.00 THAI BAHT @
+0.029120
+$8.62
+
+10/03/25
+BT*TELLO MOBILE
+$24.37
+      `;
+      const result = amexParser.parse(foreignMultiLine);
+
+      // Grab should have the USD amount, not the THB amount
+      const grabTx = result.transactions.find((t) => t.description.includes('GRABBANGKOKTH'));
+      expect(grabTx).toBeDefined();
+      expect(grabTx!.amount).toBeCloseTo(8.62, 2);
+      expect(grabTx!.currency).toBe('USD');
+      expect(grabTx!.foreignTransaction).toBeDefined();
+      expect(grabTx!.foreignTransaction!.originalAmount).toBe(296);
+
+      // Sheetz should have correct USD amount
+      const sheetzTx = result.transactions.find((t) => t.description.includes('SHEETZ'));
+      expect(sheetzTx).toBeDefined();
+      expect(sheetzTx!.amount).toBeCloseTo(15.46, 2);
+    });
+
+    it('should handle foreign transaction where amount accidentally matches foreign amount', () => {
+      // Edge case: parser grabbed foreign amount as USD, but foreign details also present
+      const foreignMultiLine = `
+AMERICAN EXPRESS
+Platinum Card
+Member Since: 2018
+Statement Period: Sep 1, 2025 - Sep 30, 2025
+
+09/28/25
+SHEETZLINDENPA
+800-487-5444
+$15.46
+
+10/04/25
+GRABBANGKOKTH TAXICAB & LIMOUSINE
+432.00 THAI BAHT @
+0.029120
+$12.58
+
+10/05/25
+BT*TELLO MOBILE
+$24.37
+      `;
+      const result = amexParser.parse(foreignMultiLine);
+
+      const grabTx = result.transactions.find((t) => t.description.includes('GRABBANGKOKTH'));
+      expect(grabTx).toBeDefined();
+      expect(grabTx!.amount).toBeCloseTo(12.58, 2);
+      expect(grabTx!.foreignTransaction!.originalAmount).toBe(432);
+    });
   });
 
   describe('Amex identifiers', () => {

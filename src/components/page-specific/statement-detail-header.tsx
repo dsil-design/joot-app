@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -18,6 +18,9 @@ interface StatementDetailHeaderProps {
     unmatched: number
   }
   matchRate: number
+  onReprocess?: () => void
+  onViewStatement?: () => void
+  isReprocessing?: boolean
 }
 
 function formatPeriod(start: string | null, end: string | null): string {
@@ -50,6 +53,9 @@ export function StatementDetailHeader({
   filename,
   stats,
   matchRate,
+  onReprocess,
+  onViewStatement,
+  isReprocessing,
 }: StatementDetailHeaderProps) {
   return (
     <div className="space-y-4">
@@ -73,6 +79,25 @@ export function StatementDetailHeader({
             <span className="text-xs">{filename}</span>
           </p>
         </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {onViewStatement && (
+            <Button variant="outline" size="sm" onClick={onViewStatement}>
+              <Eye className="h-4 w-4 mr-1.5" />
+              View Statement
+            </Button>
+          )}
+          {onReprocess && status === 'completed' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onReprocess}
+              disabled={isReprocessing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-1.5 ${isReprocessing ? 'animate-spin' : ''}`} />
+              {isReprocessing ? 'Reprocessing...' : 'Reprocess'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats row */}
@@ -85,17 +110,17 @@ export function StatementDetailHeader({
             </div>
             <div>
               <p className="text-2xl font-bold text-green-600">{stats.matched}</p>
-              <p className="text-xs text-muted-foreground">Matched</p>
+              <p className="text-xs text-muted-foreground">Linked</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-amber-600">{stats.unmatched}</p>
-              <p className="text-xs text-muted-foreground">Unmatched</p>
+              <p className="text-xs text-muted-foreground">Unlinked</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Progress value={matchRate} className="h-2 flex-1" />
             <span className="text-xs text-muted-foreground font-medium">
-              {matchRate}% match rate
+              {matchRate}% linked
             </span>
           </div>
         </div>

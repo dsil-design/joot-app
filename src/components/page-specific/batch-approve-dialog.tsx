@@ -88,7 +88,7 @@ export function BatchApproveDialog({
   onOpenChange,
   items,
   onConfirm,
-  title = "Approve All High-Confidence Matches",
+  title = "Link All High-Confidence Matches",
   description,
   sourceBreakdown,
 }: BatchApproveDialogProps) {
@@ -135,7 +135,7 @@ export function BatchApproveDialog({
         onOpenChange(false)
       }, 500)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to approve items")
+      setError(err instanceof Error ? err.message : "Failed to link items")
       setIsProcessing(false)
       setProgress(0)
     }
@@ -158,7 +158,7 @@ export function BatchApproveDialog({
           <AlertDialogDescription>
             {description || (
               <>
-                You are about to approve <strong>{items.length}</strong>{" "}
+                You are about to link <strong>{items.length}</strong>{" "}
                 high-confidence match{items.length !== 1 ? "es" : ""}.
               </>
             )}
@@ -196,7 +196,7 @@ export function BatchApproveDialog({
           {/* Preview list */}
           <div>
             <p className="text-sm text-muted-foreground mb-2">
-              Transactions to approve:
+              Transactions to link:
             </p>
             <ul className="space-y-2 text-sm">
               {previewItems.map((item) => (
@@ -261,7 +261,7 @@ export function BatchApproveDialog({
             ) : (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                Approve {items.length} Match{items.length !== 1 ? "es" : ""}
+                Link {items.length} Match{items.length !== 1 ? "es" : ""}
               </>
             )}
           </AlertDialogAction>

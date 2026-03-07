@@ -30,7 +30,7 @@ function MatchMethodBadge({ method, status }: { method: string | null; status: s
   if (method === "auto") {
     return (
       <Badge className="bg-green-100 text-green-700 border-0 text-[12px] font-normal">
-        Auto-matched
+        Auto-linked
       </Badge>
     )
   }

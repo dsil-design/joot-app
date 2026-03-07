@@ -28,7 +28,7 @@ interface ActionDescriptor {
 
 const APPROVE: ActionDescriptor = {
   id: "approve",
-  label: "Approve Match",
+  label: "Link",
   icon: <Check className="h-4 w-4" />,
   buttonVariant: "default",
   callbackKey: "onApprove",
@@ -94,7 +94,7 @@ const VARIANT_ACTIONS: Record<MatchCardVariant, ActionDescriptor[]> = {
     SKIP,
   ],
   "merged-match": [
-    { ...CREATE_AS_NEW, label: "Approve & Create", className: "bg-blue-600 hover:bg-blue-700" },
+    { ...CREATE_AS_NEW, label: "Link & Create", className: "bg-blue-600 hover:bg-blue-700" },
     LINK,
     SKIP,
   ],
@@ -157,7 +157,7 @@ export function MatchCardActions({
     return (
       <span className="flex items-center gap-1 text-sm text-green-600">
         <Check className="h-4 w-4" />
-        {status === "imported" ? "Imported" : "Approved"}
+        {status === "imported" ? "Imported" : "Linked"}
       </span>
     )
   }

@@ -4,11 +4,9 @@ import * as React from 'react'
 import { useParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { StatementDetailHeader } from '@/components/page-specific/statement-detail-header'
-import { StatementTransactionList } from '@/components/page-specific/statement-transaction-list'
-import { JootTransactionList } from '@/components/page-specific/joot-transaction-list'
+import { StatementTransactionList, type StatementTransaction, type StatementTransactionListHandle } from '@/components/page-specific/statement-transaction-list'
 import {
   LinkToExistingDialog,
   type LinkSourceItem,
@@ -17,10 +15,22 @@ import {
   CreateFromImportDialog,
   type CreateFromImportData,
 } from '@/components/page-specific/create-from-import-dialog'
+import { TransactionDetailModal } from '@/components/page-specific/transaction-detail-modal'
+import { StatementViewerModal } from '@/components/page-specific/statement-viewer-modal'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useMatchActions } from '@/hooks/use-match-actions'
 import { useCreateAndLink } from '@/hooks/use-create-and-link'
 import { toast } from 'sonner'
-import { FileText, RefreshCw, XCircle, ArrowRight } from 'lucide-react'
+import { FileText, RefreshCw, XCircle, ArrowRight, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
@@ -67,8 +77,6 @@ export default function StatementDetailPage() {
   const [result, setResult] = React.useState<ProcessingResult | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [highlightedMatchId, setHighlightedMatchId] = React.useState<string | null>(null)
-
   // Review callout state
   const [calloutDismissed, setCalloutDismissed] = React.useState(false)
 
@@ -77,12 +85,45 @@ export default function StatementDetailPage() {
   const [linkingItem, setLinkingItem] = React.useState<LinkSourceItem | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [createDialogData, setCreateDialogData] = React.useState<CreateFromImportData | null>(null)
+  const [detailModalItem, setDetailModalItem] = React.useState<StatementTransaction | null>(null)
+  const [viewerOpen, setViewerOpen] = React.useState(false)
+  const [reprocessConfirmOpen, setReprocessConfirmOpen] = React.useState(false)
 
   // Hooks
   const { linkToExisting } = useMatchActions({})
   const { createAndLink } = useCreateAndLink(linkToExisting)
+  const txListRef = React.useRef<StatementTransactionListHandle>(null)
+
+  // Linking mode state
+  const [linkingQueue, setLinkingQueue] = React.useState<StatementTransaction[]>([])
+  const [linkingIndex, setLinkingIndex] = React.useState(0)
+  const [linkingReviewed, setLinkingReviewed] = React.useState(0)
+  const [pendingMatchCount, setPendingMatchCount] = React.useState<number | null>(null)
+  const isLinkingMode = linkingQueue.length > 0
 
   const [isProcessing, setIsProcessing] = React.useState(false)
+  const [isReprocessing, setIsReprocessing] = React.useState(false)
+
+  const handleReprocessConfirmed = React.useCallback(async () => {
+    setReprocessConfirmOpen(false)
+    setIsReprocessing(true)
+    try {
+      const response = await fetch(`/api/statements/${statementId}/process`, {
+        method: 'POST',
+      })
+      if (response.ok || response.status === 202) {
+        toast.success('Reprocessing started')
+        const data = await fetchResults(statementId)
+        if (data) setResult(data)
+      } else {
+        toast.error('Failed to start reprocessing')
+      }
+    } catch {
+      toast.error('Failed to start reprocessing')
+    } finally {
+      setIsReprocessing(false)
+    }
+  }, [statementId])
 
   const triggerProcessing = React.useCallback(async () => {
     setIsProcessing(true)
@@ -133,6 +174,20 @@ export default function StatementDetailPage() {
     }
     load()
   }, [statementId])
+
+  // Fetch actual pending match count when completed
+  React.useEffect(() => {
+    if (result?.status !== 'completed') return
+    const fetchPending = async () => {
+      try {
+        const response = await fetch(`/api/statements/${statementId}/transactions?status=matched&limit=1`)
+        if (!response.ok) return
+        const data = await response.json()
+        setPendingMatchCount(data.pagination.total)
+      } catch { /* ignore */ }
+    }
+    fetchPending()
+  }, [result?.status, statementId])
 
   // Poll while processing
   React.useEffect(() => {
@@ -186,6 +241,114 @@ export default function StatementDetailPage() {
 
   const handleCreateConfirm = createAndLink
 
+  // Approve a matched (pending) item from the detail modal
+  const handleApproveLink = React.useCallback(async (item: StatementTransaction) => {
+    const compositeId = `stmt:${statementId}:${item.index}`
+    const response = await fetch('/api/imports/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emailIds: [compositeId], createTransactions: false }),
+    })
+    if (!response.ok) {
+      toast.error('Failed to approve link')
+      return
+    }
+    toast.success('Link approved')
+    setPendingMatchCount(prev => prev !== null ? Math.max(0, prev - 1) : prev)
+    // Refresh both header summary and transaction list
+    const data = await fetchResults(statementId)
+    if (data) setResult(data)
+    txListRef.current?.refresh()
+  }, [statementId])
+
+  // Reject a matched (pending) item from the detail modal
+  const handleRejectMatch = React.useCallback(async (item: StatementTransaction) => {
+    const compositeId = `stmt:${statementId}:${item.index}`
+    const response = await fetch('/api/imports/reject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emailIds: [compositeId] }),
+    })
+    if (!response.ok) {
+      toast.error('Failed to reject match')
+      return
+    }
+    toast.success('Match rejected')
+    setPendingMatchCount(prev => prev !== null ? Math.max(0, prev - 1) : prev)
+    // Refresh both header summary and transaction list
+    const data = await fetchResults(statementId)
+    if (data) setResult(data)
+    txListRef.current?.refresh()
+  }, [statementId])
+
+  // Enter linking mode — fetch all matched (pending) items
+  const startLinkingMode = React.useCallback(async () => {
+    try {
+      const response = await fetch(`/api/statements/${statementId}/transactions?status=matched&limit=100`)
+      if (!response.ok) return
+      const data = await response.json()
+      const matchedItems: StatementTransaction[] = data.items.filter(
+        (item: StatementTransaction) => item.matchStatus === 'matched'
+      )
+      if (matchedItems.length === 0) {
+        toast.info('No pending matches to review')
+        return
+      }
+      setLinkingQueue(matchedItems)
+      setLinkingIndex(0)
+      setLinkingReviewed(0)
+      setPendingMatchCount(matchedItems.length)
+    } catch {
+      toast.error('Failed to load matches')
+    }
+  }, [statementId])
+
+  // Linking mode: advance to next unreviewed item
+  const advanceLinkingQueue = React.useCallback(() => {
+    setLinkingReviewed(prev => prev + 1)
+    // Try to go to next item
+    setLinkingIndex(prev => {
+      if (prev < linkingQueue.length - 1) return prev + 1
+      return prev // Stay on last — "all done" state shows
+    })
+  }, [linkingQueue.length])
+
+  // Linking mode: approve then advance
+  const handleLinkingApprove = React.useCallback(async (item: StatementTransaction) => {
+    await handleApproveLink(item)
+    advanceLinkingQueue()
+  }, [handleApproveLink, advanceLinkingQueue])
+
+  // Linking mode: reject then advance
+  const handleLinkingReject = React.useCallback(async (item: StatementTransaction) => {
+    await handleRejectMatch(item)
+    advanceLinkingQueue()
+  }, [handleRejectMatch, advanceLinkingQueue])
+
+  // Linking mode: skip (just advance, no action)
+  const handleLinkingSkip = React.useCallback(() => {
+    setLinkingIndex(prev =>
+      prev < linkingQueue.length - 1 ? prev + 1 : prev
+    )
+  }, [linkingQueue.length])
+
+  // Linking mode: navigate
+  const handleLinkingNavigate = React.useCallback((direction: 'prev' | 'next') => {
+    setLinkingIndex(prev => {
+      if (direction === 'prev') return Math.max(0, prev - 1)
+      return Math.min(linkingQueue.length - 1, prev + 1)
+    })
+  }, [linkingQueue.length])
+
+  // Close linking mode
+  const closeLinkingMode = React.useCallback((open: boolean) => {
+    if (!open) {
+      setLinkingQueue([])
+      setLinkingIndex(0)
+      setLinkingReviewed(0)
+    }
+  }, [])
+
   // Loading state
   if (isLoading) {
     return (
@@ -212,120 +375,141 @@ export default function StatementDetailPage() {
 
   const { statement, status, summary } = result
   const pmName = statement.payment_method?.name || 'Unknown'
-  const pmId = statement.payment_method?.id || ''
+
+  // Statement viewer modal (rendered for all states)
+  const statementViewerModal = (
+    <StatementViewerModal
+      open={viewerOpen}
+      onOpenChange={setViewerOpen}
+      statementId={statementId}
+      filename={statement.filename}
+    />
+  )
 
   // Pending state
   if (status === 'pending') {
     return (
-      <div className="space-y-6">
-        <StatementDetailHeader
-          paymentMethodName={pmName}
-          period={statement.period}
-          status={status}
-          filename={statement.filename}
-          stats={{ extracted: 0, matched: 0, unmatched: 0 }}
-          matchRate={0}
-        />
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="py-8">
-            <div className="flex flex-col items-center gap-4 text-center">
-              {isProcessing ? (
-                <>
-                  <RefreshCw className="h-8 w-8 animate-spin text-amber-600" />
-                  <div>
-                    <p className="font-medium text-amber-900">Starting processing...</p>
-                    <p className="text-sm text-amber-700 mt-1">
-                      This may take a moment
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <FileText className="h-8 w-8 text-amber-600" />
-                  <div>
-                    <p className="font-medium text-amber-900">Statement uploaded</p>
-                    <p className="text-sm text-amber-700 mt-1">
-                      Ready to extract and match transactions
-                    </p>
-                  </div>
-                  <Button onClick={triggerProcessing}>
-                    Process Statement
-                  </Button>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        <div className="space-y-6">
+          <StatementDetailHeader
+            paymentMethodName={pmName}
+            period={statement.period}
+            status={status}
+            filename={statement.filename}
+            stats={{ extracted: 0, matched: 0, unmatched: 0 }}
+            matchRate={0}
+            onViewStatement={() => setViewerOpen(true)}
+          />
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="py-8">
+              <div className="flex flex-col items-center gap-4 text-center">
+                {isProcessing ? (
+                  <>
+                    <RefreshCw className="h-8 w-8 animate-spin text-amber-600" />
+                    <div>
+                      <p className="font-medium text-amber-900">Starting processing...</p>
+                      <p className="text-sm text-amber-700 mt-1">
+                        This may take a moment
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-8 w-8 text-amber-600" />
+                    <div>
+                      <p className="font-medium text-amber-900">Statement uploaded</p>
+                      <p className="text-sm text-amber-700 mt-1">
+                        Ready to extract and link transactions
+                      </p>
+                    </div>
+                    <Button onClick={triggerProcessing}>
+                      Process Statement
+                    </Button>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        {statementViewerModal}
+      </>
     )
   }
 
   // Processing state
   if (status === 'processing') {
     return (
-      <div className="space-y-6">
-        <StatementDetailHeader
-          paymentMethodName={pmName}
-          period={statement.period}
-          status={status}
-          filename={statement.filename}
-          stats={{ extracted: 0, matched: 0, unmatched: 0 }}
-          matchRate={0}
-        />
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="py-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
-              <span className="font-medium text-blue-900">Processing statement...</span>
-            </div>
-            {result.progress && (
-              <>
-                <Progress value={result.progress.percent} className="h-2" />
-                <p className="text-sm text-blue-700">{result.progress.message}</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        <div className="space-y-6">
+          <StatementDetailHeader
+            paymentMethodName={pmName}
+            period={statement.period}
+            status={status}
+            filename={statement.filename}
+            stats={{ extracted: 0, matched: 0, unmatched: 0 }}
+            matchRate={0}
+            onViewStatement={() => setViewerOpen(true)}
+          />
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="py-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
+                <span className="font-medium text-blue-900">Processing statement...</span>
+              </div>
+              {result.progress && (
+                <>
+                  <Progress value={result.progress.percent} className="h-2" />
+                  <p className="text-sm text-blue-700">{result.progress.message}</p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        {statementViewerModal}
+      </>
     )
   }
 
   // Failed state
   if (status === 'failed') {
     return (
-      <div className="space-y-6">
-        <StatementDetailHeader
-          paymentMethodName={pmName}
-          period={statement.period}
-          status={status}
-          filename={statement.filename}
-          stats={{ extracted: 0, matched: 0, unmatched: 0 }}
-          matchRate={0}
-        />
-        <Card className="border-destructive/30 bg-destructive/5">
-          <CardContent className="py-8">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <XCircle className="h-8 w-8 text-destructive/70" />
-              <div>
-                <p className="font-medium text-destructive">Processing failed</p>
-                {result.error && (
-                  <p className="text-sm text-muted-foreground mt-1">{result.error}</p>
-                )}
+      <>
+        <div className="space-y-6">
+          <StatementDetailHeader
+            paymentMethodName={pmName}
+            period={statement.period}
+            status={status}
+            filename={statement.filename}
+            stats={{ extracted: 0, matched: 0, unmatched: 0 }}
+            matchRate={0}
+            onViewStatement={() => setViewerOpen(true)}
+          />
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="py-8">
+              <div className="flex flex-col items-center gap-4 text-center">
+                <XCircle className="h-8 w-8 text-destructive/70" />
+                <div>
+                  <p className="font-medium text-destructive">Processing failed</p>
+                  {result.error && (
+                    <p className="text-sm text-muted-foreground mt-1">{result.error}</p>
+                  )}
+                </div>
+                <Button variant="outline" onClick={triggerProcessing} disabled={isProcessing}>
+                  {isProcessing ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                      Retrying...
+                    </>
+                  ) : (
+                    'Retry Processing'
+                  )}
+                </Button>
               </div>
-              <Button variant="outline" onClick={triggerProcessing} disabled={isProcessing}>
-                {isProcessing ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                    Retrying...
-                  </>
-                ) : (
-                  'Retry Processing'
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+        {statementViewerModal}
+      </>
     )
   }
 
@@ -344,6 +528,9 @@ export default function StatementDetailPage() {
         filename={statement.filename}
         stats={{ extracted, matched, unmatched }}
         matchRate={matchRate}
+        onReprocess={() => setReprocessConfirmOpen(true)}
+        onViewStatement={() => setViewerOpen(true)}
+        isReprocessing={isReprocessing}
       />
 
       {/* Review in Queue callout */}
@@ -355,6 +542,16 @@ export default function StatementDetailPage() {
                 {extracted} transaction{extracted !== 1 ? 's' : ''} extracted.
               </p>
               <div className="flex items-center gap-2">
+                {(pendingMatchCount ?? 0) > 0 && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={startLinkingMode}
+                  >
+                    <Link2 className="h-4 w-4 mr-1" />
+                    Review {pendingMatchCount} match{pendingMatchCount !== 1 ? 'es' : ''}
+                  </Button>
+                )}
                 <Button
                   variant="default"
                   size="sm"
@@ -362,7 +559,7 @@ export default function StatementDetailPage() {
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   <Link href={`/imports/review?statementUploadId=${statementId}`}>
-                    Review {extracted} items in queue
+                    Full review queue
                     <ArrowRight className="h-4 w-4 ml-1" />
                   </Link>
                 </Button>
@@ -372,7 +569,7 @@ export default function StatementDetailPage() {
                   onClick={() => setCalloutDismissed(true)}
                   className="text-blue-700 hover:text-blue-900"
                 >
-                  Inspect individually
+                  Dismiss
                 </Button>
               </div>
             </div>
@@ -380,54 +577,21 @@ export default function StatementDetailPage() {
         </Card>
       )}
 
-      {/* Tabs */}
+      {/* Transaction list */}
       {status === 'completed' && (
-        <Tabs defaultValue="statement" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="statement">
-              Statement Transactions ({extracted})
-            </TabsTrigger>
-            <TabsTrigger value="joot">
-              Joot Transactions
-            </TabsTrigger>
-          </TabsList>
+        <Card>
+          <CardContent className="pt-4">
+            <StatementTransactionList
+              ref={txListRef}
+              statementId={statementId}
+              paymentMethodType={statement.payment_method?.type}
+              onLinkClick={handleLinkClick}
+              onCreateClick={handleCreateClick}
 
-          <TabsContent value="statement" className="mt-4">
-            <Card>
-              <CardContent className="pt-4">
-                <StatementTransactionList
-                  statementId={statementId}
-                  paymentMethodType={statement.payment_method?.type}
-                  onLinkClick={handleLinkClick}
-                  onCreateClick={handleCreateClick}
-                  highlightedMatchId={highlightedMatchId}
-                  onRowClick={(matchedTxId) => setHighlightedMatchId(matchedTxId)}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="joot" className="mt-4">
-            <Card>
-              <CardContent className="pt-4">
-                {pmId && statement.period.start && statement.period.end ? (
-                  <JootTransactionList
-                    statementId={statementId}
-                    paymentMethodId={pmId}
-                    periodStart={statement.period.start}
-                    periodEnd={statement.period.end}
-                    highlightedTransactionId={highlightedMatchId}
-                    onRowClick={(txId) => setHighlightedMatchId(txId)}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    Payment method or period information unavailable.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              onRowClick={(item) => setDetailModalItem(item)}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {/* Metadata */}
@@ -463,6 +627,55 @@ export default function StatementDetailPage() {
         data={createDialogData}
         onConfirm={handleCreateConfirm}
       />
+
+      {/* Transaction detail modal (single item) */}
+      <TransactionDetailModal
+        statementItem={detailModalItem}
+        open={!!detailModalItem && !isLinkingMode}
+        onOpenChange={(open) => {
+          if (!open) setDetailModalItem(null)
+        }}
+        onApproveLink={handleApproveLink}
+        onRejectMatch={handleRejectMatch}
+      />
+
+      {/* Linking mode modal (queue) */}
+      <TransactionDetailModal
+        statementItem={linkingQueue[linkingIndex] ?? null}
+        open={isLinkingMode}
+        onOpenChange={closeLinkingMode}
+        onApproveLink={handleLinkingApprove}
+        onRejectMatch={handleLinkingReject}
+        queue={{
+          current: linkingIndex,
+          total: linkingQueue.length,
+          reviewed: linkingReviewed,
+        }}
+        onSkip={handleLinkingSkip}
+        onNavigate={handleLinkingNavigate}
+      />
+
+      {statementViewerModal}
+
+      {/* Reprocess confirmation dialog */}
+      <AlertDialog open={reprocessConfirmOpen} onOpenChange={setReprocessConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reprocess statement?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will unlink all transactions that were linked or created from this
+              statement and re-extract transactions from the original file. Any
+              previously approved links will need to be reviewed again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReprocessConfirmed}>
+              Reprocess
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

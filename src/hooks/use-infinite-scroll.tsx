@@ -183,8 +183,12 @@ export function useInfiniteScroll<T>({
    * Reset and refetch from start
    */
   const reset = React.useCallback(async () => {
-    // Prevent concurrent resets
-    if (isFetchingRef.current) return
+    // If a fetch is in flight, cancel it by incrementing the fetch ID
+    // so its response will be ignored when it completes
+    if (isFetchingRef.current) {
+      fetchIdRef.current++
+      isFetchingRef.current = false
+    }
 
     isFetchingRef.current = true
     initialFetchDoneRef.current = true // Mark as done to prevent duplicate fetches

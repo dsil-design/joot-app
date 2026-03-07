@@ -579,11 +579,14 @@ function parseMultiLineTransactions(
   // Date patterns for multi-line format (MM/DD/YY at the start of line)
   const dateLinePattern = /^(\d{1,2}\/\d{1,2}\/\d{2})$/;
   // Amount pattern (standalone $XX.XX on a line, possibly with CR)
-  const amountLinePattern = /^\$?([\d,]+\.\d{2})(\s*CR)?$/i;
+  // $ prefix is REQUIRED to avoid matching bare foreign currency amounts (e.g., "296.00" THB)
+  // which appear before the actual USD amount line (e.g., "$8.62")
+  const amountLinePattern = /^\$([\d,]+\.\d{2})(\s*CR)?$/i;
   // Foreign currency pattern (e.g., "1.28 SINGAPORE DOLLAR @")
   const foreignCurrencyLinePattern = /^([\d,.]+)\s+([A-Z][A-Z\s]+?)\s*@?\s*$/i;
-  // Exchange rate line (just a decimal number)
-  const exchangeRatePattern = /^(0\.\d+|\d+\.\d+)$/;
+  // Exchange rate line (just a decimal number, typically < 100)
+  // Only matches after a foreign currency line has been seen
+  const exchangeRatePattern = /^(0\.\d+|\d{1,2}\.\d+)$/;
 
   let i = 0;
   while (i < lines.length) {
@@ -649,13 +652,15 @@ function parseMultiLineTransactions(
         continue;
       }
 
-      // Check if it's an exchange rate line
-      const rateMatch = nextLine.match(exchangeRatePattern);
-      if (rateMatch) {
-        exchangeRate = parseFloat(rateMatch[1]);
-        rawLines.push(nextLine);
-        i++;
-        continue;
+      // Check if it's an exchange rate line (only after seeing a foreign currency line)
+      if (foreignCurrency) {
+        const rateMatch = nextLine.match(exchangeRatePattern);
+        if (rateMatch) {
+          exchangeRate = parseFloat(rateMatch[1]);
+          rawLines.push(nextLine);
+          i++;
+          continue;
+        }
       }
 
       // Check if it's a new date (next transaction) - don't include it
@@ -696,6 +701,15 @@ function parseMultiLineTransactions(
           originalCurrency: foreignCurrency,
           exchangeRate,
         };
+
+        // Safety net: if the parsed USD amount equals the foreign amount,
+        // the parser likely grabbed the wrong line. Recompute from exchange rate.
+        if (exchangeRate && Math.abs(Math.abs(amount) - foreignAmount) < 0.01) {
+          const computedUsd = Math.round(foreignAmount * exchangeRate * 100) / 100;
+          transaction.amount = type === 'credit' || type === 'payment'
+            ? -Math.abs(computedUsd)
+            : Math.abs(computedUsd);
+        }
       }
 
       // Detect category

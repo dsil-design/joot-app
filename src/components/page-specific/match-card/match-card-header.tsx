@@ -45,6 +45,8 @@ export function MatchCardHeader({
   const isApproved = data.status === "approved" || data.status === "imported"
   const isRejected = data.status === "rejected"
   const isPending = data.status === "pending"
+  const isEmail = data.source === "email"
+  const isMerged = data.source === "merged"
 
   const source = data.sourceStatement || data.statementTransaction.sourceFilename
 
@@ -79,7 +81,7 @@ export function MatchCardHeader({
         {/* Status badge for resolved items */}
         {isApproved && (
           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-            Approved
+            Linked
           </span>
         )}
         {isRejected && (

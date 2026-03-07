@@ -32,7 +32,7 @@ function isMobile(): boolean {
 }
 
 function formatDate(date: Date | undefined, formatStr: string = "PPP"): string {
-  if (!date) return ""
+  if (!date || isNaN(date.getTime())) return ""
   return format(date, formatStr)
 }
 

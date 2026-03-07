@@ -111,6 +111,44 @@ export async function GET(
       suggestionMap.set(key, s)
     }
 
+    // Collect all matched transaction IDs for batch fetch
+    const matchedTxIds = new Set<string>()
+    for (const s of suggestions) {
+      if (s.matched_transaction_id) matchedTxIds.add(s.matched_transaction_id)
+    }
+
+    // Batch fetch linked Joot transactions
+    interface JootTxSummary {
+      id: string
+      description: string | null
+      amount: number
+      original_currency: string
+      transaction_date: string
+      vendor_name: string | null
+    }
+    const jootTxMap = new Map<string, JootTxSummary>()
+
+    if (matchedTxIds.size > 0) {
+      const { data: jootTxs } = await supabase
+        .from('transactions')
+        .select('id, description, amount, original_currency, transaction_date, vendors(name)')
+        .in('id', Array.from(matchedTxIds))
+
+      if (jootTxs) {
+        for (const tx of jootTxs) {
+          const vendor = tx.vendors as unknown as { name: string } | null
+          jootTxMap.set(tx.id, {
+            id: tx.id,
+            description: tx.description,
+            amount: tx.amount,
+            original_currency: tx.original_currency,
+            transaction_date: tx.transaction_date,
+            vendor_name: vendor?.name ?? null,
+          })
+        }
+      }
+    }
+
     // Map each transaction to include match information
     interface TransactionItem {
       index: number
@@ -119,10 +157,12 @@ export async function GET(
       amount: number
       currency: string
       type: string
-      matchStatus: 'matched' | 'unmatched' | 'new' | 'credit'
+      matchStatus: 'linked' | 'matched' | 'unmatched' | 'new' | 'credit'
       matchedTransactionId: string | null
       confidence: number
+      reasons: string[]
       suggestionStatus: string | null
+      jootTransaction: JootTxSummary | null
     }
 
     let items: TransactionItem[] = transactions.map((tx, index) => {
@@ -135,8 +175,12 @@ export async function GET(
       } else if (suggestion?.is_new) {
         matchStatus = 'new'
       } else if (suggestion?.matched_transaction_id) {
-        matchStatus = 'matched'
+        matchStatus = suggestion?.status === 'approved' ? 'linked' : 'matched'
       }
+
+      const jootTransaction = suggestion?.matched_transaction_id
+        ? jootTxMap.get(suggestion.matched_transaction_id) ?? null
+        : null
 
       return {
         index,
@@ -148,7 +192,9 @@ export async function GET(
         matchStatus,
         matchedTransactionId: suggestion?.matched_transaction_id || null,
         confidence: suggestion?.confidence ?? 0,
+        reasons: suggestion?.reasons || [],
         suggestionStatus: suggestion?.status || null,
+        jootTransaction,
       }
     })
 

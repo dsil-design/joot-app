@@ -81,7 +81,7 @@ export function EmailHubStatsBar({
         />
         <StatCard
           icon={<CheckCircle2 className="h-5 w-5" />}
-          label="Matched"
+          label="Linked"
           value={matchedCount}
           isLoading={isLoading}
           className="text-green-600"

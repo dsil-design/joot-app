@@ -72,7 +72,7 @@ export function StatementRow({ statement, paymentMethodType, onProcess }: Statem
               <div className="text-right space-y-1">
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span>{extracted} extracted</span>
-                  <span className="text-green-600">{matched} matched</span>
+                  <span className="text-green-600">{matched} linked</span>
                   <span className="text-amber-600">{newCount} new</span>
                 </div>
                 <div className="flex items-center gap-2">

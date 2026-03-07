@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ConfidenceIndicatorBadgeOnly } from "@/components/ui/confidence-indicator"
 import { Input } from "@/components/ui/input"
 import { Bot, ChevronDown, ChevronRight, Eye, RefreshCw, Send, Zap } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
@@ -34,7 +33,7 @@ function getStatusBadge(status: string) {
     case "pending_review":
       return { label: "Pending", className: "bg-amber-100 text-amber-800 border-amber-200" }
     case "matched":
-      return { label: "Matched", className: "bg-green-100 text-green-800 border-green-200" }
+      return { label: "Linked", className: "bg-green-100 text-green-800 border-green-200" }
     case "waiting_for_statement":
       return { label: "Waiting", className: "bg-blue-100 text-blue-800 border-blue-200" }
     case "ready_to_import":
@@ -307,17 +306,6 @@ export function EmailTransactionCard({
               )}
             </div>
           )}
-        </div>
-
-        {/* Confidence */}
-        <div className="shrink-0 hidden sm:block">
-          {data.extraction_confidence != null && data.extraction_confidence > 0 ? (
-            <ConfidenceIndicatorBadgeOnly
-              score={data.extraction_confidence}
-              size="sm"
-              showPercentage={false}
-            />
-          ) : null}
         </div>
 
         {/* Status */}

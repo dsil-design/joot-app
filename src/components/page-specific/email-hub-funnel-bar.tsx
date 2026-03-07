@@ -35,7 +35,7 @@ export function EmailHubFunnelBar({ stats, isLoading }: EmailHubFunnelBarProps) 
   const stages = [
     { label: "Synced", count: total, color: "bg-slate-400" },
     { label: "Extracted", count: extracted, color: "bg-blue-400" },
-    { label: "Matched", count: matched, color: "bg-amber-400" },
+    { label: "Linked", count: matched, color: "bg-amber-400" },
     { label: "Imported", count: imported, color: "bg-green-400" },
   ]
 

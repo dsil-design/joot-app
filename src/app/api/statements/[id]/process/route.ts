@@ -99,12 +99,36 @@ export async function POST(
     // Parse optional body
     const options = await parseRequestOptions(request)
 
-    // Start processing asynchronously
-    // For MVP, we process synchronously but return immediately
-    // In production, this would queue a background job
-
     // Use service role client for processing (needs storage access)
     const serviceClient = createServiceRoleClient()
+
+    // If reprocessing a completed statement, unlink any transactions
+    // that were previously linked to this statement
+    if (statement.status === 'completed') {
+      const { error: unlinkError, count } = await serviceClient
+        .from('transactions')
+        .update({
+          source_statement_upload_id: null,
+          source_statement_suggestion_index: null,
+          source_statement_match_confidence: null,
+        })
+        .eq('source_statement_upload_id', statementId)
+
+      if (unlinkError) {
+        console.error('Failed to unlink transactions:', unlinkError)
+      } else if (count && count > 0) {
+        await serviceClient
+          .from('import_activities')
+          .insert({
+            user_id: user.id,
+            activity_type: 'statement_processed',
+            statement_upload_id: statementId,
+            description: `Unlinked ${count} transaction(s) before reprocessing: ${statement.filename}`,
+            transactions_affected: count,
+            metadata: { action: 'unlink_before_reprocess' },
+          })
+      }
+    }
 
     // Record processing start in import_activities
     await serviceClient
