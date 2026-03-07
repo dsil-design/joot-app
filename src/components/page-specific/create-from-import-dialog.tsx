@@ -22,7 +22,7 @@ import {
   FileText,
   DollarSign,
   Calendar,
-  Sparkles,
+  Zap,
 } from "lucide-react"
 import { useVendorSearch } from "@/hooks/use-vendor-search"
 import { usePaymentMethodOptions, useTagOptions } from "@/hooks"
@@ -101,20 +101,6 @@ const PARSER_PAYMENT_METHOD_MAP: Record<string, string[]> = {
 }
 
 /**
- * Sparkle indicator for AI-prefilled fields
- */
-function AiPrefillIndicator({ tooltip }: { tooltip?: string }) {
-  return (
-    <span
-      className="inline-flex items-center text-purple-500"
-      title={tooltip || "Smart pre-fill from email"}
-    >
-      <Sparkles className="h-3.5 w-3.5" />
-    </span>
-  )
-}
-
-/**
  * CreateFromImportDialog
  *
  * Pre-filled form dialog for creating a new transaction from a statement entry.
@@ -175,7 +161,7 @@ export function CreateFromImportDialog({
 
       // Standard pre-fills from extraction
       setDescription(data.description)
-      setAmount(Math.abs(data.amount).toString())
+      setAmount(Math.abs(data.amount).toFixed(2))
       setDate(new Date(data.date + "T00:00:00"))
       setPaymentMethod(data.paymentMethodId || "")
       setVendor("")
@@ -240,6 +226,21 @@ export function CreateFromImportDialog({
       }
     }
   }, [data, open, getVendorById, searchVendors])
+
+  // Retry payment method pre-fill once options finish loading
+  React.useEffect(() => {
+    if (!open || !data?.smartHints?.parserKey || paymentsLoading || paymentMethod) return
+    const parserKey = data.smartHints.parserKey
+    const patterns = PARSER_PAYMENT_METHOD_MAP[parserKey]
+    if (!patterns) return
+    const matched = paymentOptions.find((opt) =>
+      patterns.some((p) => opt.label.toLowerCase().includes(p))
+    )
+    if (matched) {
+      setPaymentMethod(matched.value)
+      setAiPrefilled((prev) => new Set([...prev, "paymentMethod"]))
+    }
+  }, [open, data, paymentsLoading, paymentOptions, paymentMethod])
 
   // Reset on close
   React.useEffect(() => {
@@ -336,13 +337,13 @@ export function CreateFromImportDialog({
         {/* Smart pre-fill banner */}
         {hasAnyPrefill && (
           <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 dark:border-purple-800 dark:bg-purple-950/30">
-            <Sparkles className="h-4 w-4 text-purple-500 shrink-0" />
+            <Zap className="h-4 w-4 text-purple-500 shrink-0" />
             <p className="text-xs text-purple-700 dark:text-purple-300">
-              Some fields were smart-filled from the email.{" "}
+              Some fields were auto-filled from the email.{" "}
               <span className="text-purple-500">
-                <Sparkles className="inline h-3 w-3" />
+                <Zap className="inline h-3 w-3" />
               </span>{" "}
-              indicates an AI suggestion.
+              indicates a smart pre-fill.
             </p>
           </div>
         )}
@@ -376,12 +377,7 @@ export function CreateFromImportDialog({
         <div className="space-y-4">
           {/* Description */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="create-description">Description</Label>
-              {aiPrefilled.has("description") && (
-                <AiPrefillIndicator tooltip="Description suggested from email parser" />
-              )}
-            </div>
+            <Label htmlFor="create-description">Description</Label>
             <div className="relative">
               <Input
                 id="create-description"
@@ -399,7 +395,7 @@ export function CreateFromImportDialog({
               />
               {aiPrefilled.has("description") && (
                 <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-purple-500">
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Zap className="h-3.5 w-3.5" />
                 </span>
               )}
             </div>
@@ -407,18 +403,22 @@ export function CreateFromImportDialog({
 
           {/* Amount */}
           <div className="space-y-1.5">
-            <Label htmlFor="create-amount">
-              Amount ({data?.currency || "USD"})
-            </Label>
-            <Input
-              id="create-amount"
-              type="number"
-              step="0.01"
-              min="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-            />
+            <Label htmlFor="create-amount">Amount</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                {data?.currency === "THB" ? "฿" : "$"}
+              </span>
+              <Input
+                id="create-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                className="pl-7"
+              />
+            </div>
           </div>
 
           {/* Date */}
@@ -433,12 +433,7 @@ export function CreateFromImportDialog({
 
           {/* Vendor */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label>Vendor</Label>
-              {aiPrefilled.has("vendor") && (
-                <AiPrefillIndicator tooltip="Vendor matched from email" />
-              )}
-            </div>
+            <Label>Vendor</Label>
             <div className="relative">
               <SearchableComboBox
                 value={vendor}
@@ -461,7 +456,7 @@ export function CreateFromImportDialog({
               />
               {aiPrefilled.has("vendor") && (
                 <span className="absolute right-8 top-1/2 -translate-y-1/2 text-purple-500 pointer-events-none z-10">
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Zap className="h-3.5 w-3.5" />
                 </span>
               )}
             </div>
@@ -469,12 +464,7 @@ export function CreateFromImportDialog({
 
           {/* Payment Method */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label>Payment Method</Label>
-              {aiPrefilled.has("paymentMethod") && (
-                <AiPrefillIndicator tooltip="Payment method inferred from email source" />
-              )}
-            </div>
+            <Label>Payment Method</Label>
             <div className="relative">
               <ComboBox
                 options={paymentOptions}
@@ -498,7 +488,7 @@ export function CreateFromImportDialog({
               />
               {aiPrefilled.has("paymentMethod") && (
                 <span className="absolute right-8 top-1/2 -translate-y-1/2 text-purple-500 pointer-events-none z-10">
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Zap className="h-3.5 w-3.5" />
                 </span>
               )}
             </div>

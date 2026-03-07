@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Receipt, Import, Settings } from 'lucide-react'
+import { Home, Receipt, Import, MessageCircle, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigationItems = [
@@ -20,6 +20,11 @@ const navigationItems = [
     name: 'Imports',
     href: '/imports',
     icon: Import,
+  },
+  {
+    name: 'Chat',
+    href: '/chat',
+    icon: MessageCircle,
   },
   {
     name: 'Settings',

@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Receipt, Import, Settings, LogOut } from 'lucide-react'
+import { Home, Receipt, Import, MessageCircle, Settings, LogOut } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -37,6 +37,11 @@ const navigationItems = [
     name: 'Imports',
     href: '/imports',
     icon: Import,
+  },
+  {
+    name: 'Chat',
+    href: '/chat',
+    icon: MessageCircle,
   },
 ]
 

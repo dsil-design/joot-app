@@ -37,7 +37,7 @@ function getStatusBadge(status: string) {
     case "waiting_for_statement":
       return { label: "Waiting", className: "bg-blue-100 text-blue-800 border-blue-200" }
     case "ready_to_import":
-      return { label: "Ready", className: "bg-purple-100 text-purple-800 border-purple-200" }
+      return { label: "Ready to Import", className: "bg-purple-100 text-purple-800 border-purple-200" }
     case "imported":
       return { label: "Imported", className: "bg-green-50 text-green-700 border-green-200" }
     case "skipped":

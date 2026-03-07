@@ -2,6 +2,35 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import { makeStatementId } from '@/lib/utils/import-id'
 import type { QueueItem, Suggestion } from './queue-types'
 
+/**
+ * Normalize an ISO timestamp or date string to YYYY-MM-DD.
+ *
+ * Statement parsers create Date objects in local time (e.g. UTC+7 for
+ * Bangkok) and the processor stores them via .toISOString(), which shifts
+ * to UTC — e.g. "Nov 24 00:00 local" → "2025-11-23T17:00:00.000Z".
+ *
+ * To recover the *intended* calendar date regardless of the server's
+ * timezone, we round to the nearest calendar date: if the UTC time is
+ * >= 12:00 we advance to the next day, otherwise we keep the UTC date.
+ * This correctly handles offsets from UTC-12 to UTC+12.
+ */
+function normalizeDate(dateStr: string): string {
+  if (!dateStr) return dateStr
+  if (!dateStr.includes('T')) return dateStr.slice(0, 10)
+
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+
+  // Round to nearest calendar date based on UTC hours
+  if (d.getUTCHours() >= 12) {
+    d.setUTCDate(d.getUTCDate() + 1)
+  }
+  const year = d.getUTCFullYear()
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 interface StatementFilters {
   statementUploadId?: string
   currencyFilter?: string
@@ -127,7 +156,7 @@ export async function fetchStatementQueueItems(
         paymentMethod: pm ? { id: pm.id, name: pm.name } : null,
         paymentMethodType: pm?.type ?? 'credit_card',
         statementTransaction: {
-          date: suggestion.transaction_date,
+          date: normalizeDate(suggestion.transaction_date),
           description: suggestion.description,
           amount: suggestion.amount,
           currency: suggestion.currency,

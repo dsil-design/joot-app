@@ -69,6 +69,18 @@ export async function aggregateQueueItems(
 
         const emailMeta: EmailMetadata = emailItem?.emailMetadata ?? {}
 
+        // Inherit matched transaction from either source (prefer statement)
+        const inheritedMatch = stmtItem?.matchedTransaction ?? emailItem?.matchedTransaction
+        const hasDbMatch = !!inheritedMatch
+        const crossSourceReasons = [
+          `Cross-source match: email (${pair.emailCandidate.currency}) + statement (${pair.statementCandidate.currency})`,
+          `Amount diff: ${pair.percentDiff.toFixed(1)}% after conversion`,
+        ]
+        // If a DB transaction match exists, include the original match reasons
+        if (hasDbMatch && stmtItem?.reasons?.length) {
+          crossSourceReasons.push(...stmtItem.reasons)
+        }
+
         unpaired.push({
           id: mergedId,
           statementUploadId: stmtItem?.statementUploadId,
@@ -82,13 +94,11 @@ export async function aggregateQueueItems(
             currency: pair.statementCandidate.currency,
             sourceFilename: stmtItem?.statementTransaction.sourceFilename ?? '',
           },
-          confidence: 95,
+          matchedTransaction: inheritedMatch,
+          confidence: hasDbMatch ? Math.max(stmtItem?.confidence ?? 0, 95) : 95,
           confidenceLevel: 'high',
-          reasons: [
-            `Cross-source match: email (${pair.emailCandidate.currency}) + statement (${pair.statementCandidate.currency})`,
-            `Amount diff: ${pair.percentDiff.toFixed(1)}% after conversion`,
-          ],
-          isNew: true,
+          reasons: crossSourceReasons,
+          isNew: !hasDbMatch,
           status: 'pending',
           source: 'merged',
           emailMetadata: emailMeta,

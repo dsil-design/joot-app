@@ -68,7 +68,7 @@ const SKIP: ActionDescriptor = {
   callbackKey: "onReject",
 }
 
-const VARIANT_ACTIONS: Record<MatchCardVariant, ActionDescriptor[]> = {
+const VARIANT_ACTIONS: Record<MatchCardVariant | "merged-match-with-link", ActionDescriptor[]> = {
   "high-confidence": [
     { ...APPROVE, className: "bg-green-600 hover:bg-green-700" },
     REJECT,
@@ -98,6 +98,12 @@ const VARIANT_ACTIONS: Record<MatchCardVariant, ActionDescriptor[]> = {
     LINK,
     SKIP,
   ],
+  "merged-match-with-link": [
+    { ...APPROVE, label: "Link to Match", className: "bg-green-600 hover:bg-green-700" },
+    { ...CREATE_AS_NEW, label: "Link & Create", buttonVariant: "outline", isPrimary: false },
+    { ...LINK, label: "Link to Other" },
+    SKIP,
+  ],
 }
 
 interface MatchCardActionsProps {
@@ -106,6 +112,7 @@ interface MatchCardActionsProps {
   status: "pending" | "approved" | "rejected" | "imported"
   loading: boolean
   callbacks: MatchCardCallbacks
+  hasMatchedTransaction?: boolean
 }
 
 /**
@@ -118,13 +125,18 @@ export function MatchCardActions({
   status,
   loading,
   callbacks,
+  hasMatchedTransaction,
 }: MatchCardActionsProps) {
   const isPending = status === "pending"
   const isApproved = status === "approved" || status === "imported"
   const isRejected = status === "rejected"
 
   if (isPending) {
-    const actions = VARIANT_ACTIONS[variant]
+    const effectiveVariant =
+      variant === "merged-match" && hasMatchedTransaction
+        ? "merged-match-with-link"
+        : variant
+    const actions = VARIANT_ACTIONS[effectiveVariant]
     return (
       <>
         {actions.map((action) => {
@@ -163,6 +175,42 @@ export function MatchCardActions({
   }
 
   if (isRejected) {
+    // After rejecting a match, show actions to create new or link to a different transaction
+    const hasFollowUpActions = callbacks.onCreateAsNew || callbacks.onLinkManually
+    if (hasFollowUpActions) {
+      return (
+        <>
+          <span className="flex items-center gap-1 text-sm text-gray-500 mr-auto">
+            <X className="h-4 w-4" />
+            Match rejected
+          </span>
+          {callbacks.onCreateAsNew && (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => callbacks.onCreateAsNew?.(id)}
+              disabled={loading}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Plus className="h-4 w-4" />
+              Create as New
+            </Button>
+          )}
+          {callbacks.onLinkManually && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => callbacks.onLinkManually?.(id)}
+              disabled={loading}
+            >
+              <LinkIcon className="h-4 w-4" />
+              Link to Existing
+            </Button>
+          )}
+        </>
+      )
+    }
+
     return (
       <span className="flex items-center gap-1 text-sm text-gray-500">
         <X className="h-4 w-4" />

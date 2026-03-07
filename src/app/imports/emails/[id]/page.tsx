@@ -92,6 +92,13 @@ export default function EmailDetailPage({
       amount: emailTx.amount || 0,
       currency: emailTx.currency || "USD",
       date: emailTx.transaction_date || new Date().toISOString().split("T")[0],
+      smartHints: {
+        vendorId: emailTx.vendor_id || undefined,
+        vendorNameRaw: emailTx.vendor_name_raw || undefined,
+        parserKey: emailTx.parser_key || undefined,
+        description: emailTx.description || undefined,
+        extractionConfidence: emailTx.extraction_confidence || undefined,
+      },
     })
     setCreateDialogOpen(true)
   }

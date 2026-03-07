@@ -167,6 +167,7 @@ export default function ReviewQueuePage() {
   const [linkingItemId, setLinkingItemId] = React.useState<string | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [createDialogData, setCreateDialogData] = React.useState<CreateFromImportData | null>(null)
+  const [isRematching, setIsRematching] = React.useState(false)
   const [stats, setStats] = React.useState<QueueStats>({
     total: 0,
     pending: 0,
@@ -253,6 +254,18 @@ export default function ReviewQueuePage() {
     setLinkDialogOpen(false)
     setLinkingItemId(null)
   }
+
+  const handleRefreshWithRematch = React.useCallback(async () => {
+    setIsRematching(true)
+    try {
+      await fetch('/api/imports/rematch', { method: 'POST' })
+    } catch (e) {
+      console.error('Rematch failed:', e)
+    } finally {
+      setIsRematching(false)
+    }
+    refresh()
+  }, [refresh])
 
   const { createAndLink } = useCreateAndLink(linkToExisting)
 
@@ -366,13 +379,13 @@ export default function ReviewQueuePage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={refresh}
-            disabled={isLoading}
+            onClick={handleRefreshWithRematch}
+            disabled={isLoading || isRematching}
           >
             <RefreshCw
-              className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+              className={`h-4 w-4 mr-2 ${isLoading || isRematching ? "animate-spin" : ""}`}
             />
-            Refresh
+            {isRematching ? "Finding matches..." : "Refresh"}
           </Button>
         </div>
       </div>

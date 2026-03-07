@@ -130,6 +130,7 @@ export function MatchCard({
           status={data.status}
           loading={loading}
           callbacks={callbacks}
+          hasMatchedTransaction={!!data.matchedTransaction && !data.isNew}
         />
       </CardFooter>
     </Card>

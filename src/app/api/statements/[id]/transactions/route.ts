@@ -174,6 +174,8 @@ export async function GET(
       let matchStatus: TransactionItem['matchStatus'] = 'unmatched'
       if (suggestion?.status === 'ignored') {
         matchStatus = 'ignored'
+      } else if (suggestion?.status === 'rejected') {
+        matchStatus = 'unmatched'
       } else if (suggestion?.is_new) {
         matchStatus = 'new'
       } else if (suggestion?.matched_transaction_id) {

@@ -16,9 +16,12 @@ import {
   CreditCard,
   ArrowLeftRight,
   ExternalLink,
+  Eye,
 } from "lucide-react"
 import Link from "next/link"
 import { parseImportId } from "@/lib/utils/import-id"
+import { StatementViewerModal } from "@/components/page-specific/statement-viewer-modal"
+import { EmailViewerModal } from "@/components/page-specific/email-viewer-modal"
 import type { MatchCardData } from "./types"
 
 /**
@@ -48,10 +51,31 @@ function getMergedEmailLink(id: string): string | null {
   return null
 }
 
-function SourceLabel({ label, href }: { label: string; href: string | null }) {
+function SourceLabel({
+  label,
+  href,
+  onPreview,
+}: {
+  label: string
+  href: string | null
+  onPreview?: () => void
+}) {
   return (
     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
       {label}
+      {onPreview && (
+        <button
+          type="button"
+          className="inline-flex items-center text-muted-foreground/60 hover:text-foreground transition-colors"
+          title={`Preview ${label.toLowerCase()}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            onPreview()
+          }}
+        >
+          <Eye className="h-3 w-3" />
+        </button>
+      )}
       {href && (
         <Link
           href={href}
@@ -75,15 +99,64 @@ interface MatchCardPanelsProps {
  * Left = statement data, Right = matched transaction (or empty placeholder)
  */
 export function MatchCardPanels({ data }: MatchCardPanelsProps) {
+  const [previewModal, setPreviewModal] = React.useState<
+    | { type: "statement"; statementId: string; filename: string }
+    | { type: "email"; emailId: string }
+    | null
+  >(null)
+
+  const parsed = React.useMemo(() => parseImportId(data.id), [data.id])
+
+  const openStatementPreview = React.useCallback(() => {
+    if (parsed && (parsed.type === "statement" || parsed.type === "merged")) {
+      setPreviewModal({
+        type: "statement",
+        statementId: parsed.statementId,
+        filename: data.statementTransaction.sourceFilename || "Statement",
+      })
+    }
+  }, [parsed, data.statementTransaction.sourceFilename])
+
+  const openEmailPreview = React.useCallback(() => {
+    if (parsed && (parsed.type === "email" || parsed.type === "merged")) {
+      setPreviewModal({ type: "email", emailId: parsed.emailId })
+    }
+  }, [parsed])
+
+  const previewModals = (
+    <>
+      {previewModal?.type === "statement" && (
+        <StatementViewerModal
+          open
+          onOpenChange={(open) => { if (!open) setPreviewModal(null) }}
+          statementId={previewModal.statementId}
+          filename={previewModal.filename}
+        />
+      )}
+      {previewModal?.type === "email" && (
+        <EmailViewerModal
+          open
+          onOpenChange={(open) => { if (!open) setPreviewModal(null) }}
+          emailId={previewModal.emailId}
+          subject={data.emailMetadata?.subject ?? data.mergedEmailData?.metadata.subject ?? null}
+          fromName={data.emailMetadata?.fromName ?? data.mergedEmailData?.metadata.fromName ?? null}
+          fromAddress={data.emailMetadata?.fromAddress ?? data.mergedEmailData?.metadata.fromAddress ?? null}
+          emailDate={data.emailMetadata?.emailDate ?? data.mergedEmailData?.metadata.emailDate ?? null}
+        />
+      )}
+    </>
+  )
+
   // Merged card layout — email + statement side-by-side with conversion bar
   if (data.source === "merged" && data.mergedEmailData && data.crossCurrencyInfo) {
     const cx = data.crossCurrencyInfo
     return (
       <div className="space-y-3">
+        {previewModals}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Left panel: Email data */}
           <div className="space-y-1.5">
-            <SourceLabel label="From Email" href={getMergedEmailLink(data.id)} />
+            <SourceLabel label="From Email" href={getMergedEmailLink(data.id)} onPreview={openEmailPreview} />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(data.mergedEmailData.date)}</span>
             </TransactionDetailRow>
@@ -107,7 +180,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
 
           {/* Right panel: Statement data */}
           <div className="space-y-1.5 md:border-l md:pl-3">
-            <SourceLabel label="From Statement" href={getSourceLink(data.id)} />
+            <SourceLabel label="From Statement" href={getSourceLink(data.id)} onPreview={openStatementPreview} />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(data.statementTransaction.date)}</span>
             </TransactionDetailRow>
@@ -137,6 +210,48 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
             {cx.emailCurrency} {cx.emailAmount.toFixed(2)} ≈ {cx.statementCurrency} {cx.statementAmount.toFixed(2)}, rate: {cx.rate.toFixed(4)}, {cx.percentDiff.toFixed(1)}% diff
           </span>
         </div>
+
+        {/* Matched Joot transaction (when a DB match exists for this merged pair) */}
+        {data.matchedTransaction && !data.isNew && (
+          <div className="border-t pt-3 space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Proposed Link — Joot Transaction
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-1.5">
+              <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+                <span>{formatMatchDate(data.matchedTransaction.date)}</span>
+              </TransactionDetailRow>
+              <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+                <span className="font-medium">
+                  {formatMatchAmount(
+                    data.matchedTransaction.amount,
+                    data.matchedTransaction.currency
+                  )}
+                </span>
+              </TransactionDetailRow>
+              <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+                <span className="font-medium truncate">
+                  {data.matchedTransaction.vendor_name || "Unknown vendor"}
+                </span>
+              </TransactionDetailRow>
+              {data.matchedTransaction.payment_method_name && (
+                <TransactionDetailRow
+                  icon={<CreditCard className="h-3.5 w-3.5" />}
+                  className="text-muted-foreground"
+                >
+                  <span>{data.matchedTransaction.payment_method_name}</span>
+                </TransactionDetailRow>
+              )}
+              {data.matchedTransaction.description && (
+                <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+                  <span className="font-medium truncate">
+                    {data.matchedTransaction.description}
+                  </span>
+                </TransactionDetailRow>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -159,11 +274,13 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {previewModals}
       {/* Left panel: Statement data */}
       <div className="space-y-1.5">
         <SourceLabel
           label={isEmail ? "From Email" : "From Statement"}
           href={getSourceLink(data.id)}
+          onPreview={isEmail ? openEmailPreview : openStatementPreview}
         />
         <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
           <span>{formatMatchDate(data.statementTransaction.date)}</span>
