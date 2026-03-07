@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
-import { Loader2, CreditCard, Landmark } from 'lucide-react'
+import { Loader2, CreditCard, Landmark, ChevronRight } from 'lucide-react'
 import type { StatementUpload } from '@/hooks/use-statements'
 
 interface StatementRowProps {
@@ -46,7 +46,7 @@ export function StatementRow({ statement, paymentMethodType, onProcess }: Statem
 
   return (
     <Link href={`/imports/statements/${statement.id}`}>
-      <Card className="p-4 hover:bg-zinc-50 transition-colors cursor-pointer">
+      <Card className="p-4 mb-3 hover:bg-zinc-50 transition-colors cursor-pointer">
         <div className="flex items-start justify-between gap-4">
           {/* Left side: file info */}
           <div className="flex-1 min-w-0">
@@ -117,6 +117,9 @@ export function StatementRow({ statement, paymentMethodType, onProcess }: Statem
               </div>
             )}
           </div>
+
+          {/* Navigate chevron */}
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50 flex-shrink-0 self-center" />
         </div>
       </Card>
     </Link>

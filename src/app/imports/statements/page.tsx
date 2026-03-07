@@ -128,7 +128,7 @@ export default function StatementsPage() {
           <h3 className="text-sm font-medium text-muted-foreground mb-3">
             {group.paymentMethodName}
           </h3>
-          <div className="space-y-2">
+          <div>
             {group.statements.map(stmt => (
               <StatementRow
                 key={stmt.id}

@@ -208,8 +208,11 @@ export const StatementTransactionList = React.forwardRef<
               </span>
 
               {/* Amount */}
-              <span className="text-sm font-medium flex-shrink-0">
-                {formatMatchAmount(item.amount, item.currency)}
+              <span className={cn(
+                "text-sm font-medium flex-shrink-0",
+                item.amount < 0 && "text-green-600"
+              )}>
+                {item.amount < 0 ? '−' : ''}{formatMatchAmount(item.amount, item.currency)}
               </span>
 
               {/* Actions for unmatched/new */}

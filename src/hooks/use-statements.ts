@@ -89,7 +89,7 @@ export function useStatements() {
     for (const stmt of statements) {
       const pmId = stmt.payment_method_id ?? 'unknown'
       const pmName = stmt.payment_methods?.name ?? 'Unknown'
-      const pmType = stmt.payment_methods?.type ?? 'credit_card'
+      const pmType = stmt.payment_methods?.type ?? 'unknown'
 
       if (!groupMap.has(pmId)) {
         groupMap.set(pmId, {
