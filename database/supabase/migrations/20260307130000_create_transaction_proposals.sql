@@ -92,8 +92,16 @@ CREATE POLICY "Users can view own proposals"
   ON public.transaction_proposals FOR SELECT
   USING ((SELECT auth.uid()) = user_id);
 
+CREATE POLICY "Users can insert own proposals"
+  ON public.transaction_proposals FOR INSERT
+  WITH CHECK ((SELECT auth.uid()) = user_id);
+
 CREATE POLICY "Users can update own proposals"
   ON public.transaction_proposals FOR UPDATE
+  USING ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY "Users can delete own proposals"
+  ON public.transaction_proposals FOR DELETE
   USING ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Service role full access"

@@ -326,6 +326,40 @@ export default function ReviewQueuePage() {
     }
   }
 
+  const [generatingProposalIds, setGeneratingProposalIds] = React.useState<Set<string>>(new Set())
+
+  const handleRefreshProposal = async (id: string) => {
+    setGeneratingProposalIds((prev) => new Set(prev).add(id))
+    try {
+      const res = await fetch('/api/imports/proposals/generate-single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ compositeId: id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || data.error || 'Failed to generate proposal')
+      const { proposal } = data
+
+      if (proposal) {
+        updateItemByKey(id, (item) => ({ ...item, proposal }))
+        toast.success('Proposal generated', {
+          description: `${proposal.overallConfidence}% confidence`,
+        })
+      } else {
+        toast.info('No proposal could be generated')
+      }
+    } catch (e) {
+      console.error('Proposal generation failed:', e)
+      toast.error('Failed to generate proposal')
+    } finally {
+      setGeneratingProposalIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }
+  }
+
   const handleQuickCreate = async (id: string) => {
     const item = items.find((i) => i.id === id)
     if (!item?.proposal) return
@@ -446,13 +480,14 @@ export default function ReviewQueuePage() {
       key={item.id}
       data={item}
       selected={selectedIds.has(item.id)}
-      loading={isProcessing(item.id)}
+      loading={isProcessing(item.id) || generatingProposalIds.has(item.id)}
       onApprove={(id) => approve(id)}
       onReject={(id) => reject(id)}
       onLinkManually={handleLinkManually}
       onImport={handleImport}
       onCreateAsNew={handleCreateAsNew}
       onQuickCreate={handleQuickCreate}
+      onRefreshProposal={handleRefreshProposal}
       onSelectionChange={handleSelectionChange}
     />
   )

@@ -257,6 +257,13 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
             </div>
           </div>
         )}
+
+        {/* Proposal for unmatched merged items */}
+        {data.isNew && data.proposal && (
+          <div className="border-t pt-3">
+            <ProposalPanel proposal={data.proposal} />
+          </div>
+        )}
       </div>
     )
   }

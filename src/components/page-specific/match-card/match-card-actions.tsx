@@ -10,6 +10,7 @@ import {
   Loader2,
   Zap,
   Eye,
+  Sparkles,
 } from "lucide-react"
 import type { MatchCardVariant, MatchCardCallbacks } from "./types"
 import type { TransactionProposal } from "@/lib/proposals/types"
@@ -139,8 +140,9 @@ export function MatchCardActions({
   const isRejected = status === "rejected"
 
   if (isPending) {
-    // Proposal-aware action buttons for new-transaction variant
-    if (variant === "new-transaction" && proposal) {
+    // Proposal-aware action buttons for new/unmatched items
+    const isNewWithProposal = (variant === "new-transaction" || (variant === "merged-match" && !hasMatchedTransaction)) && proposal
+    if (isNewWithProposal) {
       const confidence = proposal.overallConfidence
       return (
         <>
@@ -183,6 +185,58 @@ export function MatchCardActions({
               Review & Create
             </Button>
           )}
+          {callbacks.onLinkManually && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => callbacks.onLinkManually?.(id)}
+              disabled={loading}
+            >
+              <LinkIcon className="h-4 w-4" />
+              Link to Existing
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => callbacks.onReject?.(id)}
+            disabled={loading}
+          >
+            <X className="h-4 w-4" />
+            Skip
+          </Button>
+        </>
+      )
+    }
+
+    // For new/unmatched cards without a proposal, show a generate button
+    const isNewWithoutProposal = (variant === "new-transaction" || (variant === "merged-match" && !hasMatchedTransaction)) && !proposal
+    if (isNewWithoutProposal && callbacks.onRefreshProposal) {
+      return (
+        <>
+          <Button
+            size="sm"
+            variant="default"
+            onClick={() => callbacks.onRefreshProposal?.(id)}
+            disabled={loading}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+            )}
+            Generate Proposal
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => callbacks.onCreateAsNew?.(id)}
+            disabled={loading}
+          >
+            <Plus className="h-4 w-4" />
+            Create Manually
+          </Button>
           {callbacks.onLinkManually && (
             <Button
               size="sm"
