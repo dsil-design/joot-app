@@ -19,7 +19,7 @@ import type { StatementParseResult, ParsedStatementTransaction } from './parsers
 /**
  * Processing status values
  */
-export type ProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type ProcessingStatus = 'pending' | 'processing' | 'ready_for_review' | 'in_review' | 'done' | 'failed';
 
 /**
  * Processing step for progress tracking
@@ -488,6 +488,7 @@ export class StatementProcessor {
         amount: s.statementTransaction.amount,
         currency: s.statementTransaction.currency,
         matched_transaction_id: s.matchedTransactionId,
+        original_matched_transaction_id: s.matchedTransactionId || null,
         confidence: s.confidence,
         reasons: s.reasons,
         is_new: s.isNew,
@@ -498,7 +499,7 @@ export class StatementProcessor {
 
     // Build update object with parsed period dates
     const updateData: Record<string, unknown> = {
-      status: 'completed',
+      status: 'ready_for_review',
       extraction_completed_at: new Date().toISOString(),
       transactions_extracted: result.transactionsExtracted,
       transactions_matched: result.transactionsMatched,

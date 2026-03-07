@@ -200,7 +200,7 @@ export function ReviewQueueFilterBar({
             statement_period_end,
             payment_methods (name)
           `)
-          .eq("status", "completed")
+          .in("status", ["ready_for_review", "in_review", "done"])
           .order("extraction_completed_at", { ascending: false })
           .limit(50)
 

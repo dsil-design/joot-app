@@ -33,12 +33,16 @@ function formatPeriod(start: string | null, end: string | null): string {
 
 function getStatusBadge(status: string) {
   switch (status) {
-    case 'completed':
-      return <Badge variant="outline" className="border-green-300 bg-green-50 text-green-700">Completed</Badge>
+    case 'ready_for_review':
+      return <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">Ready for Review</Badge>
+    case 'in_review':
+      return <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700">In Review</Badge>
+    case 'done':
+      return <Badge variant="outline" className="border-green-300 bg-green-50 text-green-700">Done</Badge>
     case 'processing':
       return <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700">Processing</Badge>
     case 'pending':
-      return <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">Pending</Badge>
+      return <Badge variant="outline" className="border-zinc-300 bg-zinc-50 text-zinc-700">Pending</Badge>
     case 'failed':
       return <Badge variant="outline" className="border-red-300 bg-red-50 text-red-700">Failed</Badge>
     default:
@@ -86,7 +90,7 @@ export function StatementDetailHeader({
               View Statement
             </Button>
           )}
-          {onReprocess && status === 'completed' && (
+          {onReprocess && ['ready_for_review', 'in_review', 'done'].includes(status) && (
             <Button
               variant="outline"
               size="sm"
@@ -101,7 +105,7 @@ export function StatementDetailHeader({
       </div>
 
       {/* Stats row */}
-      {status === 'completed' && (
+      {['ready_for_review', 'in_review', 'done'].includes(status) && (
         <div className="space-y-2">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>

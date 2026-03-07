@@ -74,7 +74,7 @@ export async function GET() {
         .from('statement_uploads')
         .select('transactions_extracted, transactions_matched', { count: 'exact' })
         .eq('user_id', user.id)
-        .eq('status', 'completed'),
+        .in('status', ['ready_for_review', 'in_review', 'done']),
     ]);
 
     // Handle any errors

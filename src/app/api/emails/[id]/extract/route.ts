@@ -79,10 +79,13 @@ export async function POST(
       // Record feedback if provided (before reprocessing so it's available as a few-shot example)
       let feedbackId: string | null = null;
       if (feedback) {
+        // Use extraction_correction when user provides a hint about wrong data,
+        // skip_override when they're just unblocking a skipped email
+        const feedbackType = feedback.userHint ? 'extraction_correction' : 'skip_override';
         feedbackId = await recordFeedback({
           userId: user.id,
           emailTransactionId: feedback.emailTransactionId,
-          feedbackType: 'skip_override',
+          feedbackType: feedbackType as 'extraction_correction' | 'skip_override',
           originalAiClassification: feedback.originalClassification,
           originalAiSuggestedSkip: feedback.originalSkip,
           correctedClassification: null,

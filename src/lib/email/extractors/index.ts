@@ -12,4 +12,4 @@ export { kasikornParser } from './kasikorn';
 export { lazadaParser } from './lazada';
 export { appleParser } from './apple';
 export { stripeParser } from './stripe';
-export { geminiAiParser } from './gemini-ai';
+export { aiFallbackParser } from './ai-fallback';

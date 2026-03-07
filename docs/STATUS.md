@@ -23,7 +23,7 @@ The email-to-transaction linking feature is **implemented and functional**. The 
 
 ### Email Parsing
 - 5 email parsers with confidence scoring: Grab, Bolt, Lazada, Bangkok Bank, Kasikorn
-- AI-driven extraction via Gemini as fallback parser
+- AI-driven extraction via Claude as fallback parser
 - Email classification (receipt, order confirmation, bank transfer, bill payment)
 - Batch processing support
 

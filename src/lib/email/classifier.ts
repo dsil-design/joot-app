@@ -278,7 +278,7 @@ const DEFAULT_CLASSIFICATION_RULES: ClassificationRule[] = [
   {
     id: 'ai_extracted_review',
     description: 'AI-extracted emails require manual review',
-    parserKeys: ['gemini-ai'],
+    parserKeys: ['ai-fallback'],
     classifications: null,
     paymentContexts: null,
     currencies: null,

@@ -3,7 +3,7 @@
  *
  * Stores user corrections and retrieves them for few-shot prompt injection.
  * When users correct AI classifications, skip decisions, or extracted data,
- * those corrections are stored and injected into future Gemini prompts.
+ * those corrections are stored and injected into future AI prompts.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';

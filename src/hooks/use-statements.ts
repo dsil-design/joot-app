@@ -7,7 +7,7 @@ export interface StatementUpload {
   filename: string
   file_size: number | null
   payment_method_id: string | null
-  status: 'pending' | 'processing' | 'completed' | 'failed'
+  status: 'pending' | 'processing' | 'ready_for_review' | 'in_review' | 'done' | 'failed'
   statement_period_start: string | null
   statement_period_end: string | null
   transactions_extracted: number | null
@@ -22,7 +22,9 @@ export interface StatementsStats {
   total: number
   pending: number
   processing: number
-  completed: number
+  readyForReview: number
+  inReview: number
+  done: number
   failed: number
   averageMatchRate: number
 }
@@ -123,21 +125,25 @@ export function useStatements() {
     const total = statements.length
     const pending = statements.filter(s => s.status === 'pending').length
     const processing = statements.filter(s => s.status === 'processing').length
-    const completed = statements.filter(s => s.status === 'completed').length
+    const readyForReview = statements.filter(s => s.status === 'ready_for_review').length
+    const inReview = statements.filter(s => s.status === 'in_review').length
+    const done = statements.filter(s => s.status === 'done').length
     const failed = statements.filter(s => s.status === 'failed').length
 
-    const completedStatements = statements.filter(s => s.status === 'completed')
+    const reviewedStatements = statements.filter(s =>
+      s.status === 'ready_for_review' || s.status === 'in_review' || s.status === 'done'
+    )
     let averageMatchRate = 0
-    if (completedStatements.length > 0) {
-      const totalRate = completedStatements.reduce((sum, s) => {
+    if (reviewedStatements.length > 0) {
+      const totalRate = reviewedStatements.reduce((sum, s) => {
         const extracted = s.transactions_extracted ?? 0
         if (extracted === 0) return sum
         return sum + ((s.transactions_matched ?? 0) / extracted) * 100
       }, 0)
-      averageMatchRate = Math.round(totalRate / completedStatements.length)
+      averageMatchRate = Math.round(totalRate / reviewedStatements.length)
     }
 
-    return { total, pending, processing, completed, failed, averageMatchRate }
+    return { total, pending, processing, readyForReview, inReview, done, failed, averageMatchRate }
   }, [statements])
 
   const triggerProcessing = useCallback(async (id: string) => {

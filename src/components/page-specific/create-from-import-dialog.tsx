@@ -225,7 +225,7 @@ export function CreateFromImportDialog({
           if (
             hints.description &&
             hints.parserKey &&
-            hints.parserKey !== "gemini-ai" &&
+            hints.parserKey !== "ai-fallback" &&
             (hints.extractionConfidence ?? 0) >= 75
           ) {
             setDescription(hints.description)

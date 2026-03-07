@@ -1,7 +1,7 @@
 /**
  * AI Email Classifier
  *
- * Uses Gemini AI to classify ALL emails with granular types and suggest skipping.
+ * Uses Claude AI to classify ALL emails with granular types and suggest skipping.
  * Supports two modes:
  * 1. Classification-only: For emails already extracted by regex parsers
  * 2. Combined extraction+classification: For emails without a regex match (saves an API call)
@@ -12,7 +12,7 @@
 import type { RawEmailData, ExtractionResult, AiClassificationResult } from './types';
 import type { AiClassification } from '../types/email-imports';
 import { AI_CLASSIFICATION } from '../types/email-imports';
-import { callGemini, isGeminiAvailable, truncateBody } from './gemini-client';
+import { callAi, isAiAvailable, truncateBody } from './ai-client';
 import { getRecentFeedback, type FeedbackExample } from './ai-feedback-service';
 
 // ============================================================================
@@ -59,13 +59,13 @@ function buildClassificationPrompt(
       return `Example ${i + 1}:
   From: ${ex.email_from || 'unknown'}
   Subject: ${ex.email_subject || '(no subject)'}
-  Body preview: ${ex.email_body_preview || '(empty)'}
+  User correction: ${ex.email_body_preview || '(none)'}
   → Correct classification: ${ex.corrected_classification || ex.original_ai_classification}
   → Should skip: ${ex.corrected_skip ?? ex.original_ai_suggested_skip}`;
     }).join('\n\n');
 
     fewShotSection = `
-**Previous corrections (learn from these):**
+**Previous user corrections (learn from these — apply the same logic to similar emails):**
 ${examples}
 
 `;
@@ -121,13 +121,13 @@ function buildCombinedPrompt(
       return `Example ${i + 1}:
   From: ${ex.email_from || 'unknown'}
   Subject: ${ex.email_subject || '(no subject)'}
-  Body preview: ${ex.email_body_preview || '(empty)'}
+  User correction: ${ex.email_body_preview || '(none)'}
   → Correct classification: ${ex.corrected_classification || ex.original_ai_classification}
   → Should skip: ${ex.corrected_skip ?? ex.original_ai_suggested_skip}`;
     }).join('\n\n');
 
     fewShotSection = `
-**Previous corrections (learn from these):**
+**Previous user corrections (learn from these — apply the same logic to similar emails):**
 ${examples}
 
 `;
@@ -144,7 +144,7 @@ ${CLASSIFICATION_CATEGORIES}
 
 ${SKIP_GUIDANCE}
 
-${fewShotSection}${userHint ? `**User correction:** ${userHint}\n\n` : ''}**Email to classify and extract:**
+${fewShotSection}${userHint ? `**IMPORTANT — User correction for this specific email (you MUST follow this instruction):**\n${userHint}\n\n` : ''}**Email to classify and extract:**
 - From: ${email.from_name || ''} <${email.from_address || ''}>
 - Subject: ${email.subject || '(no subject)'}
 - Date: ${email.email_date.toISOString()}
@@ -228,7 +228,7 @@ function normalizeClassification(raw: string): AiClassification {
 }
 
 /**
- * Classify an email using Gemini AI (classification only, no extraction)
+ * Classify an email using Claude AI (classification only, no extraction)
  *
  * Used for emails that already have extraction data from a regex parser.
  */
@@ -236,18 +236,18 @@ export async function classifyEmail(
   email: RawEmailData,
   userId: string
 ): Promise<AiClassificationResult> {
-  if (!isGeminiAvailable()) {
+  if (!isAiAvailable()) {
     return {
       ai_classification: AI_CLASSIFICATION.OTHER_NON_TRANSACTION,
       should_skip: false,
-      reasoning: 'Gemini API key not configured',
+      reasoning: 'AI API key not configured',
     };
   }
 
   try {
     const feedbackExamples = await getRecentFeedback(userId);
     const prompt = buildClassificationPrompt(email, feedbackExamples);
-    const { data: response, tokenUsage, durationMs } = await callGemini<ClassificationOnlyResponse>(prompt);
+    const { data: response, tokenUsage, durationMs } = await callAi<ClassificationOnlyResponse>(prompt);
 
     return {
       ai_classification: normalizeClassification(response.ai_classification),
@@ -270,7 +270,7 @@ export async function classifyEmail(
 }
 
 /**
- * Combined extraction + classification using Gemini AI (single API call)
+ * Combined extraction + classification using Claude AI (single API call)
  *
  * Used for emails that don't match any regex parser. Returns both
  * classification and extraction results in one call.
@@ -280,17 +280,17 @@ export async function classifyAndExtractEmail(
   userId: string,
   userHint?: string
 ): Promise<{ classification: AiClassificationResult; extraction: ExtractionResult }> {
-  if (!isGeminiAvailable()) {
+  if (!isAiAvailable()) {
     return {
       classification: {
         ai_classification: AI_CLASSIFICATION.OTHER_NON_TRANSACTION,
         should_skip: false,
-        reasoning: 'Gemini API key not configured',
+        reasoning: 'AI API key not configured',
       },
       extraction: {
         success: false,
         confidence: 0,
-        errors: ['Gemini API key not configured'],
+        errors: ['AI API key not configured'],
       },
     };
   }
@@ -298,7 +298,7 @@ export async function classifyAndExtractEmail(
   try {
     const feedbackExamples = await getRecentFeedback(userId);
     const prompt = buildCombinedPrompt(email, feedbackExamples, userHint);
-    const { data: response, tokenUsage, durationMs } = await callGemini<CombinedResponse>(prompt);
+    const { data: response, tokenUsage, durationMs } = await callAi<CombinedResponse>(prompt);
 
     // Build classification result
     const classification: AiClassificationResult = {

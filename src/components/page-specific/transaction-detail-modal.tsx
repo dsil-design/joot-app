@@ -174,6 +174,7 @@ export function TransactionDetailModal({
                   value={formatCurrency(transaction.amount, transaction.original_currency)}
                   secondaryValue={transaction.original_currency}
                 />
+                <ComparisonField label="Type" value={transaction.transaction_type === 'income' ? 'Income' : 'Expense'} />
                 <ComparisonField label="Vendor" value={transaction.vendor?.name || 'Unknown'} />
                 <ComparisonField label="Payment Method" value={transaction.payment_method?.name || 'Unknown'} />
                 {exchangeRate && (

@@ -246,32 +246,55 @@ function getFoodType(emailDate: Date, restaurant: string): string {
   return 'Meal';
 }
 
+// Total line patterns — Thai "รวม" (standalone, not part of longer words like
+// "รวมมูลค่า" which means "total value of goods subject to VAT") and English
+// "Total" / "Grand Total". These appear near the actual charged amount.
+const TOTAL_LINE_PATTERN = /(?:รวม(?!มูลค่า|ภาษี)|Grand\s*Total|(?<!\w)Total(?!\s*(?:VAT|Tax)))[^฿]*฿\s*([\d,]+(?:\.\d{2})?)/gi;
+
 /**
  * Extract THB amount from email body
+ *
+ * Priority:
+ * 1. Look for "รวม" (Thai for "Total") or "Total"/"Grand Total" labels — this is the
+ *    actual charged amount (after discounts, promos, and delivery fee adjustments).
+ * 2. Fall back to the largest ฿ amount if no total label is found.
  */
 function extractAmount(body: string): { amount: number; confidence: number } | null {
-  const matches: number[] = [];
-
-  // Find all THB amounts
+  // Try labeled total first — these are the actual charged amounts
+  TOTAL_LINE_PATTERN.lastIndex = 0;
+  const totalMatches: number[] = [];
   let match;
+  while ((match = TOTAL_LINE_PATTERN.exec(body)) !== null) {
+    const amountStr = match[1].replace(/,/g, '');
+    const amount = parseFloat(amountStr);
+    if (!isNaN(amount) && amount > 0) {
+      totalMatches.push(amount);
+    }
+  }
+
+  if (totalMatches.length > 0) {
+    // Use the last labeled total (receipts often repeat the total at the bottom)
+    const total = totalMatches[totalMatches.length - 1];
+    return { amount: total, confidence: 95 };
+  }
+
+  // Fallback: find all THB amounts and pick the largest
+  const allMatches: number[] = [];
+  THB_AMOUNT_PATTERN.lastIndex = 0;
   while ((match = THB_AMOUNT_PATTERN.exec(body)) !== null) {
     const amountStr = match[1].replace(/,/g, '');
     const amount = parseFloat(amountStr);
     if (!isNaN(amount) && amount > 0) {
-      matches.push(amount);
+      allMatches.push(amount);
     }
   }
 
-  if (matches.length === 0) {
+  if (allMatches.length === 0) {
     return null;
   }
 
-  // For Grab receipts, the total is typically the largest amount
-  // (includes service fees, delivery fees, etc.)
-  const total = Math.max(...matches);
-
-  // Higher confidence if multiple amounts found (indicates itemized receipt)
-  const confidence = matches.length > 1 ? 95 : 80;
+  const total = Math.max(...allMatches);
+  const confidence = allMatches.length > 1 ? 80 : 70;
 
   return { amount: total, confidence };
 }

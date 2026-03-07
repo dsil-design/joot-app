@@ -639,8 +639,8 @@ function isAiError(reasoning: string | null | undefined): boolean {
   return (
     reasoning.startsWith("Error:") ||
     reasoning.startsWith("Classification error:") ||
-    reasoning.includes("Gemini API timeout") ||
-    reasoning.includes("GEMINI_API_KEY not configured")
+    reasoning.includes("Claude API timeout") ||
+    reasoning.includes("AI API key not configured")
   )
 }
 

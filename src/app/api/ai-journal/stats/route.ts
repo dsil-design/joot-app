@@ -69,10 +69,10 @@ export async function GET() {
       byType[t] = (byType[t] || 0) + 1;
     }
 
-    // Gemini 2.5 Flash approximate pricing
+    // Claude Haiku 4.5 pricing: $1.00/1M input, $5.00/1M output
     const estimatedCost =
-      (totalPromptTokens * 0.15) / 1_000_000 +
-      (totalResponseTokens * 0.6) / 1_000_000;
+      (totalPromptTokens * 1.0) / 1_000_000 +
+      (totalResponseTokens * 5.0) / 1_000_000;
 
     return NextResponse.json({
       total_calls_30d: entries.length,

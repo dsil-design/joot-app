@@ -16,7 +16,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: statements, error: stmtError } = await supabase
+    const { data: rows, error: stmtError } = await supabase
       .from('statement_uploads')
       .select(`
         id,
@@ -31,6 +31,7 @@ export async function GET() {
         transactions_new,
         uploaded_at,
         extraction_error,
+        extraction_log,
         payment_methods(id, name, type)
       `)
       .eq('user_id', user.id)
@@ -40,7 +41,24 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to fetch statements' }, { status: 500 })
     }
 
-    return NextResponse.json({ statements: statements ?? [] })
+    // Compute live linked counts from suggestion data
+    interface Suggestion { status?: string; matched_transaction_id?: string }
+    const statements = (rows ?? []).map(row => {
+      const suggestions = (row.extraction_log as { suggestions?: Suggestion[] } | null)?.suggestions || []
+      const totalExtracted = suggestions.length || row.transactions_extracted || 0
+      const totalLinked = suggestions.filter(
+        (s: Suggestion) => s.status === 'approved' && s.matched_transaction_id
+      ).length
+      const { extraction_log: _, ...rest } = row
+      return {
+        ...rest,
+        transactions_extracted: totalExtracted,
+        transactions_matched: totalLinked,
+        transactions_new: totalExtracted - totalLinked,
+      }
+    })
+
+    return NextResponse.json({ statements })
   } catch (error) {
     console.error('Statements API error:', error)
     return NextResponse.json(

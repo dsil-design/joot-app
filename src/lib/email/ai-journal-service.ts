@@ -1,7 +1,7 @@
 /**
  * AI Journal Service
  *
- * Logs every Gemini AI invocation to the ai_journal table for persistent
+ * Logs every AI invocation to the ai_journal table for persistent
  * tracking and pattern analysis. Writes are fire-and-forget database inserts
  * with zero AI cost.
  */
@@ -110,8 +110,8 @@ export function getInvocationType(
   isReprocess: boolean
 ): InvocationType {
   if (isReprocess) return 'reprocess';
-  if (parserKey && parserKey !== 'gemini-ai' && regexExtractionSuccess) return 'classification_only';
-  if (parserKey && parserKey !== 'gemini-ai' && !regexExtractionSuccess) return 'fallback_extraction';
+  if (parserKey && parserKey !== 'ai-fallback' && regexExtractionSuccess) return 'classification_only';
+  if (parserKey && parserKey !== 'ai-fallback' && !regexExtractionSuccess) return 'fallback_extraction';
   return 'combined_extraction';
 }
 

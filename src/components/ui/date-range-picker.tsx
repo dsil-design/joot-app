@@ -157,6 +157,8 @@ export function DateRangePicker({
   const [open, setOpen] = React.useState(false)
   const [inputValue, setInputValue] = React.useState(() => formatDateRangeForInput(dateRange))
   const [isEditing, setIsEditing] = React.useState(false)
+  const [draftRange, setDraftRange] = React.useState<DateRange | undefined>(dateRange)
+  const [calendarKey, setCalendarKey] = React.useState(0)
   const inputRef = React.useRef<HTMLInputElement>(null)
   const buttonRef = React.useRef<HTMLButtonElement>(null)
 
@@ -167,14 +169,23 @@ export function DateRangePicker({
     }
   }, [dateRange, isEditing])
 
-  const handleSelect = (range: DateRange | undefined) => {
-    onDateRangeChange?.(range)
-    setIsEditing(false)
-
-    // If both from and to are selected (complete range), close the popover
-    if (range?.from && range?.to && range.from.getTime() !== range.to.getTime()) {
-      setOpen(false)
+  // Sync draft and reset calendar view when popover opens
+  React.useEffect(() => {
+    if (open) {
+      setDraftRange(dateRange)
+      setCalendarKey((k) => k + 1)
     }
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSelect = (range: DateRange | undefined) => {
+    setDraftRange(range)
+    setIsEditing(false)
+  }
+
+  const handleApplyRange = () => {
+    onDateRangeChange?.(draftRange)
+    setIsEditing(false)
+    setOpen(false)
   }
 
   const handleClear = () => {
@@ -328,7 +339,7 @@ export function DateRangePicker({
               <div className="flex">
                 <div className="flex flex-col border-r p-2 w-40">
                   {PICKER_PRESETS.map((key) => {
-                    const active = detectPreset(dateRange) === key
+                    const active = detectPreset(draftRange) === key
                     return (
                       <button
                         key={key}
@@ -341,9 +352,8 @@ export function DateRangePicker({
                         )}
                         onClick={() => {
                           const range = getPresetRange(key)
-                          onDateRangeChange?.(range)
+                          setDraftRange(range)
                           setIsEditing(false)
-                          setOpen(false)
                         }}
                       >
                         {PRESET_LABELS[key]}
@@ -353,27 +363,35 @@ export function DateRangePicker({
                 </div>
                 <div>
                   <Calendar
+                    key={calendarKey}
                     mode="range"
-                    selected={dateRange}
+                    defaultMonth={draftRange?.from ?? undefined}
+                    selected={draftRange}
                     onSelect={handleSelect}
                     numberOfMonths={2}
                     disabled={disabled}
                   />
-                  {dateRange?.from && (
-                    <div className="border-t p-3">
+                  <div className="border-t p-3 flex gap-2">
+                    {draftRange?.from && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          handleClear()
-                          setOpen(false)
+                          setDraftRange(undefined)
                         }}
-                        className="w-full"
+                        className="flex-1"
                       >
                         Clear
                       </Button>
-                    </div>
-                  )}
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={handleApplyRange}
+                      className="flex-1"
+                    >
+                      Apply
+                    </Button>
+                  </div>
                 </div>
               </div>
             </PopoverContent>

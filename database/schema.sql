@@ -843,10 +843,12 @@ CREATE TABLE public.statement_uploads (
 
   -- Processing status
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN (
-    'pending',     -- Uploaded, not yet processed
-    'processing',  -- Currently being processed
-    'completed',   -- Processing finished successfully
-    'failed'       -- Processing failed
+    'pending',          -- Uploaded, not yet processed
+    'processing',       -- Currently being processed (extracting transactions)
+    'ready_for_review', -- Processing finished, transactions need user review
+    'in_review',        -- User has started reviewing/linking but isn't done
+    'done',             -- All transactions linked to database records
+    'failed'            -- Processing failed
   )),
 
   -- Processing results
@@ -971,7 +973,7 @@ CREATE POLICY "Users can delete own import activities" ON public.import_activiti
 -- AI JOURNAL SYSTEM
 -- ============================================================================
 
--- AI Journal: Logs every Gemini invocation with input context, output, timing, and outcome
+-- AI Journal: Logs every AI invocation with input context, output, timing, and outcome
 CREATE TABLE public.ai_journal (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,

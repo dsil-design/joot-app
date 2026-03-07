@@ -93,8 +93,8 @@ export async function POST(
       )
     }
 
-    // Check if already completed (allow re-processing)
-    // Users can re-process completed statements to update matching
+    // Check if in a review state (allow re-processing)
+    // Users can re-process statements to update matching
 
     // Parse optional body
     const options = await parseRequestOptions(request)
@@ -102,9 +102,10 @@ export async function POST(
     // Use service role client for processing (needs storage access)
     const serviceClient = createServiceRoleClient()
 
-    // If reprocessing a completed statement, unlink any transactions
+    // If reprocessing a reviewed statement, unlink any transactions
     // that were previously linked to this statement
-    if (statement.status === 'completed') {
+    const reviewStatuses = ['ready_for_review', 'in_review', 'done']
+    if (reviewStatuses.includes(statement.status)) {
       const { error: unlinkError, count } = await serviceClient
         .from('transactions')
         .update({
@@ -261,7 +262,7 @@ export async function GET(
         percent: currentProgress.percent,
         message: currentProgress.message,
       } : null,
-      results: statement.status === 'completed' ? {
+      results: ['ready_for_review', 'in_review', 'done'].includes(statement.status) ? {
         transactions_extracted: statement.transactions_extracted,
         transactions_matched: statement.transactions_matched,
         transactions_new: statement.transactions_new,

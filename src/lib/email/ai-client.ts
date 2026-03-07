@@ -14,17 +14,17 @@ export const REQUEST_TIMEOUT_MS = 15000;
 /**
  * Token usage metadata returned alongside parsed AI responses
  */
-export interface GeminiTokenUsage {
+export interface AiTokenUsage {
   promptTokens: number;
   responseTokens: number;
 }
 
 /**
- * Result from callGemini including parsed data and token usage
+ * Result from callAi including parsed data and token usage
  */
-export interface GeminiResult<T> {
+export interface AiCallResult<T> {
   data: T;
-  tokenUsage: GeminiTokenUsage;
+  tokenUsage: AiTokenUsage;
   durationMs: number;
 }
 
@@ -32,7 +32,7 @@ export interface GeminiResult<T> {
  * Call Claude API with timeout and JSON response parsing.
  * Returns parsed data, token usage, and call duration.
  */
-export async function callGemini<T>(prompt: string): Promise<GeminiResult<T>> {
+export async function callAi<T>(prompt: string): Promise<AiCallResult<T>> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY not configured');
@@ -75,7 +75,7 @@ export async function callGemini<T>(prompt: string): Promise<GeminiResult<T>> {
 
   const parsed = JSON.parse(text) as T;
 
-  const tokenUsage: GeminiTokenUsage = {
+  const tokenUsage: AiTokenUsage = {
     promptTokens: result.usage?.input_tokens ?? 0,
     responseTokens: result.usage?.output_tokens ?? 0,
   };
@@ -86,7 +86,7 @@ export async function callGemini<T>(prompt: string): Promise<GeminiResult<T>> {
 /**
  * Check if AI API is available (API key configured)
  */
-export function isGeminiAvailable(): boolean {
+export function isAiAvailable(): boolean {
   return !!process.env.ANTHROPIC_API_KEY;
 }
 

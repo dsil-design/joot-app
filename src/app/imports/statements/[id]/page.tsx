@@ -44,7 +44,7 @@ interface StatementInfo {
 
 interface ProcessingResult {
   statement: StatementInfo
-  status: 'pending' | 'processing' | 'completed' | 'failed'
+  status: 'pending' | 'processing' | 'ready_for_review' | 'in_review' | 'done' | 'failed'
   summary: {
     total_extracted: number
     total_matched: number
@@ -175,9 +175,10 @@ export default function StatementDetailPage() {
     load()
   }, [statementId])
 
-  // Fetch actual pending match count when completed
+  // Fetch actual pending match count when in a review state
+  const isReviewState = result?.status === 'ready_for_review' || result?.status === 'in_review' || result?.status === 'done'
   React.useEffect(() => {
-    if (result?.status !== 'completed') return
+    if (!isReviewState) return
     const fetchPending = async () => {
       try {
         const response = await fetch(`/api/statements/${statementId}/transactions?status=matched&limit=1`)
@@ -187,7 +188,7 @@ export default function StatementDetailPage() {
       } catch { /* ignore */ }
     }
     fetchPending()
-  }, [result?.status, statementId])
+  }, [isReviewState, statementId])
 
   // Poll while processing
   React.useEffect(() => {
@@ -205,10 +206,45 @@ export default function StatementDetailPage() {
     }
   }, [result?.status, statementId])
 
+  // Handle ignore/unignore
+  const handleIgnoreClick = React.useCallback(async (item: StatementTransaction) => {
+    const compositeId = `stmt:${statementId}:${item.index}`
+    const response = await fetch('/api/imports/ignore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [compositeId] }),
+    })
+    if (!response.ok) {
+      toast.error('Failed to ignore transaction')
+      return
+    }
+    toast.success('Transaction ignored')
+    const data = await fetchResults(statementId)
+    if (data) setResult(data)
+    txListRef.current?.refresh()
+  }, [statementId])
+
+  const handleUnignoreClick = React.useCallback(async (item: StatementTransaction) => {
+    const compositeId = `stmt:${statementId}:${item.index}`
+    const response = await fetch('/api/imports/ignore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [compositeId], undo: true }),
+    })
+    if (!response.ok) {
+      toast.error('Failed to restore transaction')
+      return
+    }
+    toast.success('Transaction restored')
+    const data = await fetchResults(statementId)
+    if (data) setResult(data)
+    txListRef.current?.refresh()
+  }, [statementId])
+
   // Handle link from statement transaction list
-  const handleLinkClick = (item: { description: string; amount: number; currency: string; date: string }) => {
+  const handleLinkClick = (item: StatementTransaction) => {
     setLinkingItem({
-      id: `stmt-${statementId}-${item.description}`,
+      id: `stmt:${statementId}:${item.index}`,
       description: item.description,
       amount: item.amount,
       currency: item.currency,
@@ -219,18 +255,25 @@ export default function StatementDetailPage() {
 
   const handleLinkConfirm = async (transactionIds: string[]) => {
     if (!linkingItem) return
+    let success = true
     for (const txId of transactionIds) {
-      await linkToExisting(linkingItem.id, txId)
+      const result = await linkToExisting(linkingItem.id, txId)
+      if (!result) success = false
     }
     setLinkDialogOpen(false)
     setLinkingItem(null)
-    toast.success('Transaction linked')
+    if (success) {
+      // Refresh header summary and transaction list
+      const data = await fetchResults(statementId)
+      if (data) setResult(data)
+      txListRef.current?.refresh()
+    }
   }
 
   // Handle create from statement transaction list
-  const handleCreateClick = (item: { description: string; amount: number; currency: string; date: string }) => {
+  const handleCreateClick = (item: StatementTransaction) => {
     setCreateDialogData({
-      compositeId: `stmt-${statementId}-${item.description}`,
+      compositeId: `stmt:${statementId}:${item.index}`,
       description: item.description,
       amount: item.amount,
       currency: item.currency,
@@ -534,7 +577,7 @@ export default function StatementDetailPage() {
       />
 
       {/* Review in Queue callout */}
-      {status === 'completed' && extracted > 0 && !calloutDismissed && (
+      {['ready_for_review', 'in_review', 'done'].includes(status) && extracted > 0 && !calloutDismissed && (
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="py-4">
             <div className="flex items-center justify-between gap-4">
@@ -578,7 +621,7 @@ export default function StatementDetailPage() {
       )}
 
       {/* Transaction list */}
-      {status === 'completed' && (
+      {['ready_for_review', 'in_review', 'done'].includes(status) && (
         <Card>
           <CardContent className="pt-4">
             <StatementTransactionList
@@ -587,7 +630,8 @@ export default function StatementDetailPage() {
               paymentMethodType={statement.payment_method?.type}
               onLinkClick={handleLinkClick}
               onCreateClick={handleCreateClick}
-
+              onIgnoreClick={handleIgnoreClick}
+              onUnignoreClick={handleUnignoreClick}
               onRowClick={(item) => setDetailModalItem(item)}
             />
           </CardContent>

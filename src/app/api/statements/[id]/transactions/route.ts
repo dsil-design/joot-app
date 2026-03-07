@@ -24,6 +24,7 @@ interface MatchSuggestion {
   amount: number
   currency: string
   matched_transaction_id?: string
+  original_matched_transaction_id?: string
   confidence: number
   reasons: string[]
   is_new: boolean
@@ -157,8 +158,9 @@ export async function GET(
       amount: number
       currency: string
       type: string
-      matchStatus: 'linked' | 'matched' | 'unmatched' | 'new' | 'credit'
+      matchStatus: 'linked' | 'matched' | 'unmatched' | 'new' | 'ignored'
       matchedTransactionId: string | null
+      originalMatchedTransactionId: string | null
       confidence: number
       reasons: string[]
       suggestionStatus: string | null
@@ -170,8 +172,8 @@ export async function GET(
       const suggestion = suggestionMap.get(key)
 
       let matchStatus: TransactionItem['matchStatus'] = 'unmatched'
-      if (tx.type === 'credit' || tx.amount < 0) {
-        matchStatus = 'credit'
+      if (suggestion?.status === 'ignored') {
+        matchStatus = 'ignored'
       } else if (suggestion?.is_new) {
         matchStatus = 'new'
       } else if (suggestion?.matched_transaction_id) {
@@ -191,6 +193,7 @@ export async function GET(
         type: tx.type,
         matchStatus,
         matchedTransactionId: suggestion?.matched_transaction_id || null,
+        originalMatchedTransactionId: suggestion?.original_matched_transaction_id || null,
         confidence: suggestion?.confidence ?? 0,
         reasons: suggestion?.reasons || [],
         suggestionStatus: suggestion?.status || null,

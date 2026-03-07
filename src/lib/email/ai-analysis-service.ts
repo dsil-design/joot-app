@@ -3,13 +3,13 @@
  *
  * SQL-first pattern detection engine that analyzes ai_journal entries
  * to surface actionable insights. All pattern queries are standard
- * SQL aggregations (zero AI cost). An optional single Gemini call
+ * SQL aggregations (zero AI cost). An optional single Claude call
  * produces a human-readable summary (~$0.01 per run).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceRoleClient } from '../supabase/server';
-import { callGemini, isGeminiAvailable } from './gemini-client';
+import { callAi, isAiAvailable } from './ai-client';
 import { getJournalEntriesSince } from './ai-journal-service';
 
 // ============================================================================
@@ -248,7 +248,7 @@ export async function runAnalysis(
 
     // Optional: Generate human-readable summary with a single AI call
     let aiCallsMade = 0;
-    if (isGeminiAvailable() && insights.length > 0) {
+    if (isAiAvailable() && insights.length > 0) {
       try {
         const aiSummary = await generateAiSummary(insights, costMetrics);
         if (aiSummary) {
@@ -575,7 +575,7 @@ ${insightSummary}
 Respond with a JSON object: {"summary": "your 2-3 sentence summary"}`;
 
   try {
-    const { data } = await callGemini<{ summary: string }>(prompt);
+    const { data } = await callAi<{ summary: string }>(prompt);
     return data.summary;
   } catch {
     return null;

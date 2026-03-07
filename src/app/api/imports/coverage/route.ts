@@ -81,7 +81,7 @@ export async function GET() {
     for (const pm of paymentMethods || []) {
       // Collect statement_period_start day-of-month across completed statements for this PM
       const pmStatements = (statements || []).filter(
-        s => s.payment_method_id === pm.id && s.status === 'completed' && s.statement_period_start
+        s => s.payment_method_id === pm.id && ['ready_for_review', 'in_review', 'done'].includes(s.status) && s.statement_period_start
       )
       if (pmStatements.length >= 2) {
         const dayCountMap: Record<number, number> = {}
@@ -162,7 +162,7 @@ export async function GET() {
       } else if (stmt.statement_period_start) {
         const d = new Date(stmt.statement_period_start)
         stmtMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      } else if (stmt.status === 'completed' || stmt.status === 'failed') {
+      } else if (['ready_for_review', 'in_review', 'done', 'failed'].includes(stmt.status)) {
         // Only fall back to created_at for completed/failed statements
         // Pending/processing statements without a period shouldn't appear in the grid
         // since we don't yet know which month they belong to
@@ -200,7 +200,7 @@ export async function GET() {
             statementId: stmt.id,
           }
         }
-      } else if (stmt.status === 'completed') {
+      } else if (['ready_for_review', 'in_review', 'done'].includes(stmt.status)) {
         // Check if there are pending suggestions
         const suggestions = extractionLog?.suggestions || []
         const pendingCount = suggestions.filter(s => !s.status || s.status === 'pending').length

@@ -13,6 +13,7 @@ interface MatchSuggestion {
   confidence: number
   reasons: string[]
   is_new: boolean
+  status?: string
 }
 
 /**
@@ -216,9 +217,18 @@ export async function GET(
       })
     }
 
-    // Status is 'completed' - return results
+    // Status is ready_for_review / in_review / done - return results
     const extractionLog = statement.extraction_log as ExtractionLog | null
-    let suggestions = extractionLog?.suggestions || []
+    const allSuggestions = extractionLog?.suggestions || []
+
+    // Compute live stats from suggestion data (not stale column values)
+    const totalExtracted = allSuggestions.length
+    const totalLinked = allSuggestions.filter(
+      s => s.status === 'approved' && s.matched_transaction_id
+    ).length
+    const totalUnlinked = totalExtracted - totalLinked
+
+    let suggestions = allSuggestions
 
     // Apply filters
     if (minConfidence > 0) {
@@ -232,9 +242,7 @@ export async function GET(
     }
 
     // Calculate confidence distribution
-    const confidenceDistribution = calculateConfidenceDistribution(
-      extractionLog?.suggestions || []
-    )
+    const confidenceDistribution = calculateConfidenceDistribution(allSuggestions)
 
     // Paginate
     const totalMatches = suggestions.length
@@ -306,12 +314,12 @@ export async function GET(
       // Statement info
       statement: statementInfo,
       // Processing status
-      status: 'completed',
+      status: statement.status,
       // Summary statistics
       summary: {
-        total_extracted: statement.transactions_extracted,
-        total_matched: statement.transactions_matched,
-        total_new: statement.transactions_new,
+        total_extracted: totalExtracted,
+        total_matched: totalLinked,
+        total_new: totalUnlinked,
         confidence_distribution: confidenceDistribution,
         parser_used: extractionLog?.parser_used,
         page_count: extractionLog?.page_count,

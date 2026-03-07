@@ -8,7 +8,7 @@
 
 import * as React from "react"
 import { useParams, useSearchParams } from "next/navigation"
-import { ArrowLeft, Edit, FileText, Copy, Check } from "lucide-react"
+import { ArrowLeft, Edit, FileText, Copy, Check, Unlink } from "lucide-react"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
 import type { TransactionWithVendorAndPayment, EmailSourceData, StatementSourceData } from "@/lib/supabase/types"
@@ -20,6 +20,7 @@ import { MainLayout } from "@/components/layouts/MainLayout"
 import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
 import { formatCurrency } from "@/lib/utils"
 import { EmailSourceCard } from "@/components/page-specific/email-source-card"
+import { toast } from "sonner"
 
 
 function EditIcon() {
@@ -123,7 +124,7 @@ function StatementMatchBadge({ method }: { method: string | null }) {
   return null
 }
 
-function StatementSourceCard({ source }: { source: StatementSourceData }) {
+function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData; onUnlink?: () => void }) {
   const periodLabel = formatStatementPeriod(
     source.statement_period_start,
     source.statement_period_end
@@ -150,8 +151,19 @@ function StatementSourceCard({ source }: { source: StatementSourceData }) {
               {source.match_confidence}% match confidence
             </p>
           )}
-          <div className="mt-1">
+          <div className="flex items-center gap-2 mt-1">
             <StatementMatchBadge method={source.match_method} />
+            {onUnlink && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs text-zinc-500 hover:text-destructive"
+                onClick={onUnlink}
+              >
+                <Unlink className="size-3.5 mr-1" />
+                Unlink
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -182,7 +194,7 @@ function TransactionId({ id }: { id: string }) {
   )
 }
 
-function TransactionSources({ emailSource, statementSource }: { emailSource: EmailSourceData | null; statementSource: StatementSourceData | null }) {
+function TransactionSources({ emailSource, statementSource, onUnlinkEmail, onUnlinkStatement }: { emailSource: EmailSourceData | null; statementSource: StatementSourceData | null; onUnlinkEmail?: () => void; onUnlinkStatement?: () => void }) {
   const hasNoSources = !emailSource && !statementSource
 
   return (
@@ -197,8 +209,8 @@ function TransactionSources({ emailSource, statementSource }: { emailSource: Ema
         </div>
       ) : (
         <div className="flex flex-col gap-3 w-full">
-          {emailSource && <EmailSourceCard source={emailSource} />}
-          {statementSource && <StatementSourceCard source={statementSource} />}
+          {emailSource && <EmailSourceCard source={emailSource} onUnlink={onUnlinkEmail} />}
+          {statementSource && <StatementSourceCard source={statementSource} onUnlink={onUnlinkStatement} />}
         </div>
       )}
     </div>
@@ -350,6 +362,27 @@ export default function ViewTransactionPage() {
     }
   }
 
+  const handleUnlink = async (sourceType: 'email' | 'statement') => {
+    if (!transaction) return
+    try {
+      const res = await fetch('/api/imports/unlink', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionId: transaction.id, sourceType }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to unlink')
+      }
+      toast.success(`${sourceType === 'email' ? 'Email' : 'Statement'} source unlinked`)
+      // Re-fetch transaction to update UI
+      const updated = await getTransactionById(transaction.id)
+      if (updated) setTransaction(updated)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to unlink source')
+    }
+  }
+
   if (loading) {
     return (
       <MainLayout showSidebar={true} showMobileNav={false}>
@@ -476,6 +509,8 @@ export default function ViewTransactionPage() {
             <TransactionSources
               emailSource={transaction.emailSource ?? null}
               statementSource={transaction.statementSource ?? null}
+              onUnlinkEmail={() => handleUnlink('email')}
+              onUnlinkStatement={() => handleUnlink('statement')}
             />
           </div>
           <TransactionId id={transaction.id} />

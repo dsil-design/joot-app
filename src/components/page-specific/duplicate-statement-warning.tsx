@@ -69,7 +69,7 @@ export function DuplicateStatementWarning({
                 minute: '2-digit',
               })}
             </p>
-            {firstDuplicate.existingUpload.status === 'completed' && (
+            {['ready_for_review', 'in_review', 'done'].includes(firstDuplicate.existingUpload.status) && (
               <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                 {firstDuplicate.existingUpload.transactions_extracted} transactions extracted,{' '}
                 {firstDuplicate.existingUpload.transactions_matched} matched

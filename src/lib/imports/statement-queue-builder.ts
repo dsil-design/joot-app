@@ -29,7 +29,7 @@ export async function fetchStatementQueueItems(
       )
     `)
     .eq('user_id', userId)
-    .eq('status', 'completed')
+    .in('status', ['ready_for_review', 'in_review', 'done'])
     .order('extraction_completed_at', { ascending: false })
 
   if (fetchError) {

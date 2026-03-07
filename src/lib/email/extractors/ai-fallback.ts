@@ -1,24 +1,24 @@
 /**
- * Gemini AI Fallback Email Parser
+ * AI Fallback Email Parser
  *
- * Uses Google Gemini 2.5 Flash as a fallback parser for emails that don't
- * match any regex-based parser. Sends email content to Gemini and extracts
+ * Uses Claude AI as a fallback parser for emails that don't match any
+ * regex-based parser. Sends email content to Claude and extracts
  * structured transaction data.
  *
  * Key design decisions:
  * - Only runs when no regex parser matches (registered last)
  * - Confidence capped at 70 (AI is less certain than regex)
  * - All AI extractions get pending_review status via classifier rule
- * - Silently skipped if GEMINI_API_KEY is not set
+ * - Silently skipped if ANTHROPIC_API_KEY is not set
  * - Body truncated to 8,000 chars to control costs
  * - Temperature 0.1 for deterministic extraction
  */
 
 import type { EmailParser, RawEmailData, ExtractionResult } from '../types';
-import { callGemini, isGeminiAvailable, truncateBody } from '../gemini-client';
+import { callAi, isAiAvailable, truncateBody } from '../ai-client';
 
 /**
- * Build the prompt for Gemini
+ * Build the prompt for Claude
  */
 function buildPrompt(email: RawEmailData): string {
   const body = truncateBody(email.text_body, email.html_body);
@@ -59,7 +59,7 @@ For transaction_date, use ISO format "YYYY-MM-DD".
 For amount, use a plain number without currency symbols.`;
 }
 
-interface GeminiResponse {
+interface AiFallbackResponse {
   is_transaction: boolean;
   vendor_name: string | null;
   amount: number | null;
@@ -80,7 +80,7 @@ interface GeminiResponse {
  * - +10 (vendor name found)
  * - +5 (date found)
  */
-function calculateAiConfidence(data: GeminiResponse): number {
+function calculateAiConfidence(data: AiFallbackResponse): number {
   let score = 30; // Base: AI says it's a transaction
 
   if (data.amount !== null && data.amount > 0) score += 15;
@@ -92,27 +92,27 @@ function calculateAiConfidence(data: GeminiResponse): number {
 }
 
 /**
- * Gemini AI Email Parser implementation
+ * AI Fallback Email Parser implementation
  */
-export const geminiAiParser: EmailParser = {
-  key: 'gemini-ai',
-  name: 'Gemini AI Fallback Parser',
+export const aiFallbackParser: EmailParser = {
+  key: 'ai-fallback',
+  name: 'AI Fallback Parser',
 
   /**
-   * Can parse any email — but only if GEMINI_API_KEY is set.
+   * Can parse any email — but only if ANTHROPIC_API_KEY is set.
    * Since this is registered last, it only runs when no regex parser matches.
    */
   canParse(_email: RawEmailData): boolean {
-    return isGeminiAvailable();
+    return isAiAvailable();
   },
 
   /**
-   * Extract transaction data using Gemini AI
+   * Extract transaction data using Claude AI
    */
   async extract(email: RawEmailData): Promise<ExtractionResult> {
     try {
       const prompt = buildPrompt(email);
-      const { data: response } = await callGemini<GeminiResponse>(prompt);
+      const { data: response } = await callAi<AiFallbackResponse>(prompt);
 
       // Not a transaction — return clean failure
       if (!response.is_transaction) {
@@ -159,7 +159,7 @@ export const geminiAiParser: EmailParser = {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error('Gemini AI parser error:', message);
+      console.error('AI fallback parser error:', message);
 
       return {
         success: false,

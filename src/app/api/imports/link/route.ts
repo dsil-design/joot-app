@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import type { Json } from '@/lib/supabase/types'
 import { parseImportId } from '@/lib/utils/import-id'
+import { updateStatementReviewStatus } from '@/lib/utils/statement-status'
 
 interface Suggestion {
   transaction_date: string
@@ -165,6 +166,8 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         )
       }
+
+      await updateStatementReviewStatus(serviceClient, parsed.statementId)
     } else if (parsed.type === 'statement') {
       // --- STATEMENT link ---
       const { data: statement, error: fetchError } = await serviceClient
@@ -230,6 +233,8 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         )
       }
+
+      await updateStatementReviewStatus(serviceClient, parsed.statementId)
     } else {
       // --- EMAIL link ---
       // The emailId may be an emails.id (from the unified view) or an

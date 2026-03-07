@@ -115,7 +115,9 @@ export const AUTO_SKIP_FEEDBACK_THRESHOLD = 10;
 export const STATEMENT_UPLOAD_STATUS = {
   PENDING: 'pending',
   PROCESSING: 'processing',
-  COMPLETED: 'completed',
+  READY_FOR_REVIEW: 'ready_for_review',
+  IN_REVIEW: 'in_review',
+  DONE: 'done',
   FAILED: 'failed',
 } as const;
 

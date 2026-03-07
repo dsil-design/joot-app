@@ -205,7 +205,7 @@ export interface EmailTransactionData {
 }
 
 /**
- * AI classification result from Gemini classifier
+ * AI classification result from Claude classifier
  */
 export interface AiClassificationResult {
   /** Granular AI classification */
@@ -226,7 +226,7 @@ export interface AiClassificationResult {
     reference_id?: string;
   } | null;
 
-  /** Token usage from the Gemini API call (for journal logging) */
+  /** Token usage from the Claude API call (for journal logging) */
   promptTokens?: number;
   responseTokens?: number;
   durationMs?: number;

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Eye, Mail } from "lucide-react"
+import { Eye, Mail, Unlink } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { EmailViewerModal } from "./email-viewer-modal"
 
@@ -44,7 +44,7 @@ function MatchMethodBadge({ method, status }: { method: string | null; status: s
   return null
 }
 
-export function EmailSourceCard({ source }: { source: EmailSourceCardData }) {
+export function EmailSourceCard({ source, onUnlink }: { source: EmailSourceCardData; onUnlink?: () => void }) {
   const [viewerOpen, setViewerOpen] = React.useState(false)
 
   const formattedDate = source.email_date
@@ -90,6 +90,17 @@ export function EmailSourceCard({ source }: { source: EmailSourceCardData }) {
                 <Eye className="size-3.5 mr-1" />
                 View Email
               </Button>
+              {onUnlink && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-zinc-500 hover:text-destructive"
+                  onClick={onUnlink}
+                >
+                  <Unlink className="size-3.5 mr-1" />
+                  Unlink
+                </Button>
+              )}
             </div>
           </div>
         </div>

@@ -63,7 +63,7 @@ import { kasikornParser } from './extractors/kasikorn';
 import { lazadaParser } from './extractors/lazada';
 import { appleParser } from './extractors/apple';
 import { stripeParser } from './extractors/stripe';
-import { geminiAiParser } from './extractors/gemini-ai';
+import { aiFallbackParser } from './extractors/ai-fallback';
 
 /**
  * Registry of available email parsers
@@ -278,7 +278,8 @@ export class EmailExtractionService {
   /**
    * Try regex extraction first, fall back to AI if regex parser matched but extraction failed.
    *
-   * Three paths:
+   * Four paths:
+   * 0. userHint provided → force AI extraction+classification (user is correcting the result)
    * 1. Regex parser matched AND extraction succeeded → use regex result, run AI classification only
    * 2. Regex parser matched BUT extraction failed → fall back to combined AI extraction+classification
    * 3. No regex parser matched → use combined AI extraction+classification (existing behavior)
@@ -288,7 +289,6 @@ export class EmailExtractionService {
     userId: string,
     userHint?: string
   ): Promise<{ extraction: ExtractionResult; aiResult: AiClassificationResult | null; parserKey: string | null }> {
-    const regexExtraction = await this.extractFromEmail(rawEmail);
     const regexParser = this.parserRegistry.findParser({
       ...rawEmail,
       from_address: normalizeICloudRelay(rawEmail.from_address || ''),
@@ -298,25 +298,38 @@ export class EmailExtractionService {
     let extraction: ExtractionResult;
     let aiResult: AiClassificationResult | null = null;
 
-    if (parserKey && parserKey !== 'gemini-ai' && regexExtraction.success) {
-      // Path 1: Regex matched and extracted successfully — only classify with AI
-      extraction = regexExtraction;
-      aiResult = await aiClassifyEmail(rawEmail, userId);
-    } else if (parserKey && parserKey !== 'gemini-ai' && !regexExtraction.success) {
-      // Path 2: Regex parser matched but extraction failed — fall back to AI extraction
+    if (userHint) {
+      // Path 0: User provided a correction hint — force AI extraction so the hint
+      // is included in the prompt and can override regex parser results.
       const combined = await classifyAndExtractEmail(rawEmail, userId, userHint);
       extraction = combined.extraction;
       aiResult = combined.classification;
-      // Annotate notes so the user knows what happened
-      const fallbackNote = `Regex parser "${parserKey}" matched but extraction failed (${regexExtraction.errors?.join('; ') || 'unknown reason'}). Fell back to AI extraction.`;
+      const hintNote = `User correction applied — forced AI extraction (bypassed regex parser "${parserKey || 'none'}").`;
       extraction.notes = extraction.notes
-        ? `${fallbackNote} ${extraction.notes}`
-        : fallbackNote;
+        ? `${hintNote} ${extraction.notes}`
+        : hintNote;
     } else {
-      // Path 3: No regex parser matched — use combined AI
-      const combined = await classifyAndExtractEmail(rawEmail, userId, userHint);
-      extraction = combined.extraction;
-      aiResult = combined.classification;
+      const regexExtraction = await this.extractFromEmail(rawEmail);
+
+      if (parserKey && parserKey !== 'ai-fallback' && regexExtraction.success) {
+        // Path 1: Regex matched and extracted successfully — only classify with AI
+        extraction = regexExtraction;
+        aiResult = await aiClassifyEmail(rawEmail, userId);
+      } else if (parserKey && parserKey !== 'ai-fallback' && !regexExtraction.success) {
+        // Path 2: Regex parser matched but extraction failed — fall back to AI extraction
+        const combined = await classifyAndExtractEmail(rawEmail, userId);
+        extraction = combined.extraction;
+        aiResult = combined.classification;
+        const fallbackNote = `Regex parser "${parserKey}" matched but extraction failed (${regexExtraction.errors?.join('; ') || 'unknown reason'}). Fell back to AI extraction.`;
+        extraction.notes = extraction.notes
+          ? `${fallbackNote} ${extraction.notes}`
+          : fallbackNote;
+      } else {
+        // Path 3: No regex parser matched — use combined AI
+        const combined = await classifyAndExtractEmail(rawEmail, userId);
+        extraction = combined.extraction;
+        aiResult = combined.classification;
+      }
     }
 
     return { extraction, aiResult, parserKey };
@@ -646,7 +659,7 @@ export class EmailExtractionService {
             // Path 1 = regex matched + succeeded (invocationType=classification_only)
             // Path 2 = regex matched + failed (invocationType=fallback_extraction)
             // Path 3 = no regex match (invocationType=combined_extraction)
-            const hadRegexParser = parserKey !== null && parserKey !== 'gemini-ai';
+            const hadRegexParser = parserKey !== null && parserKey !== 'ai-fallback';
             // In path 1, extraction notes won't contain "Fell back" — that's the path 2 marker
             const regexSuccess = hadRegexParser && !extraction.notes?.includes('Fell back to AI');
             logJournalEntry({
@@ -897,7 +910,7 @@ export class EmailExtractionService {
 
     // Log to AI journal (fire-and-forget)
     if (aiResult) {
-      const hadRegexParser = parserKey !== null && parserKey !== 'gemini-ai';
+      const hadRegexParser = parserKey !== null && parserKey !== 'ai-fallback';
       const regexSuccess = hadRegexParser && !extraction.notes?.includes('Fell back to AI');
       logJournalEntry({
         userId,
@@ -1015,4 +1028,4 @@ extractionService.registerParser(stripeParser);
 
 // AI fallback parser — must be registered LAST so it only runs
 // when no regex parser matches
-extractionService.registerParser(geminiAiParser);
+extractionService.registerParser(aiFallbackParser);

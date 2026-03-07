@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { parseImportId } from '@/lib/utils/import-id'
+import { updateStatementReviewStatus } from '@/lib/utils/statement-status'
 
 interface Suggestion {
   transaction_date: string
@@ -190,6 +191,8 @@ export async function POST(request: NextRequest) {
             if (updateError) {
               console.error('Error updating statement:', updateError)
               results.errors.push(`Failed to save changes to statement ${statement.id}`)
+            } else {
+              await updateStatementReviewStatus(serviceClient, statement.id)
             }
           }
         }
