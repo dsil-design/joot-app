@@ -56,7 +56,7 @@ export async function generateLLMProposal(
     .sort((a, b) => b.usageCount - a.usageCount)
     .slice(0, 20)
 
-  const prompt = buildPrompt(item, similarTxns, topVendors, context.paymentMethods, topTags)
+  const prompt = buildPrompt(item, similarTxns, topVendors, context.paymentMethods, topTags, context.vendorDescriptionPatterns)
 
   const { data, tokenUsage } = await callAi<LLMProposalResponse>(prompt)
 
@@ -157,7 +157,8 @@ function buildPrompt(
   similarTxns: RecentTransaction[],
   vendors: Array<{ id: string; name: string }>,
   paymentMethods: Array<{ id: string; name: string }>,
-  tags: Array<{ id: string; name: string }>
+  tags: Array<{ id: string; name: string }>,
+  vendorDescriptionPatterns?: Array<{ vendorId: string; vendorName: string; description: string; count: number; frequency: number }>
 ): string {
   const parts: string[] = []
 
@@ -176,6 +177,24 @@ function buildPrompt(
     parts.push(`## Similar Historical Transactions`)
     for (const tx of similarTxns.slice(0, 10)) {
       parts.push(`- "${tx.description}" | ${tx.vendorName || 'no vendor'} | ${tx.amount} ${tx.currency} | ${tx.transactionType} | ${tx.date}`)
+    }
+  }
+
+  // Add vendor description patterns so the LLM knows established conventions
+  if (vendorDescriptionPatterns && vendorDescriptionPatterns.length > 0) {
+    // Show top patterns (most frequently used descriptions per vendor)
+    const topPatterns = vendorDescriptionPatterns
+      .filter((p) => p.count >= 2)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 30)
+
+    if (topPatterns.length > 0) {
+      parts.push('')
+      parts.push(`## Vendor Description Patterns (established conventions)`)
+      parts.push(`These are the user's preferred description formats for each vendor. Match these patterns when possible:`)
+      for (const p of topPatterns) {
+        parts.push(`- ${p.vendorName}: "${p.description}" (used ${p.count}x, ${Math.round(p.frequency * 100)}%)`)
+      }
     }
   }
 
@@ -198,9 +217,23 @@ function buildPrompt(
   }
 
   parts.push('')
+  parts.push(`## Description Conventions`)
+  parts.push(`Follow these description format rules strictly:`)
+  parts.push(`- Recurring bills: "[Type] Bill" (e.g. "Cell Phone Bill", "Electricity Bill", "Water Bill")`)
+  parts.push(`- Rent payments: "Monthly Rent"`)
+  parts.push(`- Food delivery: "[MealType]: [Restaurant Name]" where MealType is Breakfast (before 11am), Lunch (11am-3pm), Dinner (5pm+), or Meal (other)`)
+  parts.push(`- Coffee orders: "Coffee: [Shop Name]"`)
+  parts.push(`- Grocery delivery: "Groceries - [Store Name]"`)
+  parts.push(`- Taxi/rides: "Taxi to [Destination]"`)
+  parts.push(`- Subscriptions: just the service name (e.g. "Netflix", "Paramount+")`)
+  parts.push(`- Cleaning services: "Cleaning Service"`)
+  parts.push(`- Massage/wellness: "Massage" or the specific service type`)
+  parts.push(`- Weekly meal plans: "Weekly Meal Plan"`)
+  parts.push(`- If the vendor has an established description pattern (see above), use it unless the raw description clearly indicates something different`)
+  parts.push('')
   parts.push(`## Instructions`)
   parts.push(`1. Match the description to an existing vendor if possible (use the vendor ID). If no match, suggest a clean vendor name.`)
-  parts.push(`2. Write a clean, human-readable description for the transaction.`)
+  parts.push(`2. Write a clean, human-readable description following the Description Conventions above. If similar historical transactions exist, follow their description style.`)
   parts.push(`3. Classify as "expense" or "income".`)
   parts.push(`4. Suggest a payment method if you can determine one.`)
   parts.push(`5. Suggest up to 3 relevant tags.`)

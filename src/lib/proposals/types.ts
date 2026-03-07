@@ -161,6 +161,15 @@ export interface VendorTagFrequency {
   count: number
 }
 
+export interface VendorDescriptionPattern {
+  vendorId: string
+  vendorName: string
+  description: string
+  count: number
+  frequency: number // 0-1
+  totalTransactions: number
+}
+
 export interface RecentTransaction {
   id: string
   description: string
@@ -180,6 +189,7 @@ export interface RuleEngineContext {
   tags: TagRecord[]
   recentTransactions: RecentTransaction[]
   vendorTagFrequency: VendorTagFrequency[]
+  vendorDescriptionPatterns: VendorDescriptionPattern[]
   statementPaymentMethodId?: string
   statementPaymentMethodName?: string
 }

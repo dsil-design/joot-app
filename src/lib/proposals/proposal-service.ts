@@ -15,6 +15,7 @@ import type {
   PaymentMethodRecord,
   TagRecord,
   VendorTagFrequency,
+  VendorDescriptionPattern,
   RecentTransaction,
   TransactionProposalRow,
   ProposalGenerateResponse,
@@ -39,12 +40,16 @@ export async function prefetchRuleEngineContext(
     fetchVendorTagFrequency(supabase, userId),
   ])
 
+  // Build vendor description patterns from recent transactions
+  const vendorDescriptionPatterns = buildVendorDescriptionPatterns(recentTxns, vendors)
+
   return {
     vendors,
     paymentMethods,
     tags,
     recentTransactions: recentTxns,
     vendorTagFrequency: vendorTagFreqs,
+    vendorDescriptionPatterns,
   }
 }
 
@@ -568,6 +573,55 @@ export function transformProposalRow(
   }
 
   return proposal
+}
+
+// ── Vendor description pattern analysis ──────────────────────────────────
+
+/**
+ * Analyze recent transactions to find dominant description patterns per vendor.
+ * For vendors where most transactions share the same description (e.g. "Weekly Meal Plan",
+ * "Massage", "Monthly Rent"), this enables high-confidence rule-based description proposals.
+ */
+function buildVendorDescriptionPatterns(
+  transactions: RecentTransaction[],
+  vendors: VendorRecord[]
+): VendorDescriptionPattern[] {
+  const vendorNameMap = new Map(vendors.map((v) => [v.id, v.name]))
+
+  // Group descriptions by vendor
+  const vendorDescs = new Map<string, Map<string, number>>()
+  const vendorTotals = new Map<string, number>()
+
+  for (const tx of transactions) {
+    if (!tx.vendorId || !tx.description) continue
+    vendorTotals.set(tx.vendorId, (vendorTotals.get(tx.vendorId) || 0) + 1)
+    let descMap = vendorDescs.get(tx.vendorId)
+    if (!descMap) {
+      descMap = new Map()
+      vendorDescs.set(tx.vendorId, descMap)
+    }
+    descMap.set(tx.description, (descMap.get(tx.description) || 0) + 1)
+  }
+
+  const results: VendorDescriptionPattern[] = []
+
+  for (const [vendorId, descMap] of vendorDescs) {
+    const totalTxns = vendorTotals.get(vendorId) || 1
+    const vendorName = vendorNameMap.get(vendorId) || 'Unknown'
+
+    for (const [description, count] of descMap) {
+      results.push({
+        vendorId,
+        vendorName,
+        description,
+        count,
+        frequency: count / totalTxns,
+        totalTransactions: totalTxns,
+      })
+    }
+  }
+
+  return results
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────

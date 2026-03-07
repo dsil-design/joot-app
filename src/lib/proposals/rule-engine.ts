@@ -283,7 +283,7 @@ function proposeDescription(
   fields: ProposedFields,
   fc: FieldConfidenceMap
 ) {
-  // For email with dedicated parser + high confidence: use email description
+  // Strategy 1: Email with dedicated parser + high confidence → use parser description
   if (
     item.sourceType === 'email' || item.sourceType === 'merged'
   ) {
@@ -298,20 +298,51 @@ function proposeDescription(
     }
   }
 
-  // For merged: prefer email description
+  // Strategy 2: For merged items, prefer email description
   if (item.sourceType === 'merged') {
     fields.description = item.description
     fc.description = { score: 75, reasoning: 'Email description (merged item)' }
     return
   }
 
-  // Historical: if vendor matched, use most recent description for that vendor
+  // Strategy 3: Vendor description pattern analysis
+  // If vendor is matched and has a dominant description pattern, use it
+  if (fields.vendorId) {
+    const patterns = context.vendorDescriptionPatterns
+      .filter((p) => p.vendorId === fields.vendorId)
+      .sort((a, b) => b.count - a.count)
+
+    if (patterns.length > 0) {
+      const topPattern = patterns[0]
+
+      // High-frequency pattern: >80% of transactions use same description (3+ txns)
+      if (topPattern.frequency >= 0.8 && topPattern.totalTransactions >= 3) {
+        fields.description = topPattern.description
+        fc.description = {
+          score: 90,
+          reasoning: `Vendor pattern: "${topPattern.description}" used in ${Math.round(topPattern.frequency * 100)}% of ${topPattern.totalTransactions} transactions`,
+        }
+        return
+      }
+
+      // Moderate-frequency pattern: >50% with 3+ uses
+      if (topPattern.frequency >= 0.5 && topPattern.count >= 3) {
+        fields.description = topPattern.description
+        fc.description = {
+          score: 80,
+          reasoning: `Common vendor description: "${topPattern.description}" (${topPattern.count}/${topPattern.totalTransactions} transactions)`,
+        }
+        return
+      }
+    }
+  }
+
+  // Strategy 4: Most recent vendor description (fallback for varied-description vendors)
   if (fields.vendorId) {
     const vendorTxns = context.recentTransactions.filter(
       (tx) => tx.vendorId === fields.vendorId
     )
     if (vendorTxns.length > 0) {
-      // Sort by date descending, take most recent
       const mostRecent = vendorTxns.sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       )[0]
@@ -323,7 +354,7 @@ function proposeDescription(
     }
   }
 
-  // Clean statement description
+  // Strategy 5: Clean statement description
   fields.description = cleanDescription(item.description)
   fc.description = { score: 75, reasoning: 'Cleaned statement description' }
 }
