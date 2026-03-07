@@ -29,6 +29,7 @@ import {
 import {
   CreateFromImportDialog,
   type CreateFromImportData,
+  type ProposalMeta,
 } from "@/components/page-specific/create-from-import-dialog"
 import {
   useInfiniteScroll,
@@ -36,6 +37,8 @@ import {
 } from "@/hooks/use-infinite-scroll"
 import { useMatchActions } from "@/hooks/use-match-actions"
 import { useCreateAndLink } from "@/hooks/use-create-and-link"
+import { useProposalAccept } from "@/hooks/use-proposal-accept"
+import type { TransactionProposal } from "@/lib/proposals/types"
 import {
   ContextBreadcrumb,
 } from "@/components/page-specific/context-breadcrumb"
@@ -46,7 +49,9 @@ import {
   AlertCircle,
   CalendarDays,
   RefreshCw,
+  Zap,
 } from "lucide-react"
+import { toast } from "sonner"
 import Link from "next/link"
 import { getConfidenceLevel } from "@/components/ui/confidence-indicator"
 
@@ -116,6 +121,7 @@ async function fetchMatches(
       emailMetadata?: EmailMetadata
       mergedEmailData?: MergedEmailData
       crossCurrencyInfo?: CrossCurrencyInfo
+      proposal?: TransactionProposal
     }) => ({
       id: item.id,
       statementTransaction: item.statementTransaction,
@@ -132,6 +138,7 @@ async function fetchMatches(
       emailMetadata: item.emailMetadata,
       mergedEmailData: item.mergedEmailData,
       crossCurrencyInfo: item.crossCurrencyInfo,
+      proposal: item.proposal,
     }))
 
     return {
@@ -259,6 +266,12 @@ export default function ReviewQueuePage() {
     setIsRematching(true)
     try {
       await fetch('/api/imports/rematch', { method: 'POST' })
+      // Trigger proposal generation for items without proposals
+      fetch('/api/imports/proposals/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regenerateStale: true }),
+      }).catch((e) => console.error('Proposal generation failed:', e))
     } catch (e) {
       console.error('Rematch failed:', e)
     } finally {
@@ -268,6 +281,7 @@ export default function ReviewQueuePage() {
   }, [refresh])
 
   const { createAndLink } = useCreateAndLink(linkToExisting)
+  const { acceptProposal } = useProposalAccept()
 
   const handleCreateAsNew = (id: string) => {
     const item = items.find((i) => i.id === id)
@@ -278,11 +292,71 @@ export default function ReviewQueuePage() {
       amount: item.statementTransaction.amount,
       currency: item.statementTransaction.currency,
       date: item.statementTransaction.date,
+      proposal: item.proposal,
     })
     setCreateDialogOpen(true)
   }
 
-  const handleCreateConfirm = createAndLink
+  const handleCreateConfirm = async (
+    compositeId: string,
+    transactionData: Parameters<typeof createAndLink>[1],
+    meta?: ProposalMeta
+  ) => {
+    const result = await createAndLink(compositeId, transactionData)
+    // Update proposal status
+    if (meta?.proposalId && result) {
+      await acceptProposal(meta, result.id)
+      // Track if proposal was modified for UI feedback
+      if (meta.proposalFieldsModified) {
+        updateItemByKey(compositeId, (item) => ({
+          ...item,
+          proposalModified: true,
+        }))
+      }
+    }
+  }
+
+  const handleQuickCreate = async (id: string) => {
+    const item = items.find((i) => i.id === id)
+    if (!item?.proposal) return
+
+    const p = item.proposal
+    try {
+      const txData = {
+        description: p.description?.value || item.statementTransaction.description,
+        amount: p.amount?.value || Math.abs(item.statementTransaction.amount),
+        currency: p.currency?.value || item.statementTransaction.currency,
+        date: p.date?.value || item.statementTransaction.date,
+        vendorId: p.vendor?.value.id || undefined,
+        paymentMethodId: p.paymentMethod?.value.id || undefined,
+        tagIds: p.tags?.value.map((t) => t.id) || undefined,
+        transactionType: p.transactionType?.value || "expense",
+      }
+      const result = await createAndLink(id, txData)
+      if (result && p.id) {
+        await acceptProposal({ proposalId: p.id, proposalFieldsModified: false }, result.id)
+      }
+    } catch {
+      // Error handled by createAndLink
+    }
+  }
+
+  const handleBatchQuickCreate = async (ids: string[]) => {
+    let created = 0
+    for (const id of ids) {
+      try {
+        await handleQuickCreate(id)
+        created++
+      } catch {
+        // Continue with remaining
+      }
+    }
+    if (created > 5) {
+      toast.success(`Created ${created} transactions`, {
+        description: "All proposals accepted",
+      })
+    }
+  }
 
   const handleImport = (id: string) => {
     handleCreateAsNew(id)
@@ -349,6 +423,14 @@ export default function ReviewQueuePage() {
     (item) => item.status === "pending" && getConfidenceLevel(item.confidence) === "high"
   ).length
 
+  // High-confidence proposal items for batch quick create
+  const quickCreateItems = newItems.filter(
+    (item) =>
+      item.status === "pending" &&
+      item.proposal &&
+      item.proposal.overallConfidence >= 85
+  )
+
   const renderMatchCard = (item: MatchCardData) => (
     <MatchCard
       key={item.id}
@@ -360,6 +442,7 @@ export default function ReviewQueuePage() {
       onLinkManually={handleLinkManually}
       onImport={handleImport}
       onCreateAsNew={handleCreateAsNew}
+      onQuickCreate={handleQuickCreate}
       onSelectionChange={handleSelectionChange}
     />
   )
@@ -510,6 +593,17 @@ export default function ReviewQueuePage() {
                   <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                     New Transactions ({newItems.length})
                   </h2>
+                  {quickCreateItems.length >= 2 && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleBatchQuickCreate(quickCreateItems.map((i) => i.id))}
+                      className="bg-purple-600 hover:bg-purple-700"
+                    >
+                      <Zap className="h-4 w-4 mr-2" aria-hidden="true" />
+                      Quick Create All ({quickCreateItems.length})
+                    </Button>
+                  )}
                 </div>
                 {newItems.map(renderMatchCard)}
               </div>

@@ -27,6 +27,8 @@ export interface CrossCurrencyInfo {
   percentDiff: number
 }
 
+export type { TransactionProposal } from '@/lib/proposals/types'
+
 export interface QueueItem {
   id: string
   statementUploadId?: string

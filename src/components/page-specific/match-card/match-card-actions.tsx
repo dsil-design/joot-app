@@ -8,12 +8,15 @@ import {
   Link as LinkIcon,
   Plus,
   Loader2,
+  Zap,
+  Eye,
 } from "lucide-react"
 import type { MatchCardVariant, MatchCardCallbacks } from "./types"
+import type { TransactionProposal } from "@/lib/proposals/types"
 
 type CallbackKey = keyof Pick<
   MatchCardCallbacks,
-  "onApprove" | "onReject" | "onLinkManually" | "onCreateAsNew"
+  "onApprove" | "onReject" | "onLinkManually" | "onCreateAsNew" | "onQuickCreate"
 >
 
 interface ActionDescriptor {
@@ -113,6 +116,8 @@ interface MatchCardActionsProps {
   loading: boolean
   callbacks: MatchCardCallbacks
   hasMatchedTransaction?: boolean
+  proposal?: TransactionProposal
+  proposalModified?: boolean
 }
 
 /**
@@ -126,12 +131,82 @@ export function MatchCardActions({
   loading,
   callbacks,
   hasMatchedTransaction,
+  proposal,
+  proposalModified,
 }: MatchCardActionsProps) {
   const isPending = status === "pending"
   const isApproved = status === "approved" || status === "imported"
   const isRejected = status === "rejected"
 
   if (isPending) {
+    // Proposal-aware action buttons for new-transaction variant
+    if (variant === "new-transaction" && proposal) {
+      const confidence = proposal.overallConfidence
+      return (
+        <>
+          {confidence >= 85 && (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => callbacks.onQuickCreate?.(id)}
+              disabled={loading}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4" aria-hidden="true" />
+              )}
+              Quick Create
+            </Button>
+          )}
+          {confidence >= 50 ? (
+            <Button
+              size="sm"
+              variant={confidence >= 85 ? "outline" : "default"}
+              onClick={() => callbacks.onCreateAsNew?.(id)}
+              disabled={loading}
+              className={confidence >= 85 ? "" : "bg-purple-600 hover:bg-purple-700"}
+            >
+              <Zap className="h-4 w-4" aria-hidden="true" />
+              Create as New
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => callbacks.onCreateAsNew?.(id)}
+              disabled={loading}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              <Eye className="h-4 w-4" />
+              Review & Create
+            </Button>
+          )}
+          {callbacks.onLinkManually && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => callbacks.onLinkManually?.(id)}
+              disabled={loading}
+            >
+              <LinkIcon className="h-4 w-4" />
+              Link to Existing
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => callbacks.onReject?.(id)}
+            disabled={loading}
+          >
+            <X className="h-4 w-4" />
+            Skip
+          </Button>
+        </>
+      )
+    }
+
     const effectiveVariant =
       variant === "merged-match" && hasMatchedTransaction
         ? "merged-match-with-link"
@@ -166,6 +241,15 @@ export function MatchCardActions({
   }
 
   if (isApproved) {
+    // Show "Created (modified)" for proposal items that were modified
+    if (proposalModified) {
+      return (
+        <span className="flex items-center gap-1 text-sm text-amber-600">
+          <Check className="h-4 w-4" />
+          Created (modified)
+        </span>
+      )
+    }
     return (
       <span className="flex items-center gap-1 text-sm text-green-600">
         <Check className="h-4 w-4" />

@@ -17,7 +17,12 @@ import {
   ArrowLeftRight,
   ExternalLink,
   Eye,
+  Zap,
+  Tag,
+  Receipt,
 } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { parseImportId } from "@/lib/utils/import-id"
 import { StatementViewerModal } from "@/components/page-specific/statement-viewer-modal"
@@ -353,14 +358,141 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
         </div>
       )}
 
-      {/* Right panel placeholder for new/unmatched transactions */}
+      {/* Right panel: Proposal or placeholder for new/unmatched transactions */}
       {data.isNew && data.source !== "merged" && (
-        <div className="space-y-1.5 md:border-l md:pl-3 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground italic">
-            No matching transaction found
-          </p>
-        </div>
+        data.proposal ? (
+          <ProposalPanel proposal={data.proposal} />
+        ) : (
+          <div className="space-y-1.5 md:border-l md:pl-3 flex items-center justify-center">
+            <p className="text-sm text-muted-foreground italic">
+              No matching transaction found
+            </p>
+          </div>
+        )
       )}
+    </div>
+  )
+}
+
+// ── Proposal Panel ──────────────────────────────────────────────────────
+
+function ConfidenceDot({ confidence }: { confidence?: number }) {
+  if (confidence === undefined || confidence >= 80) return null
+  const isLow = confidence < 50
+  return (
+    <span
+      className={`h-2 w-2 rounded-full inline-block ml-1.5 shrink-0 ${
+        isLow ? "bg-orange-400" : "bg-amber-400"
+      }`}
+      role="img"
+      aria-label={isLow ? "Low confidence" : "Medium confidence"}
+    />
+  )
+}
+
+function ProposalPanel({
+  proposal,
+}: {
+  proposal: NonNullable<MatchCardData["proposal"]>
+}) {
+
+  return (
+    <div className="space-y-1.5 border-t pt-3 md:border-t-0 md:pt-0 md:border-l md:pl-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+        Proposed Txn
+        <Zap className="h-3 w-3 text-purple-500" aria-hidden="true" />
+      </p>
+
+      {/* Date */}
+      {proposal.date && (
+        <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+          <span>{formatMatchDate(proposal.date.value)}</span>
+        </TransactionDetailRow>
+      )}
+
+      {/* Vendor */}
+      {proposal.vendor && (
+        <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+          <span className="font-medium truncate">
+            {proposal.vendor.value.name}
+            {proposal.vendor.confidence < 50 && " ?"}
+          </span>
+          <ConfidenceDot confidence={proposal.vendor.confidence} />
+        </TransactionDetailRow>
+      )}
+
+      {/* Amount */}
+      {proposal.amount && proposal.currency && (
+        <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+          <span className="font-medium">
+            {formatMatchAmount(proposal.amount.value, proposal.currency.value)}
+          </span>
+        </TransactionDetailRow>
+      )}
+
+      {/* Payment Method */}
+      {proposal.paymentMethod && (
+        <TransactionDetailRow icon={<CreditCard className="h-3.5 w-3.5" />}>
+          <span>{proposal.paymentMethod.value.name}</span>
+          <ConfidenceDot confidence={proposal.paymentMethod.confidence} />
+        </TransactionDetailRow>
+      )}
+
+      {/* Tags */}
+      {proposal.tags && proposal.tags.value.length > 0 && (
+        <TransactionDetailRow icon={<Tag className="h-3.5 w-3.5" />}>
+          <div className="flex flex-col gap-0.5">
+            {proposal.tags.value.slice(0, 3).map((tag) => (
+              <Badge key={tag.id} variant="secondary" className="text-[10px] px-1.5 py-0 h-4 w-fit">
+                {tag.name}
+              </Badge>
+            ))}
+            {proposal.tags.value.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">
+                +{proposal.tags.value.length - 3} more
+              </span>
+            )}
+          </div>
+          <ConfidenceDot confidence={proposal.tags.confidence} />
+        </TransactionDetailRow>
+      )}
+
+      {/* Transaction Type */}
+      {proposal.transactionType && (
+        <TransactionDetailRow icon={<Receipt className="h-3.5 w-3.5" />}>
+          <span className="capitalize">{proposal.transactionType.value}</span>
+        </TransactionDetailRow>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Confidence bar shown below panels on proposal cards.
+ */
+export function ProposalConfidenceBar({
+  score,
+}: {
+  score: number
+}) {
+  const barColor =
+    score >= 85
+      ? "[&>div]:bg-green-500"
+      : score >= 55
+        ? "[&>div]:bg-amber-500"
+        : "[&>div]:bg-orange-500"
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">Proposal Confidence</span>
+        <span className="text-xs font-medium text-muted-foreground">{score}%</span>
+      </div>
+      <Progress
+        value={score}
+        className={`h-1.5 [&>div]:transition-none ${barColor}`}
+        aria-label={`Proposal confidence: ${score} out of 100`}
+      />
     </div>
   )
 }

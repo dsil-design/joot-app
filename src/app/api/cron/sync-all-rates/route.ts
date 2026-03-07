@@ -384,10 +384,71 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // 6. Generate proposals for pending queue items without proposals
+    try {
+      console.log('🤖 Generating transaction proposals...');
+      const { createServiceRoleClient: createSR } = await import('@/lib/supabase/server');
+      const proposalClient = createSR();
+
+      // Fetch all users with pending imports
+      const { data: users } = await proposalClient
+        .from('statement_uploads')
+        .select('user_id')
+        .in('status', ['ready_for_review', 'in_review'])
+
+      if (users && users.length > 0) {
+        const { generateAndStoreProposals, prefetchRuleEngineContext } = await import('@/lib/proposals/proposal-service');
+        const { fetchStatementQueueItems } = await import('@/lib/imports/statement-queue-builder');
+        const { fetchEmailQueueItems } = await import('@/lib/imports/email-queue-builder');
+
+        const uniqueUserIds = [...new Set(users.map((u) => u.user_id))];
+        let totalGenerated = 0;
+
+        for (const userId of uniqueUserIds.slice(0, 10)) {
+          try {
+            const [stmtItems, emailItems] = await Promise.all([
+              fetchStatementQueueItems(proposalClient, userId, {}),
+              fetchEmailQueueItems(proposalClient, userId, {}),
+            ]);
+
+            const newItems = [...stmtItems, ...emailItems].filter((i) => i.isNew);
+            if (newItems.length === 0) continue;
+
+            const inputs = newItems.slice(0, 50).map((item) => {
+              const parts = item.id.split(':');
+              return {
+                compositeId: item.id,
+                sourceType: (item.source || 'statement') as 'statement' | 'email' | 'merged',
+                statementUploadId: item.statementUploadId || (parts[0] === 'stmt' ? parts[1] : undefined),
+                suggestionIndex: parts[0] === 'stmt' ? parseInt(parts[2], 10) : undefined,
+                emailTransactionId: parts[0] === 'email' ? parts[1] : undefined,
+                description: item.statementTransaction.description,
+                amount: item.statementTransaction.amount,
+                currency: item.statementTransaction.currency,
+                date: item.statementTransaction.date,
+                paymentMethodId: item.paymentMethod?.id,
+                paymentMethodName: item.paymentMethod?.name,
+              };
+            });
+
+            const result = await generateAndStoreProposals(proposalClient, userId, inputs);
+            totalGenerated += result.generated;
+          } catch (userErr) {
+            console.error(`Proposal generation failed for user ${userId}:`, userErr);
+          }
+        }
+        console.log(`  ✅ Generated ${totalGenerated} proposals`);
+      } else {
+        console.log('  No users with pending imports');
+      }
+    } catch (proposalErr) {
+      console.error('⚠️  Proposal generation failed (non-critical):', proposalErr);
+    }
+
     const duration = Date.now() - startTime;
     console.log(`✨ Daily sync completed in ${(duration / 1000).toFixed(1)}s`);
 
-    // 6. Complete sync_history record
+    // 7. Complete sync_history record
     await completeSyncHistoryRecord(
       syncHistoryId,
       results.surgicalSync.success,

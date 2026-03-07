@@ -1,4 +1,5 @@
 import type { ConfidenceLevel } from "@/components/ui/confidence-indicator"
+import type { TransactionProposal } from "@/lib/proposals/types"
 
 /**
  * Match card variant — confidence-tiered
@@ -92,6 +93,8 @@ export interface MatchCardData {
   emailMetadata?: EmailMetadata
   mergedEmailData?: MergedEmailData
   crossCurrencyInfo?: CrossCurrencyInfo
+  proposal?: TransactionProposal
+  proposalModified?: boolean
 }
 
 /**
@@ -103,6 +106,8 @@ export interface MatchCardCallbacks {
   onLinkManually?: (id: string) => void
   onImport?: (id: string) => void
   onCreateAsNew?: (id: string) => void
+  onQuickCreate?: (id: string) => void
+  onRefreshProposal?: (id: string) => void
   onSelectionChange?: (id: string, selected: boolean) => void
 }
 

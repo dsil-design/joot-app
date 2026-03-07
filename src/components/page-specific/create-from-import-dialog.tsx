@@ -56,6 +56,14 @@ export interface CreateFromImportData {
   paymentMethodId?: string
   /** AI-driven smart pre-fill hints */
   smartHints?: SmartPreFillHints
+  /** Smart transaction proposal */
+  proposal?: TransactionProposal
+}
+
+export interface ProposalMeta {
+  proposalId?: string
+  proposalFieldsModified: boolean
+  modifiedFields?: Record<string, { from: unknown; to: unknown }>
 }
 
 export interface CreateFromImportDialogProps {
@@ -73,7 +81,8 @@ export interface CreateFromImportDialogProps {
       paymentMethodId?: string
       tagIds?: string[]
       transactionType: string
-    }
+    },
+    meta?: ProposalMeta
   ) => Promise<void>
 }
 
@@ -86,18 +95,41 @@ function formatAmount(amount: number, currency: string): string {
   }).format(Math.abs(amount))
 }
 
+import { Badge } from "@/components/ui/badge"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { PARSER_PAYMENT_METHOD_MAP } from "@/lib/proposals/payment-method-mapper"
+import type { TransactionProposal } from "@/lib/proposals/types"
+
 /**
- * Map parser keys to payment method name patterns for auto-matching.
- * Keys are parser keys, values are substrings to match against payment method names (case-insensitive).
+ * Zap icon with optional reasoning tooltip
  */
-const PARSER_PAYMENT_METHOD_MAP: Record<string, string[]> = {
-  "bangkok-bank": ["bangkok bank", "bbl", "bualuang"],
-  kasikorn: ["kasikorn", "kbank", "k plus", "kplus"],
-  grab: ["grab"],
-  bolt: ["bolt"],
-  apple: ["apple"],
-  stripe: ["stripe"],
-  lazada: ["lazada"],
+function ReasoningZap({ reasoning }: { reasoning?: string }) {
+  if (!reasoning) {
+    return (
+      <span className="text-purple-500">
+        <Zap className="h-3.5 w-3.5" />
+      </span>
+    )
+  }
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="text-purple-500 cursor-help" tabIndex={0}>
+            <Zap className="h-3.5 w-3.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-xs text-left leading-relaxed">
+          {reasoning}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
 }
 
 /**
@@ -121,10 +153,26 @@ export function CreateFromImportDialog({
   const [vendorLabel, setVendorLabel] = React.useState("")
   const [paymentMethod, setPaymentMethod] = React.useState("")
   const [tags, setTags] = React.useState<string[]>([])
+  const [transactionType, setTransactionType] = React.useState<"expense" | "income">("expense")
   const [isSaving, setIsSaving] = React.useState(false)
 
   // Track which fields were AI-prefilled (cleared when user modifies)
   const [aiPrefilled, setAiPrefilled] = React.useState<Set<string>>(new Set())
+
+  // Track proposal field reasoning for tooltips
+  const [fieldReasoning, setFieldReasoning] = React.useState<Record<string, string>>({})
+
+  // Track original proposal values for modification detection
+  const proposalValuesRef = React.useRef<Record<string, unknown>>({})
+
+  // Proposal-derived suggestion data
+  const proposal = data?.proposal
+  const vendorAlternatives = proposal?.vendor?.value.alternatives?.slice(0, 3) || []
+  const showVendorSuggestions = proposal?.vendor && proposal.vendor.confidence < 60 && vendorAlternatives.length > 0
+  const suggestedTags = React.useMemo(() => {
+    if (!proposal?.tags?.value) return []
+    return proposal.tags.value.filter((t) => !tags.includes(t.id))
+  }, [proposal, tags])
 
   // Hooks for selectors
   const { searchVendors, getVendorById, createVendor } = useVendorSearch()
@@ -158,6 +206,8 @@ export function CreateFromImportDialog({
     if (data && open) {
       // Reset AI flags
       setAiPrefilled(new Set())
+      setFieldReasoning({})
+      proposalValuesRef.current = {}
 
       // Standard pre-fills from extraction
       setDescription(data.description)
@@ -167,8 +217,65 @@ export function CreateFromImportDialog({
       setVendor("")
       setVendorLabel("")
       setTags([])
+      setTransactionType("expense")
 
-      // Smart pre-fills from AI hints (async)
+      // Priority 1: Pre-fill from proposal (richer data)
+      if (data.proposal) {
+        const p = data.proposal
+        const prefilledFields = new Set<string>()
+        const reasoning: Record<string, string> = {}
+        const originalValues: Record<string, unknown> = {}
+
+        // Transaction type
+        if (p.transactionType) {
+          setTransactionType(p.transactionType.value)
+          prefilledFields.add("transactionType")
+          reasoning.transactionType = p.transactionType.reasoning
+          originalValues.transactionType = p.transactionType.value
+        }
+
+        // Description
+        if (p.description) {
+          setDescription(p.description.value)
+          prefilledFields.add("description")
+          reasoning.description = p.description.reasoning
+          originalValues.description = p.description.value
+        }
+
+        // Vendor
+        if (p.vendor?.value.id) {
+          setVendor(p.vendor.value.id)
+          setVendorLabel(p.vendor.value.name)
+          prefilledFields.add("vendor")
+          reasoning.vendor = p.vendor.reasoning
+          originalValues.vendor = p.vendor.value.id
+        }
+
+        // Payment method
+        if (p.paymentMethod?.value.id) {
+          setPaymentMethod(p.paymentMethod.value.id)
+          prefilledFields.add("paymentMethod")
+          reasoning.paymentMethod = p.paymentMethod.reasoning
+          originalValues.paymentMethod = p.paymentMethod.value.id
+        }
+
+        // Tags
+        if (p.tags?.value && p.tags.value.length > 0) {
+          setTags(p.tags.value.map((t) => t.id))
+          prefilledFields.add("tags")
+          reasoning.tags = p.tags.reasoning
+          originalValues.tags = p.tags.value.map((t) => t.id)
+        }
+
+        if (prefilledFields.size > 0) {
+          setAiPrefilled(prefilledFields)
+          setFieldReasoning(reasoning)
+          proposalValuesRef.current = originalValues
+        }
+        return // Skip smartHints when proposal is available
+      }
+
+      // Priority 2: Smart pre-fills from AI hints (async)
       if (data.smartHints) {
         const hints = data.smartHints
         const resolve = async () => {
@@ -300,16 +407,53 @@ export function CreateFromImportDialog({
 
     setIsSaving(true)
     try {
-      await onConfirm(data.compositeId, {
-        description: description.trim(),
-        amount: parseFloat(amount),
-        currency: data.currency,
-        date: date.toISOString().split("T")[0],
-        vendorId: vendor || undefined,
-        paymentMethodId: paymentMethod || undefined,
-        tagIds: tags.length > 0 ? tags : undefined,
-        transactionType: "expense",
-      })
+      // Compute proposal modifications
+      let meta: ProposalMeta | undefined
+      if (data.proposal) {
+        const original = proposalValuesRef.current
+        const modifiedFields: Record<string, { from: unknown; to: unknown }> = {}
+
+        if (original.vendor !== undefined && original.vendor !== (vendor || undefined)) {
+          modifiedFields.vendor_id = { from: original.vendor, to: vendor || null }
+        }
+        if (original.paymentMethod !== undefined && original.paymentMethod !== (paymentMethod || undefined)) {
+          modifiedFields.payment_method_id = { from: original.paymentMethod, to: paymentMethod || null }
+        }
+        if (original.description !== undefined && original.description !== description.trim()) {
+          modifiedFields.description = { from: original.description, to: description.trim() }
+        }
+        if (original.transactionType !== undefined && original.transactionType !== transactionType) {
+          modifiedFields.transaction_type = { from: original.transactionType, to: transactionType }
+        }
+        if (original.tags !== undefined) {
+          const origTags = (original.tags as string[]).sort().join(',')
+          const newTags = [...tags].sort().join(',')
+          if (origTags !== newTags) {
+            modifiedFields.tag_ids = { from: original.tags, to: tags }
+          }
+        }
+
+        meta = {
+          proposalId: data.proposal.id,
+          proposalFieldsModified: Object.keys(modifiedFields).length > 0,
+          modifiedFields: Object.keys(modifiedFields).length > 0 ? modifiedFields : undefined,
+        }
+      }
+
+      await onConfirm(
+        data.compositeId,
+        {
+          description: description.trim(),
+          amount: parseFloat(amount),
+          currency: data.currency,
+          date: date.toISOString().split("T")[0],
+          vendorId: vendor || undefined,
+          paymentMethodId: paymentMethod || undefined,
+          tagIds: tags.length > 0 ? tags : undefined,
+          transactionType,
+        },
+        meta
+      )
       onOpenChange(false)
     } catch {
       // Error handled by parent
@@ -339,7 +483,7 @@ export function CreateFromImportDialog({
           <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 dark:border-purple-800 dark:bg-purple-950/30">
             <Zap className="h-4 w-4 text-purple-500 shrink-0" />
             <p className="text-xs text-purple-700 dark:text-purple-300">
-              Some fields were auto-filled from the email.{" "}
+              Some fields were auto-filled{data?.proposal ? " by AI proposal" : " from the email"}.{" "}
               <span className="text-purple-500">
                 <Zap className="inline h-3 w-3" />
               </span>{" "}
@@ -375,6 +519,36 @@ export function CreateFromImportDialog({
 
         {/* Form fields */}
         <div className="space-y-4">
+          {/* Transaction Type Toggle */}
+          <div className="space-y-1.5">
+            <Label>Type</Label>
+            <div className="relative flex gap-2" role="group" aria-label="Transaction type">
+              <Button
+                type="button"
+                size="sm"
+                variant={transactionType === "expense" ? "default" : "outline"}
+                className={transactionType === "expense" ? "bg-purple-600 hover:bg-purple-700" : ""}
+                aria-pressed={transactionType === "expense"}
+                onClick={() => { setTransactionType("expense"); clearAiFlag("transactionType") }}
+              >
+                Expense
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={transactionType === "income" ? "default" : "outline"}
+                className={transactionType === "income" ? "bg-green-600 hover:bg-green-700" : ""}
+                aria-pressed={transactionType === "income"}
+                onClick={() => { setTransactionType("income"); clearAiFlag("transactionType") }}
+              >
+                Income
+              </Button>
+              {aiPrefilled.has("transactionType") && (
+                <ReasoningZap reasoning={fieldReasoning.transactionType} />
+              )}
+            </div>
+          </div>
+
           {/* Description */}
           <div className="space-y-1.5">
             <Label htmlFor="create-description">Description</Label>
@@ -394,8 +568,8 @@ export function CreateFromImportDialog({
                 }
               />
               {aiPrefilled.has("description") && (
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-purple-500">
-                  <Zap className="h-3.5 w-3.5" />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                  <ReasoningZap reasoning={fieldReasoning.description} />
                 </span>
               )}
             </div>
@@ -455,11 +629,41 @@ export function CreateFromImportDialog({
                 }
               />
               {aiPrefilled.has("vendor") && (
-                <span className="absolute right-8 top-1/2 -translate-y-1/2 text-purple-500 pointer-events-none z-10">
-                  <Zap className="h-3.5 w-3.5" />
+                <span className="absolute right-8 top-1/2 -translate-y-1/2 z-10">
+                  <ReasoningZap reasoning={fieldReasoning.vendor} />
                 </span>
               )}
             </div>
+            {showVendorSuggestions && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs text-muted-foreground">Did you mean:</span>
+                {vendorAlternatives.map((alt) => (
+                  <Badge
+                    key={alt.id}
+                    variant="outline"
+                    className="cursor-pointer hover:bg-accent text-xs"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Select vendor ${alt.name}`}
+                    onClick={() => {
+                      setVendor(alt.id)
+                      setVendorLabel(alt.name)
+                      clearAiFlag("vendor")
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        setVendor(alt.id)
+                        setVendorLabel(alt.name)
+                        clearAiFlag("vendor")
+                      }
+                    }}
+                  >
+                    {alt.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Payment Method */}
@@ -487,8 +691,8 @@ export function CreateFromImportDialog({
                 }
               />
               {aiPrefilled.has("paymentMethod") && (
-                <span className="absolute right-8 top-1/2 -translate-y-1/2 text-purple-500 pointer-events-none z-10">
-                  <Zap className="h-3.5 w-3.5" />
+                <span className="absolute right-8 top-1/2 -translate-y-1/2 z-10">
+                  <ReasoningZap reasoning={fieldReasoning.paymentMethod} />
                 </span>
               )}
             </div>
@@ -510,6 +714,30 @@ export function CreateFromImportDialog({
               disabled={tagsLoading}
               className="w-full"
             />
+            {suggestedTags.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs text-muted-foreground">Suggested:</span>
+                {suggestedTags.map((tag) => (
+                  <Badge
+                    key={tag.id}
+                    variant="secondary"
+                    className="cursor-pointer hover:bg-secondary/80 text-xs"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Add tag ${tag.name}`}
+                    onClick={() => setTags((prev) => [...prev, tag.id])}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        setTags((prev) => [...prev, tag.id])
+                      }
+                    }}
+                  >
+                    + {tag.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

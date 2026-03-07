@@ -10,7 +10,7 @@ import type {
   VariantConfig,
 } from "./types"
 import { MatchCardHeader } from "./match-card-header"
-import { MatchCardPanels } from "./match-card-panels"
+import { MatchCardPanels, ProposalConfidenceBar } from "./match-card-panels"
 import { MatchCardReasons } from "./match-card-reasons"
 import { MatchCardActions } from "./match-card-actions"
 
@@ -79,6 +79,8 @@ export function MatchCard({
   onLinkManually,
   onImport,
   onCreateAsNew,
+  onQuickCreate,
+  onRefreshProposal,
   onSelectionChange,
   className,
 }: MatchCardProps) {
@@ -94,6 +96,8 @@ export function MatchCard({
     onLinkManually,
     onImport,
     onCreateAsNew,
+    onQuickCreate,
+    onRefreshProposal,
     onSelectionChange,
   }
 
@@ -120,6 +124,9 @@ export function MatchCard({
 
       <CardContent className="py-2 space-y-3">
         <MatchCardPanels data={data} />
+        {data.isNew && data.proposal && (
+          <ProposalConfidenceBar score={data.proposal.overallConfidence} />
+        )}
         <MatchCardReasons reasons={data.reasons} isNew={data.isNew} />
       </CardContent>
 
@@ -131,6 +138,8 @@ export function MatchCard({
           loading={loading}
           callbacks={callbacks}
           hasMatchedTransaction={!!data.matchedTransaction && !data.isNew}
+          proposal={data.proposal}
+          proposalModified={data.proposalModified}
         />
       </CardFooter>
     </Card>

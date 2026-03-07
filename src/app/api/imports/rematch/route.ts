@@ -40,6 +40,14 @@ export async function POST() {
     // --- 2. Re-match email transactions ---
     await rematchEmailTransactions(supabase, user.id, stats)
 
+    // After rematch, mark affected proposals as stale
+    try {
+      const { markStaleProposals } = await import('@/lib/proposals/proposal-service')
+      await markStaleProposals(supabase, user.id)
+    } catch (err) {
+      console.error('Failed to mark proposals stale after rematch:', err)
+    }
+
     return NextResponse.json({
       success: true,
       stats,
