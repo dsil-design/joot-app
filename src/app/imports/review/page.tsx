@@ -262,20 +262,30 @@ export default function ReviewQueuePage() {
     setLinkingItemId(null)
   }
 
+  const [rematchStatus, setRematchStatus] = React.useState<string | null>(null)
+
   const handleRefreshWithRematch = React.useCallback(async () => {
     setIsRematching(true)
     try {
+      setRematchStatus("Finding matches...")
       await fetch('/api/imports/rematch', { method: 'POST' })
-      // Trigger proposal generation for items without proposals
-      fetch('/api/imports/proposals/generate', {
+      setRematchStatus("Generating proposals...")
+      const res = await fetch('/api/imports/proposals/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ regenerateStale: true }),
-      }).catch((e) => console.error('Proposal generation failed:', e))
+      })
+      if (res.ok) {
+        const result = await res.json()
+        if (result.generated > 0) {
+          toast.success(`Generated ${result.generated} proposal${result.generated === 1 ? '' : 's'}`)
+        }
+      }
     } catch (e) {
-      console.error('Rematch failed:', e)
+      console.error('Refresh failed:', e)
     } finally {
       setIsRematching(false)
+      setRematchStatus(null)
     }
     refresh()
   }, [refresh])
@@ -468,7 +478,7 @@ export default function ReviewQueuePage() {
             <RefreshCw
               className={`h-4 w-4 mr-2 ${isLoading || isRematching ? "animate-spin" : ""}`}
             />
-            {isRematching ? "Finding matches..." : "Refresh"}
+            {rematchStatus || "Refresh"}
           </Button>
         </div>
       </div>

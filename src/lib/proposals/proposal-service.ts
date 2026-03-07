@@ -286,29 +286,42 @@ export async function generateAndStoreProposals(
     }
   }
 
-  for (const item of items) {
+  // Filter to only items that need generation
+  const itemsToProcess = items.filter((item) => {
     if (!options?.force && existingCompositeIds.has(item.compositeId)) {
       response.skipped++
-      continue
+      return false
     }
+    return true
+  })
 
-    try {
-      // Inject statement payment method into context
-      const itemContext: RuleEngineContext = {
-        ...context,
-        statementPaymentMethodId: item.paymentMethodId,
-        statementPaymentMethodName: item.paymentMethodName,
+  // Process in parallel batches of 5
+  const BATCH_SIZE = 5
+  for (let i = 0; i < itemsToProcess.length; i += BATCH_SIZE) {
+    const batch = itemsToProcess.slice(i, i + BATCH_SIZE)
+    const results = await Promise.allSettled(
+      batch.map(async (item) => {
+        const itemContext: RuleEngineContext = {
+          ...context,
+          statementPaymentMethodId: item.paymentMethodId,
+          statementPaymentMethodName: item.paymentMethodName,
+        }
+
+        const result = await generateHybridProposal(item, itemContext)
+        await upsertProposal(supabase, userId, item, result)
+        return result
+      })
+    )
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        response.generated++
+        if (result.value.engine === 'rule_based') response.ruleOnly++
+        else response.llmEnhanced++
+      } else {
+        console.error('Error generating proposal:', result.reason)
+        response.errors++
       }
-
-      const result = await generateHybridProposal(item, itemContext)
-
-      await upsertProposal(supabase, userId, item, result)
-      response.generated++
-      if (result.engine === 'rule_based') response.ruleOnly++
-      else response.llmEnhanced++
-    } catch (error) {
-      console.error(`Error generating proposal for ${item.compositeId}:`, error)
-      response.errors++
     }
   }
 
