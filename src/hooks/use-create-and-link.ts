@@ -1,4 +1,5 @@
 import { useTransactions } from '@/hooks'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 interface CreateTransactionInput {
@@ -16,6 +17,7 @@ export function useCreateAndLink(
   linkFn: (compositeId: string, transactionId: string) => Promise<unknown>
 ) {
   const { createTransaction } = useTransactions()
+  const queryClient = useQueryClient()
 
   const createAndLink = async (
     compositeId: string,
@@ -34,6 +36,7 @@ export function useCreateAndLink(
 
     if (!result) throw new Error('Failed to create transaction')
     await linkFn(compositeId, result.id)
+    await queryClient.invalidateQueries({ queryKey: ['transactions', 'paginated'] })
     toast.success('Transaction created and linked')
     return result
   }

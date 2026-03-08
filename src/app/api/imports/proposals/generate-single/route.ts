@@ -59,23 +59,33 @@ export async function POST(request: NextRequest) {
     if (!targetItem) {
       return NextResponse.json({
         error: 'Queue item not found',
-        debug: { compositeId, parsed, totalItems: allItems.length },
+        debug: { compositeId, parsed, totalItems: aggregated.items.length },
       }, { status: 404 })
     }
 
     // Build proposal input
+    // For merged items, prefer the email's parsed description over the raw statement description
+    const emailMeta = targetItem.emailMetadata
+    const mergedEmail = targetItem.mergedEmailData
+    const isMerged = targetItem.source === 'merged'
+
     const proposalInput: ProposalInput = {
       compositeId,
       sourceType: targetItem.source || 'statement',
       statementUploadId: parsed.type === 'statement' || parsed.type === 'merged' ? parsed.statementId : undefined,
       suggestionIndex: parsed.type === 'statement' || parsed.type === 'merged' ? parsed.index : undefined,
       emailTransactionId: parsed.type === 'email' || parsed.type === 'merged' ? parsed.emailId : undefined,
-      description: targetItem.statementTransaction.description,
+      description: (isMerged && mergedEmail?.description) ? mergedEmail.description : targetItem.statementTransaction.description,
       amount: targetItem.statementTransaction.amount,
       currency: targetItem.statementTransaction.currency,
       date: targetItem.statementTransaction.date,
       paymentMethodId: targetItem.paymentMethod?.id,
       paymentMethodName: targetItem.paymentMethod?.name,
+      // Email-specific fields for proposal engine
+      vendorId: emailMeta?.vendorId,
+      parserKey: emailMeta?.parserKey,
+      classification: emailMeta?.classification,
+      extractionConfidence: emailMeta?.extractionConfidence,
     }
 
     // Generate proposal directly (not through batch function, for better error reporting)

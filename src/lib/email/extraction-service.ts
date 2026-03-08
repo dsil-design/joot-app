@@ -896,6 +896,7 @@ export class EmailExtractionService {
     // Update extracted data if successful
     if (extraction.success && extraction.data) {
       updateData.vendor_name_raw = extraction.data.vendor_name_raw;
+      updateData.vendor_id = extraction.data.vendor_id || null;
       updateData.amount = extraction.data.amount;
       updateData.currency = extraction.data.currency;
       updateData.transaction_date = extraction.data.transaction_date.toISOString().split('T')[0];

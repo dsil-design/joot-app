@@ -67,18 +67,28 @@ export async function POST(request: NextRequest) {
     // Convert queue items to ProposalInput format
     const proposalInputs: ProposalInput[] = targetItems.map((item) => {
       const parts = item.id.split(':')
+      const emailMeta = item.emailMetadata
+      const mergedEmail = item.mergedEmailData
+      const isMerged = item.source === 'merged'
+
       return {
         compositeId: item.id,
         sourceType: item.source || 'statement',
         statementUploadId: item.statementUploadId || (parts[0] === 'stmt' ? parts[1] : undefined),
         suggestionIndex: parts[0] === 'stmt' ? parseInt(parts[2], 10) : undefined,
         emailTransactionId: parts[0] === 'email' ? parts[1] : undefined,
-        description: item.statementTransaction.description,
+        // For merged items, prefer the email's parsed description over the raw statement description
+        description: (isMerged && mergedEmail?.description) ? mergedEmail.description : item.statementTransaction.description,
         amount: item.statementTransaction.amount,
         currency: item.statementTransaction.currency,
         date: item.statementTransaction.date,
         paymentMethodId: item.paymentMethod?.id,
         paymentMethodName: item.paymentMethod?.name,
+        // Email-specific fields for proposal engine
+        vendorId: emailMeta?.vendorId,
+        parserKey: emailMeta?.parserKey,
+        classification: emailMeta?.classification,
+        extractionConfidence: emailMeta?.extractionConfidence,
       }
     })
 

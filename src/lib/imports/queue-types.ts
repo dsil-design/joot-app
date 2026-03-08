@@ -7,6 +7,9 @@ export interface EmailMetadata {
   classification?: string
   orderId?: string
   emailDate?: string
+  vendorId?: string
+  parserKey?: string
+  extractionConfidence?: number
 }
 
 export interface MergedEmailData {

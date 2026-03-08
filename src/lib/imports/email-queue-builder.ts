@@ -20,7 +20,8 @@ export async function fetchEmailQueueItems(
       id, subject, from_name, from_address, email_date,
       transaction_date, description, amount, currency,
       classification, order_id, extraction_confidence,
-      match_confidence, matched_transaction_id, status
+      match_confidence, matched_transaction_id, status,
+      vendor_id, parser_key
     `)
     .eq('user_id', userId)
     .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement', 'matched', 'imported', 'skipped'])
@@ -151,6 +152,9 @@ export async function fetchEmailQueueItems(
         classification: row.classification ?? undefined,
         orderId: row.order_id ?? undefined,
         emailDate: row.email_date ?? undefined,
+        vendorId: row.vendor_id ?? undefined,
+        parserKey: row.parser_key ?? undefined,
+        extractionConfidence: row.extraction_confidence ?? undefined,
       },
     })
   }

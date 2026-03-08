@@ -60,8 +60,11 @@ const GRAB_VENDOR_IDS = {
  * Detect Grab service type from email content
  */
 function detectServiceType(body: string, subject: string): GrabServiceInfo {
-  const lowerBody = body.toLowerCase();
   const lowerSubject = subject.toLowerCase();
+
+  // Strip URLs and image src attributes to avoid false positives
+  // (all Grab emails use "grabtaxi-marketing.s3.amazonaws.com" for images)
+  const lowerBody = body.toLowerCase().replace(/(?:src|href)="[^"]*"/gi, '');
 
   // GrabExpress - check first as it has unique subject
   if (
@@ -85,32 +88,31 @@ function detectServiceType(body: string, subject: string): GrabServiceInfo {
     };
   }
 
-  // GrabTaxi/GrabCar - rides have specific indicators
-  if (
-    lowerBody.includes('hope you enjoyed your ride') ||
-    lowerBody.includes('grabtaxi') ||
-    lowerBody.includes('grabcar') ||
-    lowerBody.includes('your ride') ||
-    lowerBody.includes('pickup:') && lowerBody.includes('dropoff:')
-  ) {
-    return {
-      type: 'taxi',
-      vendorName: 'Grab Taxi',
-      vendorId: GRAB_VENDOR_IDS.taxi,
-    };
-  }
-
-  // GrabFood - most common, check for food-related patterns
+  // GrabFood - check BEFORE taxi since it's more common and has definitive markers.
+  // Previously taxi was checked first, but "grabtaxi" appeared in S3 URLs of all Grab emails.
   if (
     lowerBody.includes('grabfood') ||
     lowerBody.includes('your order from') ||
-    lowerBody.includes('food delivery') ||
-    lowerBody.includes('restaurant')
+    lowerBody.includes('food delivery')
   ) {
     return {
       type: 'food',
       vendorName: 'GrabFood',
       vendorId: GRAB_VENDOR_IDS.food,
+    };
+  }
+
+  // GrabTaxi/GrabCar - rides have specific indicators
+  if (
+    lowerBody.includes('hope you enjoyed your ride') ||
+    lowerBody.includes('grabtaxi') ||
+    lowerBody.includes('grabcar') ||
+    (lowerBody.includes('pickup:') && lowerBody.includes('dropoff:'))
+  ) {
+    return {
+      type: 'taxi',
+      vendorName: 'Grab Taxi',
+      vendorId: GRAB_VENDOR_IDS.taxi,
     };
   }
 
@@ -129,16 +131,36 @@ function extractRestaurantName(body: string): string | null {
   // Pattern: "Your order from {Restaurant}"
   const orderFromMatch = body.match(/your order from\s+([^\n<]+)/i);
   if (orderFromMatch) {
-    return orderFromMatch[1].trim().replace(/<[^>]*>/g, '').trim();
+    return cleanRestaurantName(orderFromMatch[1]);
   }
 
   // Pattern: "Order from {Restaurant}"
   const fromMatch = body.match(/order from\s+([^\n<]+)/i);
   if (fromMatch) {
-    return fromMatch[1].trim().replace(/<[^>]*>/g, '').trim();
+    return cleanRestaurantName(fromMatch[1]);
+  }
+
+  // Thai pattern: "สถานที่เริ่มต้นการเดินทาง: {Restaurant}" (Starting location)
+  // Used in Thai-language GrabFood receipts
+  const thaiLocationMatch = body.match(/สถานที่เริ่มต้นการเดินทาง:\s*([^\n<]+)/);
+  if (thaiLocationMatch) {
+    return cleanRestaurantName(thaiLocationMatch[1]);
+  }
+
+  // Thai pattern: "ร้าน" (shop/restaurant) followed by name
+  const thaiShopMatch = body.match(/ร้าน\s*([^\n<]+)/);
+  if (thaiShopMatch) {
+    return cleanRestaurantName(thaiShopMatch[1]);
   }
 
   return null;
+}
+
+function cleanRestaurantName(raw: string): string {
+  let name = raw.trim().replace(/<[^>]*>/g, '').trim();
+  // Remove branch/location suffixes (e.g. "- นิมมาน", "- Nimman")
+  name = name.replace(/\s*-\s*[^\-]+$/, '').trim();
+  return name || raw.trim();
 }
 
 /**
@@ -221,13 +243,13 @@ function getFoodType(emailDate: Date, restaurant: string): string {
   const lowerRestaurant = restaurant.toLowerCase();
 
   // Dessert shops - always "Dessert" regardless of time
-  const dessertShops = ['dairy queen', 'swensen', 'baskin', 'ice cream', 'gelato', 'cake'];
+  const dessertShops = ['dairy queen', 'swensen', 'baskin', 'ice cream', 'gelato', 'cake', 'acai', 'açaí', 'smoothie', 'froyo', 'frozen yogurt'];
   if (dessertShops.some(shop => lowerRestaurant.includes(shop))) {
     return 'Dessert';
   }
 
   // Coffee shops - always "Coffee"
-  const coffeeShops = ['starbucks', 'cafe', 'coffee', 'ristr8to', 'amazon'];
+  const coffeeShops = ['starbucks', 'cafe', 'café', 'coffee', 'ristr8to', 'amazon'];
   if (coffeeShops.some(shop => lowerRestaurant.includes(shop))) {
     return 'Coffee';
   }
@@ -239,7 +261,9 @@ function getFoodType(emailDate: Date, restaurant: string): string {
   }
 
   // Time-based for regular restaurants
-  const hour = emailDate.getHours();
+  // Grab operates in SE Asia (UTC+7/+8). Convert UTC to local time for meal classification.
+  const utcHour = emailDate.getUTCHours();
+  const hour = (utcHour + 7) % 24; // Thailand is UTC+7
   if (hour < 11) return 'Breakfast';
   if (hour < 15) return 'Lunch';
   if (hour >= 17) return 'Dinner';

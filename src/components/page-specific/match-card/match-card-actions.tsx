@@ -11,6 +11,7 @@ import {
   Zap,
   Eye,
   Sparkles,
+  RefreshCw,
 } from "lucide-react"
 import type { MatchCardVariant, MatchCardCallbacks } from "./types"
 import type { TransactionProposal } from "@/lib/proposals/types"
@@ -205,6 +206,21 @@ export function MatchCardActions({
             <X className="h-4 w-4" />
             Skip
           </Button>
+          {callbacks.onRefreshProposal && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => callbacks.onRefreshProposal?.(id)}
+              disabled={loading}
+              title="Regenerate proposal"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
+          )}
         </>
       )
     }

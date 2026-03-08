@@ -5,9 +5,7 @@ import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MultiSelectComboBox } from "@/components/ui/multi-select-combobox"
-import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import type { DateRange } from "react-day-picker"
 
 type TransactionType = "all" | "expense" | "income"
 type SourceType = "any" | "email" | "statement" | "none"
@@ -127,20 +125,6 @@ export function AdvancedFiltersPanel({
                     Income
                   </ToggleGroupItem>
                 </ToggleGroup>
-              </div>
-
-              {/* Custom Date Range */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  Custom Date Range
-                </label>
-                <DateRangePicker
-                  dateRange={localFilters.dateRange}
-                  onDateRangeChange={(range) =>
-                    setLocalFilters({ ...localFilters, dateRange: range })
-                  }
-                  placeholder="Pick a date range..."
-                />
               </div>
 
               {/* Search by Description */}
