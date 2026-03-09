@@ -53,10 +53,13 @@ import {
   Zap,
   Hourglass,
   ChevronDown,
+  Focus,
 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { getConfidenceLevel } from "@/components/ui/confidence-indicator"
+import { RejectFeedbackToast } from "@/components/page-specific/reject-feedback-toast"
+import { ReviewFocusModal } from "@/components/page-specific/review-focus-modal"
 
 interface QueueStats {
   total: number
@@ -176,6 +179,8 @@ async function fetchMatches(
 export default function ReviewQueuePage() {
   const [filters, setFilters] = useReviewQueueFilters()
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
+  const [reviewFocusOpen, setReviewFocusOpen] = React.useState(false)
+  const [reviewFocusIndex, setReviewFocusIndex] = React.useState(0)
   const [batchDialogOpen, setBatchDialogOpen] = React.useState(false)
   const [linkDialogOpen, setLinkDialogOpen] = React.useState(false)
   const [linkingItemId, setLinkingItemId] = React.useState<string | null>(null)
@@ -225,6 +230,36 @@ export default function ReviewQueuePage() {
     keyExtractor: (item) => item.id,
   })
 
+  // Reject feedback: submit reason to ai_feedback table
+  const submitRejectFeedback = React.useCallback(
+    async (compositeIds: string[], reason: string) => {
+      // Find context from the first item for richer feedback
+      const firstItem = items.find((i) => compositeIds.includes(i.id))
+      try {
+        await fetch("/api/imports/reject/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            compositeIds,
+            reason,
+            context: firstItem
+              ? {
+                  description: firstItem.statementTransaction.description,
+                  amount: firstItem.statementTransaction.amount,
+                  currency: firstItem.statementTransaction.currency,
+                  confidence: firstItem.confidence,
+                  vendor: firstItem.matchedTransaction?.vendor_name,
+                }
+              : undefined,
+          }),
+        })
+      } catch (e) {
+        console.error("Failed to submit rejection feedback:", e)
+      }
+    },
+    [items]
+  )
+
   const {
     approve,
     reject,
@@ -245,6 +280,23 @@ export default function ReviewQueuePage() {
         next.delete(id)
         return next
       })
+    },
+    onRejectSuccess: (ids, undo) => {
+      toast.custom(
+        (t) => (
+          <RejectFeedbackToast
+            compositeIds={ids}
+            count={ids.length}
+            onSubmitFeedback={submitRejectFeedback}
+            onUndo={() => {
+              undo()
+              toast.dismiss(t)
+            }}
+            onDismiss={() => toast.dismiss(t)}
+          />
+        ),
+        { duration: 15000 }
+      )
     },
   })
 
@@ -490,6 +542,18 @@ export default function ReviewQueuePage() {
       item.proposal.overallConfidence >= 85
   )
 
+  // Pending items for focused review mode
+  const pendingItems = React.useMemo(
+    () => activeItems.filter((item) => item.status === "pending"),
+    [activeItems]
+  )
+
+  const handleStartReview = () => {
+    if (pendingItems.length === 0) return
+    setReviewFocusIndex(0)
+    setReviewFocusOpen(true)
+  }
+
   const renderMatchCard = (item: MatchCardData) => (
     <MatchCard
       key={item.id}
@@ -519,6 +583,16 @@ export default function ReviewQueuePage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {pendingItems.length > 0 && (
+            <Button
+              size="sm"
+              onClick={handleStartReview}
+              disabled={isLoading}
+            >
+              <Focus className="h-4 w-4 mr-2" />
+              Review ({pendingItems.length})
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -740,6 +814,20 @@ export default function ReviewQueuePage() {
         }}
         data={createDialogData}
         onConfirm={handleCreateConfirm}
+      />
+
+      {/* Focused review modal */}
+      <ReviewFocusModal
+        open={reviewFocusOpen}
+        onOpenChange={setReviewFocusOpen}
+        items={pendingItems}
+        currentIndex={reviewFocusIndex}
+        onIndexChange={setReviewFocusIndex}
+        onApprove={(id) => approve(id)}
+        onReject={(id) => reject(id)}
+        onLinkManually={handleLinkManually}
+        onCreateTransaction={handleCreateConfirm}
+        isProcessing={isProcessing}
       />
     </div>
   )

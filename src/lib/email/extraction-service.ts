@@ -630,11 +630,14 @@ export class EmailExtractionService {
           // Add extracted data if successful
           if (extraction.success && extraction.data) {
             transactionData.vendor_name_raw = extraction.data.vendor_name_raw;
+            transactionData.vendor_id = extraction.data.vendor_id || null;
             transactionData.amount = extraction.data.amount;
             transactionData.currency = extraction.data.currency;
             transactionData.transaction_date = extraction.data.transaction_date.toISOString().split('T')[0];
             transactionData.description = extraction.data.description || null;
             transactionData.order_id = extraction.data.order_id || null;
+            transactionData.payment_card_last_four = extraction.data.payment_card_last_four || null;
+            transactionData.payment_card_type = extraction.data.payment_card_type || null;
           }
 
           // Insert into email_transactions and get back the new row's ID
@@ -879,6 +882,10 @@ export class EmailExtractionService {
       ? aiClassificationToCoarse(aiResult.ai_classification as AiClassification)
       : classification.classification;
 
+    // If this email is already linked to a transaction, preserve the link
+    const isLinked = !!emailTx.matched_transaction_id;
+    const effectiveStatus = isLinked ? 'matched' : status;
+
     // Update the email transaction
     const updateData: Record<string, unknown> = {
       classification: coarseClassification,
@@ -890,7 +897,7 @@ export class EmailExtractionService {
       extraction_notes: extractionNotes,
       processed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      status,
+      status: effectiveStatus,
     };
 
     // Update extracted data if successful
@@ -902,6 +909,8 @@ export class EmailExtractionService {
       updateData.transaction_date = extraction.data.transaction_date.toISOString().split('T')[0];
       updateData.description = extraction.data.description || null;
       updateData.order_id = extraction.data.order_id || null;
+      updateData.payment_card_last_four = extraction.data.payment_card_last_four || null;
+      updateData.payment_card_type = extraction.data.payment_card_type || null;
     }
 
     await supabase

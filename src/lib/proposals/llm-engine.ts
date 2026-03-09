@@ -13,6 +13,7 @@ import type {
   FieldConfidenceMap,
   RuleEngineContext,
   RecentTransaction,
+  PastCorrection,
 } from './types'
 
 interface LLMProposalResponse {
@@ -56,7 +57,10 @@ export async function generateLLMProposal(
     .sort((a, b) => b.usageCount - a.usageCount)
     .slice(0, 20)
 
-  const prompt = buildPrompt(item, similarTxns, topVendors, context.paymentMethods, topTags, context.vendorDescriptionPatterns)
+  // Find relevant past corrections for this item
+  const relevantCorrections = findRelevantCorrections(item, context.pastCorrections)
+
+  const prompt = buildPrompt(item, similarTxns, topVendors, context.paymentMethods, topTags, context.vendorDescriptionPatterns, relevantCorrections)
 
   const { data, tokenUsage } = await callAi<LLMProposalResponse>(prompt)
 
@@ -158,7 +162,8 @@ function buildPrompt(
   vendors: Array<{ id: string; name: string }>,
   paymentMethods: Array<{ id: string; name: string }>,
   tags: Array<{ id: string; name: string }>,
-  vendorDescriptionPatterns?: Array<{ vendorId: string; vendorName: string; description: string; count: number; frequency: number }>
+  vendorDescriptionPatterns?: Array<{ vendorId: string; vendorName: string; description: string; count: number; frequency: number }>,
+  pastCorrections?: PastCorrection[]
 ): string {
   const parts: string[] = []
 
@@ -194,6 +199,25 @@ function buildPrompt(
       parts.push(`These are the user's preferred description formats for each vendor. Match these patterns when possible:`)
       for (const p of topPatterns) {
         parts.push(`- ${p.vendorName}: "${p.description}" (used ${p.count}x, ${Math.round(p.frequency * 100)}%)`)
+      }
+    }
+  }
+
+  // Past corrections — teach the LLM from user feedback
+  if (pastCorrections && pastCorrections.length > 0) {
+    parts.push('')
+    parts.push(`## User Corrections (learn from these)`)
+    parts.push(`The user has previously corrected proposals. Apply the same corrections to similar items:`)
+    for (const c of pastCorrections) {
+      if (c.field === 'vendor_id' && c.correctedVendorName) {
+        const from = c.originalVendorName || String(c.originalValue || 'none')
+        parts.push(`- Description "${c.sourceDescription}"${c.fromAddress ? ` from ${c.fromAddress}` : ''}: corrected vendor from "${from}" to "${c.correctedVendorName}"`)
+      } else if (c.field === 'description') {
+        parts.push(`- Corrected description from "${c.originalValue}" to "${c.correctedValue}"${c.fromAddress ? ` (sender: ${c.fromAddress})` : ''}`)
+      } else if (c.field === 'tag_ids') {
+        parts.push(`- Corrected tags for "${c.sourceDescription}": ${JSON.stringify(c.correctedValue)}`)
+      } else if (c.field === 'payment_method_id') {
+        parts.push(`- Corrected payment method for "${c.sourceDescription}": ${c.correctedValue}`)
       }
     }
   }
@@ -252,6 +276,57 @@ function buildPrompt(
   parts.push(`}`)
 
   return parts.join('\n')
+}
+
+/**
+ * Filter past corrections to those relevant to the current item.
+ * Limits to 10 most relevant to avoid prompt bloat.
+ */
+function findRelevantCorrections(
+  item: ProposalInput,
+  corrections: PastCorrection[]
+): PastCorrection[] {
+  if (corrections.length === 0) return []
+
+  const normalize = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
+
+  const scored = corrections.map((c) => {
+    let score = 0
+
+    // Same sender
+    if (c.fromAddress && item.fromAddress && c.fromAddress === item.fromAddress) {
+      score += 50
+    }
+
+    // Same parser key
+    if (c.parserKey && item.parserKey && c.parserKey === item.parserKey) {
+      score += 30
+    }
+
+    // Description similarity
+    if (c.sourceDescription && item.description) {
+      const normC = normalize(c.sourceDescription)
+      const normI = normalize(item.description)
+      const tokensC = normC.split(' ').filter((t) => t.length > 1)
+      const tokensI = normI.split(' ').filter((t) => t.length > 1)
+      if (tokensC.length > 0 && tokensI.length > 0) {
+        let matches = 0
+        for (const t of tokensC) {
+          if (tokensI.some((ti) => ti.includes(t) || t.includes(ti))) matches++
+        }
+        score += (matches / Math.max(tokensC.length, tokensI.length)) * 20
+      }
+    }
+
+    return { correction: c, score }
+  })
+
+  return scored
+    .filter((s) => s.score >= 15)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10)
+    .map((s) => s.correction)
 }
 
 function findSimilarTransactions(

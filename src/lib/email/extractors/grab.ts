@@ -130,26 +130,57 @@ function detectServiceType(body: string, subject: string): GrabServiceInfo {
 }
 
 /**
- * Extract restaurant name from GrabFood emails
+ * Extract restaurant name from GrabFood emails.
+ *
+ * Grab emails use various formats across HTML and text bodies:
+ * - "Your order from Restaurant Name"
+ * - "Order from Restaurant Name"
+ * - HTML: "order from</...>Restaurant Name" (name in next element)
+ * - Thai: "ร้าน Restaurant Name"
  */
 function extractRestaurantName(body: string): string | null {
+  // First try matching on the raw body (works for both HTML and text)
   // Pattern: "Your order from {Restaurant}"
   const orderFromMatch = body.match(/your order from\s+([^\n<]+)/i);
   if (orderFromMatch) {
-    return cleanRestaurantName(orderFromMatch[1]);
+    const name = cleanRestaurantName(orderFromMatch[1]);
+    if (name) return name;
   }
 
   // Pattern: "Order from {Restaurant}"
   const fromMatch = body.match(/order from\s+([^\n<]+)/i);
   if (fromMatch) {
-    return cleanRestaurantName(fromMatch[1]);
+    const name = cleanRestaurantName(fromMatch[1]);
+    if (name) return name;
+  }
+
+  // HTML-specific: restaurant name may be in a separate element after "order from"
+  // e.g., "order from</td></tr><tr><td>Restaurant Name</td>"
+  // or "order from</span><br>Restaurant Name"
+  const htmlAfterOrderFrom = body.match(/order from\s*<[^>]*>(?:\s*<[^>]*>)*\s*([^<]+)/i);
+  if (htmlAfterOrderFrom) {
+    const name = cleanRestaurantName(htmlAfterOrderFrom[1]);
+    if (name && name.length > 1 && !/^\s*$/.test(name)) return name;
+  }
+
+  // Strip HTML tags entirely and try again on cleaned text
+  const plainText = body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+
+  const plainOrderFrom = plainText.match(/(?:your )?order from\s+(.+?)(?:\s{2,}|$)/i);
+  if (plainOrderFrom) {
+    const name = cleanRestaurantName(plainOrderFrom[1]);
+    if (name) return name;
   }
 
   // Thai pattern: "สถานที่เริ่มต้นการเดินทาง: {Restaurant}" (Starting location)
-  // Used in Thai-language GrabFood receipts
-  const thaiLocationMatch = body.match(/สถานที่เริ่มต้นการเดินทาง:\s*([^\n<]+)/);
-  if (thaiLocationMatch) {
-    return cleanRestaurantName(thaiLocationMatch[1]);
+  // In HTML emails, the name is often in a separate <span> after the label:
+  //   สถานที่เริ่มต้นการเดินทาง:</span><br/><span...>Restaurant Name</span>
+  const thaiLocationHtmlMatch = body.match(
+    /สถานที่เริ่มต้นการเดินทาง:(?:<[^>]*>|\s)*([^<\n]+)/
+  );
+  if (thaiLocationHtmlMatch) {
+    const name = cleanRestaurantName(thaiLocationHtmlMatch[1]);
+    if (name) return name;
   }
 
   // Thai pattern: "ร้าน" (shop/restaurant) followed by name
@@ -357,6 +388,45 @@ function isGrabPayWallet(body: string): boolean {
 }
 
 /**
+ * Extract payment card info from Grab receipt emails.
+ *
+ * Grab receipts show the payment method in formats like:
+ * - "Visa •••• 0005"
+ * - "Mastercard •••• 1234"
+ * - "Visa .... 0005"
+ * - "Visa ending in 0005"
+ * - "Visa****0005"
+ * - "VISA •0005"
+ */
+function extractPaymentCard(body: string): { lastFour: string; cardType: string } | null {
+  // Strip HTML tags and decode common HTML entities for cleaner matching
+  let text = body.replace(/<[^>]*>/g, ' ');
+  text = text.replace(/&nbsp;/gi, ' ');
+  text = text.replace(/&amp;/gi, '&');
+  text = text.replace(/&#\d+;/g, ' ');
+
+  // Pattern: Card type followed by masked digits/spaces and last 4
+  // Handles: •••• 0005, ....0005, ****0005, ending in 0005, •0005
+  // Also handles: "Visa   0599" (spaces from &nbsp; entities in Grab emails)
+  const cardPattern = /\b(Visa|Mastercard|MasterCard|Master\s*Card|Amex|American Express|JCB|UnionPay|Discover)\s+(?:[•·.*\s]+\s*|ending\s+in\s+)(\d{4})\b/i;
+  const match = text.match(cardPattern);
+
+  if (match) {
+    let cardType = match[1].trim();
+    // Normalize card type names
+    if (/master\s*card/i.test(cardType)) cardType = 'Mastercard';
+    if (/american express/i.test(cardType)) cardType = 'Amex';
+
+    return {
+      lastFour: match[2],
+      cardType,
+    };
+  }
+
+  return null;
+}
+
+/**
  * Grab Email Parser implementation
  */
 export const grabParser: EmailParser = {
@@ -451,6 +521,12 @@ export const grabParser: EmailParser = {
       confidence += 10;
     }
 
+    // Extract payment card info
+    const paymentCard = extractPaymentCard(body);
+    if (paymentCard) {
+      notes.push(`Payment: ${paymentCard.cardType} •••• ${paymentCard.lastFour}`);
+    }
+
     // Build extracted transaction
     const data: ExtractedTransaction = {
       vendor_name_raw: serviceInfo.vendorName,
@@ -459,6 +535,8 @@ export const grabParser: EmailParser = {
       transaction_date: email.email_date,
       description,
       order_id: orderId,
+      payment_card_last_four: paymentCard?.lastFour || null,
+      payment_card_type: paymentCard?.cardType || null,
     };
 
     // Add vendor ID if known
@@ -484,6 +562,7 @@ export {
   extractAmount,
   extractOrderId,
   isGrabPayWallet,
+  extractPaymentCard,
   getFoodType,
   GRAB_SENDER_PATTERNS,
   GRAB_SUBJECT_PATTERNS,

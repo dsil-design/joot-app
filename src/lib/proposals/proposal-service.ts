@@ -21,6 +21,7 @@ import type {
   ProposalGenerateResponse,
   TransactionProposal,
   FieldConfidenceMap,
+  PastCorrection,
 } from './types'
 
 /**
@@ -32,12 +33,13 @@ export async function prefetchRuleEngineContext(
   userId: string,
   dateRange?: { from: string; to: string }
 ): Promise<RuleEngineContext> {
-  const [vendors, paymentMethods, tags, recentTxns, vendorTagFreqs] = await Promise.all([
+  const [vendors, paymentMethods, tags, recentTxns, vendorTagFreqs, pastCorrections] = await Promise.all([
     fetchVendors(supabase, userId),
     fetchPaymentMethods(supabase, userId),
     fetchTags(supabase, userId),
     fetchRecentTransactions(supabase, userId, dateRange),
     fetchVendorTagFrequency(supabase, userId),
+    fetchPastCorrections(supabase, userId),
   ])
 
   // Build vendor description patterns from recent transactions
@@ -50,6 +52,7 @@ export async function prefetchRuleEngineContext(
     recentTransactions: recentTxns,
     vendorTagFrequency: vendorTagFreqs,
     vendorDescriptionPatterns,
+    pastCorrections,
   }
 }
 
@@ -89,7 +92,7 @@ async function fetchVendors(supabase: SupabaseClient, userId: string): Promise<V
 async function fetchPaymentMethods(supabase: SupabaseClient, userId: string): Promise<PaymentMethodRecord[]> {
   const { data } = await supabase
     .from('payment_methods')
-    .select('id, name, type, preferred_currency')
+    .select('id, name, type, preferred_currency, card_last_four')
     .eq('user_id', userId)
 
   return (data || []).map((pm) => ({
@@ -97,6 +100,7 @@ async function fetchPaymentMethods(supabase: SupabaseClient, userId: string): Pr
     name: pm.name,
     type: pm.type || undefined,
     preferredCurrency: pm.preferred_currency || undefined,
+    cardLastFour: pm.card_last_four || undefined,
   }))
 }
 
@@ -247,6 +251,125 @@ async function fetchVendorTagFrequency(
   }
 
   return results
+}
+
+/**
+ * Fetch past user corrections from modified proposals.
+ * These corrections teach the system what the user prefers.
+ */
+async function fetchPastCorrections(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<PastCorrection[]> {
+  // Get modified proposals with their user_modifications
+  const { data: proposals } = await supabase
+    .from('transaction_proposals')
+    .select(`
+      proposed_description,
+      proposed_vendor_id,
+      user_modifications,
+      accepted_at,
+      email_transaction_id,
+      source_type
+    `)
+    .eq('user_id', userId)
+    .eq('status', 'modified')
+    .not('user_modifications', 'is', null)
+    .order('accepted_at', { ascending: false })
+    .limit(100)
+
+  if (!proposals || proposals.length === 0) return []
+
+  // Get email transaction context for sender info
+  const emailTxIds = proposals
+    .map((p) => p.email_transaction_id)
+    .filter((id): id is string => !!id)
+
+  let emailContext = new Map<string, { fromAddress?: string; fromName?: string; parserKey?: string }>()
+  if (emailTxIds.length > 0) {
+    const { data: emailTxns } = await supabase
+      .from('email_transactions')
+      .select('id, from_address, from_name, parser_key')
+      .in('id', emailTxIds)
+
+    if (emailTxns) {
+      emailContext = new Map(
+        emailTxns.map((et) => [et.id, {
+          fromAddress: et.from_address || undefined,
+          fromName: et.from_name || undefined,
+          parserKey: et.parser_key || undefined,
+        }])
+      )
+    }
+  }
+
+  // Resolve vendor names for vendor corrections
+  const vendorIds = new Set<string>()
+  for (const p of proposals) {
+    const mods = p.user_modifications as Record<string, { from: unknown; to: unknown }> | null
+    if (!mods) continue
+    if (mods.vendor_id) {
+      if (typeof mods.vendor_id.from === 'string') vendorIds.add(mods.vendor_id.from)
+      if (typeof mods.vendor_id.to === 'string') vendorIds.add(mods.vendor_id.to)
+    }
+  }
+  for (const p of proposals) {
+    if (p.proposed_vendor_id) vendorIds.add(p.proposed_vendor_id)
+  }
+
+  let vendorNames = new Map<string, string>()
+  if (vendorIds.size > 0) {
+    const { data: vendors } = await supabase
+      .from('vendors')
+      .select('id, name')
+      .in('id', [...vendorIds])
+
+    if (vendors) {
+      vendorNames = new Map(vendors.map((v) => [v.id, v.name]))
+    }
+  }
+
+  // Build correction records
+  const corrections: PastCorrection[] = []
+
+  for (const p of proposals) {
+    const mods = p.user_modifications as Record<string, { from: unknown; to: unknown }> | null
+    if (!mods) continue
+
+    const emailCtx = p.email_transaction_id
+      ? emailContext.get(p.email_transaction_id)
+      : undefined
+
+    for (const [field, change] of Object.entries(mods)) {
+      const validFields = ['vendor_id', 'description', 'tag_ids', 'payment_method_id', 'transaction_type']
+      if (!validFields.includes(field)) continue
+
+      const correction: PastCorrection = {
+        field: field as PastCorrection['field'],
+        fromAddress: emailCtx?.fromAddress,
+        fromName: emailCtx?.fromName,
+        parserKey: emailCtx?.parserKey,
+        sourceDescription: p.proposed_description || '',
+        originalValue: change.from,
+        correctedValue: change.to,
+        correctedAt: p.accepted_at || '',
+      }
+
+      // Resolve vendor names
+      if (field === 'vendor_id') {
+        if (typeof change.from === 'string') {
+          correction.originalVendorName = vendorNames.get(change.from)
+        }
+        if (typeof change.to === 'string') {
+          correction.correctedVendorName = vendorNames.get(change.to)
+        }
+      }
+
+      corrections.push(correction)
+    }
+  }
+
+  return corrections
 }
 
 /**

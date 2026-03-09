@@ -14,7 +14,7 @@ interface CreateTransactionInput {
 }
 
 export function useCreateAndLink(
-  linkFn: (compositeId: string, transactionId: string) => Promise<unknown>
+  linkFn: (compositeId: string, transactionId: string, options?: { silent?: boolean }) => Promise<unknown>
 ) {
   const { createTransaction } = useTransactions()
   const queryClient = useQueryClient()
@@ -35,9 +35,11 @@ export function useCreateAndLink(
     })
 
     if (!result) throw new Error('Failed to create transaction')
-    await linkFn(compositeId, result.id)
+    await linkFn(compositeId, result.id, { silent: true })
     await queryClient.invalidateQueries({ queryKey: ['transactions', 'paginated'] })
-    toast.success('Transaction created and linked')
+    toast.success('Transaction created', {
+      description: `${data.amount} ${data.currency} — ${data.description}`,
+    })
     return result
   }
 

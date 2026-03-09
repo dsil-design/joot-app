@@ -190,11 +190,14 @@ export async function POST(
     // Add extracted data if successful
     if (extraction.success && extraction.data) {
       transactionData.vendor_name_raw = extraction.data.vendor_name_raw;
+      transactionData.vendor_id = extraction.data.vendor_id || null;
       transactionData.amount = extraction.data.amount;
       transactionData.currency = extraction.data.currency;
       transactionData.transaction_date = extraction.data.transaction_date.toISOString().split('T')[0];
       transactionData.description = extraction.data.description || null;
       transactionData.order_id = extraction.data.order_id || null;
+      transactionData.payment_card_last_four = extraction.data.payment_card_last_four || null;
+      transactionData.payment_card_type = extraction.data.payment_card_type || null;
     }
 
     // Insert into email_transactions

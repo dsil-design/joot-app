@@ -80,12 +80,12 @@ const sortOptions: Array<{ value: EmailHubSort; label: string }> = [
 ]
 
 const DATE_PRESET_TOGGLES: Array<{ value: DatePresetKey; label: string }> = [
+  { value: "all-time", label: PRESET_LABELS["all-time"] },
   { value: "this-month", label: PRESET_LABELS["this-month"] },
   { value: "last-month", label: PRESET_LABELS["last-month"] },
   { value: "last-30-days", label: PRESET_LABELS["last-30-days"] },
   { value: "this-year", label: PRESET_LABELS["this-year"] },
   { value: "last-year", label: PRESET_LABELS["last-year"] },
-  { value: "all-time", label: PRESET_LABELS["all-time"] },
 ]
 
 /** Check if two filter objects differ (excluding dateRange which uses deep compare) */
@@ -157,7 +157,18 @@ export function EmailHubFilterBar({
             type="search"
             placeholder="Search vendor, subject, ID..."
             value={draft.search}
-            onChange={(e) => setDraft({ ...draft, search: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value
+              const trimmed = value.trim()
+              const fullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+              const partialUuid = /^[0-9a-f]{8,}$/i
+              if (fullUuid.test(trimmed) || partialUuid.test(trimmed)) {
+                // ID search: clear date filter so the result isn't hidden
+                setDraft({ ...draft, search: value, dateRange: undefined })
+              } else {
+                setDraft({ ...draft, search: value })
+              }
+            }}
             className="pl-9"
           />
         </div>
@@ -192,20 +203,6 @@ export function EmailHubFilterBar({
           </SelectContent>
         </Select>
 
-        {/* Currency */}
-        <Select
-          value={draft.currency}
-          onValueChange={(value) => setDraft({ ...draft, currency: value as EmailHubCurrency })}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Currency" />
-          </SelectTrigger>
-          <SelectContent>
-            {currencyOptions.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
 
         {/* Confidence */}
         <Select
@@ -222,20 +219,7 @@ export function EmailHubFilterBar({
           </SelectContent>
         </Select>
 
-        {/* Sort */}
-        <Select
-          value={draft.sort}
-          onValueChange={(value) => setDraft({ ...draft, sort: value as EmailHubSort })}
-        >
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Sort" />
-          </SelectTrigger>
-          <SelectContent>
-            {sortOptions.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+
       </div>
 
       {/* Date section */}

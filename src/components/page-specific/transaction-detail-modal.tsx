@@ -17,7 +17,7 @@ import { format, parseISO } from 'date-fns'
 import { formatCurrency, cn } from '@/lib/utils'
 import { cleanStatementDescription } from '@/lib/utils/statement-description'
 import { getExchangeRateWithMetadata } from '@/lib/utils/exchange-rate-utils'
-import { ExternalLink, FileText, ArrowRightLeft, CheckCircle2, Link2, X, Loader2, SkipForward, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ExternalLink, FileText, ArrowRightLeft, CheckCircle2, Link2, X, Loader2, SkipForward, ChevronLeft, ChevronRight, Unlink } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 
 interface QueueState {
@@ -32,6 +32,7 @@ interface TransactionDetailModalProps {
   onOpenChange: (open: boolean) => void
   onApproveLink?: (item: StatementTransaction) => Promise<void>
   onRejectMatch?: (item: StatementTransaction) => Promise<void>
+  onUnlink?: (item: StatementTransaction) => Promise<void>
   /** Queue mode props */
   queue?: QueueState
   onSkip?: () => void
@@ -44,6 +45,7 @@ export function TransactionDetailModal({
   onOpenChange,
   onApproveLink,
   onRejectMatch,
+  onUnlink,
   queue,
   onSkip,
   onNavigate,
@@ -53,7 +55,7 @@ export function TransactionDetailModal({
   const [transaction, setTransaction] = React.useState<Transaction | null>(null)
   const [exchangeRate, setExchangeRate] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
-  const [actionLoading, setActionLoading] = React.useState<'approve' | 'reject' | null>(null)
+  const [actionLoading, setActionLoading] = React.useState<'approve' | 'reject' | 'unlink' | null>(null)
 
   React.useEffect(() => {
     if (!open || !statementItem?.matchedTransactionId) {
@@ -231,7 +233,7 @@ export function TransactionDetailModal({
         </div>
 
         {/* Actions */}
-        {transaction && (
+        {(transaction || (statementItem.matchStatus === 'linked' && onUnlink)) && (
           <div className="mt-4 pt-4 border-t space-y-3">
             {/* Primary actions row */}
             <div className="flex items-center justify-between">
@@ -293,6 +295,29 @@ export function TransactionDetailModal({
                     Skip
                   </Button>
                 )}
+                {statementItem.matchStatus === 'linked' && onUnlink && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={actionLoading !== null}
+                    onClick={async () => {
+                      setActionLoading('unlink')
+                      try {
+                        await onUnlink(statementItem)
+                        if (!queue) onOpenChange(false)
+                      } finally {
+                        setActionLoading(null)
+                      }
+                    }}
+                  >
+                    {actionLoading === 'unlink' ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    ) : (
+                      <Unlink className="h-3.5 w-3.5 mr-1.5" />
+                    )}
+                    Unlink
+                  </Button>
+                )}
               </div>
 
               {/* Right: view full transaction / navigation */}
@@ -319,7 +344,7 @@ export function TransactionDetailModal({
                     </Button>
                   </>
                 )}
-                {!queue && (
+                {!queue && transaction && (
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/transactions/${transaction.id}`}>
                       <ExternalLink className="h-3.5 w-3.5 mr-1.5" />

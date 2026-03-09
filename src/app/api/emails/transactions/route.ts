@@ -168,6 +168,8 @@ export async function GET(request: NextRequest) {
         transaction_date,
         description,
         order_id,
+        payment_card_last_four,
+        payment_card_type,
         matched_transaction_id,
         match_confidence,
         match_method,
@@ -243,17 +245,33 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply search filter
-    if (search) {
-      // Check if search is a full UUID — if so, match by ID directly
-      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (uuidPattern.test(search)) {
-        query = query.or(`id.eq.${search},email_transaction_id.eq.${search}`);
-      } else {
-        // Text search in subject, description, vendor_name_raw, order_id, from_address, from_name
-        query = query.or(
-          `subject.ilike.%${search}%,description.ilike.%${search}%,vendor_name_raw.ilike.%${search}%,order_id.ilike.%${search}%,from_address.ilike.%${search}%,from_name.ilike.%${search}%`
-        );
-      }
+    const fullUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const partialUuidPattern = /^[0-9a-f]{8,}$/i;
+    const isFullUuid = search && fullUuidPattern.test(search);
+    const isPartialUuid = search && !isFullUuid && partialUuidPattern.test(search);
+
+    if (isFullUuid) {
+      // Full UUID search: exact match by ID, bypass all other filters
+      query = supabase
+        .from('email_hub_unified')
+        .select(selectFields, { count: fields === 'ids' ? undefined : 'exact' })
+        .eq('user_id', user.id)
+        .or(`id.eq.${search},email_transaction_id.eq.${search}`);
+    } else if (isPartialUuid) {
+      // Partial UUID search (e.g. first segment): range match on id/email_transaction_id, bypass other filters
+      // Pad partial hex to form a UUID range (ilike doesn't work on UUID columns)
+      const lower = search.padEnd(8, '0') + '-0000-0000-0000-000000000000';
+      const upper = search.padEnd(8, 'f') + '-ffff-ffff-ffff-ffffffffffff';
+      query = supabase
+        .from('email_hub_unified')
+        .select(selectFields, { count: fields === 'ids' ? undefined : 'exact' })
+        .eq('user_id', user.id)
+        .or(`and(id.gte.${lower},id.lte.${upper}),and(email_transaction_id.gte.${lower},email_transaction_id.lte.${upper})`);
+    } else if (search) {
+      // Text search in subject, description, vendor_name_raw, order_id, from_address, from_name
+      query = query.or(
+        `subject.ilike.%${search}%,description.ilike.%${search}%,vendor_name_raw.ilike.%${search}%,order_id.ilike.%${search}%,from_address.ilike.%${search}%,from_name.ilike.%${search}%`
+      );
     }
 
     // Apply AI classification filter

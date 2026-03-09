@@ -332,6 +332,28 @@ export default function StatementDetailPage() {
     txListRef.current?.refresh()
   }, [statementId])
 
+  // Unlink a linked item from the detail modal
+  const handleUnlink = React.useCallback(async (item: StatementTransaction) => {
+    const response = await fetch('/api/imports/unlink', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transactionId: item.matchedTransactionId || undefined,
+        sourceType: 'statement',
+        statementUploadId: statementId,
+        suggestionIndex: item.index,
+      }),
+    })
+    if (!response.ok) {
+      toast.error('Failed to unlink transaction')
+      return
+    }
+    toast.success('Transaction unlinked')
+    const data = await fetchResults(statementId)
+    if (data) setResult(data)
+    txListRef.current?.refresh()
+  }, [statementId])
+
   // Enter linking mode — fetch all matched (pending) items
   const startLinkingMode = React.useCallback(async () => {
     try {
@@ -693,6 +715,7 @@ export default function StatementDetailPage() {
         }}
         onApproveLink={handleApproveLink}
         onRejectMatch={handleRejectMatch}
+        onUnlink={handleUnlink}
       />
 
       {/* Linking mode modal (queue) */}

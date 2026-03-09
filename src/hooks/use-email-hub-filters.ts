@@ -88,7 +88,14 @@ export function parseUrlParams(searchParams: URLSearchParams): Partial<EmailHubF
   }
 
   const search = searchParams.get("search")
-  if (search) filters.search = search
+  if (search) {
+    filters.search = search
+    // When searching (e.g. by email ID from a deep link), clear date range
+    // so results aren't hidden by the default "this month" filter
+    if (!searchParams.has("from") && !searchParams.has("to")) {
+      filters.dateRange = undefined
+    }
+  }
 
   const sort = searchParams.get("sort")
   if (sort && validSorts.includes(sort as EmailHubSort)) {

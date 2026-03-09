@@ -3,6 +3,7 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { File, Mail, GitMerge } from "lucide-react"
+import { getParserTag } from "@/lib/utils/parser-tags"
 import type { MatchCardData, MatchCardVariant, VariantConfig, MatchCardCallbacks } from "./types"
 
 /**
@@ -34,21 +35,21 @@ interface MatchCardHeaderProps {
 }
 
 /**
- * Header row: source badge + confidence badge + optional checkbox
+ * Header row: source badge + confidence badge
  */
 export function MatchCardHeader({
   data,
   config,
-  selected,
-  callbacks,
 }: MatchCardHeaderProps) {
   const isApproved = data.status === "approved" || data.status === "imported"
   const isRejected = data.status === "rejected"
-  const isPending = data.status === "pending"
   const isEmail = data.source === "email"
   const isMerged = data.source === "merged"
 
   const source = data.sourceStatement || data.statementTransaction.sourceFilename
+  const parserTag = (isEmail || isMerged)
+    ? getParserTag(data.emailMetadata?.fromAddress ?? data.mergedEmailData?.metadata.fromAddress, data.emailMetadata?.parserKey ?? data.mergedEmailData?.metadata.parserKey)
+    : null
 
   return (
     <div className="flex items-center justify-between gap-2">
@@ -62,19 +63,20 @@ export function MatchCardHeader({
         ) : data.source === "email" ? (
           <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-600">
             <Mail className="h-3 w-3 shrink-0" />
-            Email Receipt
+            Email Only
           </span>
         ) : source ? (
           <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
             <File className="h-3 w-3 shrink-0" />
             <span className="truncate max-w-[140px]">{source}</span>
+            <span>Only</span>
           </span>
         ) : null}
 
-        {/* Classification badge for email/merged items */}
-        {(isEmail || isMerged) && data.emailMetadata?.classification && data.emailMetadata.classification !== "unknown" && (
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 capitalize">
-            {data.emailMetadata.classification.replace(/_/g, " ")}
+        {/* Parser tag (Grab, Bolt, etc.) */}
+        {parserTag && (
+          <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0", parserTag.className)}>
+            {parserTag.label}
           </span>
         )}
 
@@ -115,19 +117,6 @@ export function MatchCardHeader({
           >
             {config.label}
           </span>
-        )}
-
-        {/* Selection checkbox */}
-        {callbacks.onSelectionChange && isPending && (
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={(e) =>
-              callbacks.onSelectionChange!(data.id, e.target.checked)
-            }
-            className="h-4 w-4 rounded border-gray-300"
-            aria-label="Select for batch action"
-          />
         )}
       </div>
     </div>

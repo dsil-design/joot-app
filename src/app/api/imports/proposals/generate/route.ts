@@ -88,10 +88,14 @@ export async function POST(request: NextRequest) {
         paymentMethodId: item.paymentMethod?.id,
         paymentMethodName: item.paymentMethod?.name,
         // Email-specific fields for proposal engine
+        fromAddress: emailMeta?.fromAddress,
+        fromName: emailMeta?.fromName,
         vendorId: emailMeta?.vendorId,
         parserKey: emailMeta?.parserKey,
         classification: emailMeta?.classification,
         extractionConfidence: emailMeta?.extractionConfidence,
+        paymentCardLastFour: emailMeta?.paymentCardLastFour,
+        paymentCardType: emailMeta?.paymentCardType,
       }
     })
 

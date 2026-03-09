@@ -20,6 +20,23 @@ export const PARSER_PAYMENT_METHOD_MAP: Record<string, string[]> = {
 }
 
 /**
+ * Find a payment method by matching card last 4 digits.
+ * This takes priority over parser key matching since it's more specific.
+ */
+export function findPaymentMethodByCardLastFour(
+  cardLastFour: string,
+  paymentMethods: Array<{ id: string; name: string; card_last_four?: string | null }>
+): { id: string; name: string } | null {
+  if (!cardLastFour) return null
+
+  const matched = paymentMethods.find(
+    (pm) => pm.card_last_four === cardLastFour
+  )
+
+  return matched ? { id: matched.id, name: matched.name } : null
+}
+
+/**
  * Find a payment method ID by matching parser key against available payment methods.
  */
 export function findPaymentMethodByParserKey(

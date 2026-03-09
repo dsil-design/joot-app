@@ -26,8 +26,10 @@ interface ExtractionLog {
  * Unlinks a source (email or statement) from a transaction.
  *
  * Request body:
- * - transactionId: string - UUID of the transaction
+ * - transactionId: string - UUID of the transaction (optional if statementUploadId + suggestionIndex provided)
  * - sourceType: 'email' | 'statement' - Which source to unlink
+ * - statementUploadId?: string - Statement upload ID (fallback when transaction is deleted)
+ * - suggestionIndex?: number - Suggestion index in extraction_log (fallback when transaction is deleted)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -38,18 +40,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    let body: { transactionId?: string; sourceType?: string }
+    let body: { transactionId?: string; sourceType?: string; statementUploadId?: string; suggestionIndex?: number }
     try {
       body = await request.json()
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const { transactionId, sourceType } = body
+    const { transactionId, sourceType, statementUploadId, suggestionIndex } = body
 
-    if (!transactionId || !sourceType) {
+    if (!sourceType) {
       return NextResponse.json(
-        { error: 'transactionId and sourceType are required' },
+        { error: 'sourceType is required' },
         { status: 400 }
       )
     }
@@ -63,22 +65,33 @@ export async function POST(request: NextRequest) {
 
     const serviceClient = createServiceRoleClient()
 
-    // Fetch the transaction and verify ownership
-    const { data: transaction, error: txError } = await serviceClient
-      .from('transactions')
-      .select('id, source_email_transaction_id, source_statement_upload_id, source_statement_suggestion_index')
-      .eq('id', transactionId)
-      .eq('user_id', user.id)
-      .single()
+    // Try to fetch the transaction if we have a transactionId
+    let transaction: {
+      id: string
+      source_email_transaction_id: string | null
+      source_statement_upload_id: string | null
+      source_statement_suggestion_index: number | null
+    } | null = null
 
-    if (txError || !transaction) {
-      return NextResponse.json(
-        { error: 'Transaction not found' },
-        { status: 404 }
-      )
+    if (transactionId) {
+      const { data } = await serviceClient
+        .from('transactions')
+        .select('id, source_email_transaction_id, source_statement_upload_id, source_statement_suggestion_index')
+        .eq('id', transactionId)
+        .eq('user_id', user.id)
+        .single()
+      transaction = data
     }
 
+    // For email unlinking, we still require the transaction to exist
     if (sourceType === 'email') {
+      if (!transaction) {
+        return NextResponse.json(
+          { error: 'Transaction not found' },
+          { status: 404 }
+        )
+      }
+
       const emailTxId = transaction.source_email_transaction_id
       if (!emailTxId) {
         return NextResponse.json(
@@ -91,7 +104,7 @@ export async function POST(request: NextRequest) {
       const { error: txUpdateError } = await serviceClient
         .from('transactions')
         .update({ source_email_transaction_id: null })
-        .eq('id', transactionId)
+        .eq('id', transactionId!)
 
       if (txUpdateError) {
         console.error('Error clearing email source on transaction:', txUpdateError)
@@ -119,40 +132,43 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // sourceType === 'statement'
-      const statementId = transaction.source_statement_upload_id
-      const suggestionIndex = transaction.source_statement_suggestion_index
+      // Use transaction data if available, otherwise fall back to explicit params
+      const stmtId = transaction?.source_statement_upload_id ?? statementUploadId
+      const sugIdx = transaction?.source_statement_suggestion_index ?? suggestionIndex
 
-      if (!statementId) {
+      if (!stmtId) {
         return NextResponse.json(
-          { error: 'Transaction has no linked statement source' },
+          { error: 'No statement source to unlink' },
           { status: 400 }
         )
       }
 
-      // Clear statement source references on the transaction
-      const { error: txUpdateError } = await serviceClient
-        .from('transactions')
-        .update({
-          source_statement_upload_id: null,
-          source_statement_suggestion_index: null,
-          source_statement_match_confidence: null,
-        })
-        .eq('id', transactionId)
+      // Clear statement source references on the transaction (if it still exists)
+      if (transaction) {
+        const { error: txUpdateError } = await serviceClient
+          .from('transactions')
+          .update({
+            source_statement_upload_id: null,
+            source_statement_suggestion_index: null,
+            source_statement_match_confidence: null,
+          })
+          .eq('id', transaction.id)
 
-      if (txUpdateError) {
-        console.error('Error clearing statement source on transaction:', txUpdateError)
-        return NextResponse.json(
-          { error: 'Failed to unlink statement source' },
-          { status: 500 }
-        )
+        if (txUpdateError) {
+          console.error('Error clearing statement source on transaction:', txUpdateError)
+          return NextResponse.json(
+            { error: 'Failed to unlink statement source' },
+            { status: 500 }
+          )
+        }
       }
 
       // Reset the suggestion in extraction_log back to pending
-      if (suggestionIndex !== null && suggestionIndex !== undefined) {
+      if (sugIdx !== null && sugIdx !== undefined) {
         const { data: statement } = await serviceClient
           .from('statement_uploads')
           .select('id, extraction_log')
-          .eq('id', statementId)
+          .eq('id', stmtId)
           .eq('user_id', user.id)
           .single()
 
@@ -160,9 +176,9 @@ export async function POST(request: NextRequest) {
           const extractionLog = statement.extraction_log as ExtractionLog | null
           const suggestions = extractionLog?.suggestions || []
 
-          if (suggestionIndex >= 0 && suggestionIndex < suggestions.length) {
-            suggestions[suggestionIndex] = {
-              ...suggestions[suggestionIndex],
+          if (sugIdx >= 0 && sugIdx < suggestions.length) {
+            suggestions[sugIdx] = {
+              ...suggestions[sugIdx],
               matched_transaction_id: undefined,
               status: 'pending',
             }
@@ -172,10 +188,10 @@ export async function POST(request: NextRequest) {
               .update({
                 extraction_log: { ...extractionLog, suggestions } as unknown as Json,
               })
-              .eq('id', statementId)
+              .eq('id', stmtId)
           }
 
-          await updateStatementReviewStatus(serviceClient, statementId)
+          await updateStatementReviewStatus(serviceClient, stmtId)
         }
       }
     }

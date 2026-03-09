@@ -355,6 +355,7 @@ export function useTransactions() {
           ),
           email_transactions!email_transactions_matched_transaction_id_fkey(
             id,
+            message_id,
             subject,
             from_address,
             from_name,
@@ -389,14 +390,28 @@ export function useTransactions() {
 
       // Transform the data to include tags array, rename joined tables, and extract source references
       const statementUpload = (data as any).statement_uploads
+      let emailSource = Array.isArray((data as any).email_transactions)
+        ? (data as any).email_transactions[0] ?? null
+        : (data as any).email_transactions ?? null
+
+      // Resolve the emails.id (hub ID) from email_transactions.message_id
+      if (emailSource?.message_id) {
+        const { data: emailRow } = await supabase
+          .from('emails')
+          .select('id')
+          .eq('message_id', emailSource.message_id)
+          .single()
+        if (emailRow) {
+          emailSource = { ...emailSource, id: emailRow.id }
+        }
+      }
+
       const transformed = {
         ...data,
         vendor: (data as any).vendors,
         payment_method: (data as any).payment_methods,
         tags: (data as any).transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || [],
-        emailSource: Array.isArray((data as any).email_transactions)
-          ? (data as any).email_transactions[0] ?? null
-          : (data as any).email_transactions ?? null,
+        emailSource,
         statementSource: statementUpload ? {
           ...statementUpload,
           payment_method_name: statementUpload.payment_methods?.name ?? null,

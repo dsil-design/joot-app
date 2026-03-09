@@ -34,6 +34,12 @@ export interface ExtractedTransaction {
 
   /** Matched vendor ID if known */
   vendor_id?: string;
+
+  /** Payment card last 4 digits extracted from receipt (e.g., "0005") */
+  payment_card_last_four?: string | null;
+
+  /** Payment card type extracted from receipt (e.g., "Visa", "Mastercard") */
+  payment_card_type?: string | null;
 }
 
 /**
@@ -180,6 +186,8 @@ export interface EmailTransactionData {
   transaction_date?: string | null;
   description?: string | null;
   order_id?: string | null;
+  payment_card_last_four?: string | null;
+  payment_card_type?: string | null;
 
   // Status and classification
   status: EmailTransactionStatus;

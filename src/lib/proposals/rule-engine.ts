@@ -12,9 +12,10 @@ import type {
   ProposedFields,
   FieldConfidenceMap,
   RuleEngineContext,
+  PastCorrection,
 } from './types'
 import { matchVendor, suggestVendorName } from './vendor-matcher'
-import { findPaymentMethodByParserKey } from './payment-method-mapper'
+import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour } from './payment-method-mapper'
 
 /**
  * Generate a rule-based proposal for a single queue item.
@@ -152,6 +153,20 @@ function proposePaymentMethod(
   fields: ProposedFields,
   fc: FieldConfidenceMap
 ) {
+  // Strategy 0: Past corrections — user previously corrected payment method for similar items
+  const pmCorrection = findBestCorrection(item, context, 'payment_method_id')
+  if (pmCorrection && typeof pmCorrection.correctedValue === 'string') {
+    const pm = context.paymentMethods.find((p) => p.id === pmCorrection.correctedValue)
+    if (pm) {
+      fields.paymentMethodId = pm.id
+      fc.payment_method_id = {
+        score: 88,
+        reasoning: `Learned from correction: ${pm.name}`,
+      }
+      return
+    }
+  }
+
   // Strategy 1: Statement source has payment method
   if (item.paymentMethodId) {
     fields.paymentMethodId = item.paymentMethodId
@@ -163,7 +178,23 @@ function proposePaymentMethod(
 
   // For merged items, prefer statement's payment method (already handled above via item.paymentMethodId)
 
-  // Strategy 2: Email parser key mapping
+  // Strategy 2: Card last 4 digits from email receipt
+  if (item.paymentCardLastFour) {
+    const matched = findPaymentMethodByCardLastFour(
+      item.paymentCardLastFour,
+      context.paymentMethods.map((pm) => ({ id: pm.id, name: pm.name, card_last_four: pm.cardLastFour }))
+    )
+    if (matched) {
+      fields.paymentMethodId = matched.id
+      const cardDesc = item.paymentCardType
+        ? `${item.paymentCardType} •••• ${item.paymentCardLastFour}`
+        : `•••• ${item.paymentCardLastFour}`
+      fc.payment_method_id = { score: 92, reasoning: `Card digits ${cardDesc} -> ${matched.name}` }
+      return
+    }
+  }
+
+  // Strategy 3: Email parser key mapping
   if (item.parserKey) {
     const matched = findPaymentMethodByParserKey(
       item.parserKey,
@@ -208,6 +239,23 @@ function proposeVendor(
   fields: ProposedFields,
   fc: FieldConfidenceMap
 ) {
+  // Strategy 0: Past corrections — user previously corrected vendor for similar items
+  const vendorCorrection = findBestCorrection(item, context, 'vendor_id')
+  if (vendorCorrection && typeof vendorCorrection.correctedValue === 'string') {
+    const correctedVendorId = vendorCorrection.correctedValue
+    const vendor = context.vendors.find((v) => v.id === correctedVendorId)
+    if (vendor) {
+      fields.vendorId = vendor.id
+      const matchType = vendorCorrection.fromAddress && item.fromAddress === vendorCorrection.fromAddress
+        ? 'same sender' : 'similar description'
+      fc.vendor_id = {
+        score: 93,
+        reasoning: `Learned from correction (${matchType}): ${vendor.name}`,
+      }
+      return
+    }
+  }
+
   // Strategy 1: Email has vendor_id set by parser
   if (item.vendorId) {
     const vendor = context.vendors.find((v) => v.id === item.vendorId)
@@ -242,11 +290,27 @@ function proposeVendor(
 }
 
 function proposeTags(
-  _item: ProposalInput,
+  item: ProposalInput,
   context: RuleEngineContext,
   fields: ProposedFields,
   fc: FieldConfidenceMap
 ) {
+  // Strategy 0: Past corrections — user previously corrected tags for similar items
+  const tagCorrection = findBestCorrection(item, context, 'tag_ids')
+  if (tagCorrection && Array.isArray(tagCorrection.correctedValue)) {
+    const correctedTagIds = tagCorrection.correctedValue as string[]
+    const validTags = correctedTagIds.filter((id) => context.tags.some((t) => t.id === id))
+    if (validTags.length > 0) {
+      fields.tagIds = validTags.slice(0, 3)
+      const tagNames = validTags.map((id) => context.tags.find((t) => t.id === id)?.name).filter(Boolean)
+      fc.tag_ids = {
+        score: 85,
+        reasoning: `Learned from correction: ${tagNames.join(', ')}`,
+      }
+      return
+    }
+  }
+
   if (!fields.vendorId) {
     fc.tag_ids = { score: 0, reasoning: 'No vendor matched — cannot infer tags' }
     return
@@ -283,6 +347,26 @@ function proposeDescription(
   fields: ProposedFields,
   fc: FieldConfidenceMap
 ) {
+  // Strategy 0: Past corrections — user previously corrected description for same sender/vendor
+  // This is most useful for emails where the extracted description was poor (e.g. just the subject)
+  const descCorrection = findBestCorrection(item, context, 'description')
+  if (descCorrection && typeof descCorrection.correctedValue === 'string') {
+    // Only apply if the correction came from a strong match (same sender)
+    const isSameSender = descCorrection.fromAddress && item.fromAddress
+      && descCorrection.fromAddress === item.fromAddress
+    const isSameVendor = fields.vendorId && descCorrection.sourceDescription
+
+    if (isSameSender || isSameVendor) {
+      fields.description = descCorrection.correctedValue
+      const matchType = isSameSender ? 'same sender' : 'same vendor'
+      fc.description = {
+        score: 88,
+        reasoning: `Learned from correction (${matchType}): "${descCorrection.correctedValue}"`,
+      }
+      return
+    }
+  }
+
   // Strategy 1: Email with dedicated parser + high confidence → use parser description
   if (
     item.sourceType === 'email' || item.sourceType === 'merged'
@@ -383,6 +467,66 @@ function cleanDescription(raw: string): string {
   }
 
   return cleaned || raw
+}
+
+/**
+ * Find the most relevant past correction for a given field and item.
+ * Matches by sender address (strongest), parser key, or description similarity.
+ */
+function findBestCorrection(
+  item: ProposalInput,
+  context: RuleEngineContext,
+  field: PastCorrection['field']
+): PastCorrection | null {
+  const corrections = context.pastCorrections.filter((c) => c.field === field)
+  if (corrections.length === 0) return null
+
+  let best: { correction: PastCorrection; score: number } | null = null
+
+  for (const c of corrections) {
+    let score = 0
+
+    // Strongest: same sender address
+    if (c.fromAddress && item.fromAddress && c.fromAddress === item.fromAddress) {
+      score += 50
+    }
+
+    // Strong: same parser key
+    if (c.parserKey && item.parserKey && c.parserKey === item.parserKey) {
+      score += 30
+    }
+
+    // Moderate: similar source description (token overlap)
+    if (c.sourceDescription && item.description) {
+      const overlap = quickTokenOverlap(c.sourceDescription, item.description)
+      score += overlap * 20
+    }
+
+    // Must have at least some match signal
+    if (score < 20) continue
+
+    if (!best || score > best.score) {
+      best = { correction: c, score }
+    }
+  }
+
+  return best?.correction ?? null
+}
+
+/**
+ * Quick token overlap for correction matching (0-1)
+ */
+function quickTokenOverlap(a: string, b: string): number {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
+  const tokensA = normalize(a).split(' ').filter((t) => t.length > 1)
+  const tokensB = normalize(b).split(' ').filter((t) => t.length > 1)
+  if (tokensA.length === 0 || tokensB.length === 0) return 0
+
+  let matches = 0
+  for (const ta of tokensA) {
+    if (tokensB.some((tb) => tb.includes(ta) || ta.includes(tb))) matches++
+  }
+  return matches / Math.max(tokensA.length, tokensB.length)
 }
 
 function calculateOverallConfidence(fc: FieldConfidenceMap): number {

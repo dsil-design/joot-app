@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Bot, ChevronDown, ChevronRight, Eye, RefreshCw, Send, Zap } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { EmailViewerModal } from "./email-viewer-modal"
+import { getParserTag } from "@/lib/utils/parser-tags"
 
 interface EmailTransactionCardProps {
   data: EmailTransactionRow
@@ -45,23 +46,6 @@ function getStatusBadge(status: string) {
     default:
       return { label: status, className: "bg-gray-100 text-gray-600 border-gray-200" }
   }
-}
-
-/**
- * Parser/sender tag color based on from_address
- */
-function getParserTag(fromAddress: string | null): { label: string; className: string } | null {
-  if (!fromAddress) return null
-  const addr = fromAddress.toLowerCase()
-
-  if (addr.includes("grab")) return { label: "Grab", className: "bg-orange-100 text-orange-700" }
-  if (addr.includes("bolt")) return { label: "Bolt", className: "bg-green-100 text-green-700" }
-  if (addr.includes("lazada")) return { label: "Lazada", className: "bg-blue-100 text-blue-700" }
-  if (addr.includes("shopee")) return { label: "Shopee", className: "bg-red-100 text-red-700" }
-  if (addr.includes("foodpanda")) return { label: "FoodPanda", className: "bg-pink-100 text-pink-700" }
-  if (addr.includes("agoda")) return { label: "Agoda", className: "bg-indigo-100 text-indigo-700" }
-  if (addr.includes("line")) return { label: "LINE", className: "bg-emerald-100 text-emerald-700" }
-  return null
 }
 
 /**
@@ -104,7 +88,6 @@ export function EmailTransactionCard({
   const [viewerOpen, setViewerOpen] = React.useState(false)
   const [feedbackOpen, setFeedbackOpen] = React.useState(false)
   const [feedbackText, setFeedbackText] = React.useState("")
-
   const statusBadge = getStatusBadge(data.status)
   const parserTag = getParserTag(data.from_address)
   const vendorName = data.vendor_name_raw || data.from_name || "Unknown sender"
@@ -154,7 +137,7 @@ export function EmailTransactionCard({
               <span className="truncate">{data.ai_reasoning}</span>
             </p>
           )}
-          {onFeedbackReprocess && (
+          {data.is_processed && data.ai_classification && onFeedbackReprocess && (
             <div className="mt-0.5 space-y-1">
               {!feedbackOpen ? (
                 <Button

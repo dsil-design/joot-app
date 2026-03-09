@@ -10,6 +10,9 @@ export interface EmailMetadata {
   vendorId?: string
   parserKey?: string
   extractionConfidence?: number
+  paymentCardLastFour?: string
+  paymentCardType?: string
+  vendorNameRaw?: string
 }
 
 export interface MergedEmailData {

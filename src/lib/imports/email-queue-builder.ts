@@ -21,7 +21,8 @@ export async function fetchEmailQueueItems(
       transaction_date, description, amount, currency,
       classification, order_id, extraction_confidence,
       match_confidence, matched_transaction_id, status,
-      vendor_id, parser_key
+      vendor_id, parser_key, payment_card_last_four, payment_card_type,
+      vendor_name_raw
     `)
     .eq('user_id', userId)
     .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement', 'matched', 'imported', 'skipped'])
@@ -157,6 +158,9 @@ export async function fetchEmailQueueItems(
         vendorId: row.vendor_id ?? undefined,
         parserKey: row.parser_key ?? undefined,
         extractionConfidence: row.extraction_confidence ?? undefined,
+        paymentCardLastFour: row.payment_card_last_four ?? undefined,
+        paymentCardType: row.payment_card_type ?? undefined,
+        vendorNameRaw: row.vendor_name_raw ?? undefined,
       },
     })
   }

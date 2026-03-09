@@ -16,7 +16,7 @@ export default async function PaymentMethodsPage() {
   // Fetch all payment methods
   const { data: paymentMethods } = await supabase
     .from('payment_methods')
-    .select('id, name, sort_order, preferred_currency, created_at, updated_at')
+    .select('id, name, sort_order, preferred_currency, card_last_four, created_at, updated_at')
     .eq('user_id', user.id)
     .order('sort_order', { ascending: true })
 

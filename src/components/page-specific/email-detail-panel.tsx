@@ -3,16 +3,10 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Input } from "@/components/ui/input"
 import { ConfidenceIndicator } from "@/components/ui/confidence-indicator"
 import { cn } from "@/lib/utils"
 import {
-  Link2,
-  PlusCircle,
-  SkipForward,
-  ExternalLink,
   Calendar,
   DollarSign,
   Tag,
@@ -25,120 +19,32 @@ import {
   Info,
   AlertTriangle,
   Bot,
-  Send,
-  Search,
+  Store,
+  CreditCard,
+  FileText,
+  ArrowRight,
 } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { EmailViewerModal } from "./email-viewer-modal"
-
-interface MatchSuggestion {
-  targetId: string
-  score: number
-  confidence: "HIGH" | "MEDIUM" | "LOW"
-  isMatch: boolean
-  reasons: string[]
-  transaction: {
-    id: string
-    description: string | null
-    amount: number
-    original_currency: string
-    transaction_date: string
-    vendors: { name: string } | null
-    payment_methods: { name: string } | null
-    source_email_transaction_id: string | null
-    source_statement_upload_id: string | null
-  } | null
-}
-
-interface MatchesResponse {
-  email_transaction: EmailTransactionRow
-  suggestions: MatchSuggestion[]
-  linked_transaction?: {
-    id: string
-    description: string | null
-    amount: number
-    original_currency: string
-    transaction_date: string
-    vendors: { name: string } | null
-    payment_methods: { name: string } | null
-    source_email_transaction_id: string | null
-    source_statement_upload_id: string | null
-  } | null
-  stats: {
-    totalCandidates: number
-    matchingCandidates: number
-    highConfidenceCount: number
-    avgScore: number
-  }
-  status?: string
-  reason?: string
-}
+import { createClient } from "@/lib/supabase/client"
+import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour } from "@/lib/proposals/payment-method-mapper"
 
 interface EmailDetailPanelProps {
   emailTransaction: EmailTransactionRow
-  onLink: (emailId: string, txId: string) => void
-  onCreateNew: (emailId: string) => void
-  onSkip: (emailId: string) => void
-  onSearchExisting?: (emailId: string) => void
   onProcess?: (emailId: string) => void
-  onFeedbackReprocess?: (emailId: string, userHint: string) => void
   isProcessing: boolean
   isProcessingExtraction?: boolean
-  isFeedbackProcessing?: boolean
 }
 
 export function EmailDetailPanel({
   emailTransaction,
-  onLink,
-  onCreateNew,
-  onSkip,
-  onSearchExisting,
   onProcess,
-  onFeedbackReprocess,
   isProcessing,
   isProcessingExtraction,
-  isFeedbackProcessing,
 }: EmailDetailPanelProps) {
-  const [matchData, setMatchData] = React.useState<MatchesResponse | null>(null)
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
   const [viewerOpen, setViewerOpen] = React.useState(false)
 
   const isUnprocessed = !emailTransaction.is_processed
-
-  // Fetch match suggestions on mount (skip for unprocessed emails)
-  React.useEffect(() => {
-    if (isUnprocessed) {
-      setIsLoading(false)
-      return
-    }
-
-    let cancelled = false
-
-    async function fetchMatches() {
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        // Use email_transaction_id for the matches API (it needs the email_transactions row ID)
-        const etId = emailTransaction.email_transaction_id || emailTransaction.id
-        const response = await fetch(`/api/emails/transactions/${etId}/matches`)
-        if (!response.ok) throw new Error("Failed to fetch matches")
-
-        const data = await response.json()
-        if (!cancelled) setMatchData(data)
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Unknown error")
-      } finally {
-        if (!cancelled) setIsLoading(false)
-      }
-    }
-
-    fetchMatches()
-    return () => { cancelled = true }
-  }, [emailTransaction.id, emailTransaction.email_transaction_id, emailTransaction.status, isUnprocessed])
-
-  const isActioned = ["matched", "imported", "skipped"].includes(emailTransaction.status)
 
   // Unprocessed email: show metadata + Extract Data button
   if (isUnprocessed) {
@@ -207,13 +113,6 @@ export function EmailDetailPanel({
               <Zap className="h-4 w-4 mr-1" />
               {isProcessingExtraction ? "Extracting..." : "Extract Data"}
             </Button>
-          )}
-          {onFeedbackReprocess && (
-            <UserHintInput
-              emailId={emailTransaction.id}
-              onFeedbackReprocess={onFeedbackReprocess}
-              isFeedbackProcessing={isFeedbackProcessing}
-            />
           )}
         </div>
 
@@ -324,7 +223,7 @@ export function EmailDetailPanel({
         </Button>
 
         {/* Process Again button */}
-        {onProcess && !isActioned && (
+        {onProcess && !["matched", "imported", "skipped"].includes(emailTransaction.status) && (
           <Button
             variant="ghost"
             size="sm"
@@ -340,120 +239,15 @@ export function EmailDetailPanel({
         <CopyableId id={emailTransaction.id} />
       </div>
 
-      {/* Right: Match Suggestions */}
+      {/* Right: Transaction Preview */}
       <div className="space-y-4">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          {isActioned ? "Linked Transaction" : "Match Suggestions"}
+          Transaction Preview
         </h4>
 
         <AiReasoningCallout emailTransaction={emailTransaction} />
 
-        {onFeedbackReprocess && (
-          <UserHintInput
-            emailId={emailTransaction.id}
-            onFeedbackReprocess={onFeedbackReprocess}
-            isFeedbackProcessing={isFeedbackProcessing}
-          />
-        )}
-
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
-          </div>
-        ) : error ? (
-          <p className="text-sm text-destructive">{error}</p>
-        ) : matchData?.linked_transaction ? (
-          // Already linked
-          <LinkedTransactionCard transaction={matchData.linked_transaction} />
-        ) : matchData?.suggestions && matchData.suggestions.length > 0 ? (
-          // Match suggestions
-          <div className="space-y-3">
-            {matchData.suggestions.map((suggestion) => (
-              <SuggestionCard
-                key={suggestion.targetId}
-                suggestion={suggestion}
-                onLink={() => onLink(emailTransaction.id, suggestion.targetId)}
-                disabled={isProcessing || isActioned}
-              />
-            ))}
-
-            {/* Action buttons */}
-            {!isActioned && (
-              <div className="flex gap-2 pt-2 flex-wrap">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onCreateNew(emailTransaction.id)}
-                  disabled={isProcessing}
-                >
-                  <PlusCircle className="h-4 w-4 mr-1" />
-                  Create New
-                </Button>
-                {onSearchExisting && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onSearchExisting(emailTransaction.id)}
-                    disabled={isProcessing}
-                  >
-                    <Search className="h-4 w-4 mr-1" />
-                    Search Existing
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onSkip(emailTransaction.id)}
-                  disabled={isProcessing}
-                >
-                  <SkipForward className="h-4 w-4 mr-1" />
-                  Skip
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          // No matches
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              No matching transactions found in your records.
-            </p>
-            {!isActioned && (
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => onCreateNew(emailTransaction.id)}
-                  disabled={isProcessing}
-                >
-                  <PlusCircle className="h-4 w-4 mr-1" />
-                  Create Transaction
-                </Button>
-                {onSearchExisting && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onSearchExisting(emailTransaction.id)}
-                    disabled={isProcessing}
-                  >
-                    <Search className="h-4 w-4 mr-1" />
-                    Search Existing
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onSkip(emailTransaction.id)}
-                  disabled={isProcessing}
-                >
-                  <SkipForward className="h-4 w-4 mr-1" />
-                  Skip
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+        <TransactionPreview emailTransaction={emailTransaction} />
       </div>
 
       <EmailViewerModal
@@ -510,126 +304,181 @@ function DetailRow({
   )
 }
 
-function SourceBadges({ transaction }: {
-  transaction: {
-    source_email_transaction_id: string | null
-    source_statement_upload_id: string | null
-  }
-}) {
-  const hasEmail = !!transaction.source_email_transaction_id
-  const hasStatement = !!transaction.source_statement_upload_id
-  if (!hasEmail && !hasStatement) return null
-
-  return (
-    <div className="flex flex-wrap gap-1">
-      {hasEmail && (
-        <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] px-1.5 py-0">
-          Email
-        </Badge>
-      )}
-      {hasStatement && (
-        <Badge variant="secondary" className="bg-slate-100 text-slate-800 border border-slate-200 text-[10px] px-1.5 py-0">
-          Statement
-        </Badge>
-      )}
-    </div>
-  )
-}
-
-function SuggestionCard({
-  suggestion,
-  onLink,
-  disabled,
+/**
+ * Read-only preview of what a transaction would look like if created from this email.
+ * Shows the smart/mapped values: amount, date, vendor mapping, payment method.
+ */
+function TransactionPreview({
+  emailTransaction,
 }: {
-  suggestion: MatchSuggestion
-  onLink: () => void
-  disabled: boolean
+  emailTransaction: EmailTransactionRow
 }) {
-  const tx = suggestion.transaction
-  if (!tx) return null
+  const [vendorName, setVendorName] = React.useState<string | null>(null)
+  const [paymentMethodName, setPaymentMethodName] = React.useState<string | null>(null)
+  const [isLoading, setIsLoading] = React.useState(true)
 
-  const vendorName = (tx.vendors as { name: string } | null)?.name || tx.description || "Unknown"
-  const pmName = (tx.payment_methods as { name: string } | null)?.name
+  React.useEffect(() => {
+    let cancelled = false
+    const supabase = createClient()
+
+    async function loadMappings() {
+      setIsLoading(true)
+
+      try {
+        // Look up vendor name if we have a vendor_id
+        if (emailTransaction.vendor_id) {
+          const { data: vendor } = await supabase
+            .from("vendors")
+            .select("name")
+            .eq("id", emailTransaction.vendor_id)
+            .single()
+          if (!cancelled && vendor) setVendorName(vendor.name)
+        }
+
+        // Look up payment method: card last 4 takes priority, then parser_key
+        if (emailTransaction.payment_card_last_four || emailTransaction.parser_key) {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            const { data: methods } = await supabase
+              .from("payment_methods")
+              .select("id, name, card_last_four")
+              .eq("user_id", user.id)
+            if (!cancelled && methods) {
+              // Try card last four first (most specific)
+              let matched = emailTransaction.payment_card_last_four
+                ? findPaymentMethodByCardLastFour(emailTransaction.payment_card_last_four, methods)
+                : null
+              // Fall back to parser key
+              if (!matched && emailTransaction.parser_key) {
+                matched = findPaymentMethodByParserKey(emailTransaction.parser_key, methods)
+              }
+              if (matched) setPaymentMethodName(matched.name)
+            }
+          }
+        }
+      } catch {
+        // Silently fail — preview is informational only
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    loadMappings()
+    return () => { cancelled = true }
+  }, [emailTransaction.vendor_id, emailTransaction.parser_key, emailTransaction.payment_card_last_four])
+
+  const hasAmount = emailTransaction.amount != null
+  const hasDate = !!emailTransaction.transaction_date
+  const hasVendorRaw = !!emailTransaction.vendor_name_raw
+  const hasDescription = !!emailTransaction.description
+
+  // Nothing extracted at all
+  if (!hasAmount && !hasDate && !hasVendorRaw && !hasDescription) {
+    return (
+      <p className="text-sm text-muted-foreground italic">
+        No transaction data extracted from this email.
+      </p>
+    )
+  }
 
   return (
-    <div className={cn(
-      "border rounded-lg p-3 space-y-2",
-      suggestion.confidence === "HIGH" && "border-green-200 bg-green-50/50",
-      suggestion.confidence === "MEDIUM" && "border-amber-200 bg-amber-50/50",
-      suggestion.confidence === "LOW" && "border-red-200 bg-red-50/50",
-    )}>
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">{vendorName}</span>
-        <ConfidenceIndicator score={suggestion.score} size="sm" showProgressBar={false} />
-      </div>
-      {tx.description && (
-        <p className="text-xs text-muted-foreground">{tx.description}</p>
-      )}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span>{formatAmount(tx.amount, tx.original_currency)}</span>
-        <span>{new Date(tx.transaction_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-        {pmName && <span>{pmName}</span>}
-      </div>
-      <SourceBadges transaction={tx} />
-      {suggestion.reasons.length > 0 && (
-        <p className="text-xs text-muted-foreground">{suggestion.reasons[0]}</p>
-      )}
-      <Button
-        size="sm"
-        variant={suggestion.confidence === "HIGH" ? "default" : "outline"}
-        className={suggestion.confidence === "HIGH" ? "bg-green-600 hover:bg-green-700" : ""}
-        onClick={onLink}
-        disabled={disabled}
-      >
-        <Link2 className="h-3.5 w-3.5 mr-1" />
-        Link
-      </Button>
+    <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
+      {/* Date */}
+      <PreviewRow
+        icon={<Calendar className="h-4 w-4" />}
+        label="Date"
+        value={
+          hasDate
+            ? new Date(emailTransaction.transaction_date!).toLocaleDateString("en-US", {
+                year: "numeric", month: "short", day: "numeric",
+              })
+            : emailTransaction.email_date
+              ? new Date(emailTransaction.email_date).toLocaleDateString("en-US", {
+                  year: "numeric", month: "short", day: "numeric",
+                }) + " (email date)"
+              : "—"
+        }
+      />
+
+      {/* Description */}
+      <PreviewRow
+        icon={<FileText className="h-4 w-4" />}
+        label="Description"
+        value={hasDescription ? emailTransaction.description! : "—"}
+      />
+
+      {/* Vendor mapping */}
+      <PreviewRow
+        icon={<Store className="h-4 w-4" />}
+        label="Vendor"
+        value={
+          <span className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-muted-foreground">{emailTransaction.vendor_name_raw || "—"}</span>
+            {vendorName && (
+              <>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                <Badge variant="outline" className="text-xs font-medium">
+                  {vendorName}
+                </Badge>
+              </>
+            )}
+            {!vendorName && hasVendorRaw && !isLoading && (
+              <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">
+                Unmapped
+              </Badge>
+            )}
+          </span>
+        }
+      />
+
+      {/* Payment method */}
+      <PreviewRow
+        icon={<CreditCard className="h-4 w-4" />}
+        label="Payment"
+        value={
+          paymentMethodName
+            ? paymentMethodName
+            : emailTransaction.payment_card_last_four
+              ? <span className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">
+                    {emailTransaction.payment_card_type || "Card"} •••• {emailTransaction.payment_card_last_four}
+                  </span>
+                  <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">
+                    Unmapped
+                  </Badge>
+                </span>
+              : "—"
+        }
+      />
+
+      {/* Amount */}
+      <PreviewRow
+        icon={<DollarSign className="h-4 w-4" />}
+        label="Amount"
+        value={
+          hasAmount
+            ? formatAmount(emailTransaction.amount, emailTransaction.currency)
+            : "—"
+        }
+      />
     </div>
   )
 }
 
-function LinkedTransactionCard({ transaction }: {
-  transaction: {
-    id: string
-    description: string | null
-    amount: number
-    original_currency: string
-    transaction_date: string
-    vendors: { name: string } | null
-    payment_methods: { name: string } | null
-    source_email_transaction_id?: string | null
-    source_statement_upload_id?: string | null
-  }
+function PreviewRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: React.ReactNode
 }) {
-  const vendorName = (transaction.vendors as { name: string } | null)?.name || transaction.description || "Unknown"
-  const pmName = (transaction.payment_methods as { name: string } | null)?.name
-
   return (
-    <div className="border border-green-200 bg-green-50/50 rounded-lg p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">{vendorName}</span>
-        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 text-xs">
-          Linked
-        </Badge>
-      </div>
-      {transaction.description && (
-        <p className="text-xs text-muted-foreground">{transaction.description}</p>
-      )}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span>{formatAmount(transaction.amount, transaction.original_currency)}</span>
-        <span>{new Date(transaction.transaction_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-        {pmName && <span>{pmName}</span>}
-      </div>
-      <SourceBadges transaction={{
-        source_email_transaction_id: transaction.source_email_transaction_id ?? null,
-        source_statement_upload_id: transaction.source_statement_upload_id ?? null,
-      }} />
-      <Button variant="ghost" size="sm" asChild>
-        <a href={`/transactions/${transaction.id}`}>
-          <ExternalLink className="h-3.5 w-3.5 mr-1" />
-          View Transaction
-        </a>
-      </Button>
+    <div className="flex items-start gap-2 text-sm">
+      <span className="text-muted-foreground mt-0.5">{icon}</span>
+      <span className="text-muted-foreground shrink-0 w-20">{label}</span>
+      <span className="font-medium break-words min-w-0">{value}</span>
     </div>
   )
 }
@@ -686,75 +535,6 @@ function AiReasoningCallout({
       </summary>
       <p className="mt-1 pl-5">{reasoning}</p>
     </details>
-  )
-}
-
-function UserHintInput({
-  emailId,
-  onFeedbackReprocess,
-  isFeedbackProcessing,
-}: {
-  emailId: string
-  onFeedbackReprocess: (emailId: string, userHint: string) => void
-  isFeedbackProcessing?: boolean
-}) {
-  const [feedbackOpen, setFeedbackOpen] = React.useState(false)
-  const [feedbackText, setFeedbackText] = React.useState("")
-
-  const handleSubmit = () => {
-    if (feedbackText.trim()) {
-      onFeedbackReprocess(emailId, feedbackText.trim())
-      setFeedbackOpen(false)
-      setFeedbackText("")
-    }
-  }
-
-  if (!feedbackOpen) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setFeedbackOpen(true)}
-        disabled={isFeedbackProcessing}
-        className="h-7 text-xs"
-      >
-        <Bot className={cn("h-3 w-3 mr-1", isFeedbackProcessing && "animate-spin")} />
-        {isFeedbackProcessing ? "Processing..." : "Message AI"}
-      </Button>
-    )
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      <Input
-        value={feedbackText}
-        onChange={(e) => setFeedbackText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && feedbackText.trim()) handleSubmit()
-          if (e.key === "Escape") {
-            setFeedbackOpen(false)
-            setFeedbackText("")
-          }
-        }}
-        placeholder="e.g. this is a bank transfer for THB 500"
-        className="h-7 text-xs flex-1"
-        autoFocus
-        disabled={isFeedbackProcessing}
-      />
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleSubmit}
-        disabled={!feedbackText.trim() || isFeedbackProcessing}
-        className="h-7 px-2"
-      >
-        {isFeedbackProcessing ? (
-          <Bot className="h-3 w-3 animate-spin" />
-        ) : (
-          <Send className="h-3 w-3" />
-        )}
-      </Button>
-    </div>
   )
 }
 

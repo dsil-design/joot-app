@@ -20,6 +20,9 @@ import {
   Zap,
   Tag,
   Receipt,
+  Mail,
+  Copy,
+  Check,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -27,7 +30,9 @@ import Link from "next/link"
 import { parseImportId } from "@/lib/utils/import-id"
 import { StatementViewerModal } from "@/components/page-specific/statement-viewer-modal"
 import { EmailViewerModal } from "@/components/page-specific/email-viewer-modal"
-import type { MatchCardData } from "./types"
+import { cn } from "@/lib/utils"
+import { getParserTag } from "@/lib/utils/parser-tags"
+import type { MatchCardData, EmailMetadata } from "./types"
 
 /**
  * Build a link to the source page (statement or email) from the queue item ID.
@@ -95,6 +100,127 @@ function SourceLabel({
   )
 }
 
+/**
+ * Email-specific left panel — shows email context fields consistent with Email Hub.
+ */
+function EmailSourcePanel({
+  data,
+  meta,
+  sourceLabel,
+  emailId,
+}: {
+  data: MatchCardData
+  meta: EmailMetadata
+  sourceLabel: React.ReactNode
+  emailId?: string
+}) {
+  const parserTag = getParserTag(meta.fromAddress, meta.parserKey)
+
+  return (
+    <div className="space-y-1.5">
+      {sourceLabel}
+
+      {/* From name + address */}
+      {(meta.fromName || meta.fromAddress) && (
+        <TransactionDetailRow icon={<Mail className="h-3.5 w-3.5" />}>
+          <div className="min-w-0">
+            <span className="font-medium truncate block">
+              {meta.fromName || meta.fromAddress}
+            </span>
+            {meta.fromName && meta.fromAddress && (
+              <span className="text-[11px] text-muted-foreground truncate block">
+                {meta.fromAddress}
+              </span>
+            )}
+          </div>
+          {parserTag && (
+            <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ml-1", parserTag.className)}>
+              {parserTag.label}
+            </span>
+          )}
+        </TransactionDetailRow>
+      )}
+
+      {/* Subject line */}
+      {meta.subject && (
+        <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+          <span className="truncate text-muted-foreground" title={meta.subject}>
+            {meta.subject}
+          </span>
+        </TransactionDetailRow>
+      )}
+
+      {/* Amount */}
+      <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+        <span className="font-medium">
+          {formatMatchAmount(
+            data.statementTransaction.amount,
+            data.statementTransaction.currency
+          )}
+        </span>
+      </TransactionDetailRow>
+
+      {/* Transaction date */}
+      <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+        <span>{formatMatchDate(data.statementTransaction.date)}</span>
+      </TransactionDetailRow>
+
+      {/* Received date (email date) */}
+      {meta.emailDate && (
+        <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+          <span className="text-muted-foreground">
+            {formatMatchDate(meta.emailDate.split("T")[0])}
+            <span className="text-[10px] ml-1">(received)</span>
+          </span>
+        </TransactionDetailRow>
+      )}
+
+      {/* Raw vendor name */}
+      {meta.vendorNameRaw && (
+        <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+          <span className="text-muted-foreground truncate" title={meta.vendorNameRaw}>
+            {meta.vendorNameRaw}
+          </span>
+        </TransactionDetailRow>
+      )}
+
+      {/* Email ID — subtle, with copy button */}
+      {emailId && (
+        <CopyableId id={emailId} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Subtle copyable ID row for traceability.
+ */
+function CopyableId({ id }: { id: string }) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(id)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 pt-1">
+      <span className="text-[10px] text-muted-foreground/50 font-mono truncate">{id}</span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          handleCopy()
+        }}
+        className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-0.5 shrink-0"
+        aria-label="Copy email ID"
+      >
+        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      </button>
+    </div>
+  )
+}
+
 interface MatchCardPanelsProps {
   data: MatchCardData
 }
@@ -159,29 +285,28 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
       <div className="space-y-3">
         {previewModals}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* Left panel: Email data */}
-          <div className="space-y-1.5">
-            <SourceLabel label="From Email" href={getMergedEmailLink(data.id)} onPreview={openEmailPreview} />
-            <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
-              <span>{formatMatchDate(data.mergedEmailData.date)}</span>
-            </TransactionDetailRow>
-            <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
-              <span
-                className="font-medium truncate"
-                title={data.mergedEmailData.description}
-              >
-                {data.mergedEmailData.description}
-              </span>
-            </TransactionDetailRow>
-            <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
-              <span className="font-medium">
-                {formatMatchAmount(
-                  data.mergedEmailData.amount,
-                  data.mergedEmailData.currency
-                )}
-              </span>
-            </TransactionDetailRow>
-          </div>
+          {/* Left panel: Email data — enriched with email metadata */}
+          <EmailSourcePanel
+            data={{
+              ...data,
+              statementTransaction: {
+                ...data.statementTransaction,
+                date: data.mergedEmailData.date,
+                description: data.mergedEmailData.description,
+                amount: data.mergedEmailData.amount,
+                currency: data.mergedEmailData.currency,
+              },
+            }}
+            meta={data.mergedEmailData.metadata}
+            sourceLabel={
+              <SourceLabel
+                label="From Email"
+                href={getMergedEmailLink(data.id)}
+                onPreview={openEmailPreview}
+              />
+            }
+            emailId={parsed?.type === "merged" ? parsed.emailId : undefined}
+          />
 
           {/* Right panel: Statement data */}
           <div className="space-y-1.5 md:border-l md:pl-3">
@@ -287,33 +412,48 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {previewModals}
-      {/* Left panel: Statement data */}
-      <div className="space-y-1.5">
-        <SourceLabel
-          label={isEmail ? "From Email" : "From Statement"}
-          href={getSourceLink(data.id)}
-          onPreview={isEmail ? openEmailPreview : openStatementPreview}
+      {/* Left panel: Email-enriched or statement data */}
+      {isEmail && data.emailMetadata ? (
+        <EmailSourcePanel
+          data={data}
+          meta={data.emailMetadata}
+          sourceLabel={
+            <SourceLabel
+              label="From Email"
+              href={getSourceLink(data.id)}
+              onPreview={openEmailPreview}
+            />
+          }
+          emailId={parsed?.type === "email" ? parsed.emailId : undefined}
         />
-        <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
-          <span>{formatMatchDate(data.statementTransaction.date)}</span>
-        </TransactionDetailRow>
-        <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
-          <span
-            className="font-medium truncate"
-            title={data.statementTransaction.description}
-          >
-            {displayDescription}
-          </span>
-        </TransactionDetailRow>
-        <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
-          <span className="font-medium">
-            {formatMatchAmount(
-              data.statementTransaction.amount,
-              data.statementTransaction.currency
-            )}
-          </span>
-        </TransactionDetailRow>
-      </div>
+      ) : (
+        <div className="space-y-1.5">
+          <SourceLabel
+            label="From Statement"
+            href={getSourceLink(data.id)}
+            onPreview={openStatementPreview}
+          />
+          <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+            <span>{formatMatchDate(data.statementTransaction.date)}</span>
+          </TransactionDetailRow>
+          <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+            <span
+              className="font-medium truncate"
+              title={data.statementTransaction.description}
+            >
+              {displayDescription}
+            </span>
+          </TransactionDetailRow>
+          <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+            <span className="font-medium">
+              {formatMatchAmount(
+                data.statementTransaction.amount,
+                data.statementTransaction.currency
+              )}
+            </span>
+          </TransactionDetailRow>
+        </div>
+      )}
 
       {/* Right panel: Matched transaction data */}
       {data.matchedTransaction && !data.isNew && (
@@ -410,6 +550,32 @@ function ProposalPanel({
         <Zap className="h-3 w-3 text-purple-500" aria-hidden="true" />
       </p>
 
+      {/* Type */}
+      {proposal.transactionType && (
+        <TransactionDetailRow icon={<Receipt className="h-3.5 w-3.5" />}>
+          <span className="capitalize">{proposal.transactionType.value}</span>
+        </TransactionDetailRow>
+      )}
+
+      {/* Description */}
+      {proposal.description && (
+        <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+          <span className="truncate" title={proposal.description.value}>
+            {proposal.description.value}
+          </span>
+          <ConfidenceDot confidence={proposal.description.confidence} />
+        </TransactionDetailRow>
+      )}
+
+      {/* Amount */}
+      {proposal.amount && proposal.currency && (
+        <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+          <span className="font-medium">
+            {formatMatchAmount(proposal.amount.value, proposal.currency.value)}
+          </span>
+        </TransactionDetailRow>
+      )}
+
       {/* Date */}
       {proposal.date && (
         <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
@@ -428,15 +594,6 @@ function ProposalPanel({
         </TransactionDetailRow>
       )}
 
-      {/* Amount */}
-      {proposal.amount && proposal.currency && (
-        <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
-          <span className="font-medium">
-            {formatMatchAmount(proposal.amount.value, proposal.currency.value)}
-          </span>
-        </TransactionDetailRow>
-      )}
-
       {/* Payment Method */}
       {proposal.paymentMethod && (
         <TransactionDetailRow icon={<CreditCard className="h-3.5 w-3.5" />}>
@@ -445,31 +602,28 @@ function ProposalPanel({
         </TransactionDetailRow>
       )}
 
-      {/* Tags */}
-      {proposal.tags && proposal.tags.value.length > 0 && (
-        <TransactionDetailRow icon={<Tag className="h-3.5 w-3.5" />}>
-          <div className="flex flex-col gap-0.5">
-            {proposal.tags.value.slice(0, 3).map((tag) => (
-              <Badge key={tag.id} variant="secondary" className="text-[10px] px-1.5 py-0 h-4 w-fit">
-                {tag.name}
-              </Badge>
-            ))}
-            {proposal.tags.value.length > 3 && (
-              <span className="text-[10px] text-muted-foreground">
-                +{proposal.tags.value.length - 3} more
-              </span>
-            )}
-          </div>
-          <ConfidenceDot confidence={proposal.tags.confidence} />
-        </TransactionDetailRow>
-      )}
-
-      {/* Transaction Type */}
-      {proposal.transactionType && (
-        <TransactionDetailRow icon={<Receipt className="h-3.5 w-3.5" />}>
-          <span className="capitalize">{proposal.transactionType.value}</span>
-        </TransactionDetailRow>
-      )}
+      {/* Tags — always shown, em dash if empty */}
+      <TransactionDetailRow icon={<Tag className="h-3.5 w-3.5" />}>
+        {proposal.tags && proposal.tags.value.length > 0 ? (
+          <>
+            <div className="flex flex-col gap-0.5">
+              {proposal.tags.value.slice(0, 3).map((tag) => (
+                <Badge key={tag.id} variant="secondary" className="text-[10px] px-1.5 py-0 h-4 w-fit">
+                  {tag.name}
+                </Badge>
+              ))}
+              {proposal.tags.value.length > 3 && (
+                <span className="text-[10px] text-muted-foreground">
+                  +{proposal.tags.value.length - 3} more
+                </span>
+              )}
+            </div>
+            <ConfidenceDot confidence={proposal.tags.confidence} />
+          </>
+        ) : (
+          <span className="text-muted-foreground">&mdash;</span>
+        )}
+      </TransactionDetailRow>
     </div>
   )
 }

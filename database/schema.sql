@@ -68,6 +68,7 @@ CREATE TABLE public.payment_methods (
   sort_order INTEGER NOT NULL DEFAULT 0,
   preferred_currency TEXT REFERENCES public.currency_configuration(currency_code),
   billing_cycle_start_day INTEGER DEFAULT NULL CHECK (billing_cycle_start_day BETWEEN 1 AND 28),
+  card_last_four TEXT DEFAULT NULL CHECK (card_last_four IS NULL OR card_last_four ~ '^\d{4}$'),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(name, user_id)
@@ -643,6 +644,8 @@ CREATE TABLE public.email_transactions (
   transaction_date DATE,
   description TEXT,
   order_id TEXT,  -- Order/transaction ID extracted from email
+  payment_card_last_four TEXT DEFAULT NULL CHECK (payment_card_last_four IS NULL OR payment_card_last_four ~ '^\d{4}$'),
+  payment_card_type TEXT DEFAULT NULL,  -- Card type from receipt (e.g., 'Visa', 'Mastercard')
 
   -- Match information
   matched_transaction_id UUID REFERENCES public.transactions(id) ON DELETE SET NULL,
@@ -707,6 +710,27 @@ CREATE TABLE public.email_transactions (
   UNIQUE(user_id, message_id)
 );
 
+-- Reset email_transaction status when its link to a transaction is cleared
+-- (e.g. transaction deleted or manually unlinked)
+CREATE OR REPLACE FUNCTION public.reset_email_transaction_on_unlink()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.matched_transaction_id IS NOT NULL AND NEW.matched_transaction_id IS NULL THEN
+    NEW.status := 'pending_review';
+    NEW.match_method := NULL;
+    NEW.match_confidence := NULL;
+    NEW.matched_at := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_reset_email_transaction_on_unlink
+  BEFORE UPDATE OF matched_transaction_id
+  ON public.email_transactions
+  FOR EACH ROW
+  EXECUTE FUNCTION public.reset_email_transaction_on_unlink();
+
 -- Add FK from email_groups back to email_transactions
 ALTER TABLE public.email_groups
   ADD CONSTRAINT email_groups_primary_email_fkey
@@ -724,7 +748,8 @@ CREATE TABLE public.ai_feedback (
     'extraction_correction',
     'undo_skip',
     'skip_reason',
-    'proposal_correction'
+    'proposal_correction',
+    'proposal_rejection'
   )),
   original_ai_classification TEXT,
   original_ai_suggested_skip BOOLEAN,
@@ -1294,6 +1319,8 @@ SELECT
   et.transaction_date,
   et.description,
   et.order_id,
+  et.payment_card_last_four,
+  et.payment_card_type,
   et.matched_transaction_id,
   et.match_confidence,
   et.match_method,

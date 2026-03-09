@@ -73,6 +73,7 @@ export const AI_FEEDBACK_TYPE = {
   EXTRACTION_CORRECTION: 'extraction_correction',
   UNDO_SKIP: 'undo_skip',
   SKIP_REASON: 'skip_reason',
+  PROPOSAL_REJECTION: 'proposal_rejection',
 } as const;
 
 export type AiFeedbackType = typeof AI_FEEDBACK_TYPE[keyof typeof AI_FEEDBACK_TYPE];

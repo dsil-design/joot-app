@@ -24,6 +24,8 @@ export interface EmailTransactionRow {
   transaction_date: string | null
   description: string | null
   order_id: string | null
+  payment_card_last_four: string | null
+  payment_card_type: string | null
   matched_transaction_id: string | null
   match_confidence: number | null
   match_method: string | null

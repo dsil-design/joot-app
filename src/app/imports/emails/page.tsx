@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button"
 import { LoadMoreTrigger } from "@/hooks/use-infinite-scroll"
 import { useEmailHubFilters, type EmailHubStatus } from "@/hooks/use-email-hub-filters"
 import { useEmailHubStats } from "@/hooks/use-email-hub-stats"
-import { useEmailTransactions, fetchAllFilteredIds, type EmailTransactionRow } from "@/hooks/use-email-transactions"
+import { useEmailTransactions, fetchAllFilteredIds } from "@/hooks/use-email-transactions"
 import { useEmailSync } from "@/hooks/use-email-sync"
 import { useEmailHubActions } from "@/hooks/use-email-hub-actions"
-import { useCreateAndLink } from "@/hooks/use-create-and-link"
 import { EmailHubFilterBar } from "@/components/page-specific/email-hub-filter-bar"
 import { EmailHubStatsBar } from "@/components/page-specific/email-hub-stats-bar"
 import {
@@ -17,14 +16,6 @@ import {
 } from "@/components/page-specific/email-transaction-card"
 import { EmailDetailPanel } from "@/components/page-specific/email-detail-panel"
 import { EmailBatchToolbar } from "@/components/page-specific/email-batch-toolbar"
-import {
-  LinkToExistingDialog,
-  type LinkSourceItem,
-} from "@/components/page-specific/link-to-existing-dialog"
-import {
-  CreateFromImportDialog,
-  type CreateFromImportData,
-} from "@/components/page-specific/create-from-import-dialog"
 import { RefreshCw, Mail, Inbox, AlertCircle, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
@@ -62,16 +53,8 @@ export default function EmailHubPage() {
   const [isAllSelected, setIsAllSelected] = React.useState(false)
   const [isSelectingAll, setIsSelectingAll] = React.useState(false)
 
-  // Dialog states
-  const [linkDialogOpen, setLinkDialogOpen] = React.useState(false)
-  const [linkingItemId, setLinkingItemId] = React.useState<string | null>(null)
-  const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
-  const [createDialogData, setCreateDialogData] = React.useState<CreateFromImportData | null>(null)
-
   // Actions hook
   const {
-    skip,
-    linkToTransaction,
     batchSkip,
     batchMarkPending,
     batchProcess,
@@ -95,13 +78,6 @@ export default function EmailHubPage() {
     onItemUpdate: (id, data) => {
       updateItemByKey(id, (item) => ({ ...item, ...data }))
     },
-  })
-
-  // Create + link hook
-  const { createAndLink } = useCreateAndLink(async (compositeId, txId) => {
-    const emailId = compositeId.replace("email:", "")
-    await linkToTransaction(emailId, txId)
-    refetchStats()
   })
 
   // Handle sync (IMAP fetch only, no AI)
@@ -163,74 +139,23 @@ export default function EmailHubPage() {
     }
   }
 
-  // Handle link action from detail panel
-  const handleLink = (emailId: string, txId: string) => {
-    linkToTransaction(emailId, txId).then(() => refetchStats())
-  }
-
-  // Handle "Search Existing" from detail panel - opens search dialog
-  const handleSearchExisting = (emailId: string) => {
-    setLinkingItemId(emailId)
-    setLinkDialogOpen(true)
-  }
-
-  // Handle link dialog confirmation (supports multiple transaction IDs)
-  const handleLinkConfirm = async (transactionIds: string[]) => {
-    if (!linkingItemId) return
-    for (const txId of transactionIds) {
-      await linkToTransaction(linkingItemId, txId)
-    }
-    setLinkDialogOpen(false)
-    setLinkingItemId(null)
-    refetchStats()
-  }
-
-  // Handle create new from email
-  const handleCreateNew = (emailId: string) => {
-    const item = items.find((i) => i.id === emailId)
-    if (!item) return
-    setCreateDialogData({
-      compositeId: `email:${emailId}`,
-      description: item.description || item.subject || "",
-      amount: item.amount || 0,
-      currency: item.currency || "USD",
-      date: item.transaction_date || new Date().toISOString().split("T")[0],
-      smartHints: {
-        vendorId: item.vendor_id || undefined,
-        vendorNameRaw: item.vendor_name_raw || undefined,
-        parserKey: item.parser_key || undefined,
-        description: item.description || undefined,
-        extractionConfidence: item.extraction_confidence || undefined,
-      },
-    })
-    setCreateDialogOpen(true)
-  }
-
-  // Handle create+link confirmation
-  const handleCreateConfirm = createAndLink
-
   // Handle process (extract) for unprocessed emails
   const handleProcess = (emailId: string) => {
     processEmail(emailId).then(() => refetchStats())
   }
 
-  // Handle feedback reprocess with user hint
+  // Handle feedback reprocess (Message AI)
   const handleFeedbackReprocess = (emailId: string, userHint: string) => {
     const item = items.find((i) => i.id === emailId)
     if (!item) return
     processWithFeedback(emailId, {
-      emailTransactionId: item.email_transaction_id || item.id,
-      originalClassification: item.ai_classification || item.classification || null,
-      originalSkip: item.ai_suggested_skip ?? null,
-      subject: item.subject || null,
-      fromAddress: item.from_address || null,
+      emailTransactionId: item.email_transaction_id || emailId,
+      originalClassification: item.ai_classification,
+      originalSkip: item.ai_suggested_skip,
+      subject: item.subject,
+      fromAddress: item.from_address,
       userHint,
     }).then(() => refetchStats())
-  }
-
-  // Handle skip
-  const handleSkip = (emailId: string) => {
-    skip(emailId).then(() => refetchStats())
   }
 
   // Handle batch operations (chunking handled inside the hooks)
@@ -258,20 +183,6 @@ export default function EmailHubPage() {
     refetchStats()
   }
 
-  // Get linking item for dialog
-  const linkingItem: LinkSourceItem | null = React.useMemo(() => {
-    if (!linkingItemId) return null
-    const item = items.find((i) => i.id === linkingItemId)
-    if (!item) return null
-    return {
-      id: item.id,
-      description: item.description || item.subject || "",
-      amount: item.amount || 0,
-      currency: item.currency || "USD",
-      date: item.transaction_date || "",
-    }
-  }, [linkingItemId, items])
-
   // Format last sync time
   const lastSyncTime = stats?.sync?.last_sync_at
   const syncTimeDisplay = lastSyncTime ? formatRelativeTime(lastSyncTime) : "Never"
@@ -281,7 +192,7 @@ export default function EmailHubPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Email Receipts</h2>
+          <h2 className="text-2xl font-bold">Email Hub</h2>
           <p className="text-sm text-muted-foreground">
             Last sync: {syncTimeDisplay}
           </p>
@@ -404,15 +315,9 @@ export default function EmailHubPage() {
             >
               <EmailDetailPanel
                 emailTransaction={item}
-                onLink={handleLink}
-                onCreateNew={handleCreateNew}
-                onSkip={handleSkip}
-                onSearchExisting={handleSearchExisting}
                 onProcess={handleProcess}
-                onFeedbackReprocess={handleFeedbackReprocess}
                 isProcessing={isProcessing(item.id)}
                 isProcessingExtraction={isExtracting(item.id)}
-                isFeedbackProcessing={isFeedbackProcessing(item.id)}
               />
             </EmailTransactionCard>
           ))
@@ -449,27 +354,6 @@ export default function EmailHubPage() {
         <div ref={loadMoreRef} />
       </div>
 
-      {/* Link to existing dialog */}
-      <LinkToExistingDialog
-        open={linkDialogOpen}
-        onOpenChange={(open) => {
-          setLinkDialogOpen(open)
-          if (!open) setLinkingItemId(null)
-        }}
-        item={linkingItem}
-        onConfirm={handleLinkConfirm}
-      />
-
-      {/* Create from import dialog */}
-      <CreateFromImportDialog
-        open={createDialogOpen}
-        onOpenChange={(open) => {
-          setCreateDialogOpen(open)
-          if (!open) setCreateDialogData(null)
-        }}
-        data={createDialogData}
-        onConfirm={handleCreateConfirm}
-      />
     </div>
   )
 }

@@ -6,15 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmailDetailPanel } from "@/components/page-specific/email-detail-panel"
 import { useEmailHubActions } from "@/hooks/use-email-hub-actions"
-import { useCreateAndLink } from "@/hooks/use-create-and-link"
-import {
-  CreateFromImportDialog,
-  type CreateFromImportData,
-} from "@/components/page-specific/create-from-import-dialog"
-import {
-  LinkToExistingDialog,
-  type LinkSourceItem,
-} from "@/components/page-specific/link-to-existing-dialog"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { ArrowLeft } from "lucide-react"
 
@@ -30,21 +21,11 @@ export default function EmailDetailPage({
   const [error, setError] = React.useState<string | null>(null)
   const [resolvedId, setResolvedId] = React.useState<string | null>(null)
 
-  // Dialogs
-  const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
-  const [createDialogData, setCreateDialogData] = React.useState<CreateFromImportData | null>(null)
-  const [linkDialogOpen, setLinkDialogOpen] = React.useState(false)
-
   // Actions
-  const { skip, linkToTransaction, processEmail, isProcessing, isExtracting } = useEmailHubActions({
+  const { processEmail, isProcessing, isExtracting } = useEmailHubActions({
     onItemUpdate: (_id, data) => {
       setEmailTx((prev) => prev ? { ...prev, ...data } as EmailTransactionRow : prev)
     },
-  })
-  const { createAndLink } = useCreateAndLink(async (compositeId, txId) => {
-    const emailId = compositeId.replace("email:", "")
-    await linkToTransaction(emailId, txId)
-    router.push(backUrl)
   })
 
   // Resolve params
@@ -79,61 +60,6 @@ export default function EmailDetailPage({
     return params ? `/imports/emails?${params}` : "/imports/emails"
   }, [searchParams])
 
-  const handleLink = async (emailId: string, txId: string) => {
-    await linkToTransaction(emailId, txId)
-    router.push(backUrl)
-  }
-
-  const handleCreateNew = (emailId: string) => {
-    if (!emailTx) return
-    setCreateDialogData({
-      compositeId: `email:${emailId}`,
-      description: emailTx.description || emailTx.subject || "",
-      amount: emailTx.amount || 0,
-      currency: emailTx.currency || "USD",
-      date: emailTx.transaction_date || new Date().toISOString().split("T")[0],
-      smartHints: {
-        vendorId: emailTx.vendor_id || undefined,
-        vendorNameRaw: emailTx.vendor_name_raw || undefined,
-        parserKey: emailTx.parser_key || undefined,
-        description: emailTx.description || undefined,
-        extractionConfidence: emailTx.extraction_confidence || undefined,
-      },
-    })
-    setCreateDialogOpen(true)
-  }
-
-  const handleCreateConfirm = createAndLink
-
-  const handleSearchExisting = (_emailId: string) => {
-    setLinkDialogOpen(true)
-  }
-
-  const handleLinkConfirm = async (transactionIds: string[]) => {
-    if (!emailTx) return
-    for (const txId of transactionIds) {
-      await linkToTransaction(emailTx.id, txId)
-    }
-    setLinkDialogOpen(false)
-    router.push(backUrl)
-  }
-
-  const linkingItem: LinkSourceItem | null = React.useMemo(() => {
-    if (!emailTx) return null
-    return {
-      id: emailTx.id,
-      description: emailTx.description || emailTx.subject || "",
-      amount: emailTx.amount || 0,
-      currency: emailTx.currency || "USD",
-      date: emailTx.transaction_date || "",
-    }
-  }, [emailTx])
-
-  const handleSkip = async (emailId: string) => {
-    await skip(emailId)
-    router.push(backUrl)
-  }
-
   return (
     <div className="space-y-6">
       {/* Back button */}
@@ -155,10 +81,6 @@ export default function EmailDetailPage({
       ) : emailTx ? (
         <EmailDetailPanel
           emailTransaction={emailTx}
-          onLink={handleLink}
-          onCreateNew={handleCreateNew}
-          onSkip={handleSkip}
-          onSearchExisting={handleSearchExisting}
           onProcess={(emailId) => processEmail(emailId)}
           isProcessing={isProcessing(emailTx.id)}
           isProcessingExtraction={isExtracting(emailTx.id)}
@@ -168,25 +90,6 @@ export default function EmailDetailPage({
           <p className="text-muted-foreground">Email transaction not found</p>
         </div>
       )}
-
-      {/* Create dialog */}
-      <CreateFromImportDialog
-        open={createDialogOpen}
-        onOpenChange={(open) => {
-          setCreateDialogOpen(open)
-          if (!open) setCreateDialogData(null)
-        }}
-        data={createDialogData}
-        onConfirm={handleCreateConfirm}
-      />
-
-      {/* Link to existing dialog */}
-      <LinkToExistingDialog
-        open={linkDialogOpen}
-        onOpenChange={setLinkDialogOpen}
-        item={linkingItem}
-        onConfirm={handleLinkConfirm}
-      />
     </div>
   )
 }

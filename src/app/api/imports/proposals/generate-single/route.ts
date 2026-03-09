@@ -82,10 +82,14 @@ export async function POST(request: NextRequest) {
       paymentMethodId: targetItem.paymentMethod?.id,
       paymentMethodName: targetItem.paymentMethod?.name,
       // Email-specific fields for proposal engine
+      fromAddress: emailMeta?.fromAddress,
+      fromName: emailMeta?.fromName,
       vendorId: emailMeta?.vendorId,
       parserKey: emailMeta?.parserKey,
       classification: emailMeta?.classification,
       extractionConfidence: emailMeta?.extractionConfidence,
+      paymentCardLastFour: emailMeta?.paymentCardLastFour,
+      paymentCardType: emailMeta?.paymentCardType,
     }
 
     // Generate proposal directly (not through batch function, for better error reporting)

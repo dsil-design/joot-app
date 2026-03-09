@@ -44,7 +44,7 @@ export default function StatementsPage() {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Statements</h2>
+        <h2 className="text-lg font-semibold">Statements Hub</h2>
         <Button size="sm" onClick={() => setUploadOpen(true)}>
           <Upload className="h-4 w-4 mr-2" />
           Upload Statement

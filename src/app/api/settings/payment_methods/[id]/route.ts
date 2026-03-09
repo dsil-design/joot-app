@@ -17,7 +17,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { name, preferred_currency, billing_cycle_start_day } = body
+    const { name, preferred_currency, billing_cycle_start_day, card_last_four } = body
 
     // Verify ownership
     const { data: paymentMethod } = await supabase
@@ -75,6 +75,16 @@ export async function PATCH(
       } else {
         updateData.billing_cycle_start_day = null
       }
+    }
+
+    if (card_last_four !== undefined) {
+      if (card_last_four && !/^\d{4}$/.test(card_last_four)) {
+        return NextResponse.json(
+          { error: 'card_last_four must be exactly 4 digits' },
+          { status: 400 }
+        )
+      }
+      updateData.card_last_four = card_last_four || null
     }
 
     if (Object.keys(updateData).length === 0) {

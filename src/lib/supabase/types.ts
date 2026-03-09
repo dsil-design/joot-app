@@ -113,7 +113,7 @@ export type Database = {
           email_body_preview: string | null
           email_from: string | null
           email_subject: string | null
-          email_transaction_id: string
+          email_transaction_id: string | null
           feedback_type: string
           id: string
           original_ai_classification: string | null
@@ -127,7 +127,7 @@ export type Database = {
           email_body_preview?: string | null
           email_from?: string | null
           email_subject?: string | null
-          email_transaction_id: string
+          email_transaction_id?: string | null
           feedback_type: string
           id?: string
           original_ai_classification?: string | null
@@ -141,7 +141,7 @@ export type Database = {
           email_body_preview?: string | null
           email_from?: string | null
           email_subject?: string | null
-          email_transaction_id?: string
+          email_transaction_id?: string | null
           feedback_type?: string
           id?: string
           original_ai_classification?: string | null
@@ -516,6 +516,8 @@ export type Database = {
           message_id: string
           order_id: string | null
           parser_key: string | null
+          payment_card_last_four: string | null
+          payment_card_type: string | null
           processed_at: string | null
           seen: boolean | null
           status: string
@@ -554,6 +556,8 @@ export type Database = {
           message_id: string
           order_id?: string | null
           parser_key?: string | null
+          payment_card_last_four?: string | null
+          payment_card_type?: string | null
           processed_at?: string | null
           seen?: boolean | null
           status?: string
@@ -592,6 +596,8 @@ export type Database = {
           message_id?: string
           order_id?: string | null
           parser_key?: string | null
+          payment_card_last_four?: string | null
+          payment_card_type?: string | null
           processed_at?: string | null
           seen?: boolean | null
           status?: string
@@ -807,6 +813,7 @@ export type Database = {
       payment_methods: {
         Row: {
           billing_cycle_start_day: number | null
+          card_last_four: string | null
           created_at: string | null
           id: string
           name: string
@@ -818,6 +825,7 @@ export type Database = {
         }
         Insert: {
           billing_cycle_start_day?: number | null
+          card_last_four?: string | null
           created_at?: string | null
           id?: string
           name: string
@@ -829,6 +837,7 @@ export type Database = {
         }
         Update: {
           billing_cycle_start_day?: number | null
+          card_last_four?: string | null
           created_at?: string | null
           id?: string
           name?: string
@@ -1370,6 +1379,162 @@ export type Database = {
           },
         ]
       }
+      transaction_proposals: {
+        Row: {
+          accepted_at: string | null
+          composite_id: string
+          created_at: string
+          created_transaction_id: string | null
+          email_transaction_id: string | null
+          engine: string
+          field_confidence: Json
+          generation_duration_ms: number | null
+          id: string
+          llm_model: string | null
+          llm_prompt_tokens: number | null
+          llm_response_tokens: number | null
+          overall_confidence: number
+          proposed_amount: number | null
+          proposed_currency: Database["public"]["Enums"]["currency_type"] | null
+          proposed_date: string | null
+          proposed_description: string | null
+          proposed_payment_method_id: string | null
+          proposed_tag_ids: string[] | null
+          proposed_transaction_type:
+            | Database["public"]["Enums"]["transaction_type"]
+            | null
+          proposed_vendor_id: string | null
+          proposed_vendor_name_suggestion: string | null
+          source_type: string
+          statement_upload_id: string | null
+          status: string
+          suggestion_index: number | null
+          updated_at: string
+          user_id: string
+          user_modifications: Json | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          composite_id: string
+          created_at?: string
+          created_transaction_id?: string | null
+          email_transaction_id?: string | null
+          engine: string
+          field_confidence?: Json
+          generation_duration_ms?: number | null
+          id?: string
+          llm_model?: string | null
+          llm_prompt_tokens?: number | null
+          llm_response_tokens?: number | null
+          overall_confidence?: number
+          proposed_amount?: number | null
+          proposed_currency?:
+            | Database["public"]["Enums"]["currency_type"]
+            | null
+          proposed_date?: string | null
+          proposed_description?: string | null
+          proposed_payment_method_id?: string | null
+          proposed_tag_ids?: string[] | null
+          proposed_transaction_type?:
+            | Database["public"]["Enums"]["transaction_type"]
+            | null
+          proposed_vendor_id?: string | null
+          proposed_vendor_name_suggestion?: string | null
+          source_type: string
+          statement_upload_id?: string | null
+          status?: string
+          suggestion_index?: number | null
+          updated_at?: string
+          user_id: string
+          user_modifications?: Json | null
+        }
+        Update: {
+          accepted_at?: string | null
+          composite_id?: string
+          created_at?: string
+          created_transaction_id?: string | null
+          email_transaction_id?: string | null
+          engine?: string
+          field_confidence?: Json
+          generation_duration_ms?: number | null
+          id?: string
+          llm_model?: string | null
+          llm_prompt_tokens?: number | null
+          llm_response_tokens?: number | null
+          overall_confidence?: number
+          proposed_amount?: number | null
+          proposed_currency?:
+            | Database["public"]["Enums"]["currency_type"]
+            | null
+          proposed_date?: string | null
+          proposed_description?: string | null
+          proposed_payment_method_id?: string | null
+          proposed_tag_ids?: string[] | null
+          proposed_transaction_type?:
+            | Database["public"]["Enums"]["transaction_type"]
+            | null
+          proposed_vendor_id?: string | null
+          proposed_vendor_name_suggestion?: string | null
+          source_type?: string
+          statement_upload_id?: string | null
+          status?: string
+          suggestion_index?: number | null
+          updated_at?: string
+          user_id?: string
+          user_modifications?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_proposals_created_transaction_id_fkey"
+            columns: ["created_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_proposals_email_transaction_id_fkey"
+            columns: ["email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_hub_unified"
+            referencedColumns: ["email_transaction_id"]
+          },
+          {
+            foreignKeyName: "transaction_proposals_email_transaction_id_fkey"
+            columns: ["email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_proposals_proposed_payment_method_id_fkey"
+            columns: ["proposed_payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_proposals_proposed_vendor_id_fkey"
+            columns: ["proposed_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_proposals_statement_upload_id_fkey"
+            columns: ["statement_upload_id"]
+            isOneToOne: false
+            referencedRelation: "statement_uploads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_proposals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transaction_tags: {
         Row: {
           created_at: string | null
@@ -1671,6 +1836,8 @@ export type Database = {
           message_id: string | null
           order_id: string | null
           parser_key: string | null
+          payment_card_last_four: string | null
+          payment_card_type: string | null
           processed_at: string | null
           seen: boolean | null
           status: string | null

@@ -63,6 +63,7 @@ interface PaymentMethod {
   transactionCount: number
   sort_order: number
   preferred_currency?: string | null
+  card_last_four?: string | null
 }
 
 interface PaymentMethodsSettingsProps {
@@ -127,6 +128,9 @@ function SortableItem({ item, index, totalItems, onRename, onMerge, onDelete, on
           {item.name}
           {item.preferred_currency && (
             <span className="text-zinc-500 font-normal"> ({item.preferred_currency})</span>
+          )}
+          {item.card_last_four && (
+            <span className="text-zinc-400 font-normal"> •••• {item.card_last_four}</span>
           )}
         </span>
         <span className="text-xs text-zinc-500">
@@ -209,6 +213,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
   const [selectedItem, setSelectedItem] = useState<PaymentMethod | null>(null)
   const [inputValue, setInputValue] = useState('')
   const [preferredCurrency, setPreferredCurrency] = useState<string>('')
+  const [cardLastFour, setCardLastFour] = useState<string>('')
   const [mergeTargetId, setMergeTargetId] = useState<string>('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<PaymentMethod | null>(null)
@@ -225,6 +230,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
     setDialogMode('create')
     setInputValue('')
     setPreferredCurrency('')
+    setCardLastFour('')
     setDialogOpen(true)
   }
 
@@ -233,6 +239,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
     setSelectedItem(item)
     setInputValue(item.name)
     setPreferredCurrency(item.preferred_currency || '')
+    setCardLastFour(item.card_last_four || '')
     setDialogOpen(true)
   }
 
@@ -348,6 +355,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
           body: JSON.stringify({
             name: inputValue.trim(),
             preferred_currency: preferredCurrency || null,
+            card_last_four: cardLastFour.trim() || null,
           }),
         })
 
@@ -364,6 +372,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
           body: JSON.stringify({
             name: inputValue.trim(),
             preferred_currency: preferredCurrency || null,
+            card_last_four: cardLastFour.trim() || null,
           }),
         })
 
@@ -393,6 +402,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
       setSelectedItem(null)
       setInputValue('')
       setPreferredCurrency('')
+      setCardLastFour('')
       setMergeTargetId('')
       router.refresh()
     } catch (error) {
@@ -481,6 +491,29 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
                     onChange={(e) => setInputValue(e.target.value)}
                     placeholder="Enter payment method name"
                   />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="card-last-four">
+                    Card Last 4 Digits (Optional)
+                  </Label>
+                  <Input
+                    id="card-last-four"
+                    value={cardLastFour}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 4)
+                      setCardLastFour(val)
+                    }}
+                    placeholder="e.g. 0005"
+                    maxLength={4}
+                    inputMode="numeric"
+                  />
+                  <div className="flex items-start gap-2 mt-1">
+                    <Info className="h-3.5 w-3.5 text-zinc-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-xs text-zinc-500 leading-relaxed">
+                      Used to auto-match this payment method from email receipts that show card digits
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-2">

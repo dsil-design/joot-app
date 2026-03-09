@@ -132,6 +132,30 @@ export interface ProposalGenerateResponse {
   durationMs: number
 }
 
+// ── Past corrections (feedback learning) ─────────────────────────────────
+
+export interface PastCorrection {
+  /** Which field was corrected */
+  field: 'vendor_id' | 'description' | 'tag_ids' | 'payment_method_id' | 'transaction_type'
+  /** Matching context: email sender address */
+  fromAddress?: string
+  /** Matching context: email sender name */
+  fromName?: string
+  /** Matching context: parser key */
+  parserKey?: string
+  /** Original import description (for similarity matching) */
+  sourceDescription: string
+  /** What the system proposed */
+  originalValue: unknown
+  /** What the user corrected to */
+  correctedValue: unknown
+  /** Resolved vendor name (when field is vendor_id) */
+  originalVendorName?: string
+  correctedVendorName?: string
+  /** When the correction was made */
+  correctedAt: string
+}
+
 // ── Rule engine context ──────────────────────────────────────────────────
 
 export interface VendorRecord {
@@ -145,6 +169,7 @@ export interface PaymentMethodRecord {
   name: string
   type?: string
   preferredCurrency?: string
+  cardLastFour?: string | null
 }
 
 export interface TagRecord {
@@ -190,6 +215,7 @@ export interface RuleEngineContext {
   recentTransactions: RecentTransaction[]
   vendorTagFrequency: VendorTagFrequency[]
   vendorDescriptionPatterns: VendorDescriptionPattern[]
+  pastCorrections: PastCorrection[]
   statementPaymentMethodId?: string
   statementPaymentMethodName?: string
 }
@@ -210,11 +236,15 @@ export interface ProposalInput {
   date: string
 
   // Email-specific
+  fromAddress?: string
+  fromName?: string
   vendorId?: string
   vendorNameRaw?: string
   parserKey?: string
   classification?: string
   extractionConfidence?: number
+  paymentCardLastFour?: string
+  paymentCardType?: string
 
   // Statement-specific
   paymentMethodId?: string

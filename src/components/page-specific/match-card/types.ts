@@ -17,7 +17,8 @@ export type MatchCardVariant =
 export type ImportSource = "statement" | "email" | "merged"
 
 /**
- * Email metadata for email-sourced queue items
+ * Email metadata for email-sourced queue items.
+ * Mirrors the queue-types EmailMetadata so all API fields are available.
  */
 export interface EmailMetadata {
   subject?: string
@@ -26,6 +27,12 @@ export interface EmailMetadata {
   classification?: string
   orderId?: string
   emailDate?: string
+  vendorId?: string
+  parserKey?: string
+  extractionConfidence?: number
+  paymentCardLastFour?: string
+  paymentCardType?: string
+  vendorNameRaw?: string
 }
 
 /**

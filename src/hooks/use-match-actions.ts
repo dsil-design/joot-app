@@ -50,6 +50,12 @@ export interface UseMatchActionsOptions {
    * @default false
    */
   createTransactionsOnApprove?: boolean
+
+  /**
+   * Callback after a successful reject — used to show the feedback toast.
+   * Receives the rejected IDs and an undo function.
+   */
+  onRejectSuccess?: (ids: string[], undo: () => void) => void
 }
 
 /**
@@ -65,6 +71,7 @@ export function useMatchActions({
   onItemRemove,
   undoDuration = 5000,
   createTransactionsOnApprove = false,
+  onRejectSuccess,
 }: UseMatchActionsOptions = {}) {
   const [state, setState] = React.useState<MatchActionState>({
     isLoading: false,
@@ -200,14 +207,19 @@ export function useMatchActions({
             timeoutId,
           })
 
-          toast.success("Match skipped", {
-            description: reason || "Transaction will not be imported.",
-            action: {
-              label: "Undo",
-              onClick: () => undoAction(id),
-            },
-            duration: undoDuration,
-          })
+          // If onRejectSuccess is provided, delegate toast to the caller (for feedback UI)
+          if (onRejectSuccess) {
+            onRejectSuccess([id], () => undoAction(id))
+          } else {
+            toast.success("Match skipped", {
+              description: reason || "Transaction will not be imported.",
+              action: {
+                label: "Undo",
+                onClick: () => undoAction(id),
+              },
+              duration: undoDuration,
+            })
+          }
         }
 
         return true
@@ -227,7 +239,7 @@ export function useMatchActions({
         return false
       }
     },
-    [clearPendingUndo, onItemRemove, onStatusChange, undoDuration]
+    [clearPendingUndo, onItemRemove, onRejectSuccess, onStatusChange, undoDuration]
   )
 
   /**
@@ -323,7 +335,7 @@ export function useMatchActions({
    * Link a match to an existing transaction
    */
   const linkToExisting = React.useCallback(
-    async (id: string, transactionId: string) => {
+    async (id: string, transactionId: string, options?: { silent?: boolean }) => {
       setState({ isLoading: true, processingId: id, error: null })
 
       // Optimistic update
@@ -343,9 +355,11 @@ export function useMatchActions({
 
         setState({ isLoading: false, processingId: null, error: null })
 
-        toast.success("Linked to existing transaction", {
-          description: "Statement entry linked successfully.",
-        })
+        if (!options?.silent) {
+          toast.success("Linked to existing transaction", {
+            description: "Statement entry linked successfully.",
+          })
+        }
 
         // Remove after short delay
         setTimeout(() => {
@@ -403,9 +417,16 @@ export function useMatchActions({
           ids.forEach((id) => onItemRemove?.(id))
         }, 1000)
 
-        toast.success(`${result.results.rejected} matches skipped`, {
-          description: reason || "Transactions will not be imported",
-        })
+        // If onRejectSuccess is provided, delegate toast to the caller (for feedback UI)
+        if (onRejectSuccess) {
+          onRejectSuccess(ids, () => {
+            // For batch, undo not supported — noop
+          })
+        } else {
+          toast.success(`${result.results.rejected} matches skipped`, {
+            description: reason || "Transactions will not be imported",
+          })
+        }
 
         return result
       } catch (error) {
@@ -424,7 +445,7 @@ export function useMatchActions({
         return null
       }
     },
-    [onItemRemove, onStatusChange]
+    [onItemRemove, onRejectSuccess, onStatusChange]
   )
 
   // Cleanup pending undos on unmount
