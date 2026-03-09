@@ -95,6 +95,7 @@ export interface MatchCardData {
   crossCurrencyInfo?: CrossCurrencyInfo
   proposal?: TransactionProposal
   proposalModified?: boolean
+  waitingForStatement?: boolean
 }
 
 /**

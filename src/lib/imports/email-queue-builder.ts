@@ -86,6 +86,7 @@ export async function fetchEmailQueueItems(
 
   for (const row of emailRows) {
     let queueStatus: 'pending' | 'approved' | 'rejected'
+    const isWaitingForStatement = row.status === 'waiting_for_statement'
     switch (row.status) {
       case 'matched':
       case 'imported':
@@ -144,6 +145,7 @@ export async function fetchEmailQueueItems(
       reasons: [],
       isNew,
       status: queueStatus,
+      waitingForStatement: isWaitingForStatement || undefined,
       source: 'email',
       emailMetadata: {
         subject: row.subject ?? undefined,

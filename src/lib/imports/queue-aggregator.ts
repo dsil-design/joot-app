@@ -10,7 +10,11 @@ export async function aggregateQueueItems(
   filters: QueueFilters
 ): Promise<{ items: QueueItem[]; stats: QueueStats; hasMore: boolean; total: number; page: number; limit: number }> {
   const page = Math.max(1, parseInt(String(filters.statusFilter === 'page' ? '1' : '1'), 10))
-  const allItems = [...statementItems, ...emailItems]
+
+  // Separate waiting-for-statement items — they get their own section
+  const waitingItems = emailItems.filter(item => item.waitingForStatement)
+  const activeEmailItems = emailItems.filter(item => !item.waitingForStatement)
+  const allItems = [...statementItems, ...activeEmailItems]
 
   // Cross-source pairing
   if (filters.sourceFilter === 'all' || filters.sourceFilter === 'merged') {
@@ -181,7 +185,11 @@ export async function aggregateQueueItems(
     lowConfidence: filteredItems.filter(item => item.confidenceLevel === 'low' || item.confidenceLevel === 'none').length,
     thisWeekCount: filteredItems.filter(item => item.statementTransaction.date >= oneWeekAgoStr).length,
     resolvedCount: filteredItems.filter(item => item.status === 'approved' || item.status === 'rejected').length,
+    waitingForStatementCount: waitingItems.length,
   }
 
-  return { items: filteredItems, stats, hasMore: false, total: filteredItems.length, page: 1, limit: filteredItems.length }
+  // Append waiting-for-statement items at the end (they render in their own collapsed section)
+  const allOutput = [...filteredItems, ...waitingItems]
+
+  return { items: allOutput, stats, hasMore: false, total: filteredItems.length, page: 1, limit: allOutput.length }
 }

@@ -59,6 +59,7 @@ export interface QueueItem {
   reasons: string[]
   isNew: boolean
   status: 'pending' | 'approved' | 'rejected'
+  waitingForStatement?: boolean
   source: ImportSource
   emailMetadata?: EmailMetadata
   mergedEmailData?: MergedEmailData
@@ -96,4 +97,5 @@ export interface QueueStats {
   lowConfidence: number
   thisWeekCount: number
   resolvedCount: number
+  waitingForStatementCount: number
 }

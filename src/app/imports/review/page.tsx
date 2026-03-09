@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { StatCard } from "@/components/ui/stat-card"
 import {
@@ -50,6 +51,8 @@ import {
   CalendarDays,
   RefreshCw,
   Zap,
+  Hourglass,
+  ChevronDown,
 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -63,6 +66,7 @@ interface QueueStats {
   lowConfidence: number
   thisWeekCount?: number
   resolvedCount?: number
+  waitingForStatementCount?: number
 }
 
 async function fetchMatches(
@@ -122,6 +126,7 @@ async function fetchMatches(
       mergedEmailData?: MergedEmailData
       crossCurrencyInfo?: CrossCurrencyInfo
       proposal?: TransactionProposal
+      waitingForStatement?: boolean
     }) => ({
       id: item.id,
       statementTransaction: item.statementTransaction,
@@ -139,6 +144,7 @@ async function fetchMatches(
       mergedEmailData: item.mergedEmailData,
       crossCurrencyInfo: item.crossCurrencyInfo,
       proposal: item.proposal,
+      waitingForStatement: item.waitingForStatement,
     }))
 
     return {
@@ -161,6 +167,7 @@ async function fetchMatches(
         lowConfidence: 0,
         thisWeekCount: 0,
         resolvedCount: 0,
+        waitingForStatementCount: 0,
       },
     }
   }
@@ -175,6 +182,7 @@ export default function ReviewQueuePage() {
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [createDialogData, setCreateDialogData] = React.useState<CreateFromImportData | null>(null)
   const [isRematching, setIsRematching] = React.useState(false)
+  const [waitingSectionOpen, setWaitingSectionOpen] = React.useState(false)
   const [stats, setStats] = React.useState<QueueStats>({
     total: 0,
     pending: 0,
@@ -183,6 +191,7 @@ export default function ReviewQueuePage() {
     lowConfidence: 0,
     thisWeekCount: 0,
     resolvedCount: 0,
+    waitingForStatementCount: 0,
   })
 
   const {
@@ -423,9 +432,11 @@ export default function ReviewQueuePage() {
     }
   }, [linkingItemId, items])
 
-  // Split items into matches and new transactions
-  const matchItems = items.filter((item) => !item.isNew)
-  const newItems = items.filter((item) => item.isNew)
+  // Split items into matches, new transactions, and waiting-for-statement
+  const waitingItems = items.filter((item) => item.waitingForStatement)
+  const activeItems = items.filter((item) => !item.waitingForStatement)
+  const matchItems = activeItems.filter((item) => !item.isNew)
+  const newItems = activeItems.filter((item) => item.isNew)
 
   // High-confidence items for batch approve (matches section only)
   const highConfidenceItems = matchItems.filter(
@@ -595,7 +606,7 @@ export default function ReviewQueuePage() {
             <MatchCardSkeleton />
             <MatchCardSkeleton />
           </>
-        ) : items.length === 0 ? (
+        ) : activeItems.length === 0 && waitingItems.length === 0 ? (
           <div className="text-center py-16">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-medium mb-2">No matches to review</h3>
@@ -655,6 +666,38 @@ export default function ReviewQueuePage() {
                   )}
                 </div>
                 {newItems.map(renderMatchCard)}
+              </div>
+            )}
+
+            {/* Waiting for Statement section — collapsed by default */}
+            {waitingItems.length > 0 && (
+              <div className="border border-dashed border-muted-foreground/25 rounded-lg">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/50 rounded-lg transition-colors"
+                  onClick={() => setWaitingSectionOpen(!waitingSectionOpen)}
+                >
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Hourglass className="h-4 w-4" />
+                    <span className="font-medium">
+                      Waiting for Statement ({waitingItems.length})
+                    </span>
+                    <span className="text-xs">
+                      — Email receipts awaiting credit card statement
+                    </span>
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform",
+                      waitingSectionOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+                {waitingSectionOpen && (
+                  <div className="px-4 pb-4 space-y-4">
+                    {waitingItems.map(renderMatchCard)}
+                  </div>
+                )}
               </div>
             )}
           </>
