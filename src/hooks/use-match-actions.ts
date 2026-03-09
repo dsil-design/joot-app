@@ -173,17 +173,24 @@ export function useMatchActions({
    * Reject a match
    */
   const reject = React.useCallback(
-    async (id: string, reason?: string, options?: { skipUndo?: boolean }) => {
+    async (id: string, reason?: string, options?: { skipUndo?: boolean; nextStatus?: string }) => {
       setState({ isLoading: true, processingId: id, error: null })
 
       // Optimistic update
       onStatusChange?.(id, "rejected")
 
       try {
+        // Default to pending_review so sources stay in the pipeline even if
+        // the user dismisses the feedback toast without submitting.
+        // The feedback toast can upgrade this to 'skipped' or 'waiting_for_statement'.
         const response = await fetch("/api/imports/reject", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ emailId: id, reason }),
+          body: JSON.stringify({
+            emailId: id,
+            reason,
+            nextStatus: options?.nextStatus || "pending_review",
+          }),
         })
 
         if (!response.ok) {
@@ -195,24 +202,36 @@ export function useMatchActions({
 
         // Show undo toast unless skipped
         if (!options?.skipUndo) {
-          const timeoutId = setTimeout(() => {
-            clearPendingUndo(id)
-            onItemRemove?.(id)
-          }, undoDuration)
-
-          pendingUndosRef.current.set(id, {
-            id,
-            action: "reject",
-            previousStatus: "pending",
-            timeoutId,
-          })
-
-          // If onRejectSuccess is provided, delegate toast to the caller (for feedback UI)
+          // If onRejectSuccess is provided, delegate toast to the caller (for feedback UI).
+          // Don't auto-remove — the feedback toast determines what happens next
+          // (re-queue keeps it, dismiss removes it).
           if (onRejectSuccess) {
+            pendingUndosRef.current.set(id, {
+              id,
+              action: "reject",
+              previousStatus: "pending",
+              timeoutId: setTimeout(() => {
+                clearPendingUndo(id)
+                // When toast times out without feedback, revert to pending (item stays in pipeline)
+                onStatusChange?.(id, "pending")
+              }, undoDuration + 15000), // longer window since feedback toast is 20s
+            })
             onRejectSuccess([id], () => undoAction(id))
           } else {
-            toast.success("Match skipped", {
-              description: reason || "Transaction will not be imported.",
+            const timeoutId = setTimeout(() => {
+              clearPendingUndo(id)
+              onItemRemove?.(id)
+            }, undoDuration)
+
+            pendingUndosRef.current.set(id, {
+              id,
+              action: "reject",
+              previousStatus: "pending",
+              timeoutId,
+            })
+
+            toast.success("Proposal rejected", {
+              description: reason || "Proposal has been rejected.",
               action: {
                 label: "Undo",
                 onClick: () => undoAction(id),
@@ -232,7 +251,7 @@ export function useMatchActions({
 
         setState({ isLoading: false, processingId: null, error: errorMessage })
 
-        toast.error("Failed to skip", {
+        toast.error("Failed to reject", {
           description: errorMessage,
         })
 
@@ -400,7 +419,7 @@ export function useMatchActions({
         const response = await fetch("/api/imports/reject", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ emailIds: ids, reason }),
+          body: JSON.stringify({ emailIds: ids, reason, nextStatus: "pending_review" }),
         })
 
         if (!response.ok) {
@@ -423,8 +442,8 @@ export function useMatchActions({
             // For batch, undo not supported — noop
           })
         } else {
-          toast.success(`${result.results.rejected} matches skipped`, {
-            description: reason || "Transactions will not be imported",
+          toast.success(`${result.results.rejected} proposals rejected`, {
+            description: reason || "Proposals have been rejected",
           })
         }
 
@@ -438,7 +457,7 @@ export function useMatchActions({
 
         setState({ isLoading: false, processingId: null, error: errorMessage })
 
-        toast.error("Failed to skip", {
+        toast.error("Failed to reject", {
           description: errorMessage,
         })
 

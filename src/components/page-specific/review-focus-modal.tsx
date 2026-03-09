@@ -928,7 +928,7 @@ export function ReviewFocusModal({
     }
   }
 
-  const handleSkip = () => {
+  const handleReject = () => {
     if (!item) return
     onReject(item.id)
   }
@@ -1258,12 +1258,12 @@ export function ReviewFocusModal({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={handleSkip}
+                    onClick={handleReject}
                     disabled={isSaving || isProcessing(item.id)}
                     className="text-muted-foreground"
                   >
                     <Ban className="h-3.5 w-3.5 mr-1.5" />
-                    Skip
+                    Reject
                   </Button>
                   <div className="flex-1" />
                   <Button

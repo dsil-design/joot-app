@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
       emailId?: string
       emailIds?: string[]
       reason?: string
+      nextStatus?: 'pending_review' | 'waiting_for_statement' | 'skipped'
     }
 
     try {
@@ -63,7 +64,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { emailId, emailIds, reason } = body
+    const { emailId, emailIds, reason, nextStatus } = body
+
+    // Validate nextStatus if provided
+    const validStatuses = ['pending_review', 'waiting_for_statement', 'skipped'] as const
+    if (nextStatus && !validStatuses.includes(nextStatus)) {
+      return NextResponse.json(
+        { error: `nextStatus must be one of: ${validStatuses.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    const effectiveStatus = nextStatus || 'skipped'
 
     // Support both single and batch rejection
     const idsToReject: string[] = emailIds || (emailId ? [emailId] : [])
@@ -175,7 +187,7 @@ export async function POST(request: NextRequest) {
               continue
             }
 
-            suggestion.status = 'rejected'
+            suggestion.status = effectiveStatus === 'pending_review' ? 'pending' : 'rejected'
             hasChanges = true
             results.rejected++
           }
@@ -203,7 +215,7 @@ export async function POST(request: NextRequest) {
     if (emailItemIds.length > 0) {
       const { data: updated, error: emailUpdateError } = await serviceClient
         .from('email_transactions')
-        .update({ status: 'skipped' })
+        .update({ status: effectiveStatus })
         .in('id', emailItemIds)
         .eq('user_id', user.id)
         .select('id')
@@ -229,6 +241,7 @@ export async function POST(request: NextRequest) {
         metadata: {
           compositeIds: idsToReject,
           reason,
+          nextStatus: effectiveStatus,
           results,
         },
       })

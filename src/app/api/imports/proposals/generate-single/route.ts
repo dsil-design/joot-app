@@ -92,6 +92,22 @@ export async function POST(request: NextRequest) {
       paymentCardType: emailMeta?.paymentCardType,
     }
 
+    // Fetch prior rejection feedback for this item (stored in ai_feedback with compositeId in email_subject)
+    const { data: priorFeedback } = await supabase
+      .from('ai_feedback')
+      .select('email_body_preview')
+      .eq('user_id', user.id)
+      .eq('feedback_type', 'proposal_rejection')
+      .eq('email_subject', compositeId)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (priorFeedback && priorFeedback.length > 0) {
+      proposalInput.rejectionFeedback = priorFeedback
+        .map((f) => f.email_body_preview)
+        .filter((p): p is string => !!p)
+    }
+
     // Generate proposal directly (not through batch function, for better error reporting)
     const context: RuleEngineContext = {
       ...await prefetchRuleEngineContext(supabase, user.id),

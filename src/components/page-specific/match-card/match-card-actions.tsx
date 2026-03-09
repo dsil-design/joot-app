@@ -67,7 +67,7 @@ const LINK: ActionDescriptor = {
 
 const SKIP: ActionDescriptor = {
   id: "skip",
-  label: "Skip",
+  label: "Reject",
   icon: <X className="h-4 w-4" />,
   buttonVariant: "ghost",
   callbackKey: "onReject",
@@ -204,7 +204,7 @@ export function MatchCardActions({
             disabled={loading}
           >
             <X className="h-4 w-4" />
-            Skip
+            Reject
           </Button>
           {callbacks.onRefreshProposal && (
             <Button
@@ -271,7 +271,7 @@ export function MatchCardActions({
             disabled={loading}
           >
             <X className="h-4 w-4" />
-            Skip
+            Reject
           </Button>
         </>
       )
@@ -368,7 +368,7 @@ export function MatchCardActions({
     return (
       <span className="flex items-center gap-1 text-sm text-gray-500">
         <X className="h-4 w-4" />
-        Skipped
+        Rejected
       </span>
     )
   }

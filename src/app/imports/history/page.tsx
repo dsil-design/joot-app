@@ -1,10 +1,30 @@
-import { Card, CardContent } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
+'use client'
+
+import { Inbox } from 'lucide-react'
+import {
+  ActivityFeedItem,
+  ActivityFeedItemSkeleton,
+  getActivityFeedItemType,
+  getActivityIcon,
+} from '@/components/page-specific/activity-feed-item'
+import { useRecentActivities } from '@/hooks/use-recent-activities'
+import { format, isToday, isYesterday } from 'date-fns'
+
+function formatActivityTimestamp(dateStr: string | null): string {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (isToday(date)) return `Today, ${format(date, 'h:mm a')}`
+  if (isYesterday(date)) return `Yesterday, ${format(date, 'h:mm a')}`
+  const daysDiff = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
+  if (daysDiff < 7) return format(date, "EEE, h:mm a")
+  return format(date, "MMM d, h:mm a")
+}
 
 export default function ImportHistoryPage() {
+  const { activities, isLoading, error } = useRecentActivities(50)
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Page Header */}
       <div>
         <h2 className="text-2xl font-medium">Import History</h2>
         <p className="text-muted-foreground mt-1">
@@ -12,41 +32,47 @@ export default function ImportHistoryPage() {
         </p>
       </div>
 
-      {/* Filter Bar - Placeholder */}
-      <div className="flex items-center gap-4">
-        <Skeleton className="h-10 w-40" />
-        <Skeleton className="h-10 w-40" />
-        <Skeleton className="h-10 flex-1 max-w-sm" />
-      </div>
-
-      {/* Activity Timeline - Placeholder */}
-      <div className="space-y-1">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <div key={i} className="flex gap-4 py-3 border-b last:border-0">
-            {/* Timeline indicator */}
-            <div className="flex flex-col items-center">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              {i < 8 && <div className="w-px h-full bg-border mt-2" />}
-            </div>
-
-            {/* Activity content */}
-            <div className="flex-1 pb-2">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <Skeleton className="h-5 w-64 mb-2" />
-                  <Skeleton className="h-4 w-48" />
-                </div>
-                <Skeleton className="h-4 w-24" />
-              </div>
-            </div>
+      {isLoading ? (
+        <div className="space-y-6">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ActivityFeedItemSkeleton key={i} />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="text-center py-12">
+          <p className="text-sm text-muted-foreground">
+            Failed to load import history
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{error}</p>
+        </div>
+      ) : activities.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
+            <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
           </div>
-        ))}
-      </div>
-
-      {/* Load More - Placeholder */}
-      <div className="flex justify-center">
-        <Skeleton className="h-10 w-32" />
-      </div>
+          <h3 className="text-sm font-medium mb-1">No import history</h3>
+          <p className="text-sm text-muted-foreground max-w-[250px]">
+            Sync your emails or upload a statement to get started.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {activities.map((activity) => (
+            <ActivityFeedItem
+              key={activity.id}
+              type={getActivityFeedItemType(activity.activity_type)}
+              title={activity.description}
+              icon={getActivityIcon(activity.activity_type)}
+              timestamp={formatActivityTimestamp(activity.created_at)}
+              metadata={{
+                transactionsAffected: activity.transactions_affected ?? undefined,
+                totalAmount: activity.total_amount ?? undefined,
+                currency: activity.currency ?? undefined,
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

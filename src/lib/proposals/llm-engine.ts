@@ -60,7 +60,7 @@ export async function generateLLMProposal(
   // Find relevant past corrections for this item
   const relevantCorrections = findRelevantCorrections(item, context.pastCorrections)
 
-  const prompt = buildPrompt(item, similarTxns, topVendors, context.paymentMethods, topTags, context.vendorDescriptionPatterns, relevantCorrections)
+  const prompt = buildPrompt(item, similarTxns, topVendors, context.paymentMethods, topTags, context.vendorDescriptionPatterns, relevantCorrections, item.rejectionFeedback)
 
   const { data, tokenUsage } = await callAi<LLMProposalResponse>(prompt)
 
@@ -163,7 +163,8 @@ function buildPrompt(
   paymentMethods: Array<{ id: string; name: string }>,
   tags: Array<{ id: string; name: string }>,
   vendorDescriptionPatterns?: Array<{ vendorId: string; vendorName: string; description: string; count: number; frequency: number }>,
-  pastCorrections?: PastCorrection[]
+  pastCorrections?: PastCorrection[],
+  rejectionFeedback?: string[]
 ): string {
   const parts: string[] = []
 
@@ -220,6 +221,17 @@ function buildPrompt(
         parts.push(`- Corrected payment method for "${c.sourceDescription}": ${c.correctedValue}`)
       }
     }
+  }
+
+  // Prior rejection feedback — the user rejected previous proposals for this item
+  if (rejectionFeedback && rejectionFeedback.length > 0) {
+    parts.push('')
+    parts.push(`## IMPORTANT: Prior Rejection Feedback for This Item`)
+    parts.push(`The user previously rejected proposals for this exact item. You MUST address these issues:`)
+    for (const fb of rejectionFeedback) {
+      parts.push(`- ${fb}`)
+    }
+    parts.push(`Carefully re-examine the import data and adjust your proposal to fix the problems described above.`)
   }
 
   parts.push('')

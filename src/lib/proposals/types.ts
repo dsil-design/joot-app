@@ -249,4 +249,7 @@ export interface ProposalInput {
   // Statement-specific
   paymentMethodId?: string
   paymentMethodName?: string
+
+  // Prior rejection feedback (for re-queued items)
+  rejectionFeedback?: string[]
 }

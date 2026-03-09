@@ -31,8 +31,10 @@ export async function generateHybridProposal(
 
   // Step 2: Check if LLM is needed
   const avgKeyConfidence = calculateKeyFieldAverage(ruleResult.fieldConfidence)
+  const hasRejectionFeedback = item.rejectionFeedback && item.rejectionFeedback.length > 0
 
-  if (avgKeyConfidence >= LLM_CONFIDENCE_THRESHOLD || !isAiAvailable()) {
+  // Force LLM when the user rejected a previous proposal — the rule engine alone wasn't good enough
+  if (avgKeyConfidence >= LLM_CONFIDENCE_THRESHOLD && !hasRejectionFeedback || !isAiAvailable()) {
     return ruleResult
   }
 

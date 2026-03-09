@@ -230,35 +230,8 @@ export default function ReviewQueuePage() {
     keyExtractor: (item) => item.id,
   })
 
-  // Reject feedback: submit reason to ai_feedback table
-  const submitRejectFeedback = React.useCallback(
-    async (compositeIds: string[], reason: string) => {
-      // Find context from the first item for richer feedback
-      const firstItem = items.find((i) => compositeIds.includes(i.id))
-      try {
-        await fetch("/api/imports/reject/feedback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            compositeIds,
-            reason,
-            context: firstItem
-              ? {
-                  description: firstItem.statementTransaction.description,
-                  amount: firstItem.statementTransaction.amount,
-                  currency: firstItem.statementTransaction.currency,
-                  confidence: firstItem.confidence,
-                  vendor: firstItem.matchedTransaction?.vendor_name,
-                }
-              : undefined,
-          }),
-        })
-      } catch (e) {
-        console.error("Failed to submit rejection feedback:", e)
-      }
-    },
-    [items]
-  )
+  // submitRejectFeedback is defined below (after handleRefreshProposal) — use a ref to avoid circular deps
+  const submitRejectFeedbackRef = React.useRef<(ids: string[], reason: string, nextStatus: string) => void>(() => {})
 
   const {
     approve,
@@ -287,15 +260,27 @@ export default function ReviewQueuePage() {
           <RejectFeedbackToast
             compositeIds={ids}
             count={ids.length}
-            onSubmitFeedback={submitRejectFeedback}
+            onSubmitFeedback={(cIds, reason, nextStatus) =>
+              submitRejectFeedbackRef.current(cIds, reason, nextStatus)
+            }
             onUndo={() => {
               undo()
               toast.dismiss(t)
             }}
-            onDismiss={() => toast.dismiss(t)}
+            onDismiss={() => {
+              // No feedback given — item stays in pipeline as pending_review
+              // Revert the optimistic "rejected" status back to "pending"
+              for (const id of ids) {
+                updateItemByKey(id, (item) => ({
+                  ...item,
+                  status: "pending" as const,
+                }))
+              }
+              toast.dismiss(t)
+            }}
           />
         ),
-        { duration: 15000 }
+        { duration: 20000 }
       )
     },
   })
@@ -424,6 +409,71 @@ export default function ReviewQueuePage() {
       })
     }
   }
+
+  // Reject feedback: submit reason to ai_feedback table, then optionally re-propose
+  const submitRejectFeedback = React.useCallback(
+    async (compositeIds: string[], reason: string, nextStatus: string) => {
+      const firstItem = items.find((i) => compositeIds.includes(i.id))
+      try {
+        // Save feedback
+        await fetch("/api/imports/reject/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            compositeIds,
+            reason,
+            context: firstItem
+              ? {
+                  description: firstItem.statementTransaction.description,
+                  amount: firstItem.statementTransaction.amount,
+                  currency: firstItem.statementTransaction.currency,
+                  confidence: firstItem.confidence,
+                  vendor: firstItem.matchedTransaction?.vendor_name,
+                }
+              : undefined,
+          }),
+        })
+
+        // Update status if not already skipped (the initial reject call set it to 'skipped')
+        if (nextStatus !== "skipped") {
+          await fetch("/api/imports/reject", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              emailIds: compositeIds,
+              reason,
+              nextStatus,
+            }),
+          })
+        }
+
+        // Handle next status
+        if (nextStatus === "pending_review") {
+          // Re-queue: restore to pending and regenerate proposal with feedback
+          for (const id of compositeIds) {
+            updateItemByKey(id, (item) => ({
+              ...item,
+              status: "pending" as const,
+            }))
+            await handleRefreshProposal(id)
+          }
+        } else {
+          // "waiting_for_statement" or "skipped" — remove from active queue
+          for (const id of compositeIds) {
+            removeItemByKey(id)
+          }
+        }
+      } catch (e) {
+        console.error("Failed to submit rejection feedback:", e)
+      }
+    },
+    [items, updateItemByKey, removeItemByKey, handleRefreshProposal]
+  )
+
+  // Keep the ref in sync
+  React.useEffect(() => {
+    submitRejectFeedbackRef.current = submitRejectFeedback
+  }, [submitRejectFeedback])
 
   const handleQuickCreate = async (id: string) => {
     const item = items.find((i) => i.id === id)
