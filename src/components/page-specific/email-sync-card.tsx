@@ -127,7 +127,7 @@ export function EmailSyncCard({
               onClick={onSyncNow}
               disabled={isSyncing}
               className="shrink-0"
-              aria-label={isSyncing ? 'Syncing emails...' : 'Sync emails now'}
+              aria-label={isSyncing ? 'Fetching emails...' : 'Fetch new emails'}
             >
               <RefreshCw
                 className={cn(
@@ -136,7 +136,7 @@ export function EmailSyncCard({
                 )}
                 aria-hidden="true"
               />
-              {isSyncing ? 'Syncing...' : 'Sync Now'}
+              {isSyncing ? 'Fetching...' : 'Fetch New'}
             </Button>
           </div>
         )}

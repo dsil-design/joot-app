@@ -41,7 +41,7 @@ export function EmailHubStatsBar({
           </div>
           <Progress value={extractionPercent} className="h-2" />
           <p className="text-xs text-amber-700 dark:text-amber-300">
-            {unprocessedForBanner.toLocaleString()} emails still need extraction. Each sync processes more emails automatically.
+            {unprocessedForBanner.toLocaleString()} emails still need extraction. Use &apos;Process All&apos; to extract data with AI.
           </p>
         </div>
       )}

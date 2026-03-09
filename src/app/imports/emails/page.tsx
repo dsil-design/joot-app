@@ -108,7 +108,7 @@ export default function EmailHubPage() {
   const handleSyncNow = async () => {
     const result = await triggerSync()
     if (result?.success) {
-      toast.success(`Synced ${result.synced} email(s)`, {
+      toast.success(`Fetched ${result.synced} new email(s)`, {
         description: result.synced > 0 ? "Use 'Process' to extract data with AI." : undefined,
       })
       refresh()
@@ -298,7 +298,7 @@ export default function EmailHubPage() {
             ) : (
               <Mail className="h-4 w-4 mr-2" />
             )}
-            Sync Emails
+            Fetch New
           </Button>
           <Button
             variant="default"
@@ -380,12 +380,12 @@ export default function EmailHubPage() {
             <h3 className="text-lg font-medium mb-2">
               {filters.status !== "all" || filters.classification !== "all" || filters.search
                 ? "No matching emails"
-                : "No emails synced yet"}
+                : "No emails fetched yet"}
             </h3>
             <p className="text-muted-foreground mb-4">
               {filters.status !== "all" || filters.classification !== "all" || filters.search
                 ? "Try adjusting your filters to see more results."
-                : "Click 'Sync Emails' to fetch from IMAP, then 'Process All' to extract data."}
+                : "Click 'Fetch New' to pull emails from IMAP, then 'Process All' to extract data."}
             </p>
           </div>
         ) : (

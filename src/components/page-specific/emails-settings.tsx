@@ -66,7 +66,7 @@ export function EmailsSettings({
       }
 
       if (data.success) {
-        toast.success(`Synced ${data.synced} emails`)
+        toast.success(`Fetched ${data.synced} new email(s)`)
         setLastSyncAt(new Date().toISOString())
         router.refresh()
       } else {
@@ -176,7 +176,7 @@ export function EmailsSettings({
               size="sm"
             >
               <RefreshCw className={cn("h-4 w-4 mr-2", isSyncing && "animate-spin")} />
-              {isSyncing ? 'Syncing...' : 'Sync Now'}
+              {isSyncing ? 'Fetching...' : 'Fetch New'}
             </Button>
           </div>
         </CardHeader>
@@ -232,8 +232,8 @@ export function EmailsSettings({
           {emails.length === 0 ? (
             <div className="text-center py-8 text-zinc-500">
               <Mail className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No emails synced yet</p>
-              <p className="text-sm">Click &quot;Sync Now&quot; to fetch emails from iCloud</p>
+              <p>No emails fetched yet</p>
+              <p className="text-sm">Click &quot;Fetch New&quot; to pull emails from iCloud</p>
             </div>
           ) : (
             <div className="space-y-2">
