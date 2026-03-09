@@ -16,7 +16,6 @@ import { format, parseISO } from "date-fns"
 import { formatInTimeZone } from "date-fns-tz"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MainLayout } from "@/components/layouts/MainLayout"
 import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
 import { formatCurrency } from "@/lib/utils"
 import { EmailSourceCard } from "@/components/page-specific/email-source-card"
@@ -436,8 +435,7 @@ export default function ViewTransactionPage() {
   }
 
   return (
-    <MainLayout showSidebar={true} showMobileNav={false}>
-      <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
+    <div className="flex flex-col gap-6 w-full">
         <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
           <Button
             onClick={handleBackClick}
@@ -516,7 +514,6 @@ export default function ViewTransactionPage() {
           <TransactionId id={transaction.id} />
           <div className="h-10 shrink-0 w-full" />
         </div>
-      </div>
-    </MainLayout>
+    </div>
   )
 }

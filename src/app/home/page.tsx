@@ -1,8 +1,8 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
-import { MainNavigation } from '@/components/page-specific/main-navigation'
+import { PageShell } from '@/components/page-specific/page-shell'
+import { PageHeader } from '@/components/page-specific/page-header'
 import { MobileFab } from '@/components/page-specific/mobile-fab'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -60,51 +60,32 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const userProfile = await UserProfileSection({ userId })
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Sidebar Navigation - Renders immediately */}
-      <SidebarNavigation
-        user={{
-          fullName: userProfile.fullName,
-          email: userProfile.userEmail,
-          initials: userProfile.userInitials
-        }}
-      />
-
-      {/* Main Content Area with sidebar offset */}
-      <main className="lg:ml-[240px]">
-        {/* Error message for unauthorized access */}
-        {resolvedSearchParams?.error && (
-          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
-            <Card className="bg-destructive/10 border-destructive text-destructive p-4 shadow-lg max-w-md">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">
-                  {resolvedSearchParams.error === 'unauthorized' || resolvedSearchParams.error === 'auth_error'
-                    ? 'Access denied. Admin privileges required.'
-                    : resolvedSearchParams.error}
-                </span>
-                <Button variant="ghost" size="sm" className="h-auto p-1 text-destructive hover:text-destructive/80">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {/* Main scrollable content */}
-        <div className="flex flex-col gap-6 pb-12 pt-6 md:pt-12 px-6 md:px-10">
-          {/* Header with Navigation - Renders immediately */}
-          <div className="flex flex-col gap-4 w-full">
-            <div className="flex items-center justify-between w-full">
-              <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
-                Home
-              </h1>
-              <HomePageClientWrapper />
+    <PageShell
+      user={{
+        fullName: userProfile.fullName,
+        email: userProfile.userEmail,
+        initials: userProfile.userInitials
+      }}
+    >
+      {/* Error message for unauthorized access */}
+      {resolvedSearchParams?.error && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+          <Card className="bg-destructive/10 border-destructive text-destructive p-4 shadow-lg max-w-md">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                {resolvedSearchParams.error === 'unauthorized' || resolvedSearchParams.error === 'auth_error'
+                  ? 'Access denied. Admin privileges required.'
+                  : resolvedSearchParams.error}
+              </span>
+              <Button variant="ghost" size="sm" className="h-auto p-1 text-destructive hover:text-destructive/80">
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            {/* Navigation Bar - Mobile/Tablet only */}
-            <div className="lg:hidden">
-              <MainNavigation />
-            </div>
-          </div>
+          </Card>
+        </div>
+      )}
+
+      <PageHeader title="Home" actions={<HomePageClientWrapper />} />
 
           {/* Main Content with Progressive Loading */}
           <div className="flex flex-col gap-4 w-full">
@@ -155,13 +136,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </Suspense>
             </div>
           </div>
-        </div>
-      </main>
 
       {/* Mobile FAB - always visible on mobile for adding transactions */}
       <div className="md:hidden">
         <MobileFab />
       </div>
-    </div>
+    </PageShell>
   )
 }

@@ -53,7 +53,7 @@ export function CoverageCell({ month, cell, onMissingClick }: CoverageCellProps)
       case 'pending_review':
         return (
           <Link
-            href={`/imports/review?statementUploadId=${cell.statementId}`}
+            href={`/review?statementUploadId=${cell.statementId}`}
             className={cn(
               'flex items-center justify-center w-11 h-11 rounded-lg',
               'bg-amber-100 border border-amber-300 text-amber-700',

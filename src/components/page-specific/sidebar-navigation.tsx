@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Receipt, Import, MessageCircle, Settings, LogOut } from 'lucide-react'
+import { Home, Receipt, Import, Brain, ClipboardCheck, Settings, LogOut } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -29,19 +29,24 @@ const navigationItems = [
     icon: Home,
   },
   {
-    name: 'All Transactions',
+    name: 'Transactions',
     href: '/transactions',
     icon: Receipt,
   },
   {
-    name: 'Imports',
+    name: 'Review Queue',
+    href: '/review',
+    icon: ClipboardCheck,
+  },
+  {
+    name: 'Sources',
     href: '/imports',
     icon: Import,
   },
   {
-    name: 'Chat',
-    href: '/chat',
-    icon: MessageCircle,
+    name: 'AI',
+    href: '/ai',
+    icon: Brain,
   },
 ]
 

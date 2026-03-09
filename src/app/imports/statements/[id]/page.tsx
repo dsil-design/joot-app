@@ -635,7 +635,7 @@ export default function StatementDetailPage() {
                   asChild
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  <Link href={`/imports/review?statementUploadId=${statementId}`}>
+                  <Link href={`/review?statementUploadId=${statementId}`}>
                     Full review queue
                     <ArrowRight className="h-4 w-4 ml-1" />
                   </Link>

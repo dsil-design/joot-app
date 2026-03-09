@@ -69,8 +69,7 @@ import {
   BulkEditDescriptionModal,
 } from "@/components/page-specific/bulk-edit-modals"
 import { toast } from "sonner"
-import { MainNavigation } from "@/components/page-specific/main-navigation"
-import { SidebarNavigation } from "@/components/page-specific/sidebar-navigation"
+import { PageHeader } from "@/components/page-specific/page-header"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { createClient } from "@/lib/supabase/client"
 import { QuickFilterBar } from "@/components/page-specific/quick-filter-bar"
@@ -806,13 +805,6 @@ export default function AllTransactionsPage() {
     bulkUpdateDescriptions,
   } = useTransactions()
 
-  // User profile state
-  const [userProfile, setUserProfile] = React.useState<{
-    fullName: string
-    email: string
-    initials: string
-  } | null>(null)
-
   // Restore saved state from sessionStorage (survives back navigation)
   const savedState = React.useMemo(() => loadListState(), [])
 
@@ -942,42 +934,6 @@ export default function AllTransactionsPage() {
   // Delete confirmation state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
 
-  // Fetch user profile data
-  React.useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!user) return
-
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('users')
-        .select('first_name, last_name')
-        .eq('id', user.id)
-        .single()
-
-      const fullName = data?.first_name && data?.last_name
-        ? `${data.first_name} ${data.last_name}`
-        : data?.first_name || data?.last_name || user.email || "User"
-
-      const getInitials = (firstName?: string | null, lastName?: string | null): string => {
-        if (firstName && lastName) {
-          return `${firstName.charAt(0).toUpperCase()}${lastName.charAt(0).toUpperCase()}`
-        }
-        if (firstName) return firstName.charAt(0).toUpperCase()
-        if (lastName) return lastName.charAt(0).toUpperCase()
-        return "U"
-      }
-
-      const initials = getInitials(data?.first_name, data?.last_name)
-
-      setUserProfile({
-        fullName,
-        email: user.email || '',
-        initials
-      })
-    }
-
-    fetchUserProfile()
-  }, [user])
   const [deleteTarget, setDeleteTarget] = React.useState<{ type: 'single' | 'bulk', id?: string }>({ type: 'single' })
   const [isDeleting, setIsDeleting] = React.useState(false)
 
@@ -1505,116 +1461,83 @@ export default function AllTransactionsPage() {
   // Loading and error states
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="w-full max-w-md md:max-w-none mx-auto bg-white flex flex-col gap-6 min-h-screen pb-32 pt-6 md:pt-12 px-6 md:px-8">
-          {/* Header with Navigation */}
-          <div className="flex flex-col gap-4 w-full">
-            <div className="flex items-center justify-between w-full">
-              <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
-                All transactions
-              </h1>
-              <div className="flex items-center gap-3">
-                <ViewLayoutToggle layoutMode={layoutMode} onLayoutModeChange={handleLayoutModeChange} />
-                <ViewController viewMode={viewMode} onViewModeChange={setViewMode} />
-                <Button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="hidden md:flex gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg h-10"
-                >
-                  <Plus className="size-5" />
-                  <span className="text-[14px] font-medium leading-[20px]">
-                    Add transaction
-                  </span>
-                </Button>
-              </div>
-            </div>
-            {/* Navigation Bar - Mobile/Tablet only */}
-            <div className="lg:hidden">
-              <MainNavigation />
-            </div>
-          </div>
-          <TransactionListSkeleton count={10} viewMode={layoutMode} />
-        </div>
+      <>
+        <PageHeader
+          title="Transactions"
+          actions={
+            <>
+              <ViewLayoutToggle layoutMode={layoutMode} onLayoutModeChange={handleLayoutModeChange} />
+              <ViewController viewMode={viewMode} onViewModeChange={setViewMode} />
+              <Button
+                onClick={() => setIsAddModalOpen(true)}
+                className="hidden md:flex gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg h-10"
+              >
+                <Plus className="size-5" />
+                <span className="text-[14px] font-medium leading-[20px]">
+                  Add transaction
+                </span>
+              </Button>
+            </>
+          }
+        />
+        <TransactionListSkeleton count={10} viewMode={layoutMode} />
         <AddTransactionFooter />
-      </div>
+      </>
     )
   }
 
   if (isError) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="w-full max-w-md md:max-w-none mx-auto bg-white flex flex-col gap-6 min-h-screen pb-32 pt-6 md:pt-12 px-6 md:px-8">
-          {/* Header with Navigation */}
-          <div className="flex flex-col gap-4 w-full">
-            <div className="flex items-center justify-between w-full">
-              <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
-                All transactions
-              </h1>
-              <div className="flex items-center gap-3">
-                <ViewLayoutToggle layoutMode={layoutMode} onLayoutModeChange={handleLayoutModeChange} />
-                <ViewController viewMode={viewMode} onViewModeChange={setViewMode} />
-                <Button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="hidden md:flex gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg h-10"
-                >
-                  <Plus className="size-5" />
-                  <span className="text-[14px] font-medium leading-[20px]">
-                    Add transaction
-                  </span>
-                </Button>
-              </div>
-            </div>
-            {/* Navigation Bar - Mobile/Tablet only */}
-            <div className="lg:hidden">
-              <MainNavigation />
-            </div>
-          </div>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-sm text-zinc-500">Failed to load transactions: {paginationError?.message || 'Unknown error'}</p>
-            <Button onClick={() => refetch()} className="mt-4">
-              Retry
-            </Button>
-          </div>
+      <>
+        <PageHeader
+          title="Transactions"
+          actions={
+            <>
+              <ViewLayoutToggle layoutMode={layoutMode} onLayoutModeChange={handleLayoutModeChange} />
+              <ViewController viewMode={viewMode} onViewModeChange={setViewMode} />
+              <Button
+                onClick={() => setIsAddModalOpen(true)}
+                className="hidden md:flex gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg h-10"
+              >
+                <Plus className="size-5" />
+                <span className="text-[14px] font-medium leading-[20px]">
+                  Add transaction
+                </span>
+              </Button>
+            </>
+          }
+        />
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-sm text-zinc-500">Failed to load transactions: {paginationError?.message || 'Unknown error'}</p>
+          <Button onClick={() => refetch()} className="mt-4">
+            Retry
+          </Button>
         </div>
         <AddTransactionFooter />
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Sidebar Navigation - Desktop only */}
-      {userProfile && (
-        <SidebarNavigation user={userProfile} />
-      )}
-
-      {/* Main Content Area with sidebar offset */}
-      <main className="lg:ml-[240px]">
-        <div className="w-full max-w-md md:max-w-none mx-auto bg-white flex flex-col gap-6 min-h-screen pb-32 pt-6 md:pt-12 px-6 md:px-8">
-          {/* Header with Navigation */}
-          <div className="flex flex-col gap-4 w-full">
-            <div className="flex items-center justify-between w-full">
-              <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
-                All transactions
-              </h1>
-              <div className="flex items-center gap-3">
-                <ViewLayoutToggle layoutMode={layoutMode} onLayoutModeChange={handleLayoutModeChange} />
-                <ViewController viewMode={viewMode} onViewModeChange={setViewMode} />
-                <Button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="hidden md:flex gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg h-10"
-                >
-                  <Plus className="size-5" />
-                  <span className="text-[14px] font-medium leading-[20px]">
-                    Add transaction
-                  </span>
-                </Button>
-              </div>
-            </div>
-            {/* Navigation Bar - Mobile/Tablet only */}
-            <div className="lg:hidden">
-              <MainNavigation />
-            </div>
-          </div>
+    <>
+      <PageHeader
+        title="Transactions"
+        actions={
+          <>
+            <ViewLayoutToggle layoutMode={layoutMode} onLayoutModeChange={handleLayoutModeChange} />
+            <ViewController viewMode={viewMode} onViewModeChange={setViewMode} />
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              className="hidden md:flex gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg h-10"
+            >
+              <Plus className="size-5" />
+              <span className="text-[14px] font-medium leading-[20px]">
+                Add transaction
+              </span>
+            </Button>
+          </>
+        }
+      />
 
         {/* Quick Filter Bar - Always visible */}
         <QuickFilterBar
@@ -1784,7 +1707,6 @@ export default function AllTransactionsPage() {
             {isFetchingNextPage && <TransactionLoadingMore />}
           </>
         )}
-      </div>
 
       {/* Bulk Edit Toolbar - shows when items are selected in table view */}
       {layoutMode === "table" && selectedIds.size > 0 && (
@@ -1914,7 +1836,6 @@ export default function AllTransactionsPage() {
         }
         isDeleting={isDeleting}
       />
-      </main>
-    </div>
+    </>
   )
 }

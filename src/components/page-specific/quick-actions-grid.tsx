@@ -65,7 +65,7 @@ export const defaultQuickActions: QuickActionProps[] = [
   {
     title: 'Review Queue',
     icon: Search,
-    href: '/imports/review',
+    href: '/review',
     variant: 'secondary',
     'aria-label': 'Review pending email transactions',
   },

@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Receipt, Import, MessageCircle, Settings } from 'lucide-react'
+import { Home, Receipt, Import, Brain, ClipboardCheck, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigationItems = [
@@ -17,14 +17,19 @@ const navigationItems = [
     icon: Receipt,
   },
   {
-    name: 'Imports',
+    name: 'Review',
+    href: '/review',
+    icon: ClipboardCheck,
+  },
+  {
+    name: 'Sources',
     href: '/imports',
     icon: Import,
   },
   {
-    name: 'Chat',
-    href: '/chat',
-    icon: MessageCircle,
+    name: 'AI',
+    href: '/ai',
+    icon: Brain,
   },
   {
     name: 'Settings',
@@ -43,7 +48,8 @@ export function MainNavigation() {
         // Check if current path matches or starts with the href (for subroutes)
         const isActive = pathname === item.href ||
           (item.href === '/settings/payment-methods' && pathname?.startsWith('/settings')) ||
-          (item.href === '/imports' && pathname?.startsWith('/imports'))
+          (item.href === '/imports' && pathname?.startsWith('/imports')) ||
+          (item.href === '/ai' && pathname?.startsWith('/ai'))
 
         return (
           <Link

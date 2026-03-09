@@ -1,12 +1,11 @@
 "use client"
 
-import { usePathname } from 'next/navigation'
-import { CreditCard, Tag, Store, Mail } from 'lucide-react'
+import { MessageCircle, Brain } from 'lucide-react'
 import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
 import { PageHeader } from '@/components/page-specific/page-header'
 import { SubNavigation, type SubNavItem } from '@/components/page-specific/sub-navigation'
 
-interface SettingsLayoutProps {
+interface AiLayoutProps {
   children: React.ReactNode
   user: {
     fullName: string
@@ -17,51 +16,25 @@ interface SettingsLayoutProps {
 
 const navigationItems: SubNavItem[] = [
   {
-    name: 'Payment Methods',
-    href: '/settings/payment-methods',
-    icon: CreditCard,
+    name: 'Chat',
+    href: '/ai/chat',
+    icon: MessageCircle,
   },
   {
-    name: 'Transaction Tags',
-    href: '/settings/tags',
-    icon: Tag,
-  },
-  {
-    name: 'Vendors',
-    href: '/settings/vendors',
-    icon: Store,
-  },
-  {
-    name: 'Emails',
-    href: '/settings/emails',
-    icon: Mail,
+    name: 'Journal',
+    href: '/ai/journal',
+    icon: Brain,
   },
 ]
 
-export function SettingsLayout({ children, user }: SettingsLayoutProps) {
-  const pathname = usePathname()
-
-  // Full-width child pages (like duplicate vendors) skip sub-navigation
-  const isFullWidthPage = pathname?.includes('/duplicates')
-
-  if (isFullWidthPage) {
-    return (
-      <div className="min-h-screen bg-background">
-        <SidebarNavigation user={user} />
-        <main className="lg:ml-[240px]">
-          {children}
-        </main>
-      </div>
-    )
-  }
-
+export function AiLayout({ children, user }: AiLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       <SidebarNavigation user={user} />
 
       <main className="lg:ml-[240px]">
         <div className="flex flex-col gap-6 pb-12 pt-6 md:pt-12 px-6 md:px-10">
-          <PageHeader title="Settings" />
+          <PageHeader title="AI" />
 
           {/* Main Content with Side Navigation */}
           <div className="flex flex-col md:flex-row gap-6 md:gap-8">

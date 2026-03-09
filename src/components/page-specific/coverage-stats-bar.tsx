@@ -54,7 +54,7 @@ export function CoverageStatsBar({
                 </p>
               </div>
               <Button asChild size="sm" variant="outline">
-                <Link href="/imports/review?status=pending">
+                <Link href="/review?status=pending">
                   Review Now
                   <ArrowRight className="h-3.5 w-3.5 ml-1" />
                 </Link>
@@ -123,7 +123,7 @@ export function CoverageStatsBar({
           )}
           {pendingCount > 0 && (
             <Button asChild size="sm" variant="outline" className="w-full">
-              <Link href="/imports/review?status=pending">
+              <Link href="/review?status=pending">
                 {pendingCount} pending review
                 <ArrowRight className="h-3.5 w-3.5 ml-1" />
               </Link>

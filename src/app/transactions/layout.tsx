@@ -1,7 +1,7 @@
 import { getUserNav } from '@/lib/user-profile'
-import { ImportsLayout } from '@/components/page-specific/imports-layout'
+import { PageShell } from '@/components/page-specific/page-shell'
 
-export default async function Layout({
+export default async function TransactionsLayout({
   children,
 }: {
   children: React.ReactNode
@@ -9,8 +9,8 @@ export default async function Layout({
   const user = await getUserNav()
 
   return (
-    <ImportsLayout user={user}>
+    <PageShell user={user}>
       {children}
-    </ImportsLayout>
+    </PageShell>
   )
 }

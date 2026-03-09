@@ -77,7 +77,7 @@ const variantConfig = {
  *   value={42}
  *   description="Emails awaiting review"
  *   variant="pending"
- *   href="/imports/review?status=pending"
+ *   href="/review?status=pending"
  * />
  * ```
  */

@@ -30,7 +30,7 @@ function getCellHref(cell: CellData): string | null {
       return cell.statementId ? `/imports/statements/${cell.statementId}` : null
     case 'pending_review':
       return cell.statementId
-        ? `/imports/review?statementUploadId=${cell.statementId}`
+        ? `/review?statementUploadId=${cell.statementId}`
         : null
     case 'missing':
       return '/imports/statements/new'

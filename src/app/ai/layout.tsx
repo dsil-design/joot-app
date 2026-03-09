@@ -1,5 +1,5 @@
 import { getUserNav } from '@/lib/user-profile'
-import { SettingsLayout } from '@/components/page-specific/settings-layout'
+import { AiLayout } from '@/components/page-specific/ai-layout'
 
 export default async function Layout({
   children,
@@ -9,8 +9,8 @@ export default async function Layout({
   const user = await getUserNav()
 
   return (
-    <SettingsLayout user={user}>
+    <AiLayout user={user}>
       {children}
-    </SettingsLayout>
+    </AiLayout>
   )
 }
