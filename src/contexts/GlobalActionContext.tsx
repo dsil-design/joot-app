@@ -113,7 +113,7 @@ export const GlobalActionProvider: React.FC<GlobalActionProviderProps> = ({ chil
         setTimeout(() => {
           setNavigationPending(false)
           endAction(actionId)
-        }, 2000) // 2 second fallback timeout - optimized for performance
+        }, 500) // 500ms fallback timeout
 
         return result
       }

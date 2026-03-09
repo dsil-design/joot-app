@@ -16,7 +16,7 @@ import type { CoveragePaymentMethod } from '@/hooks/use-coverage-data'
 
 export default function CoveragePage() {
   const { data: coverage, isLoading, error, refetch } = useCoverageData()
-  const { triggerSync, isSyncing } = useEmailSync()
+  const { triggerSync, isSyncing, syncError } = useEmailSync()
 
   // Upload dialog state
   const [uploadDialog, setUploadDialog] = useState<{
@@ -97,6 +97,7 @@ export default function CoveragePage() {
           emailsPendingReview={coverage.emailsPendingReview}
           isSyncing={isSyncing}
           onSyncNow={handleSyncNow}
+          syncError={syncError}
         />
       )}
 

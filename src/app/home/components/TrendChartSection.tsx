@@ -73,25 +73,13 @@ async function fetchExchangeRatesForTransactions(
   return rateCache
 }
 
-export async function TrendChartSection() {
+interface TrendChartSectionProps {
+  userId: string
+  exchangeRate: number
+}
+
+export async function TrendChartSection({ userId, exchangeRate }: TrendChartSectionProps) {
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const userId = user.id
-
-  // Fetch latest exchange rate
-  const { data: latestExchangeRate } = await supabase
-    .from('exchange_rates')
-    .select('rate')
-    .eq('from_currency', 'USD')
-    .eq('to_currency', 'THB')
-    .order('date', { ascending: false })
-    .limit(1)
-    .single()
-
-  const exchangeRate = latestExchangeRate?.rate || 35
 
   // Helper function to fetch all transactions with automatic pagination
   async function fetchAllTransactions(startDate?: string) {

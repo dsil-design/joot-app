@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 
 export interface UserProfileData {
   fullName: string
@@ -8,28 +7,27 @@ export interface UserProfileData {
   isAdmin: boolean
 }
 
-export async function UserProfileSection(): Promise<UserProfileData> {
+interface UserProfileSectionProps {
+  userId: string
+}
+
+export async function UserProfileSection({ userId }: UserProfileSectionProps): Promise<UserProfileData> {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
-  }
-
-  // Fetch user profile data with role information
   const { data: userProfile } = await supabase
     .from('users')
-    .select('first_name, last_name, role')
-    .eq('id', user.id)
+    .select('first_name, last_name, role, email')
+    .eq('id', userId)
     .single()
+
+  const userEmail = userProfile?.email || ''
 
   const fullName = userProfile?.first_name && userProfile?.last_name
     ? `${userProfile.first_name} ${userProfile.last_name}`
-    : userProfile?.first_name || userProfile?.last_name || user.email || "User"
+    : userProfile?.first_name || userProfile?.last_name || userEmail || "User"
 
   const isAdminByRole = userProfile?.role === 'admin'
-  const isAdminByEmail = user.email === 'admin@dsil.design'
+  const isAdminByEmail = userEmail === 'admin@dsil.design'
   const isAdmin = isAdminByRole || isAdminByEmail
 
   const getInitials = (firstName?: string | null, lastName?: string | null): string => {
@@ -50,7 +48,7 @@ export async function UserProfileSection(): Promise<UserProfileData> {
   return {
     fullName,
     userInitials,
-    userEmail: user.email || '',
+    userEmail,
     isAdmin
   }
 }

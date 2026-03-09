@@ -4,23 +4,13 @@ import { calculateYTDSummary } from '@/lib/utils/monthly-summary'
 import { Card } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
 
-export async function YTDKPISection() {
+interface YTDKPISectionProps {
+  userId: string
+  exchangeRate: number
+}
+
+export async function YTDKPISection({ userId, exchangeRate }: YTDKPISectionProps) {
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  // Fetch latest exchange rate
-  const { data: latestExchangeRate } = await supabase
-    .from('exchange_rates')
-    .select('rate')
-    .eq('from_currency', 'USD')
-    .eq('to_currency', 'THB')
-    .order('date', { ascending: false })
-    .limit(1)
-    .single()
-
-  const exchangeRate = latestExchangeRate?.rate || 35
 
   // Fetch only current year transactions for YTD
   const currentYear = new Date().getFullYear()
@@ -33,7 +23,7 @@ export async function YTDKPISection() {
       vendors (id, name),
       payment_methods (id, name)
     `)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .gte('transaction_date', yearStart)
     .order('transaction_date', { ascending: false })
 
@@ -55,7 +45,7 @@ export async function YTDKPISection() {
   return (
     <div className="flex flex-col gap-4 w-full">
       <div className="text-[12px] font-medium text-muted-foreground leading-4">
-        Year to Date (2025)
+        Year to Date ({currentYear})
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {/* YTD Income */}

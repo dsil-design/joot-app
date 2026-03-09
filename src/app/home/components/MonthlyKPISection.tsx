@@ -5,25 +5,14 @@ import { format } from 'date-fns'
 import { Card } from '@/components/ui/card'
 import { ComparisonMetric } from '@/components/ui/comparison-metric'
 import { formatCurrency } from '@/lib/utils'
-import { unstable_cache } from 'next/cache'
 
-export async function MonthlyKPISection() {
+interface MonthlyKPISectionProps {
+  userId: string
+  exchangeRate: number
+}
+
+export async function MonthlyKPISection({ userId, exchangeRate }: MonthlyKPISectionProps) {
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  // Fetch latest exchange rate first
-  const { data: latestExchangeRate } = await supabase
-    .from('exchange_rates')
-    .select('rate')
-    .eq('from_currency', 'USD')
-    .eq('to_currency', 'THB')
-    .order('date', { ascending: false })
-    .limit(1)
-    .single()
-
-  const exchangeRate = latestExchangeRate?.rate || 35
 
   // Fetch only current and previous month transactions for monthly KPIs
   const today = new Date()
@@ -36,7 +25,7 @@ export async function MonthlyKPISection() {
       vendors (id, name),
       payment_methods (id, name)
     `)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .gte('transaction_date', twoMonthsAgo.toISOString().split('T')[0])
     .order('transaction_date', { ascending: false })
 

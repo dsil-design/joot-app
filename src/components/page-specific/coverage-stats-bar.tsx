@@ -14,6 +14,7 @@ interface CoverageStatsBarProps {
   emailsPendingReview: number
   isSyncing: boolean
   onSyncNow: () => void
+  syncError?: string | null
 }
 
 export function CoverageStatsBar({
@@ -23,6 +24,7 @@ export function CoverageStatsBar({
   emailsPendingReview,
   isSyncing,
   onSyncNow,
+  syncError,
 }: CoverageStatsBarProps) {
   return (
     <Card>
@@ -63,9 +65,13 @@ export function CoverageStatsBar({
           {/* Email sync section */}
           <div className="flex items-center gap-3 border-l pl-6">
             <div className="text-right">
-              <p className="text-xs text-muted-foreground">
-                Last sync: {formatSyncTime(lastEmailSync)}
-              </p>
+              {syncError ? (
+                <p className="text-xs text-red-500">{syncError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Last sync: {formatSyncTime(lastEmailSync)}
+                </p>
+              )}
               {emailsPendingReview > 0 && (
                 <Link href="/imports/emails?status=pending_review" className="text-xs text-amber-600 hover:underline">
                   {emailsPendingReview} emails pending
@@ -112,6 +118,9 @@ export function CoverageStatsBar({
               )}
             </Button>
           </div>
+          {syncError && (
+            <p className="text-xs text-red-500">{syncError}</p>
+          )}
           {pendingCount > 0 && (
             <Button asChild size="sm" variant="outline" className="w-full">
               <Link href="/imports/review?status=pending">

@@ -14,40 +14,38 @@ export async function login(formData: FormData) {
     password: formData.get('password') as string,
   }
 
-  const { error } = await supabase.auth.signInWithPassword(data)
+  const { data: signInData, error } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
     const errorMessage = encodeURIComponent(error.message || 'Invalid login credentials')
     redirect(`/error?message=${errorMessage}`)
   }
 
-  // Check if user is admin and redirect accordingly
-  const { data: { user } } = await supabase.auth.getUser()
-  
+  const user = signInData.user
+
+  revalidatePath('/', 'layout')
+
   if (user) {
-    // Try to get user profile - if it fails, user might not be in users table yet
+    // Check if user is admin - use email check first (fast, no DB query)
+    const isAdminByEmail = user.email === 'admin@dsil.design'
+
+    if (isAdminByEmail) {
+      redirect('/admin/dashboard')
+    }
+
+    // For non-obvious admin cases, check the profile
     const { data: userProfile } = await supabase
       .from('users')
-      .select('role, email')
+      .select('role')
       .eq('id', user.id)
       .single()
 
-    revalidatePath('/', 'layout')
-
-    // Check if user is admin by email as fallback if profile doesn't exist yet
-    const isAdminByEmail = user.email === 'admin@dsil.design'
-    const isAdminByRole = userProfile?.role === 'admin'
-
-    // Redirect admin users to admin dashboard, regular users to home
-    if (isAdminByRole || isAdminByEmail) {
+    if (userProfile?.role === 'admin') {
       redirect('/admin/dashboard')
-    } else {
-      redirect('/home')
     }
-  } else {
-    revalidatePath('/', 'layout')
-    redirect('/home')
   }
+
+  redirect('/home')
 }
 
 export async function signup(formData: FormData) {

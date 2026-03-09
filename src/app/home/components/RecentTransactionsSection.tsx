@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 
-export async function RecentTransactionsSection() {
-  const supabase = await createClient()
+interface RecentTransactionsSectionProps {
+  userId: string
+}
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+export async function RecentTransactionsSection({ userId }: RecentTransactionsSectionProps) {
+  const supabase = await createClient()
 
   // Fetch only recent 5 transactions
   const { data: recentTransactions } = await supabase
@@ -20,7 +21,7 @@ export async function RecentTransactionsSection() {
       vendors (id, name),
       payment_methods (id, name)
     `)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .order('transaction_date', { ascending: false })
     .limit(5)
 

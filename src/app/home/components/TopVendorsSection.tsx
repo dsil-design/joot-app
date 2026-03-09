@@ -4,23 +4,13 @@ import { calculateTopVendors } from '@/lib/utils/monthly-summary'
 import { Card } from '@/components/ui/card'
 import { TopVendorsWidget } from '@/components/ui/top-vendors-widget'
 
-export async function TopVendorsSection() {
+interface TopVendorsSectionProps {
+  userId: string
+  exchangeRate: number
+}
+
+export async function TopVendorsSection({ userId, exchangeRate }: TopVendorsSectionProps) {
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  // Fetch latest exchange rate
-  const { data: latestExchangeRate } = await supabase
-    .from('exchange_rates')
-    .select('rate')
-    .eq('from_currency', 'USD')
-    .eq('to_currency', 'THB')
-    .order('date', { ascending: false })
-    .limit(1)
-    .single()
-
-  const exchangeRate = latestExchangeRate?.rate || 35
 
   // Fetch only YTD transactions for top vendors
   const currentYear = new Date().getFullYear()
@@ -33,7 +23,7 @@ export async function TopVendorsSection() {
       vendors (id, name),
       payment_methods (id, name)
     `)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('transaction_type', 'expense')  // Only expenses for vendors
     .gte('transaction_date', yearStart)
 

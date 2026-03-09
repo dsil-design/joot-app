@@ -50,8 +50,12 @@ export async function POST(_request: NextRequest) {
 
     // Check if iCloud credentials are configured
     if (!process.env.ICLOUD_EMAIL || !process.env.ICLOUD_APP_PASSWORD) {
+      console.error('Email sync: missing env vars -',
+        !process.env.ICLOUD_EMAIL ? 'ICLOUD_EMAIL' : '',
+        !process.env.ICLOUD_APP_PASSWORD ? 'ICLOUD_APP_PASSWORD' : ''
+      );
       return NextResponse.json(
-        { error: 'iCloud email integration not configured' },
+        { error: 'iCloud email integration not configured. Check ICLOUD_EMAIL and ICLOUD_APP_PASSWORD env vars in Vercel.' },
         { status: 503 }
       );
     }
