@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import {
-  Calendar,
   DollarSign,
   FileText,
   Link as LinkIcon,
@@ -23,9 +22,12 @@ import {
   Store,
   Mail,
   Tag,
+  Calendar as CalendarIcon,
   X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { DatePicker } from "@/components/ui/date-picker"
+import { format } from "date-fns"
 
 /**
  * Statement/email transaction info displayed at the top of the dialog
@@ -124,8 +126,8 @@ export function LinkToExistingDialog({
   onConfirm,
 }: LinkToExistingDialogProps) {
   const [search, setSearch] = React.useState("")
-  const [dateFrom, setDateFrom] = React.useState("")
-  const [dateTo, setDateTo] = React.useState("")
+  const [dateFrom, setDateFrom] = React.useState<Date | undefined>(undefined)
+  const [dateTo, setDateTo] = React.useState<Date | undefined>(undefined)
   const [results, setResults] = React.useState<TransactionResult[]>([])
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
   const [isSearching, setIsSearching] = React.useState(false)
@@ -138,8 +140,8 @@ export function LinkToExistingDialog({
   React.useEffect(() => {
     if (!open) {
       setSearch("")
-      setDateFrom("")
-      setDateTo("")
+      setDateFrom(undefined)
+      setDateTo(undefined)
       setResults([])
       setSelectedIds(new Set())
       setError(null)
@@ -151,7 +153,7 @@ export function LinkToExistingDialog({
 
   // Debounced search
   const executeSearch = React.useCallback(
-    async (searchText: string, fromDate: string, toDate: string) => {
+    async (searchText: string, fromDate: Date | undefined, toDate: Date | undefined) => {
       const hasFilters = searchText.trim() || fromDate || toDate
       if (!hasFilters) {
         setResults([])
@@ -175,11 +177,11 @@ export function LinkToExistingDialog({
         }
         if (fromDate) {
           params.set("datePreset", "custom")
-          params.set("dateFrom", fromDate)
+          params.set("dateFrom", format(fromDate, "yyyy-MM-dd"))
         }
         if (toDate) {
           params.set("datePreset", "custom")
-          params.set("dateTo", toDate)
+          params.set("dateTo", format(toDate, "yyyy-MM-dd"))
         }
 
         const response = await fetch(`/api/transactions?${params}`)
@@ -273,7 +275,7 @@ export function LinkToExistingDialog({
               </span>
               {item.date && (
                 <span className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
+                  <CalendarIcon className="h-3.5 w-3.5" />
                   {formatDate(item.date)}
                 </span>
               )}
@@ -295,25 +297,22 @@ export function LinkToExistingDialog({
           </div>
 
           {/* Date range */}
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                type="date"
+          <div className="flex gap-2 items-center">
+            <div className="flex-1">
+              <DatePicker
+                date={dateFrom}
+                onDateChange={setDateFrom}
                 placeholder="From date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="pl-9 text-sm"
+                formatStr="MMM d, yyyy"
               />
             </div>
-            <div className="flex-1 relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                type="date"
+            <span className="text-xs text-muted-foreground shrink-0">to</span>
+            <div className="flex-1">
+              <DatePicker
+                date={dateTo}
+                onDateChange={setDateTo}
                 placeholder="To date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="pl-9 text-sm"
+                formatStr="MMM d, yyyy"
               />
             </div>
             {(dateFrom || dateTo) && (
@@ -321,7 +320,7 @@ export function LinkToExistingDialog({
                 variant="ghost"
                 size="icon"
                 className="h-9 w-9 shrink-0"
-                onClick={() => { setDateFrom(""); setDateTo("") }}
+                onClick={() => { setDateFrom(undefined); setDateTo(undefined) }}
               >
                 <X className="h-4 w-4" />
               </Button>

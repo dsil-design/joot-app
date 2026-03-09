@@ -62,9 +62,10 @@ const GRAB_VENDOR_IDS = {
 function detectServiceType(body: string, subject: string): GrabServiceInfo {
   const lowerSubject = subject.toLowerCase();
 
-  // Strip URLs and image src attributes to avoid false positives
-  // (all Grab emails use "grabtaxi-marketing.s3.amazonaws.com" for images)
-  const lowerBody = body.toLowerCase().replace(/(?:src|href)="[^"]*"/gi, '');
+  // Strip all HTML attributes to avoid false positives from URLs, styles, etc.
+  // All Grab emails use "grabtaxi-marketing.s3.amazonaws.com" for images and
+  // "grabtaxi" appears in tracking URLs, style attributes, and other HTML contexts.
+  const lowerBody = body.toLowerCase().replace(/\b\w+="[^"]*"/gi, '').replace(/\b\w+='[^']*'/gi, '');
 
   // GrabExpress - check first as it has unique subject
   if (
@@ -103,11 +104,15 @@ function detectServiceType(body: string, subject: string): GrabServiceInfo {
   }
 
   // GrabTaxi/GrabCar - rides have specific indicators
+  // Note: Do NOT match on "grabtaxi" alone — it appears in S3 URLs, tracking
+  // links, and HTML attributes across ALL Grab email types. Only match on
+  // definitive ride-specific content.
   if (
     lowerBody.includes('hope you enjoyed your ride') ||
-    lowerBody.includes('grabtaxi') ||
     lowerBody.includes('grabcar') ||
-    (lowerBody.includes('pickup:') && lowerBody.includes('dropoff:'))
+    lowerBody.includes('ride summary') ||
+    (lowerBody.includes('pickup:') && lowerBody.includes('dropoff:')) ||
+    (lowerBody.includes('pickup:') && lowerBody.includes('drop-off:'))
   ) {
     return {
       type: 'taxi',

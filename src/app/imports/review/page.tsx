@@ -270,10 +270,14 @@ export default function ReviewQueuePage() {
       setRematchStatus("Finding matches...")
       await fetch('/api/imports/rematch', { method: 'POST' })
       setRematchStatus("Generating proposals...")
+      const generateBody: Record<string, unknown> = {}
+      if (filters.statementUploadId) {
+        generateBody.statementUploadId = filters.statementUploadId
+      }
       const res = await fetch('/api/imports/proposals/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ regenerateStale: true }),
+        body: JSON.stringify(generateBody),
       })
       if (res.ok) {
         const result = await res.json()
@@ -288,7 +292,7 @@ export default function ReviewQueuePage() {
       setRematchStatus(null)
     }
     refresh()
-  }, [refresh])
+  }, [refresh, filters.statementUploadId])
 
   const { createAndLink } = useCreateAndLink(linkToExisting)
   const { acceptProposal } = useProposalAccept()

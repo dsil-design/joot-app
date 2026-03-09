@@ -265,6 +265,40 @@ describe('detectServiceType', () => {
     expect(result.type).toBe('express');
     expect(result.vendorName).toBe('GrabExpress');
   });
+
+  it('should NOT misclassify GrabFood as taxi due to "grabtaxi" in HTML attributes', () => {
+    // Real Grab emails contain "grabtaxi-marketing.s3.amazonaws.com" in image URLs,
+    // tracking pixels, and style attributes across ALL email types
+    const htmlBody = `
+      <img src="https://grabtaxi-marketing.s3.amazonaws.com/header.png" />
+      <a href="https://grabtaxi-marketing.s3.amazonaws.com/track?id=123">
+      <div style="background-image: url(https://grabtaxi-marketing.s3.amazonaws.com/bg.png)">
+      Your GrabFood order has been delivered!
+      Your order from Dairy Queen
+      Total ฿273.00
+    `;
+    const result = detectServiceType(htmlBody, 'Your Grab E-Receipt');
+    expect(result.type).toBe('food');
+    expect(result.vendorName).toBe('GrabFood');
+  });
+
+  it('should detect GrabTaxi from ride summary content', () => {
+    const result = detectServiceType('Ride Summary\nPickup: Central\nDrop-off: Hotel', 'Your Grab E-Receipt');
+    expect(result.type).toBe('taxi');
+    expect(result.vendorName).toBe('Grab Taxi');
+  });
+
+  it('should default to GrabFood when no specific markers found', () => {
+    // An email with grabtaxi only in URLs but no service-specific markers
+    const htmlBody = `
+      <img src="https://grabtaxi-marketing.s3.amazonaws.com/logo.png" />
+      Thank you for your order!
+      Total ฿500.00
+    `;
+    const result = detectServiceType(htmlBody, 'Your Grab E-Receipt');
+    expect(result.type).toBe('food');
+    expect(result.vendorName).toBe('Grab');
+  });
 });
 
 describe('extractRestaurantName', () => {

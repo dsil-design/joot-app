@@ -35,11 +35,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch queue items to generate proposals for
+    // When scoped to a specific statement, skip email items entirely
     const [statementItems, emailItems] = await Promise.all([
       fetchStatementQueueItems(supabase, user.id, {
         statementUploadId: statementUploadId || undefined,
       }),
-      fetchEmailQueueItems(supabase, user.id, {}),
+      statementUploadId
+        ? Promise.resolve([])
+        : fetchEmailQueueItems(supabase, user.id, {}),
     ])
 
     // Combine all items

@@ -68,27 +68,15 @@ async function main() {
     console.log();
   }
 
-  // Clear existing email_transactions
-  console.log('--- Step 2: Clear Existing Email Transactions ---');
+  // Count existing email_transactions (upsert will preserve IDs)
+  console.log('--- Step 2: Check Existing Email Transactions ---');
   const { count: existingCount } = await supabase
     .from('email_transactions')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', user.id);
 
   console.log(`Existing email_transactions: ${existingCount || 0}`);
-
-  if (!isDryRun && existingCount && existingCount > 0) {
-    const { error: deleteError } = await supabase
-      .from('email_transactions')
-      .delete()
-      .eq('user_id', user.id);
-
-    if (deleteError) {
-      console.error('Failed to clear email_transactions:', deleteError.message);
-      process.exit(1);
-    }
-    console.log('Cleared all email_transactions');
-  }
+  console.log('Will upsert by (user_id, message_id) to preserve UUIDs and linked proposals');
   console.log();
 
   // Fetch all emails
@@ -204,15 +192,15 @@ async function main() {
 
     toInsert.push(row);
 
-    // Insert in batches
+    // Upsert in batches (preserves existing UUIDs via unique constraint)
     if (toInsert.length >= batchSize || i === emails.length - 1) {
       if (!isDryRun) {
-        const { error: insertError } = await supabase
+        const { error: upsertError } = await supabase
           .from('email_transactions')
-          .insert(toInsert);
+          .upsert(toInsert, { onConflict: 'user_id,message_id' });
 
-        if (insertError) {
-          console.error(`Batch insert failed at email ${i + 1}:`, insertError.message);
+        if (upsertError) {
+          console.error(`Batch upsert failed at email ${i + 1}:`, upsertError.message);
         }
       }
       process.stdout.write(`\r  Processed ${i + 1}/${emails.length} emails...`);

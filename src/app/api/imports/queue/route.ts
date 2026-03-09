@@ -36,8 +36,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch items from each source in parallel
+    // When filtering by a specific statement, don't fetch email items (they're irrelevant)
     const shouldFetchStatements = filters.sourceFilter === 'all' || filters.sourceFilter === 'statement' || filters.sourceFilter === 'merged'
-    const shouldFetchEmails = filters.sourceFilter === 'all' || filters.sourceFilter === 'email' || filters.sourceFilter === 'merged'
+    const shouldFetchEmails = !filters.statementUploadId && (filters.sourceFilter === 'all' || filters.sourceFilter === 'email' || filters.sourceFilter === 'merged')
 
     const [statementItems, emailItems] = await Promise.all([
       shouldFetchStatements

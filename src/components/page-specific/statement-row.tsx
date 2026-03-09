@@ -61,12 +61,6 @@ export function StatementRow({ statement, paymentMethodType, onProcess }: Statem
             </div>
             <p className="text-xs text-muted-foreground">
               {formatPeriod(statement.statement_period_start, statement.statement_period_end)}
-              {' · '}
-              {new Date(statement.uploaded_at).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
             </p>
           </div>
 

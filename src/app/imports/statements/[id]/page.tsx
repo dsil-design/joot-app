@@ -40,6 +40,7 @@ interface StatementInfo {
   payment_method: { id: string; name: string; type?: string } | null
   period: { start: string | null; end: string | null }
   processed_at: string | null
+  uploaded_at: string | null
 }
 
 interface ProcessingResult {
@@ -278,11 +279,18 @@ export default function StatementDetailPage() {
       amount: item.amount,
       currency: item.currency,
       date: item.date,
+      paymentMethodId: statement.payment_method?.id,
     })
     setCreateDialogOpen(true)
   }
 
-  const handleCreateConfirm = createAndLink
+  const handleCreateConfirm = async (...args: Parameters<typeof createAndLink>) => {
+    await createAndLink(...args)
+    // Refresh header summary and transaction list
+    const data = await fetchResults(statementId)
+    if (data) setResult(data)
+    txListRef.current?.refresh()
+  }
 
   // Approve a matched (pending) item from the detail modal
   const handleApproveLink = React.useCallback(async (item: StatementTransaction) => {
@@ -439,6 +447,7 @@ export default function StatementDetailPage() {
             period={statement.period}
             status={status}
             filename={statement.filename}
+            uploadedAt={statement.uploaded_at}
             stats={{ extracted: 0, matched: 0, unmatched: 0 }}
             matchRate={0}
             onViewStatement={() => setViewerOpen(true)}
@@ -489,6 +498,7 @@ export default function StatementDetailPage() {
             period={statement.period}
             status={status}
             filename={statement.filename}
+            uploadedAt={statement.uploaded_at}
             stats={{ extracted: 0, matched: 0, unmatched: 0 }}
             matchRate={0}
             onViewStatement={() => setViewerOpen(true)}
@@ -523,6 +533,7 @@ export default function StatementDetailPage() {
             period={statement.period}
             status={status}
             filename={statement.filename}
+            uploadedAt={statement.uploaded_at}
             stats={{ extracted: 0, matched: 0, unmatched: 0 }}
             matchRate={0}
             onViewStatement={() => setViewerOpen(true)}
@@ -569,6 +580,7 @@ export default function StatementDetailPage() {
         period={statement.period}
         status={status}
         filename={statement.filename}
+        uploadedAt={statement.uploaded_at}
         stats={{ extracted, matched, unmatched }}
         matchRate={matchRate}
         onReprocess={() => setReprocessConfirmOpen(true)}

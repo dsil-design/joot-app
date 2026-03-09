@@ -139,6 +139,7 @@ export async function GET(
         extraction_completed_at,
         extraction_error,
         extraction_log,
+        uploaded_at,
         created_at,
         payment_methods (
           id,
@@ -174,6 +175,7 @@ export async function GET(
         end: statement.statement_period_end,
       },
       processed_at: statement.extraction_completed_at,
+      uploaded_at: statement.uploaded_at,
     }
 
     // Handle different processing statuses

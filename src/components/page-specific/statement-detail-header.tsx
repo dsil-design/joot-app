@@ -55,6 +55,7 @@ export function StatementDetailHeader({
   period,
   status,
   filename,
+  uploadedAt,
   stats,
   matchRate,
   onReprocess,
@@ -63,6 +64,13 @@ export function StatementDetailHeader({
 }: StatementDetailHeaderProps) {
   return (
     <div className="space-y-4">
+      {/* Added to system date */}
+      {uploadedAt && (
+        <p className="text-xs text-muted-foreground">
+          Added to system on {new Date(uploadedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+        </p>
+      )}
+
       {/* Back link and title */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>

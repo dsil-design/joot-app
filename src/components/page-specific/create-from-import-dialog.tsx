@@ -212,7 +212,9 @@ export function CreateFromImportDialog({
       // Standard pre-fills from extraction
       setDescription(data.description)
       setAmount(Math.abs(data.amount).toFixed(2))
-      setDate(new Date(data.date + "T00:00:00"))
+      // Parse date — handle both YYYY-MM-DD and full ISO timestamps
+      const dateStr = data.date.split("T")[0] // extract YYYY-MM-DD portion
+      setDate(new Date(dateStr + "T00:00:00"))
       setPaymentMethod(data.paymentMethodId || "")
       setVendor("")
       setVendorLabel("")
@@ -511,7 +513,7 @@ export function CreateFromImportDialog({
               </span>
               <span className="flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
-                {data.date}
+                {new Date(data.date.split("T")[0] + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </span>
             </div>
           </div>

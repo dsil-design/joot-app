@@ -116,7 +116,7 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
   ) => {
     const [open, setOpen] = React.useState(false)
     const [value, setValue] = React.useState(formatDate(date, formatStr))
-    const [month, setMonth] = React.useState<Date | undefined>(date)
+    const [month, setMonth] = React.useState<Date | undefined>(isValidDate(date) ? date : undefined)
     const inputRef = React.useRef<HTMLInputElement>(null)
     const calendarRef = React.useRef<HTMLDivElement>(null)
 
@@ -127,9 +127,12 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
         : placeholder
     }, [placeholder, formatStr])
 
-    // Update input value when date prop changes
+    // Update input value and month when date prop changes
     React.useEffect(() => {
       setValue(formatDate(date, formatStr))
+      if (isValidDate(date)) {
+        setMonth(date)
+      }
     }, [date, formatStr])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,7 +233,7 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
     const calendarComponent = (
       <Calendar
         mode="single"
-        selected={date}
+        selected={isValidDate(date) ? date : undefined}
         onSelect={handleSelect}
         month={month}
         onMonthChange={setMonth}
