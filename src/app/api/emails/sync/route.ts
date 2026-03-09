@@ -82,12 +82,22 @@ export async function POST(_request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Email sync failed:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Email sync failed:', errorMessage);
+    if (errorStack) console.error('Stack:', errorStack);
 
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
+        // Include diagnostic info for debugging (safe since this is a single-user app)
+        debug: {
+          hasImapEmail: !!process.env.ICLOUD_EMAIL,
+          hasImapPassword: !!process.env.ICLOUD_APP_PASSWORD,
+          folder: process.env.ICLOUD_FOLDER || 'Transactions (default)',
+          errorType: error?.constructor?.name || typeof error,
+        },
       },
       { status: 500 }
     );

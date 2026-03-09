@@ -548,10 +548,18 @@ export class EmailSyncService {
    */
   async executeSync(userId: string): Promise<SyncResult> {
     const folder = this.getFolder();
+    console.log(`[EmailSync] executeSync started for user=${userId}, folder="${folder}"`);
 
     try {
+      console.log('[EmailSync] Connecting to IMAP...');
       await this.connect();
-      return await this.syncFolder(folder, userId);
+      console.log('[EmailSync] Connected. Starting syncFolder...');
+      const result = await this.syncFolder(folder, userId);
+      console.log(`[EmailSync] syncFolder completed: success=${result.success}, synced=${result.synced}, errors=${result.errors}`);
+      return result;
+    } catch (error) {
+      console.error(`[EmailSync] executeSync error:`, error instanceof Error ? error.message : error);
+      throw error;
     } finally {
       await this.disconnect();
     }
