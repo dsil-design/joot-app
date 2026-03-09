@@ -71,9 +71,12 @@ export class EmailSyncService {
    * Establish connection to iCloud IMAP server
    */
   async connect(): Promise<void> {
-    if (this.connected && this.client) {
-      console.log('Already connected to IMAP server');
-      return;
+    // Always create a fresh connection — in serverless environments,
+    // a previous connection may be stale after function freeze/thaw
+    if (this.client) {
+      try { await this.client.logout(); } catch { /* ignore */ }
+      this.client = null;
+      this.connected = false;
     }
 
     const config = this.getImapConfig();

@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     // Temporarily allow build errors to deploy (test files have errors)
     ignoreBuildErrors: true,
   },
+  serverExternalPackages: ['imapflow', 'mailparser'],
 };
 
 export default nextConfig;

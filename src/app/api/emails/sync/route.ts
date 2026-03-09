@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { emailSyncService } from '@/lib/services/email-sync-service';
 
+// Allow up to 60s for IMAP connection + sync (Vercel default is 10s)
+export const maxDuration = 60;
+
 /**
  * Track active syncs to prevent concurrent sync operations per user.
  * Using in-memory Set is sufficient for a single-user app.
