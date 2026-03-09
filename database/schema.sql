@@ -651,6 +651,7 @@ CREATE TABLE public.email_transactions (
   matched_transaction_id UUID REFERENCES public.transactions(id) ON DELETE SET NULL,
   match_confidence INTEGER CHECK (match_confidence IS NULL OR (match_confidence >= 0 AND match_confidence <= 100)),
   match_method TEXT CHECK (match_method IS NULL OR match_method IN ('auto', 'manual')),
+  rejected_transaction_ids UUID[] NOT NULL DEFAULT '{}',
 
   -- Status tracking
   status TEXT NOT NULL DEFAULT 'pending_review' CHECK (status IN (

@@ -156,7 +156,7 @@ async function rematchEmailTransactions(
 ) {
   const { data: emails, error } = await supabase
     .from('email_transactions')
-    .select('id, amount, currency, transaction_date, description, vendor_name_raw')
+    .select('id, amount, currency, transaction_date, description, vendor_name_raw, rejected_transaction_ids')
     .eq('user_id', userId)
     .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement'])
     .is('matched_transaction_id', null)
@@ -188,6 +188,12 @@ async function rematchEmailTransactions(
     if (!email.amount || !email.transaction_date) continue
     stats.emailsChecked++
 
+    // Exclude transaction IDs that the user previously rejected for this email
+    const rejectedIds = new Set((email.rejected_transaction_ids || []) as string[])
+    const eligibleCandidates = rejectedIds.size > 0
+      ? candidates.filter((c) => !rejectedIds.has(c.id))
+      : candidates
+
     const match = findBestMatch(
       {
         amount: Number(email.amount),
@@ -195,7 +201,7 @@ async function rematchEmailTransactions(
         date: email.transaction_date,
         description: email.description || email.vendor_name_raw || '',
       },
-      candidates
+      eligibleCandidates
     )
 
     if (match && match.confidence >= 55) {

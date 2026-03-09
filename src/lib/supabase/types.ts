@@ -519,6 +519,7 @@ export type Database = {
           payment_card_last_four: string | null
           payment_card_type: string | null
           processed_at: string | null
+          rejected_transaction_ids: string[]
           seen: boolean | null
           status: string
           subject: string | null
@@ -559,6 +560,7 @@ export type Database = {
           payment_card_last_four?: string | null
           payment_card_type?: string | null
           processed_at?: string | null
+          rejected_transaction_ids?: string[]
           seen?: boolean | null
           status?: string
           subject?: string | null
@@ -599,6 +601,7 @@ export type Database = {
           payment_card_last_four?: string | null
           payment_card_type?: string | null
           processed_at?: string | null
+          rejected_transaction_ids?: string[]
           seen?: boolean | null
           status?: string
           subject?: string | null

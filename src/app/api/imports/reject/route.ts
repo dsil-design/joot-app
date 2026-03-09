@@ -213,18 +213,65 @@ export async function POST(request: NextRequest) {
 
     // --- Process EMAIL items ---
     if (emailItemIds.length > 0) {
-      const { data: updated, error: emailUpdateError } = await serviceClient
+      // First, fetch emails that have a matched_transaction_id so we can record the rejected pairing
+      const { data: emailsWithMatch } = await serviceClient
         .from('email_transactions')
-        .update({ status: effectiveStatus })
+        .select('id, matched_transaction_id, rejected_transaction_ids')
         .in('id', emailItemIds)
         .eq('user_id', user.id)
-        .select('id')
+        .not('matched_transaction_id', 'is', null)
 
-      if (emailUpdateError) {
-        results.errors.push('Failed to update email transactions')
-        results.failed += emailItemIds.length
-      } else {
-        results.rejected += updated?.length ?? 0
+      // For each email with a match, append the matched_transaction_id to rejected list and clear the match
+      if (emailsWithMatch && emailsWithMatch.length > 0) {
+        for (const email of emailsWithMatch) {
+          const existingRejected = (email.rejected_transaction_ids || []) as string[]
+          const matchedId = email.matched_transaction_id as string
+          if (!existingRejected.includes(matchedId)) {
+            await serviceClient
+              .from('email_transactions')
+              .update({
+                status: effectiveStatus,
+                matched_transaction_id: null,
+                match_confidence: null,
+                match_method: null,
+                rejected_transaction_ids: [...existingRejected, matchedId],
+              })
+              .eq('id', email.id)
+              .eq('user_id', user.id)
+          } else {
+            await serviceClient
+              .from('email_transactions')
+              .update({
+                status: effectiveStatus,
+                matched_transaction_id: null,
+                match_confidence: null,
+                match_method: null,
+              })
+              .eq('id', email.id)
+              .eq('user_id', user.id)
+          }
+        }
+        results.rejected += emailsWithMatch.length
+      }
+
+      // Update any remaining emails without a match (just status change)
+      const emailsWithMatchIds = new Set((emailsWithMatch || []).map((e) => e.id))
+      const emailsWithoutMatch = emailItemIds.filter((id) => !emailsWithMatchIds.has(id))
+
+      if (emailsWithoutMatch.length > 0) {
+        const { data: updated, error: emailUpdateError } = await serviceClient
+          .from('email_transactions')
+          .update({ status: effectiveStatus })
+          .in('id', emailsWithoutMatch)
+          .eq('user_id', user.id)
+          .select('id')
+
+        if (emailUpdateError) {
+          results.errors.push('Failed to update email transactions')
+          results.failed += emailsWithoutMatch.length
+        } else {
+          results.rejected += updated?.length ?? 0
+        }
       }
     }
 
