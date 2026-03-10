@@ -3,6 +3,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import type { Json } from '@/lib/supabase/types'
 import { parseImportId } from '@/lib/utils/import-id'
 import { updateStatementReviewStatus } from '@/lib/utils/statement-status'
+import { learnVendorRecipientMapping } from '@/lib/services/vendor-recipient-learning'
 
 interface Suggestion {
   transaction_date: string
@@ -315,6 +316,18 @@ export async function POST(request: NextRequest) {
           source: parsed.type,
         },
       })
+
+    // Learn vendor-recipient mapping from bank transfer emails (fire-and-forget)
+    const emailIdForLearning = parsed.type === 'email'
+      ? parsed.emailId
+      : parsed.type === 'merged'
+        ? parsed.emailId
+        : undefined
+
+    if (emailIdForLearning) {
+      learnVendorRecipientMapping(serviceClient, user.id, emailIdForLearning, transactionId)
+        .catch((err) => console.error('Vendor-recipient learning error:', err))
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

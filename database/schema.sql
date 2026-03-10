@@ -1348,3 +1348,32 @@ LEFT JOIN public.email_transactions et
   AND e.user_id = et.user_id
 LEFT JOIN public.email_groups eg
   ON et.email_group_id = eg.id;
+
+-- ============================================================================
+-- VENDOR RECIPIENT MAPPINGS
+-- Learns associations between bank transfer recipient names and Joot vendors
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS vendor_recipient_mappings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  recipient_name_normalized TEXT NOT NULL,
+  recipient_name_raw TEXT NOT NULL,
+  vendor_id UUID NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+  parser_key TEXT NOT NULL,
+  match_count INTEGER NOT NULL DEFAULT 1,
+  last_used_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, recipient_name_normalized, parser_key)
+);
+
+CREATE INDEX idx_vendor_recipient_mappings_user_lookup
+  ON vendor_recipient_mappings (user_id, parser_key);
+
+ALTER TABLE vendor_recipient_mappings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own vendor-recipient mappings"
+  ON vendor_recipient_mappings
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);

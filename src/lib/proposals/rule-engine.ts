@@ -16,6 +16,7 @@ import type {
 } from './types'
 import { matchVendor, suggestVendorName } from './vendor-matcher'
 import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour } from './payment-method-mapper'
+import { findMappingMatch } from '@/lib/services/vendor-recipient-mapping'
 
 /**
  * Generate a rule-based proposal for a single queue item.
@@ -256,7 +257,24 @@ function proposeVendor(
     }
   }
 
-  // Strategy 1: Email has vendor_id set by parser
+  // Strategy 1: Learned vendor-recipient mapping (from past user actions)
+  if (item.vendorNameRaw && item.parserKey && context.vendorRecipientMappings.length > 0) {
+    const mapping = findMappingMatch(item.vendorNameRaw, item.parserKey, context.vendorRecipientMappings)
+    if (mapping) {
+      const vendor = context.vendors.find((v) => v.id === mapping.vendorId)
+      if (vendor) {
+        const confidence = Math.min(92, 80 + mapping.matchCount * 3)
+        fields.vendorId = vendor.id
+        fc.vendor_id = {
+          score: confidence,
+          reasoning: `Learned mapping: "${item.vendorNameRaw}" → ${vendor.name} (${mapping.matchCount}× confirmed)`,
+        }
+        return
+      }
+    }
+  }
+
+  // Strategy 2: Email has vendor_id set by parser
   if (item.vendorId) {
     const vendor = context.vendors.find((v) => v.id === item.vendorId)
     if (vendor) {
@@ -266,7 +284,7 @@ function proposeVendor(
     }
   }
 
-  // Strategy 2+3+4: Fuzzy match against vendors + historical descriptions
+  // Strategy 3: Fuzzy match against vendors + historical descriptions
   const match = matchVendor(item.description, context.vendors, context.recentTransactions)
   if (match) {
     fields.vendorId = match.vendorId
@@ -277,7 +295,7 @@ function proposeVendor(
     return
   }
 
-  // Strategy 5: Suggest a clean vendor name (no match found)
+  // Strategy 4: Suggest a clean vendor name (no match found)
   const suggestedName = suggestVendorName(item.description)
   if (suggestedName && suggestedName !== item.description) {
     fields.vendorId = null

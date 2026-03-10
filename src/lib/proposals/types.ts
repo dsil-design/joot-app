@@ -208,6 +208,14 @@ export interface RecentTransaction {
   tagIds: string[]
 }
 
+export interface VendorRecipientMappingRecord {
+  recipientNameNormalized: string
+  vendorId: string
+  vendorName?: string
+  parserKey: string
+  matchCount: number
+}
+
 export interface RuleEngineContext {
   vendors: VendorRecord[]
   paymentMethods: PaymentMethodRecord[]
@@ -216,6 +224,7 @@ export interface RuleEngineContext {
   vendorTagFrequency: VendorTagFrequency[]
   vendorDescriptionPatterns: VendorDescriptionPattern[]
   pastCorrections: PastCorrection[]
+  vendorRecipientMappings: VendorRecipientMappingRecord[]
   statementPaymentMethodId?: string
   statementPaymentMethodName?: string
 }

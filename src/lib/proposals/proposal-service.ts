@@ -22,7 +22,9 @@ import type {
   TransactionProposal,
   FieldConfidenceMap,
   PastCorrection,
+  VendorRecipientMappingRecord,
 } from './types'
+import { fetchMappings } from '@/lib/services/vendor-recipient-mapping'
 
 /**
  * Pre-fetch all reference data needed by the rule engine.
@@ -33,13 +35,14 @@ export async function prefetchRuleEngineContext(
   userId: string,
   dateRange?: { from: string; to: string }
 ): Promise<RuleEngineContext> {
-  const [vendors, paymentMethods, tags, recentTxns, vendorTagFreqs, pastCorrections] = await Promise.all([
+  const [vendors, paymentMethods, tags, recentTxns, vendorTagFreqs, pastCorrections, vendorRecipientMappings] = await Promise.all([
     fetchVendors(supabase, userId),
     fetchPaymentMethods(supabase, userId),
     fetchTags(supabase, userId),
     fetchRecentTransactions(supabase, userId, dateRange),
     fetchVendorTagFrequency(supabase, userId),
     fetchPastCorrections(supabase, userId),
+    fetchVendorRecipientMappings(supabase, userId),
   ])
 
   // Build vendor description patterns from recent transactions
@@ -53,6 +56,7 @@ export async function prefetchRuleEngineContext(
     vendorTagFrequency: vendorTagFreqs,
     vendorDescriptionPatterns,
     pastCorrections,
+    vendorRecipientMappings,
   }
 }
 
@@ -697,6 +701,13 @@ export function transformProposalRow(
   }
 
   return proposal
+}
+
+async function fetchVendorRecipientMappings(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<VendorRecipientMappingRecord[]> {
+  return fetchMappings(supabase, userId)
 }
 
 // ── Vendor description pattern analysis ──────────────────────────────────
