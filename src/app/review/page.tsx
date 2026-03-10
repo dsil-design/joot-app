@@ -268,13 +268,9 @@ export default function ReviewQueuePage() {
               toast.dismiss(t)
             }}
             onDismiss={() => {
-              // No feedback given — item stays in pipeline as pending_review
-              // Revert the optimistic "rejected" status back to "pending"
+              // No feedback given — item was already skipped server-side, remove from list
               for (const id of ids) {
-                updateItemByKey(id, (item) => ({
-                  ...item,
-                  status: "pending" as const,
-                }))
+                removeItemByKey(id)
               }
               toast.dismiss(t)
             }}

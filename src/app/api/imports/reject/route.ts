@@ -273,6 +273,17 @@ export async function POST(request: NextRequest) {
           results.rejected += updated?.length ?? 0
         }
       }
+
+      // Mark associated proposals as rejected so they don't resurface
+      const compositeIds = emailItemIds.map((id) => `email:${id}`)
+      if (compositeIds.length > 0) {
+        await serviceClient
+          .from('transaction_proposals')
+          .update({ status: 'rejected' })
+          .eq('user_id', user.id)
+          .in('composite_id', compositeIds)
+          .in('status', ['pending', 'stale'])
+      }
     }
 
     // Log activity

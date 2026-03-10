@@ -399,7 +399,7 @@ export async function generateAndStoreProposals(
   const dateRange = getDateRange(items)
   const context = options?.context || await prefetchRuleEngineContext(supabase, userId, dateRange)
 
-  // Check existing proposals unless force
+  // Check existing proposals unless force — skip items with pending/accepted/modified/rejected proposals
   let existingCompositeIds = new Set<string>()
   if (!options?.force) {
     const { data: existing } = await supabase
@@ -407,7 +407,7 @@ export async function generateAndStoreProposals(
       .select('composite_id')
       .eq('user_id', userId)
       .in('composite_id', items.map((i) => i.compositeId))
-      .in('status', ['pending', 'accepted', 'modified'])
+      .in('status', ['pending', 'accepted', 'modified', 'rejected'])
 
     if (existing) {
       existingCompositeIds = new Set(existing.map((e) => e.composite_id))
@@ -518,6 +518,7 @@ export async function getProposalsForItems(
     .select('*')
     .eq('user_id', userId)
     .in('composite_id', compositeIds)
+    .in('status', ['pending', 'accepted', 'modified'])
 
   if (error || !data) return new Map()
 

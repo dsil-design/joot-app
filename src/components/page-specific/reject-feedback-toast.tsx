@@ -66,7 +66,7 @@ export function RejectFeedbackToast({
 }: RejectFeedbackToastProps) {
   const [selectedChip, setSelectedChip] = React.useState<string | null>(null)
   const [notes, setNotes] = React.useState("")
-  const [nextStatus, setNextStatus] = React.useState<NextStatus>("pending_review")
+  const [nextStatus, setNextStatus] = React.useState<NextStatus>("skipped")
   const [submitted, setSubmitted] = React.useState(false)
 
   // Auto-select next status based on chip

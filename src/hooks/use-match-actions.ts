@@ -180,16 +180,15 @@ export function useMatchActions({
       onStatusChange?.(id, "rejected")
 
       try {
-        // Default to pending_review so sources stay in the pipeline even if
-        // the user dismisses the feedback toast without submitting.
-        // The feedback toast can upgrade this to 'skipped' or 'waiting_for_statement'.
+        // Default to skipped so rejected items don't keep reappearing in the queue.
+        // The feedback toast can set a different status like 'waiting_for_statement'.
         const response = await fetch("/api/imports/reject", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             emailId: id,
             reason,
-            nextStatus: options?.nextStatus || "pending_review",
+            nextStatus: options?.nextStatus || "skipped",
           }),
         })
 
@@ -211,8 +210,8 @@ export function useMatchActions({
               previousStatus: "pending",
               timeoutId: setTimeout(() => {
                 clearPendingUndo(id)
-                // When toast times out without feedback, revert to pending (item stays in pipeline)
-                onStatusChange?.(id, "pending")
+                // When toast times out, remove the item from the list (it's already skipped server-side)
+                onItemRemove?.(id)
               }, undoDuration + 15000), // longer window since feedback toast is 20s
             })
             onRejectSuccess([id], () => undoAction(id))
@@ -418,7 +417,7 @@ export function useMatchActions({
         const response = await fetch("/api/imports/reject", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ emailIds: ids, reason, nextStatus: "pending_review" }),
+          body: JSON.stringify({ emailIds: ids, reason, nextStatus: "skipped" }),
         })
 
         if (!response.ok) {
