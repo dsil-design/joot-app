@@ -58,7 +58,6 @@ import {
 import { toast } from "sonner"
 import Link from "next/link"
 import { getConfidenceLevel } from "@/components/ui/confidence-indicator"
-import { RejectFeedbackToast } from "@/components/page-specific/reject-feedback-toast"
 import { ReviewFocusModal } from "@/components/page-specific/review-focus-modal"
 
 interface QueueStats {
@@ -230,14 +229,12 @@ export default function ReviewQueuePage() {
     keyExtractor: (item) => item.id,
   })
 
-  // submitRejectFeedback is defined below (after handleRefreshProposal) — use a ref to avoid circular deps
-  const submitRejectFeedbackRef = React.useRef<(ids: string[], reason: string, nextStatus: string) => void>(() => {})
-
   const {
     approve,
     reject,
     linkToExisting,
     batchApprove,
+    undoAction,
     isProcessing,
   } = useMatchActions({
     onStatusChange: (id, status) => {
@@ -254,35 +251,7 @@ export default function ReviewQueuePage() {
         return next
       })
     },
-    onRejectSuccess: (ids, undo) => {
-      toast.custom(
-        (t) => (
-          <RejectFeedbackToast
-            compositeIds={ids}
-            count={ids.length}
-            onSubmitFeedback={(cIds, reason, nextStatus) =>
-              submitRejectFeedbackRef.current(cIds, reason, nextStatus)
-            }
-            onUndo={() => {
-              undo()
-              toast.dismiss(t)
-            }}
-            onDismiss={() => {
-              // No feedback given — item stays in pipeline as pending_review
-              // Revert the optimistic "rejected" status back to "pending"
-              for (const id of ids) {
-                updateItemByKey(id, (item) => ({
-                  ...item,
-                  status: "pending" as const,
-                }))
-              }
-              toast.dismiss(t)
-            }}
-          />
-        ),
-        { duration: 20000 }
-      )
-    },
+    // No onRejectSuccess — feedback is now handled inline in the card
   })
 
   const handleSelectionChange = (id: string, selected: boolean) => {
@@ -447,6 +416,9 @@ export default function ReviewQueuePage() {
           })
         }
 
+        // Brief delay so the "Feedback submitted" confirmation is visible
+        await new Promise((r) => setTimeout(r, 1500))
+
         // Handle next status
         if (nextStatus === "pending_review") {
           // Re-queue: restore to pending and regenerate proposal with feedback
@@ -469,11 +441,6 @@ export default function ReviewQueuePage() {
     },
     [items, updateItemByKey, removeItemByKey, handleRefreshProposal]
   )
-
-  // Keep the ref in sync
-  React.useEffect(() => {
-    submitRejectFeedbackRef.current = submitRejectFeedback
-  }, [submitRejectFeedback])
 
   const handleQuickCreate = async (id: string) => {
     const item = items.find((i) => i.id === id)
@@ -604,6 +571,32 @@ export default function ReviewQueuePage() {
     setReviewFocusOpen(true)
   }
 
+  // Inline card rejection handlers
+  const handleRejectFeedback = React.useCallback(
+    (id: string, reason: string, nextStatus: string) => {
+      submitRejectFeedback([id], reason, nextStatus)
+    },
+    [submitRejectFeedback]
+  )
+
+  const handleRejectUndo = React.useCallback(
+    (id: string) => {
+      undoAction(id)
+    },
+    [undoAction]
+  )
+
+  const handleRejectTimeout = React.useCallback(
+    (id: string) => {
+      // Timer expired without feedback — revert to pending (stays in pipeline)
+      updateItemByKey(id, (item) => ({
+        ...item,
+        status: "pending" as const,
+      }))
+    },
+    [updateItemByKey]
+  )
+
   const renderMatchCard = (item: MatchCardData) => (
     <MatchCard
       key={item.id}
@@ -618,6 +611,9 @@ export default function ReviewQueuePage() {
       onQuickCreate={handleQuickCreate}
       onRefreshProposal={handleRefreshProposal}
       onSelectionChange={handleSelectionChange}
+      onRejectFeedback={handleRejectFeedback}
+      onRejectUndo={handleRejectUndo}
+      onRejectTimeout={handleRejectTimeout}
     />
   )
 

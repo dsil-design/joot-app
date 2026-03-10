@@ -344,6 +344,21 @@ body {
   }
 }
 
+/* Card flip animation for rejection feedback */
+@keyframes card-flip-in {
+  0% {
+    transform: rotateX(90deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+}
+
 /* Ensure safe area insets work correctly */
 @supports (padding: env(safe-area-inset-bottom)) {
   :root {

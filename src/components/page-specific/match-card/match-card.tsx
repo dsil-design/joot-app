@@ -3,6 +3,7 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { CheckCircle2 } from "lucide-react"
 import type {
   MatchCardProps,
   MatchCardVariant,
@@ -13,6 +14,7 @@ import { MatchCardHeader } from "./match-card-header"
 import { MatchCardPanels, ProposalConfidenceBar } from "./match-card-panels"
 import { MatchCardReasons } from "./match-card-reasons"
 import { MatchCardActions } from "./match-card-actions"
+import { MatchCardFeedback, type NextStatus } from "./match-card-feedback"
 
 /**
  * Derive variant from data when not explicitly provided
@@ -63,11 +65,15 @@ const VARIANT_CONFIG: Record<MatchCardVariant, VariantConfig> = {
   },
 }
 
+const UNDO_DURATION_SECONDS = 20
+
 /**
  * MatchCard Component
  *
  * Two-panel comparison layout with confidence-tiered styling
  * and variant-specific action buttons.
+ *
+ * When rejected, the card flips to show an inline feedback form.
  */
 export function MatchCard({
   data,
@@ -82,6 +88,9 @@ export function MatchCard({
   onQuickCreate,
   onRefreshProposal,
   onSelectionChange,
+  onRejectFeedback,
+  onRejectUndo,
+  onRejectTimeout,
   className,
 }: MatchCardProps) {
   const variant = providedVariant || getVariant(data)
@@ -89,6 +98,64 @@ export function MatchCard({
 
   const isApproved = data.status === "approved" || data.status === "imported"
   const isRejected = data.status === "rejected"
+
+  // Inline rejection feedback state
+  const [showFeedback, setShowFeedback] = React.useState(false)
+  const [feedbackSubmitted, setFeedbackSubmitted] = React.useState(false)
+  const [secondsLeft, setSecondsLeft] = React.useState(UNDO_DURATION_SECONDS)
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null)
+  const countdownRef = React.useRef<NodeJS.Timeout | null>(null)
+
+  // When the card enters "rejected" status, flip to feedback
+  React.useEffect(() => {
+    if (isRejected && !showFeedback && !feedbackSubmitted) {
+      setShowFeedback(true)
+      setSecondsLeft(UNDO_DURATION_SECONDS)
+
+      // Start countdown
+      countdownRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownRef.current!)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      // Auto-revert on timeout (no feedback given → stays in pipeline)
+      timerRef.current = setTimeout(() => {
+        setShowFeedback(false)
+        onRejectTimeout?.(data.id)
+      }, UNDO_DURATION_SECONDS * 1000)
+    }
+
+    return () => {
+      if (!isRejected) {
+        // Card was undone or status changed — clean up
+        clearTimeout(timerRef.current!)
+        clearInterval(countdownRef.current!)
+        setShowFeedback(false)
+        setFeedbackSubmitted(false)
+      }
+    }
+  }, [isRejected]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleUndo = () => {
+    clearTimeout(timerRef.current!)
+    clearInterval(countdownRef.current!)
+    setShowFeedback(false)
+    setFeedbackSubmitted(false)
+    onRejectUndo?.(data.id)
+  }
+
+  const handleFeedbackSubmit = (reason: string, nextStatus: NextStatus) => {
+    clearTimeout(timerRef.current!)
+    clearInterval(countdownRef.current!)
+    setShowFeedback(false)
+    setFeedbackSubmitted(true)
+    onRejectFeedback?.(data.id, reason, nextStatus)
+  }
 
   const callbacks: MatchCardCallbacks = {
     onApprove,
@@ -101,6 +168,51 @@ export function MatchCard({
     onSelectionChange,
   }
 
+  // ── Submitted confirmation (shrinks then fades) ──
+  if (feedbackSubmitted) {
+    return (
+      <Card
+        className={cn(
+          "transition-all duration-500 border-2 overflow-hidden border-gray-200 bg-gray-50/50",
+          "animate-in fade-in-0 slide-in-from-top-2",
+          className
+        )}
+      >
+        <div className="flex items-center gap-2 px-4 py-3">
+          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            Feedback submitted
+          </p>
+        </div>
+      </Card>
+    )
+  }
+
+  // ── Flipped state: show feedback form ──
+  if (showFeedback && isRejected) {
+    return (
+      <Card
+        className={cn(
+          "transition-all duration-300 border-2 overflow-hidden",
+          "border-gray-300 bg-card",
+          "animate-in fade-in-0",
+          className
+        )}
+        style={{
+          animation: "card-flip-in 0.4s ease-out",
+        }}
+      >
+        <MatchCardFeedback
+          compositeId={data.id}
+          secondsLeft={secondsLeft}
+          onSubmitFeedback={handleFeedbackSubmit}
+          onUndo={handleUndo}
+        />
+      </Card>
+    )
+  }
+
+  // ── Normal state: front of card ──
   return (
     <Card
       className={cn(

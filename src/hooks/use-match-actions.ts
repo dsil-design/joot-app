@@ -200,45 +200,21 @@ export function useMatchActions({
 
         setState({ isLoading: false, processingId: null, error: null })
 
-        // Show undo toast unless skipped
-        if (!options?.skipUndo) {
-          // If onRejectSuccess is provided, delegate toast to the caller (for feedback UI).
-          // Don't auto-remove — the feedback toast determines what happens next
-          // (re-queue keeps it, dismiss removes it).
-          if (onRejectSuccess) {
-            pendingUndosRef.current.set(id, {
-              id,
-              action: "reject",
-              previousStatus: "pending",
-              timeoutId: setTimeout(() => {
-                clearPendingUndo(id)
-                // When toast times out without feedback, revert to pending (item stays in pipeline)
-                onStatusChange?.(id, "pending")
-              }, undoDuration + 15000), // longer window since feedback toast is 20s
-            })
-            onRejectSuccess([id], () => undoAction(id))
-          } else {
-            const timeoutId = setTimeout(() => {
-              clearPendingUndo(id)
-              onItemRemove?.(id)
-            }, undoDuration)
+        // Register pending undo so undoAction() can revert the status.
+        // The card's inline feedback form handles the undo UI and timer;
+        // this just ensures the hook tracks the undo state.
+        pendingUndosRef.current.set(id, {
+          id,
+          action: "reject",
+          previousStatus: "pending",
+          timeoutId: setTimeout(() => {
+            clearPendingUndo(id)
+          }, 30000), // cleanup after 30s — card manages its own timer
+        })
 
-            pendingUndosRef.current.set(id, {
-              id,
-              action: "reject",
-              previousStatus: "pending",
-              timeoutId,
-            })
-
-            toast.success("Proposal rejected", {
-              description: reason || "Proposal has been rejected.",
-              action: {
-                label: "Undo",
-                onClick: () => undoAction(id),
-              },
-              duration: undoDuration,
-            })
-          }
+        // If onRejectSuccess is provided (e.g. for toast-based flow), call it
+        if (onRejectSuccess && !options?.skipUndo) {
+          onRejectSuccess([id], () => undoAction(id))
         }
 
         return true
