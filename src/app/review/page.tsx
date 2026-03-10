@@ -268,7 +268,8 @@ export default function ReviewQueuePage() {
               toast.dismiss(t)
             }}
             onDismiss={() => {
-              // No feedback given — item was already skipped server-side, remove from list
+              // No feedback given — item is already skipped server-side and hidden via status filter.
+              // Remove from data array entirely so it doesn't linger.
               for (const id of ids) {
                 removeItemByKey(id)
               }
@@ -535,7 +536,7 @@ export default function ReviewQueuePage() {
 
   // Split items into matches, new transactions, and waiting-for-statement
   const waitingItems = items.filter((item) => item.waitingForStatement)
-  const activeItems = items.filter((item) => !item.waitingForStatement)
+  const activeItems = items.filter((item) => !item.waitingForStatement && item.status !== "rejected")
   const matchItems = activeItems.filter((item) => !item.isNew)
   const newItems = activeItems.filter((item) => item.isNew)
 
