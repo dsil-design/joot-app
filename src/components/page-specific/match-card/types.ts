@@ -128,12 +128,6 @@ export interface MatchCardProps extends MatchCardCallbacks {
   selected?: boolean
   loading?: boolean
   className?: string
-  /** Called when the user submits rejection feedback from the inline form */
-  onRejectFeedback?: (id: string, reason: string, nextStatus: string) => void
-  /** Called when the user clicks Undo on the inline rejection form */
-  onRejectUndo?: (id: string) => void
-  /** Called when the rejection feedback timer expires without input */
-  onRejectTimeout?: (id: string) => void
 }
 
 /**
