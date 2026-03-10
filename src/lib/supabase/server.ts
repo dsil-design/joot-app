@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { Database } from './types'
+import { cookieOptions } from './cookie-options'
 
 // Retry configuration for transient network errors
 const RETRY_CONFIG = {
@@ -41,6 +42,7 @@ export async function createClient() {
   const cookieStore = await cookies()
 
   return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+    cookieOptions,
     cookies: {
       getAll() {
         return cookieStore.getAll()
