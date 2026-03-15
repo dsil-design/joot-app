@@ -153,6 +153,7 @@ export class EmailSyncService {
 
       if (mailbox.exists === 0) {
         result.message = 'Folder is empty';
+        await this.updateSyncState(userId, folder, lastUid || 0);
         return result;
       }
 
@@ -186,6 +187,8 @@ export class EmailSyncService {
       if (!uidsToFetch || uidsToFetch.length === 0) {
         result.message = 'No new emails to sync';
         console.log(result.message);
+        // Always update last_sync_at so the UI reflects when we last checked
+        await this.updateSyncState(userId, folder, lastUid || 0);
         return result;
       }
 
@@ -252,10 +255,9 @@ export class EmailSyncService {
         result.synced = insertedCount;
       }
 
-      // Update sync state
-      if (result.lastUid > lastUid) {
-        await this.updateSyncState(userId, folder, result.lastUid);
-      }
+      // Always update sync state so last_sync_at reflects when we last checked
+      const newUid = Math.max(result.lastUid, lastUid);
+      await this.updateSyncState(userId, folder, newUid);
 
       const duration = Date.now() - startTime;
       result.message = `Synced ${result.synced} emails in ${duration}ms`;

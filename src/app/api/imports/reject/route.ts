@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       emailId?: string
       emailIds?: string[]
       reason?: string
-      nextStatus?: 'pending_review' | 'waiting_for_statement' | 'skipped'
+      nextStatus?: 'pending_review' | 'waiting_for_statement' | 'waiting_for_email' | 'skipped'
     }
 
     try {
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const { emailId, emailIds, reason, nextStatus } = body
 
     // Validate nextStatus if provided
-    const validStatuses = ['pending_review', 'waiting_for_statement', 'skipped'] as const
+    const validStatuses = ['pending_review', 'waiting_for_statement', 'waiting_for_email', 'skipped'] as const
     if (nextStatus && !validStatuses.includes(nextStatus)) {
       return NextResponse.json(
         { error: `nextStatus must be one of: ${validStatuses.join(', ')}` },

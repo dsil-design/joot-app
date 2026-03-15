@@ -17,6 +17,7 @@ export function EmailHubFunnelBar({ stats, isLoading }: EmailHubFunnelBarProps) 
     (statusCounts.pending_review || 0) +
     (statusCounts.matched || 0) +
     (statusCounts.waiting_for_statement || 0) +
+    (statusCounts.waiting_for_email || 0) +
     (statusCounts.ready_to_import || 0) +
     (statusCounts.imported || 0) +
     (statusCounts.skipped || 0)
@@ -27,6 +28,7 @@ export function EmailHubFunnelBar({ stats, isLoading }: EmailHubFunnelBarProps) 
     (statusCounts.pending_review || 0) +
     (statusCounts.matched || 0) +
     (statusCounts.waiting_for_statement || 0) +
+    (statusCounts.waiting_for_email || 0) +
     (statusCounts.ready_to_import || 0) +
     (statusCounts.imported || 0)
   const matched = (statusCounts.matched || 0) + (statusCounts.imported || 0)

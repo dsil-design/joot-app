@@ -67,7 +67,7 @@ export async function GET() {
         .from('email_transactions')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement']),
+        .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement', 'waiting_for_email']),
 
       // Pending review queue: completed statements (each has pending suggestions)
       supabase

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Bot, ChevronDown, ChevronRight, Eye, RefreshCw, Send, Zap } from "lucide-react"
+import { Bot, ChevronDown, ChevronRight, Eye, RefreshCw, Send, SkipForward, Zap } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { EmailViewerModal } from "./email-viewer-modal"
 import { getParserTag } from "@/lib/utils/parser-tags"
@@ -18,8 +18,10 @@ interface EmailTransactionCardProps {
   onToggleExpand: () => void
   onToggleSelect: (selected: boolean) => void
   onProcess?: (emailId: string) => void
+  onSkip?: (emailId: string) => void
   onFeedbackReprocess?: (emailId: string, userHint: string) => void
   isProcessingExtraction?: boolean
+  isSkipping?: boolean
   isFeedbackProcessing?: boolean
   children?: React.ReactNode
 }
@@ -36,7 +38,9 @@ function getStatusBadge(status: string) {
     case "matched":
       return { label: "Linked", className: "bg-green-100 text-green-800 border-green-200" }
     case "waiting_for_statement":
-      return { label: "Waiting", className: "bg-blue-100 text-blue-800 border-blue-200" }
+      return { label: "Waiting (Statement)", className: "bg-blue-100 text-blue-800 border-blue-200" }
+    case "waiting_for_email":
+      return { label: "Waiting (Email)", className: "bg-indigo-100 text-indigo-800 border-indigo-200" }
     case "ready_to_import":
       return { label: "Ready to Import", className: "bg-purple-100 text-purple-800 border-purple-200" }
     case "imported":
@@ -80,8 +84,10 @@ export function EmailTransactionCard({
   onToggleExpand,
   onToggleSelect,
   onProcess,
+  onSkip,
   onFeedbackReprocess,
   isProcessingExtraction,
+  isSkipping,
   isFeedbackProcessing,
   children,
 }: EmailTransactionCardProps) {
@@ -221,12 +227,25 @@ export function EmailTransactionCard({
               >
                 <Eye className="h-3.5 w-3.5" />
               </Button>
+              {onSkip && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onSkip(data.id)}
+                  disabled={isSkipping || isProcessingExtraction}
+                  className="h-7 text-xs text-muted-foreground"
+                  title="Skip this email"
+                >
+                  <SkipForward className="h-3 w-3 mr-1" />
+                  Skip
+                </Button>
+              )}
               {onProcess && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => onProcess(data.id)}
-                  disabled={isProcessingExtraction}
+                  disabled={isProcessingExtraction || isSkipping}
                   className="h-7 text-xs"
                 >
                   <Zap className="h-3 w-3 mr-1" />

@@ -14,6 +14,7 @@ export type EmailHubStatus =
   | "pending_review"
   | "matched"
   | "waiting_for_statement"
+  | "waiting_for_email"
   | "ready_to_import"
   | "imported"
   | "skipped"
@@ -52,7 +53,7 @@ export const defaultEmailHubFilters: EmailHubFilters = {
 
 const validStatuses: EmailHubStatus[] = [
   "all", "unprocessed", "pending_review", "matched", "waiting_for_statement",
-  "ready_to_import", "imported", "skipped",
+  "waiting_for_email", "ready_to_import", "imported", "skipped",
 ]
 const validClassifications: EmailHubClassification[] = [
   "all", "receipt", "order_confirmation", "bank_transfer", "bill_payment", "unknown",

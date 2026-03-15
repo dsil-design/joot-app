@@ -16,6 +16,7 @@ import {
 } from "@/components/page-specific/email-transaction-card"
 import { EmailDetailPanel } from "@/components/page-specific/email-detail-panel"
 import { EmailBatchToolbar } from "@/components/page-specific/email-batch-toolbar"
+import { Card, CardContent } from "@/components/ui/card"
 import { RefreshCw, Mail, Inbox, AlertCircle, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
@@ -55,6 +56,7 @@ export default function EmailHubPage() {
 
   // Actions hook
   const {
+    skip,
     batchSkip,
     batchMarkPending,
     batchProcess,
@@ -89,6 +91,16 @@ export default function EmailHubPage() {
       })
       refresh()
       refetchStats()
+    } else if (result && !result.success) {
+      toast.error("Sync failed", {
+        description: result.message || "Check server logs for details.",
+      })
+      refetchStats()
+    } else if (!result) {
+      // triggerSync returns null on network/auth errors (error is in syncError state)
+      toast.error("Sync failed", {
+        description: "Could not connect to email server. Check server logs.",
+      })
     }
   }
 
@@ -137,6 +149,11 @@ export default function EmailHubPage() {
     } finally {
       setIsSelectingAll(false)
     }
+  }
+
+  // Handle skip for individual emails (including unprocessed)
+  const handleSkip = (emailId: string) => {
+    skip(emailId).then(() => refetchStats())
   }
 
   // Handle process (extract) for unprocessed emails
@@ -227,23 +244,27 @@ export default function EmailHubPage() {
         </div>
       </div>
 
-      {/* Stats Bar */}
+      {/* Stats Bar (global totals, not affected by filters) */}
       <EmailHubStatsBar
         stats={stats}
         isLoading={statsLoading}
         onFilterByStatus={handleFilterByStatus}
       />
 
-      {/* Filter Bar */}
-      <EmailHubFilterBar
-        filters={filters}
-        onFiltersChange={setFilters}
-        onSortToggle={() => {
-          const newSort = filters.sort === "email_date_desc" ? "email_date_asc" : "email_date_desc"
-          setFilters({ ...filters, sort: newSort })
-        }}
-        totalMatches={total}
-      />
+      {/* Filters Card */}
+      <Card>
+        <CardContent>
+          <EmailHubFilterBar
+            filters={filters}
+            onFiltersChange={setFilters}
+            onSortToggle={() => {
+              const newSort = filters.sort === "email_date_desc" ? "email_date_asc" : "email_date_desc"
+              setFilters({ ...filters, sort: newSort })
+            }}
+            totalMatches={total}
+          />
+        </CardContent>
+      </Card>
 
       {/* Batch Toolbar */}
       {selectedIds.size > 0 && (
@@ -309,8 +330,10 @@ export default function EmailHubPage() {
               onToggleExpand={() => handleToggleExpand(item.id)}
               onToggleSelect={(selected) => handleToggleSelect(item.id, selected)}
               onProcess={handleProcess}
+              onSkip={handleSkip}
               onFeedbackReprocess={handleFeedbackReprocess}
               isProcessingExtraction={isExtracting(item.id)}
+              isSkipping={isProcessing(item.id)}
               isFeedbackProcessing={isFeedbackProcessing(item.id)}
             >
               <EmailDetailPanel

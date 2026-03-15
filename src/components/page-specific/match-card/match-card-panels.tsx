@@ -505,17 +505,16 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
         </div>
       )}
 
-      {/* Right panel: Proposal or placeholder for new/unmatched transactions */}
+      {/* Right panel: Info + proposal for new/unmatched transactions */}
       {data.isNew && data.source !== "merged" && (
-        data.proposal ? (
-          <ProposalPanel proposal={data.proposal} />
-        ) : (
-          <div className="space-y-1.5 md:border-l md:pl-3 flex items-center justify-center">
-            <p className="text-sm text-muted-foreground italic">
-              No matching transaction found
-            </p>
-          </div>
-        )
+        <div className="space-y-3 md:border-l md:pl-3">
+          <p className="text-sm text-muted-foreground italic">
+            No matching transaction found
+          </p>
+          {data.proposal && (
+            <ProposalPanel proposal={data.proposal} />
+          )}
+        </div>
       )}
     </div>
   )
@@ -544,7 +543,7 @@ function ProposalPanel({
 }) {
 
   return (
-    <div className="space-y-1.5 border-t pt-3 md:border-t-0 md:pt-0 md:border-l md:pl-3">
+    <div className="space-y-1.5">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
         Proposed Txn
         <Zap className="h-3 w-3 text-purple-500" aria-hidden="true" />

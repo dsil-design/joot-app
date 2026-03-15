@@ -962,6 +962,19 @@ export function ReviewFocusModal({
       <DialogContent
         className="sm:max-w-5xl max-h-[90vh] p-0 gap-0 flex flex-col"
         showCloseButton={false}
+        onPointerDownOutside={(e) => {
+          // Prevent modal from closing when clicking on Sonner toasts (e.g. reject feedback form)
+          const target = e.target as HTMLElement | null
+          if (target?.closest("[data-sonner-toaster]")) {
+            e.preventDefault()
+          }
+        }}
+        onInteractOutside={(e) => {
+          const target = e.target as HTMLElement | null
+          if (target?.closest("[data-sonner-toaster]")) {
+            e.preventDefault()
+          }
+        }}
       >
         <DialogTitle className="sr-only">
           Review item {currentIndex + 1} of {total}

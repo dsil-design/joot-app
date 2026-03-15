@@ -658,6 +658,7 @@ CREATE TABLE public.email_transactions (
     'pending_review',        -- Needs user review
     'matched',               -- Linked to existing transaction
     'waiting_for_statement', -- THB receipt waiting for USD charge
+    'waiting_for_email',     -- Needs email receipt before processing
     'ready_to_import',       -- Can create new transaction
     'imported',              -- Transaction created
     'skipped'                -- User marked as non-transaction

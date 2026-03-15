@@ -245,6 +245,7 @@ export interface ProposalInput {
   date: string
 
   // Email-specific
+  subject?: string
   fromAddress?: string
   fromName?: string
   vendorId?: string

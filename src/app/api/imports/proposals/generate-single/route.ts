@@ -82,9 +82,11 @@ export async function POST(request: NextRequest) {
       paymentMethodId: targetItem.paymentMethod?.id,
       paymentMethodName: targetItem.paymentMethod?.name,
       // Email-specific fields for proposal engine
+      subject: emailMeta?.subject,
       fromAddress: emailMeta?.fromAddress,
       fromName: emailMeta?.fromName,
       vendorId: emailMeta?.vendorId,
+      vendorNameRaw: emailMeta?.vendorNameRaw,
       parserKey: emailMeta?.parserKey,
       classification: emailMeta?.classification,
       extractionConfidence: emailMeta?.extractionConfidence,
