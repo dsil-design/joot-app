@@ -98,7 +98,9 @@ export function useEmailSync(): UseEmailSyncResult {
       const message = err instanceof Error ? err.message : 'Failed to sync emails'
       setSyncError(message)
       setLastResult(null)
-      return null
+      // Return a failed result with the error message so callers can show it immediately
+      // (syncError state won't be available until next render)
+      return { success: false, synced: 0, errors: 0, message } as EmailSyncResult
     } finally {
       setIsSyncing(false)
     }

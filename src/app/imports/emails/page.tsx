@@ -96,11 +96,6 @@ export default function EmailHubPage() {
         description: result.message || "Check server logs for details.",
       })
       refetchStats()
-    } else if (!result) {
-      // triggerSync returns null on network/auth errors (error is in syncError state)
-      toast.error("Sync failed", {
-        description: "Could not connect to email server. Check server logs.",
-      })
     }
   }
 
