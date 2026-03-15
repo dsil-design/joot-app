@@ -135,16 +135,20 @@ export function findMappingMatch(
   if (crossMatch) return crossMatch
 
   // Partial match: check if normalized name contains or is contained by a mapping
+  // Require the shorter string to be at least 70% of the longer string's length
+  // to avoid false positives (e.g., "noi" matching "nidnoi")
   for (const m of mappings) {
     if (
       normalized.includes(m.recipientNameNormalized) ||
       m.recipientNameNormalized.includes(normalized)
     ) {
-      // Only accept if the shorter string is at least 4 chars (avoid false positives)
       const shorter = normalized.length < m.recipientNameNormalized.length
         ? normalized
         : m.recipientNameNormalized
-      if (shorter.length >= 4) return m
+      const longer = normalized.length >= m.recipientNameNormalized.length
+        ? normalized
+        : m.recipientNameNormalized
+      if (shorter.length >= 4 && shorter.length / longer.length >= 0.7) return m
     }
   }
 

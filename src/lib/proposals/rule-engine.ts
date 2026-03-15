@@ -16,7 +16,7 @@ import type {
 } from './types'
 import { matchVendor, suggestVendorName } from './vendor-matcher'
 import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour } from './payment-method-mapper'
-import { findMappingMatch } from '@/lib/services/vendor-recipient-mapping'
+import { findMappingMatch, isBankParser } from '@/lib/services/vendor-recipient-mapping'
 
 /**
  * Generate a rule-based proposal for a single queue item.
@@ -241,19 +241,24 @@ function proposeVendor(
   fc: FieldConfidenceMap
 ) {
   // Strategy 0: Past corrections — user previously corrected vendor for similar items
-  const vendorCorrection = findBestCorrection(item, context, 'vendor_id')
-  if (vendorCorrection && typeof vendorCorrection.correctedValue === 'string') {
-    const correctedVendorId = vendorCorrection.correctedValue
-    const vendor = context.vendors.find((v) => v.id === correctedVendorId)
-    if (vendor) {
-      fields.vendorId = vendor.id
-      const matchType = vendorCorrection.fromAddress && item.fromAddress === vendorCorrection.fromAddress
-        ? 'same sender' : 'similar description'
-      fc.vendor_id = {
-        score: 93,
-        reasoning: `Learned from correction (${matchType}): ${vendor.name}`,
+  // Skip for bank transfers: all emails from the same bank share a sender address,
+  // so "same sender" corrections would incorrectly apply one vendor to all transfers.
+  // Bank transfers use vendor-recipient mappings instead (Strategy 1).
+  if (!isBankParser(item.parserKey)) {
+    const vendorCorrection = findBestCorrection(item, context, 'vendor_id')
+    if (vendorCorrection && typeof vendorCorrection.correctedValue === 'string') {
+      const correctedVendorId = vendorCorrection.correctedValue
+      const vendor = context.vendors.find((v) => v.id === correctedVendorId)
+      if (vendor) {
+        fields.vendorId = vendor.id
+        const matchType = vendorCorrection.fromAddress && item.fromAddress === vendorCorrection.fromAddress
+          ? 'same sender' : 'similar description'
+        fc.vendor_id = {
+          score: 93,
+          reasoning: `Learned from correction (${matchType}): ${vendor.name}`,
+        }
+        return
       }
-      return
     }
   }
 
