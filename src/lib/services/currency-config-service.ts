@@ -173,6 +173,44 @@ class CurrencyConfigService {
     const config = await this.getCurrencyConfig();
     return config.currencyPairs;
   }
+
+  /**
+   * Get only the currency pairs our sync processes actually produce data for:
+   * - ECB cross-rates: all combos of ECB currencies + EUR
+   * - Non-ECB API: USD ↔ each non-ECB fiat currency (e.g. VND)
+   */
+  async getSyncablePairs(): Promise<[string, string][]> {
+    const config = await this.getCurrencyConfig();
+    const seen = new Set<string>();
+    const pairs: [string, string][] = [];
+
+    const addPair = (from: string, to: string) => {
+      const key = `${from}/${to}`;
+      if (from !== to && !seen.has(key)) {
+        seen.add(key);
+        pairs.push([from, to]);
+      }
+    };
+
+    // ECB currencies + EUR form a fully-connected set (deduplicated)
+    const ecbSet = [...new Set(['EUR', ...config.ecbCurrencies])];
+    for (const from of ecbSet) {
+      for (const to of ecbSet) {
+        addPair(from, to);
+      }
+    }
+
+    // Non-ECB fiat currencies only have USD ↔ XXX pairs
+    const nonECBFiat = config.allTracked.filter(
+      c => !config.ecbCurrencies.includes(c) && c !== 'EUR' && !config.cryptoCurrencies.includes(c)
+    );
+    for (const c of nonECBFiat) {
+      addPair('USD', c);
+      addPair(c, 'USD');
+    }
+
+    return pairs;
+  }
 }
 
 // Singleton instance

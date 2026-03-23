@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/supabase/database';
+import { createServiceRoleClient } from '@/lib/supabase/server';
 import { dateHelpers, COMMON_HOLIDAYS } from '@/lib/utils/date-helpers';
 import { currencyConfigService } from '@/lib/services/currency-config-service';
 import { CurrencyType } from '@/lib/supabase/types';
@@ -117,14 +117,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
  * Perform basic health check
  */
 async function performBasicHealthCheck(expectedLastDate: string): Promise<HealthStatus> {
+  const supabase = createServiceRoleClient();
   // Check for recent data availability
-  const { data: recentRates, error } = await db.exchangeRates.getByDateRange(
-    'USD',
-    'THB',
-    expectedLastDate,
-    expectedLastDate
-  );
-  
+  const { data: recentRates, error } = await supabase
+    .from('exchange_rates')
+    .select('*')
+    .eq('from_currency', 'USD')
+    .eq('to_currency', 'THB')
+    .gte('date', expectedLastDate)
+    .lte('date', expectedLastDate);
+
   if (error) {
     throw new Error(`Database query failed: ${error.message}`);
   }
@@ -163,13 +165,21 @@ async function performDetailedHealthCheck(
   basicStatus: HealthStatus
 ): Promise<DetailedHealthCheck> {
   
-  const currencyPairs = await currencyConfigService.getCurrencyPairs() as [CurrencyType, CurrencyType][];
+  const supabase = createServiceRoleClient();
+  const currencyPairs = await currencyConfigService.getSyncablePairs() as [CurrencyType, CurrencyType][];
   // Check status for each currency pair
   const currencyPairStatus = await Promise.all(
     currencyPairs.map(async ([from, to]) => {
       try {
-        const { data } = await db.exchangeRates.getLatest(from, to);
-        
+        const { data } = await supabase
+          .from('exchange_rates')
+          .select('date')
+          .eq('from_currency', from)
+          .eq('to_currency', to)
+          .order('date', { ascending: false })
+          .limit(1)
+          .single();
+
         if (data) {
           const daysSinceUpdate = dateHelpers.getBusinessDayCount(data.date, dateHelpers.getCurrentUTCDate());
           return {
@@ -233,14 +243,22 @@ function calculateDataFreshness(expectedLastDate: string, hasRecentData: boolean
  * Calculate coverage across currency pairs
  */
 async function calculateCoverage(expectedLastDate: string) {
-  const currencyPairs = await currencyConfigService.getCurrencyPairs() as [CurrencyType, CurrencyType][];
+  const supabase = createServiceRoleClient();
+  const currencyPairs = await currencyConfigService.getSyncablePairs() as [CurrencyType, CurrencyType][];
   const totalPairs = currencyPairs.length;
   let availablePairs = 0;
   const missingPairs: string[] = [];
 
   for (const [from, to] of currencyPairs) {
     try {
-      const { data } = await db.exchangeRates.getByDate(from, to, expectedLastDate);
+      const { data } = await supabase
+        .from('exchange_rates')
+        .select('id')
+        .eq('from_currency', from)
+        .eq('to_currency', to)
+        .eq('date', expectedLastDate)
+        .limit(1)
+        .single();
       if (data) {
         availablePairs++;
       } else {
@@ -268,15 +286,17 @@ async function calculateCoverage(expectedLastDate: string) {
  */
 async function calculateGaps(expectedLastDate: string) {
   try {
+    const supabase = createServiceRoleClient();
     // Look back 7 days for gap analysis
     const startDate = dateHelpers.subtractBusinessDays(expectedLastDate, 7);
-    
-    const { data: existingRates } = await db.exchangeRates.getByDateRange(
-      'USD',
-      'THB',
-      startDate,
-      expectedLastDate
-    );
+
+    const { data: existingRates } = await supabase
+      .from('exchange_rates')
+      .select('date')
+      .eq('from_currency', 'USD')
+      .eq('to_currency', 'THB')
+      .gte('date', startDate)
+      .lte('date', expectedLastDate);
     
     const existingDates = existingRates?.map(rate => rate.date) || [];
     const expectedDates = dateHelpers.getBusinessDays(startDate, expectedLastDate, {
@@ -316,18 +336,20 @@ async function calculateGaps(expectedLastDate: string) {
  * Get recent activity data
  */
 async function getRecentActivity(expectedLastDate: string) {
+  const supabase = createServiceRoleClient();
   const activities = [];
-  
+
   for (let i = 0; i < 7; i++) {
     const checkDate = dateHelpers.subtractBusinessDays(expectedLastDate, i);
-    
+
     try {
-      const { data: rates } = await db.exchangeRates.getByDateRange(
-        'USD',
-        'THB',
-        checkDate,
-        checkDate
-      );
+      const { data: rates } = await supabase
+        .from('exchange_rates')
+        .select('id')
+        .eq('from_currency', 'USD')
+        .eq('to_currency', 'THB')
+        .gte('date', checkDate)
+        .lte('date', checkDate);
       
       const rateCount = rates?.length || 0;
       const hasGaps = rateCount === 0;

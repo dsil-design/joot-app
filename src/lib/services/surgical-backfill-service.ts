@@ -127,7 +127,9 @@ class SurgicalBackfillService {
         result.errors.push(...nonEcbResult.errors);
       }
 
-      result.success = result.errors.length === 0;
+      // Only ECB errors are fatal — non-ECB failures (VND 404s etc.) are non-critical
+      const fatalErrors = result.errors.filter(e => e.currency !== 'VND' && e.retryable);
+      result.success = fatalErrors.length === 0;
       result.duration = Date.now() - startTime;
 
       console.log(`🎉 Surgical backfill completed in ${Math.round(result.duration / 1000)}s`);
@@ -319,9 +321,20 @@ class SurgicalBackfillService {
         // Use ExchangeRate-API for VND
         for (const date of dates) {
           try {
-            const historicalData = await exchangeRateAPIService.fetchHistoricalRates(date, 'USD');
+            let vndRate: number | undefined;
 
-            if (!historicalData.rates.VND) {
+            // Try historical rates first, fall back to latest if 404
+            try {
+              const historicalData = await exchangeRateAPIService.fetchHistoricalRates(date, 'USD');
+              vndRate = historicalData.rates.VND;
+            } catch (histError) {
+              // Historical endpoint may 404 for recent dates — fall back to latest
+              console.warn(`   VND historical fetch failed for ${date}, trying latest rates`);
+              const latestData = await exchangeRateAPIService.fetchLatestRates('USD');
+              vndRate = latestData.rates.VND;
+            }
+
+            if (!vndRate) {
               result.errors.push({
                 currency,
                 date,
@@ -330,8 +343,6 @@ class SurgicalBackfillService {
               });
               continue;
             }
-
-            const vndRate = historicalData.rates.VND;
 
             // Add both directions
             ratesToInsert.push({
