@@ -598,7 +598,7 @@ export function ReviewFocusModal({
   const [vendorLabel, setVendorLabel] = React.useState("")
   const [paymentMethod, setPaymentMethod] = React.useState("")
   const [tags, setTags] = React.useState<string[]>([])
-  const [transactionType, setTransactionType] = React.useState<"expense" | "income">("expense")
+  const [transactionType, setTransactionType] = React.useState<"expense" | "income" | "transfer">("expense")
   const [isSaving, setIsSaving] = React.useState(false)
 
   // AI prefill tracking
@@ -1082,6 +1082,15 @@ export function ReviewFocusModal({
                       onClick={() => { setTransactionType("income"); clearAiFlag("transactionType") }}
                     >
                       Income
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={transactionType === "transfer" ? "default" : "outline"}
+                      className={cn("h-8", transactionType === "transfer" && "bg-blue-600 hover:bg-blue-700")}
+                      onClick={() => { setTransactionType("transfer"); clearAiFlag("transactionType") }}
+                    >
+                      Transfer
                     </Button>
                     {aiPrefilled.has("transactionType") && (
                       <ReasoningZap reasoning={fieldReasoning.transactionType} />

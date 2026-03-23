@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
@@ -17,6 +17,7 @@ import {
 } from '@/components/page-specific/create-from-import-dialog'
 import { TransactionDetailModal } from '@/components/page-specific/transaction-detail-modal'
 import { StatementViewerModal } from '@/components/page-specific/statement-viewer-modal'
+import { DeleteConfirmationDialog } from '@/components/page-specific/delete-confirmation-dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,6 +105,28 @@ export default function StatementDetailPage() {
 
   const [isProcessing, setIsProcessing] = React.useState(false)
   const [isReprocessing, setIsReprocessing] = React.useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
+  const router = useRouter()
+
+  const handleDelete = React.useCallback(async () => {
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/statements/${statementId}`, {
+        method: 'DELETE',
+      })
+      if (response.ok) {
+        toast.success('Statement deleted')
+        router.push('/imports/statements')
+      } else {
+        toast.error('Failed to delete statement')
+      }
+    } catch {
+      toast.error('Failed to delete statement')
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [statementId, router])
 
   const handleReprocessConfirmed = React.useCallback(async () => {
     setReprocessConfirmOpen(false)
@@ -473,6 +496,8 @@ export default function StatementDetailPage() {
             stats={{ extracted: 0, matched: 0, unmatched: 0 }}
             matchRate={0}
             onViewStatement={() => setViewerOpen(true)}
+            onDelete={() => setDeleteConfirmOpen(true)}
+            isDeleting={isDeleting}
           />
           <Card className="border-amber-200 bg-amber-50">
             <CardContent className="py-8">
@@ -506,6 +531,15 @@ export default function StatementDetailPage() {
           </Card>
         </div>
         {statementViewerModal}
+        <DeleteConfirmationDialog
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+          onConfirm={handleDelete}
+          title="Delete statement?"
+          description={`This will permanently remove the uploaded file "${statement.filename}". No transactions have been extracted from this statement.`}
+          confirmLabel="Delete"
+          isDeleting={isDeleting}
+        />
       </>
     )
   }
@@ -559,6 +593,8 @@ export default function StatementDetailPage() {
             stats={{ extracted: 0, matched: 0, unmatched: 0 }}
             matchRate={0}
             onViewStatement={() => setViewerOpen(true)}
+            onDelete={() => setDeleteConfirmOpen(true)}
+            isDeleting={isDeleting}
           />
           <Card className="border-destructive/30 bg-destructive/5">
             <CardContent className="py-8">
@@ -585,6 +621,15 @@ export default function StatementDetailPage() {
           </Card>
         </div>
         {statementViewerModal}
+        <DeleteConfirmationDialog
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+          onConfirm={handleDelete}
+          title="Delete statement?"
+          description={`This will permanently remove the uploaded file "${statement.filename}". No transactions have been extracted from this statement.`}
+          confirmLabel="Delete"
+          isDeleting={isDeleting}
+        />
       </>
     )
   }
@@ -607,7 +652,9 @@ export default function StatementDetailPage() {
         matchRate={matchRate}
         onReprocess={() => setReprocessConfirmOpen(true)}
         onViewStatement={() => setViewerOpen(true)}
+        onDelete={() => setDeleteConfirmOpen(true)}
         isReprocessing={isReprocessing}
+        isDeleting={isDeleting}
       />
 
       {/* Review in Queue callout */}
@@ -755,6 +802,21 @@ export default function StatementDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delete confirmation dialog */}
+      <DeleteConfirmationDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onConfirm={handleDelete}
+        title="Delete statement?"
+        description={
+          extracted > 0
+            ? `This will permanently remove "${statement.filename}" and unlink ${extracted} transaction${extracted !== 1 ? 's' : ''} that were extracted from it. The transactions themselves will remain in your records but will no longer be associated with this statement.`
+            : `This will permanently remove the uploaded file "${statement.filename}". No transactions have been extracted from this statement.`
+        }
+        confirmLabel={extracted > 0 ? 'Delete Statement' : 'Delete'}
+        isDeleting={isDeleting}
+      />
     </div>
   )
 }

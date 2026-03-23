@@ -53,7 +53,7 @@ export interface PaymentSlipUpload {
   memo: string | null
   bank_detected: string | null
   transfer_type: string | null
-  detected_direction: 'expense' | 'income' | null
+  detected_direction: 'expense' | 'income' | 'transfer' | null
   extraction_data: PaymentSlipExtraction | null
   status: PaymentSlipStatus
   extraction_started_at: string | null
@@ -80,7 +80,7 @@ export interface SlipProcessingResult {
   success: boolean
   extraction: PaymentSlipExtraction | null
   confidence: number
-  direction: 'expense' | 'income' | null
+  direction: 'expense' | 'income' | 'transfer' | null
   matchedTransactionId: string | null
   matchConfidence: number | null
   error: string | null

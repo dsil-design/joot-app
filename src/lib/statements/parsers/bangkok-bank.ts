@@ -28,9 +28,7 @@ const BANGKOK_BANK_IDENTIFIERS = [
   'bualuang',
   'ธนาคารกรุงเทพ',
   'บัวหลวง',
-  'bbl',
   'bangkokbank.com',
-  'บัตรเครดิต', // credit card
   'บัตรบัวหลวง', // Bualuang card
 ];
 

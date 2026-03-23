@@ -9,10 +9,12 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import type { PaymentSlipExtraction, UserBankAccount } from './types'
 
 export interface DirectionResult {
-  direction: 'expense' | 'income' | null
+  direction: 'expense' | 'income' | 'transfer' | null
   confidence: 'matched' | 'inferred'
   matchedAccount: UserBankAccount | null
   paymentMethodId: string | null
+  /** For transfers: the destination account that also matched */
+  transferToAccount?: UserBankAccount | null
 }
 
 /**
@@ -75,7 +77,8 @@ export async function detectDirection(
     return { direction: null, confidence: 'inferred', matchedAccount: null, paymentMethodId: null }
   }
 
-  // Check if sender matches any known account (user sent money = expense)
+  // First pass: check if sender matches any known account
+  let senderAccount: UserBankAccount | null = null
   for (const account of accounts) {
     const nameMatch = extraction.sender_name &&
       normalizeName(extraction.sender_name).includes(normalizeName(account.account_holder_name || ''))
@@ -84,12 +87,13 @@ export async function detectDirection(
       accountsMatch(extraction.sender_account, account.account_identifier)
 
     if (nameMatch || accountMatch) {
-      const acct = account as UserBankAccount
-      return { direction: 'expense', confidence: 'matched', matchedAccount: acct, paymentMethodId: acct.payment_method_id }
+      senderAccount = account as UserBankAccount
+      break
     }
   }
 
-  // Check if recipient matches any known account (user received money = income)
+  // Second pass: check if recipient matches any known account
+  let recipientAccount: UserBankAccount | null = null
   for (const account of accounts) {
     const nameMatch = extraction.recipient_name &&
       normalizeName(extraction.recipient_name).includes(normalizeName(account.account_holder_name || ''))
@@ -98,9 +102,30 @@ export async function detectDirection(
       accountsMatch(extraction.recipient_account, account.account_identifier)
 
     if (nameMatch || accountMatch) {
-      const acct = account as UserBankAccount
-      return { direction: 'income', confidence: 'matched', matchedAccount: acct, paymentMethodId: acct.payment_method_id }
+      recipientAccount = account as UserBankAccount
+      break
     }
+  }
+
+  // Both sender AND recipient are user's accounts → self-transfer
+  if (senderAccount && recipientAccount) {
+    return {
+      direction: 'transfer',
+      confidence: 'matched',
+      matchedAccount: senderAccount,
+      paymentMethodId: senderAccount.payment_method_id,
+      transferToAccount: recipientAccount,
+    }
+  }
+
+  // Only sender matches → expense
+  if (senderAccount) {
+    return { direction: 'expense', confidence: 'matched', matchedAccount: senderAccount, paymentMethodId: senderAccount.payment_method_id }
+  }
+
+  // Only recipient matches → income
+  if (recipientAccount) {
+    return { direction: 'income', confidence: 'matched', matchedAccount: recipientAccount, paymentMethodId: recipientAccount.payment_method_id }
   }
 
   // No match found

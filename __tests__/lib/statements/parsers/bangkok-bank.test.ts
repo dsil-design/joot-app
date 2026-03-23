@@ -107,16 +107,12 @@ describe('Bangkok Bank Statement Parser', () => {
       expect(bangkokBankParser.canParse('บัวหลวง')).toBe(true);
     });
 
-    it('should recognize BBL statements', () => {
-      expect(bangkokBankParser.canParse('BBL Credit Card Statement')).toBe(true);
+    it('should not match bare "BBL" (too greedy, matches inside other bank statements)', () => {
+      expect(bangkokBankParser.canParse('BBL Credit Card Statement')).toBe(false);
     });
 
     it('should recognize bangkokbank.com references', () => {
       expect(bangkokBankParser.canParse('Visit bangkokbank.com')).toBe(true);
-    });
-
-    it('should recognize บัตรเครดิต', () => {
-      expect(bangkokBankParser.canParse('บัตรเครดิต ธนาคาร')).toBe(true);
     });
 
     it('should not match non-Bangkok Bank statements', () => {
@@ -632,7 +628,7 @@ describe('Bangkok Bank Statement Parser', () => {
     });
 
     it('should have Bangkok Bank identifiers', () => {
-      expect(BANGKOK_BANK_IDENTIFIERS.length).toBeGreaterThan(5);
+      expect(BANGKOK_BANK_IDENTIFIERS.length).toBeGreaterThan(3);
       expect(BANGKOK_BANK_IDENTIFIERS).toContain('bangkok bank');
       expect(BANGKOK_BANK_IDENTIFIERS).toContain('ธนาคารกรุงเทพ');
     });

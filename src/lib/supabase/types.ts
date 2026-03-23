@@ -921,6 +921,7 @@ export type Database = {
           recipient_account: string | null
           recipient_bank: string | null
           recipient_name: string | null
+          rejected_transaction_ids: string[]
           review_status: string
           sender_account: string | null
           sender_bank: string | null
@@ -964,6 +965,7 @@ export type Database = {
           recipient_account?: string | null
           recipient_bank?: string | null
           recipient_name?: string | null
+          rejected_transaction_ids?: string[]
           review_status?: string
           sender_account?: string | null
           sender_bank?: string | null
@@ -1007,6 +1009,7 @@ export type Database = {
           recipient_account?: string | null
           recipient_bank?: string | null
           recipient_name?: string | null
+          rejected_transaction_ids?: string[]
           review_status?: string
           sender_account?: string | null
           sender_bank?: string | null
@@ -1762,6 +1765,8 @@ export type Database = {
           source_statement_upload_id: string | null
           transaction_date: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transfer_from_account: string | null
+          transfer_to_account: string | null
           updated_at: string | null
           user_id: string
           vendor_id: string | null
@@ -1780,6 +1785,8 @@ export type Database = {
           source_statement_upload_id?: string | null
           transaction_date?: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transfer_from_account?: string | null
+          transfer_to_account?: string | null
           updated_at?: string | null
           user_id: string
           vendor_id?: string | null
@@ -1798,6 +1805,8 @@ export type Database = {
           source_statement_upload_id?: string | null
           transaction_date?: string
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          transfer_from_account?: string | null
+          transfer_to_account?: string | null
           updated_at?: string | null
           user_id?: string
           vendor_id?: string | null
@@ -2306,7 +2315,7 @@ export type Database = {
         | "PHP"
         | "IDR"
       duplicate_status: "pending" | "ignored" | "merged"
-      transaction_type: "income" | "expense"
+      transaction_type: "income" | "expense" | "transfer"
       user_role: "user" | "admin"
     }
     CompositeTypes: {
@@ -2476,7 +2485,7 @@ export const Constants = {
         "IDR",
       ],
       duplicate_status: ["pending", "ignored", "merged"],
-      transaction_type: ["income", "expense"],
+      transaction_type: ["income", "expense", "transfer"],
       user_role: ["user", "admin"],
     },
   },

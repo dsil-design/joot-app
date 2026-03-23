@@ -16,9 +16,9 @@ import { HorizontalFilterScroll } from "./horizontal-filter-scroll"
 
 interface QuickFilterBarProps {
   activePreset: string | null
-  activeTransactionType: "all" | "expense" | "income"
+  activeTransactionType: "all" | "expense" | "income" | "transfer"
   onPresetChange: (preset: DatePresetKey) => void
-  onTransactionTypeChange: (type: "all" | "expense" | "income") => void
+  onTransactionTypeChange: (type: "all" | "expense" | "income" | "transfer") => void
   onMoreFiltersClick: () => void
   onCustomRangeClick?: () => void
 }
@@ -214,6 +214,18 @@ export function QuickFilterBar({
                   }
                 >
                   Income
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onTransactionTypeChange('transfer')}
+                  className={
+                    activeTransactionType === 'transfer'
+                      ? 'bg-accent text-accent-foreground border-accent hover:bg-accent/80'
+                      : 'bg-background text-foreground border-border hover:bg-muted hover:text-muted-foreground'
+                  }
+                >
+                  Transfers
                 </Button>
               </div>
             </div>

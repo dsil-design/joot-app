@@ -182,7 +182,7 @@ async function fetchRecentTransactions(
     vendorId: tx.vendor_id || undefined,
     vendorName: (tx.vendors as { name: string } | null)?.name || undefined,
     paymentMethodId: tx.payment_method_id || undefined,
-    transactionType: tx.transaction_type as 'expense' | 'income',
+    transactionType: tx.transaction_type as 'expense' | 'income' | 'transfer',
     tagIds: tagMap.get(tx.id) || [],
   }))
 }

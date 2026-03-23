@@ -125,12 +125,15 @@ export async function POST(request: NextRequest) {
     const paymentSlipIds: string[] = []
     const mergedSlipEmailIds: { id: string; slipId: string; emailId: string }[] = []
     const mergedSlipStmtIds: { id: string; slipId: string; statementId: string; index: number }[] = []
+    const selfTransferIds: { id: string; debitStatementId: string; debitIndex: number; creditStatementId: string; creditIndex: number }[] = []
     const invalidIds: string[] = []
 
     for (const id of emailIds) {
       const parsed = parseImportId(id)
       if (!parsed) {
         invalidIds.push(id)
+      } else if (parsed.type === 'self_transfer') {
+        selfTransferIds.push({ id, debitStatementId: parsed.debitStatementId, debitIndex: parsed.debitIndex, creditStatementId: parsed.creditStatementId, creditIndex: parsed.creditIndex })
       } else if (parsed.type === 'merged') {
         mergedIds.push({ id, emailId: parsed.emailId, statementId: parsed.statementId, index: parsed.index })
       } else if (parsed.type === 'merged_slip_email') {
@@ -503,7 +506,7 @@ export async function POST(request: NextRequest) {
                 user_id: user.id,
                 amount: slip.amount,
                 original_currency: (slip.currency || 'THB') as 'USD' | 'THB',
-                transaction_type: (proposal?.proposed_transaction_type || defaultTxType) as 'expense' | 'income',
+                transaction_type: (proposal?.proposed_transaction_type || defaultTxType) as 'expense' | 'income' | 'transfer',
                 transaction_date: slip.transaction_date,
                 description: proposal?.proposed_description || defaultDescription,
                 vendor_id: proposal?.proposed_vendor_id || null,
@@ -603,7 +606,7 @@ export async function POST(request: NextRequest) {
             user_id: user.id,
             amount: slip.amount,
             original_currency: (slip.currency || 'THB') as 'USD' | 'THB',
-            transaction_type: transactionType as 'expense' | 'income',
+            transaction_type: transactionType as 'expense' | 'income' | 'transfer',
             transaction_date: slip.transaction_date,
             description,
             payment_method_id: slip.payment_method_id || null,
@@ -674,7 +677,7 @@ export async function POST(request: NextRequest) {
             user_id: user.id,
             amount: slip.amount,
             original_currency: (slip.currency || 'THB') as 'USD' | 'THB',
-            transaction_type: transactionType as 'expense' | 'income',
+            transaction_type: transactionType as 'expense' | 'income' | 'transfer',
             transaction_date: slip.transaction_date,
             description,
             payment_method_id: slip.payment_method_id || null,
@@ -728,6 +731,113 @@ export async function POST(request: NextRequest) {
         results.success++
         results.transactionsCreated++
         results.totalAmount += Math.abs(Number(slip.amount))
+      }
+    }
+
+    // --- Process SELF-TRANSFER items ---
+    if (selfTransferIds.length > 0) {
+      for (const st of selfTransferIds) {
+        // Fetch both statement suggestions to get amount, date, payment methods
+        const { data: debitStmt } = await serviceClient
+          .from('statement_uploads')
+          .select('id, extraction_log, payment_method_id')
+          .eq('id', st.debitStatementId)
+          .eq('user_id', user.id)
+          .single()
+
+        const { data: creditStmt } = await serviceClient
+          .from('statement_uploads')
+          .select('id, extraction_log, payment_method_id')
+          .eq('id', st.creditStatementId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (!debitStmt || !creditStmt) {
+          results.failed++
+          results.errors.push(`Statement not found for self-transfer ${st.id}`)
+          continue
+        }
+
+        const debitLog = debitStmt.extraction_log as ExtractionLog | null
+        const creditLog = creditStmt.extraction_log as ExtractionLog | null
+        const debitSuggestion = debitLog?.suggestions?.[st.debitIndex]
+        const creditSuggestion = creditLog?.suggestions?.[st.creditIndex]
+
+        if (!debitSuggestion || !creditSuggestion) {
+          results.failed++
+          results.errors.push(`Suggestion not found for self-transfer ${st.id}`)
+          continue
+        }
+
+        // Look up payment method names for from/to account labels
+        let fromAccountName = 'Unknown'
+        let toAccountName = 'Unknown'
+
+        if (debitStmt.payment_method_id) {
+          const { data: pm } = await serviceClient
+            .from('payment_methods')
+            .select('name')
+            .eq('id', debitStmt.payment_method_id)
+            .single()
+          if (pm) fromAccountName = pm.name
+        }
+
+        if (creditStmt.payment_method_id) {
+          const { data: pm } = await serviceClient
+            .from('payment_methods')
+            .select('name')
+            .eq('id', creditStmt.payment_method_id)
+            .single()
+          if (pm) toAccountName = pm.name
+        }
+
+        // Create ONE transfer transaction from the debit side data
+        const { data: newTx, error: txError } = await serviceClient
+          .from('transactions')
+          .insert({
+            user_id: user.id,
+            amount: Math.abs(debitSuggestion.amount),
+            original_currency: (debitSuggestion.currency || 'THB') as 'USD' | 'THB',
+            transaction_type: 'transfer' as const,
+            transaction_date: debitSuggestion.transaction_date,
+            description: `Transfer: ${fromAccountName} → ${toAccountName}`,
+            payment_method_id: debitStmt.payment_method_id || null,
+            source_statement_upload_id: st.debitStatementId,
+            source_statement_suggestion_index: st.debitIndex,
+            transfer_from_account: fromAccountName,
+            transfer_to_account: toAccountName,
+          })
+          .select('id')
+          .single()
+
+        if (txError || !newTx) {
+          results.failed++
+          results.errors.push(`Failed to create self-transfer for ${st.id}: ${txError?.message}`)
+          continue
+        }
+
+        // Mark both statement suggestions as approved
+        const updateSuggestion = async (stmtData: typeof debitStmt, log: ExtractionLog | null, index: number) => {
+          const suggestions = log?.suggestions || []
+          if (index >= 0 && index < suggestions.length) {
+            suggestions[index] = {
+              ...suggestions[index],
+              status: 'approved',
+              matched_transaction_id: newTx.id,
+            }
+            await serviceClient
+              .from('statement_uploads')
+              .update({ extraction_log: { ...log, suggestions } as unknown as Json })
+              .eq('id', stmtData.id)
+          }
+        }
+
+        await updateSuggestion(debitStmt, debitLog, st.debitIndex)
+        await updateSuggestion(creditStmt, creditLog, st.creditIndex)
+
+        results.success++
+        results.transactionsCreated++
+        results.totalAmount += Math.abs(Number(debitSuggestion.amount))
       }
     }
 

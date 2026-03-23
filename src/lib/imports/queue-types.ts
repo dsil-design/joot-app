@@ -76,7 +76,7 @@ export interface PaymentSlipMetadata {
   bankDetected?: string
   transactionReference?: string
   memo?: string
-  detectedDirection?: 'expense' | 'income' | null
+  detectedDirection?: 'expense' | 'income' | 'transfer' | null
   slipUploadId?: string
 }
 

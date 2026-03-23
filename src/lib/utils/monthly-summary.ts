@@ -19,6 +19,7 @@ export interface MonthlySummary {
   transactionCount: number
   incomeCount: number
   expenseCount: number
+  transferCount: number
 }
 
 export interface DailySpend {
@@ -62,6 +63,7 @@ export interface YTDSummary {
   transactionCount: number
   incomeCount: number
   expenseCount: number
+  transferCount: number
   averageMonthlyIncome: number
   averageMonthlyExpenses: number
   monthsElapsed: number
@@ -198,8 +200,14 @@ export function calculateMonthlySummary(
   let totalExpenses = 0
   let incomeCount = 0
   let expenseCount = 0
+  let transferCount = 0
 
   monthTransactions.forEach(transaction => {
+    if (transaction.transaction_type === 'transfer') {
+      transferCount++
+      return // Transfers excluded from income/expense totals
+    }
+
     // Convert to USD using the helper function
     const amountUSD = convertToUSD(transaction, exchangeRate)
 
@@ -220,6 +228,7 @@ export function calculateMonthlySummary(
     transactionCount: monthTransactions.length,
     incomeCount,
     expenseCount,
+    transferCount,
   }
 }
 
@@ -311,8 +320,14 @@ export function calculateYTDSummary(
   let totalExpenses = 0
   let incomeCount = 0
   let expenseCount = 0
+  let transferCount = 0
 
   ytdTransactions.forEach(transaction => {
+    if (transaction.transaction_type === 'transfer') {
+      transferCount++
+      return // Transfers excluded from income/expense totals
+    }
+
     const amountUSD = convertToUSD(transaction, exchangeRate)
 
     if (transaction.transaction_type === 'income') {
@@ -343,6 +358,7 @@ export function calculateYTDSummary(
     transactionCount: ytdTransactions.length,
     incomeCount,
     expenseCount,
+    transferCount,
     averageMonthlyIncome,
     averageMonthlyExpenses,
     monthsElapsed,

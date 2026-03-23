@@ -46,7 +46,7 @@ export interface TransactionProposal {
     name: string
   }>>
 
-  transactionType?: ProposedField<'expense' | 'income'>
+  transactionType?: ProposedField<'expense' | 'income' | 'transfer'>
   description?: ProposedField<string>
 }
 
@@ -60,7 +60,7 @@ export interface ProposedFields {
   description?: string
   amount?: number
   currency?: string
-  transactionType?: 'expense' | 'income'
+  transactionType?: 'expense' | 'income' | 'transfer'
   date?: string
   vendorId?: string | null
   vendorNameSuggestion?: string
@@ -92,7 +92,7 @@ export interface TransactionProposalRow {
   proposed_description?: string | null
   proposed_amount?: number | null
   proposed_currency?: string | null
-  proposed_transaction_type?: 'expense' | 'income' | null
+  proposed_transaction_type?: 'expense' | 'income' | 'transfer' | null
   proposed_date?: string | null
   proposed_vendor_id?: string | null
   proposed_vendor_name_suggestion?: string | null
@@ -204,7 +204,7 @@ export interface RecentTransaction {
   vendorId?: string
   vendorName?: string
   paymentMethodId?: string
-  transactionType: 'expense' | 'income'
+  transactionType: 'expense' | 'income' | 'transfer'
   tagIds: string[]
 }
 
@@ -265,7 +265,7 @@ export interface ProposalInput {
   senderName?: string
   recipientName?: string
   bankDetected?: string
-  detectedDirection?: 'expense' | 'income'
+  detectedDirection?: 'expense' | 'income' | 'transfer'
 
   // Prior rejection feedback (for re-queued items)
   rejectionFeedback?: string[]

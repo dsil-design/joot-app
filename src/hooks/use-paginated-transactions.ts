@@ -9,13 +9,14 @@ interface TransactionFilters {
   searchKeyword?: string
   vendorIds?: string[]
   paymentMethodIds?: string[]
-  transactionType?: "all" | "expense" | "income"
+  transactionType?: "all" | "expense" | "income" | "transfer"
   sourceType?: "any" | "email" | "statement" | "none"
 }
 
 interface TransactionTotals {
   expenses: { USD: number; THB: number; VND: number; MYR: number; CNY: number }
   income: { USD: number; THB: number; VND: number; MYR: number; CNY: number }
+  transfers: { USD: number; THB: number; VND: number; MYR: number; CNY: number }
 }
 
 interface PaginatedResponse {

@@ -7,9 +7,9 @@ import type { DatePresetKey } from "@/lib/utils/date-filters"
 
 interface HorizontalFilterScrollProps {
   activePreset: DatePresetKey | null
-  activeTransactionType: "all" | "expense" | "income"
+  activeTransactionType: "all" | "expense" | "income" | "transfer"
   onPresetChange: (preset: DatePresetKey) => void
-  onTransactionTypeChange: (type: "all" | "expense" | "income") => void
+  onTransactionTypeChange: (type: "all" | "expense" | "income" | "transfer") => void
   onMoreClick: () => void
 }
 
@@ -17,7 +17,7 @@ interface FilterPill {
   id: string
   label: string
   type: "date" | "transaction"
-  value: DatePresetKey | "all" | "expense" | "income"
+  value: DatePresetKey | "all" | "expense" | "income" | "transfer"
 }
 
 const PRIORITY_FILTERS: FilterPill[] = [
@@ -28,6 +28,7 @@ const PRIORITY_FILTERS: FilterPill[] = [
   { id: "all", label: "All", type: "transaction", value: "all" },
   { id: "expenses", label: "Expenses", type: "transaction", value: "expense" },
   { id: "income", label: "Income", type: "transaction", value: "income" },
+  { id: "transfers", label: "Transfers", type: "transaction", value: "transfer" },
 ]
 
 export function HorizontalFilterScroll({
@@ -50,7 +51,7 @@ export function HorizontalFilterScroll({
     if (filter.type === "date") {
       onPresetChange(filter.value as DatePresetKey)
     } else {
-      onTransactionTypeChange(filter.value as "all" | "expense" | "income")
+      onTransactionTypeChange(filter.value as "all" | "expense" | "income" | "transfer")
     }
   }
 

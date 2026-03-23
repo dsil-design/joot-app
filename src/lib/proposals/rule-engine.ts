@@ -117,6 +117,29 @@ function proposeTransactionType(
     return
   }
 
+  // Bank transfer emails: check if recipient is also the user's account (self-transfer)
+  // For payment slips, recipientName is populated directly.
+  // For bank transfer emails, vendor_name_raw often contains the recipient name.
+  if (
+    (item.classification === 'bank_transfer_confirmation' || item.classification === 'bank_transfer') &&
+    (item.recipientName || item.vendorNameRaw)
+  ) {
+    const recipientName = item.recipientName || item.vendorNameRaw || ''
+    const normalizedRecipient = recipientName.toLowerCase().replace(/\s+/g, ' ').trim()
+    const senderNormalized = (item.senderName || item.fromName || '').toLowerCase().replace(/\s+/g, ' ').trim()
+
+    // If sender and recipient names are very similar, it's likely a self-transfer
+    if (senderNormalized && normalizedRecipient &&
+      (normalizedRecipient.includes(senderNormalized) || senderNormalized.includes(normalizedRecipient))) {
+      fields.transactionType = 'transfer'
+      fc.transaction_type = {
+        score: 85,
+        reasoning: `Bank transfer where sender and recipient names match — likely self-transfer`,
+      }
+      return
+    }
+  }
+
   // Email classification signals
   if (item.classification === 'refund_notification') {
     fields.transactionType = 'income'

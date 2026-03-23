@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { MultiSelectComboBox } from "@/components/ui/multi-select-combobox"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
-type TransactionType = "all" | "expense" | "income"
+type TransactionType = "all" | "expense" | "income" | "transfer"
 type SourceType = "any" | "email" | "statement" | "none"
 
 interface TransactionFilters {
@@ -123,6 +123,9 @@ export function AdvancedFiltersPanel({
                   </ToggleGroupItem>
                   <ToggleGroupItem value="income" aria-label="Income transactions" className="h-10 px-4">
                     Income
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="transfer" aria-label="Transfer transactions" className="h-10 px-4">
+                    Transfer
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>

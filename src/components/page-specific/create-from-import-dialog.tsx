@@ -153,7 +153,7 @@ export function CreateFromImportDialog({
   const [vendorLabel, setVendorLabel] = React.useState("")
   const [paymentMethod, setPaymentMethod] = React.useState("")
   const [tags, setTags] = React.useState<string[]>([])
-  const [transactionType, setTransactionType] = React.useState<"expense" | "income">("expense")
+  const [transactionType, setTransactionType] = React.useState<"expense" | "income" | "transfer">("expense")
   const [isSaving, setIsSaving] = React.useState(false)
 
   // Track which fields were AI-prefilled (cleared when user modifies)
@@ -544,6 +544,16 @@ export function CreateFromImportDialog({
                 onClick={() => { setTransactionType("income"); clearAiFlag("transactionType") }}
               >
                 Income
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={transactionType === "transfer" ? "default" : "outline"}
+                className={transactionType === "transfer" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                aria-pressed={transactionType === "transfer"}
+                onClick={() => { setTransactionType("transfer"); clearAiFlag("transactionType") }}
+              >
+                Transfer
               </Button>
               {aiPrefilled.has("transactionType") && (
                 <ReasoningZap reasoning={fieldReasoning.transactionType} />

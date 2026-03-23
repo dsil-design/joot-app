@@ -365,6 +365,55 @@ export async function POST(request: NextRequest) {
         .eq('id', parsed.slipId)
         .eq('user_id', user.id)
 
+    } else if (parsed.type === 'self_transfer') {
+      // --- SELF-TRANSFER link: link both statement entries to the same transaction ---
+      // Update the transaction to be a transfer type
+      const { error: txUpdateError } = await serviceClient
+        .from('transactions')
+        .update({
+          transaction_type: 'transfer',
+          source_statement_upload_id: parsed.debitStatementId,
+          source_statement_suggestion_index: parsed.debitIndex,
+        })
+        .eq('id', transactionId)
+
+      if (txUpdateError) {
+        console.error('Error linking self-transfer:', txUpdateError)
+        return NextResponse.json(
+          { error: 'Failed to save link' },
+          { status: 500 }
+        )
+      }
+
+      // Mark both suggestions as approved
+      for (const { stmtId, idx } of [
+        { stmtId: parsed.debitStatementId, idx: parsed.debitIndex },
+        { stmtId: parsed.creditStatementId, idx: parsed.creditIndex },
+      ]) {
+        const { data: stmt } = await serviceClient
+          .from('statement_uploads')
+          .select('id, extraction_log')
+          .eq('id', stmtId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (stmt) {
+          const log = stmt.extraction_log as { suggestions?: Array<Record<string, unknown>>; [key: string]: unknown } | null
+          const suggestions = log?.suggestions || []
+          if (idx >= 0 && idx < suggestions.length) {
+            suggestions[idx] = {
+              ...suggestions[idx],
+              status: 'approved',
+              matched_transaction_id: transactionId,
+            }
+            await serviceClient
+              .from('statement_uploads')
+              .update({ extraction_log: { ...log, suggestions } as unknown as Json })
+              .eq('id', stmt.id)
+          }
+        }
+      }
+
     } else {
       // --- EMAIL link ---
       // The emailId may be an emails.id (from the unified view) or an

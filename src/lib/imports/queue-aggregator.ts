@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
-import { makeMergedId, makeMergedSlipEmailId, makeMergedSlipStmtId } from '@/lib/utils/import-id'
+import { makeMergedId, makeMergedSlipEmailId, makeMergedSlipStmtId, makeSelfTransferId } from '@/lib/utils/import-id'
 import { findCrossSourcePairs, type PairCandidate } from '@/lib/matching/cross-source-pairer'
+import { findSelfTransferPairs } from '@/lib/matching/self-transfer-detector'
 import { calculateDaysDiff } from '@/lib/matching/date-matcher'
 import type { QueueItem, QueueFilters, QueueStats, EmailMetadata } from './queue-types'
 
@@ -129,6 +130,68 @@ export async function aggregateQueueItems(
 
       allItems.length = 0
       allItems.push(...unpaired)
+    }
+  }
+
+  // ── Self-transfer detection ──────────────────────────────────────────
+  // Detect when two statement entries from different bank accounts represent
+  // the same self-transfer (e.g., KBank debit + Bangkok Bank credit).
+  // Proposed as merged items for user review — not automatically created.
+  if (filters.sourceFilter === 'all' || filters.sourceFilter === 'merged') {
+    const selfTransferPairs = findSelfTransferPairs(allItems)
+
+    if (selfTransferPairs.length > 0) {
+      const pairedIds = new Set<string>()
+      const mergedTransferItems: QueueItem[] = []
+
+      for (const pair of selfTransferPairs) {
+        pairedIds.add(pair.debitItem.id)
+        pairedIds.add(pair.creditItem.id)
+
+        const debitParts = pair.debitItem.id.replace(/^stmt:/, '').split(':')
+        const creditParts = pair.creditItem.id.replace(/^stmt:/, '').split(':')
+
+        const mergedId = makeSelfTransferId(
+          debitParts[0], parseInt(debitParts[1], 10),
+          creditParts[0], parseInt(creditParts[1], 10)
+        )
+
+        const fromAccount = pair.debitItem.paymentMethod?.name ?? 'Unknown account'
+        const toAccount = pair.creditItem.paymentMethod?.name ?? 'Unknown account'
+
+        mergedTransferItems.push({
+          id: mergedId,
+          statementUploadId: pair.debitItem.statementUploadId,
+          statementFilename: pair.debitItem.statementFilename,
+          paymentMethod: pair.debitItem.paymentMethod,
+          statementTransaction: {
+            date: pair.debitItem.statementTransaction.date,
+            description: `Self-transfer: ${fromAccount} → ${toAccount}`,
+            amount: pair.debitItem.statementTransaction.amount,
+            currency: pair.debitItem.statementTransaction.currency,
+            sourceFilename: pair.debitItem.statementTransaction.sourceFilename,
+          },
+          confidence: 90,
+          confidenceLevel: 'high',
+          reasons: [
+            `Self-transfer detected: same amount across different accounts`,
+            `${fromAccount} → ${toAccount}`,
+            pair.daysDiff === 0
+              ? 'Same date'
+              : `Dates within ${pair.daysDiff} day`,
+          ],
+          isNew: true,
+          status: 'pending',
+          source: 'merged',
+        })
+      }
+
+      // Remove paired items and add merged ones
+      if (pairedIds.size > 0) {
+        const remaining = allItems.filter(item => !pairedIds.has(item.id))
+        allItems.length = 0
+        allItems.push(...remaining, ...mergedTransferItems)
+      }
     }
   }
 

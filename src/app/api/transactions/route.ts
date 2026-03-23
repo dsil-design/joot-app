@@ -318,18 +318,21 @@ export async function GET(request: NextRequest) {
     // Calculate aggregated totals by currency and transaction type
     const totals = {
       expenses: { USD: 0, THB: 0, VND: 0, MYR: 0, CNY: 0 },
-      income: { USD: 0, THB: 0, VND: 0, MYR: 0, CNY: 0 }
+      income: { USD: 0, THB: 0, VND: 0, MYR: 0, CNY: 0 },
+      transfers: { USD: 0, THB: 0, VND: 0, MYR: 0, CNY: 0 }
     }
 
     if (!totalsError && totalsData) {
       totalsData.forEach((transaction: any) => {
         const currency = transaction.original_currency as 'USD' | 'THB' | 'VND' | 'MYR' | 'CNY'
-        const type = transaction.transaction_type as 'expense' | 'income'
+        const type = transaction.transaction_type as 'expense' | 'income' | 'transfer'
 
         if (type === 'expense') {
           totals.expenses[currency] = (totals.expenses[currency] || 0) + transaction.amount
         } else if (type === 'income') {
           totals.income[currency] = (totals.income[currency] || 0) + transaction.amount
+        } else if (type === 'transfer') {
+          totals.transfers[currency] = (totals.transfers[currency] || 0) + transaction.amount
         }
       })
     }

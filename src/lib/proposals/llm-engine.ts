@@ -20,7 +20,7 @@ interface LLMProposalResponse {
   vendor_name?: string
   vendor_id?: string
   description?: string
-  transaction_type?: 'expense' | 'income'
+  transaction_type?: 'expense' | 'income' | 'transfer'
   payment_method_id?: string
   tag_ids?: string[]
   confidence: {

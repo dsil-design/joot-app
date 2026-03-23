@@ -9,7 +9,7 @@ import type { DateRange } from "react-day-picker"
 
 interface ActiveFilterChipsProps {
   dateRange?: DateRange
-  transactionType: "all" | "expense" | "income"
+  transactionType: "all" | "expense" | "income" | "transfer"
   searchKeyword?: string
   vendorIds?: string[]
   paymentMethodIds?: string[]
@@ -95,7 +95,7 @@ export function ActiveFilterChips({
               variant="secondary"
               className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
             >
-              {transactionType === 'expense' ? 'Expenses only' : 'Income only'}
+              {transactionType === 'expense' ? 'Expenses only' : transactionType === 'income' ? 'Income only' : 'Transfers only'}
               <button
                 onClick={onRemoveTransactionType}
                 className="ml-1 hover:bg-blue-300 rounded-full p-0.5"

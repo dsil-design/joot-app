@@ -13,6 +13,7 @@ const MERGED_SLIP_STMT_REGEX = new RegExp(`^merged:slip:(${UUID_PATTERN})\\+stmt
 const STMT_PREFIX_REGEX = new RegExp(`^stmt:(${UUID_PATTERN}):(\\d+)$`, 'i')
 const EMAIL_PREFIX_REGEX = new RegExp(`^email:(${UUID_PATTERN})$`, 'i')
 const SLIP_PREFIX_REGEX = new RegExp(`^slip:(${UUID_PATTERN})$`, 'i')
+const SELF_TRANSFER_REGEX = new RegExp(`^self-transfer:stmt:(${UUID_PATTERN}):(\\d+)\\+stmt:(${UUID_PATTERN}):(\\d+)$`, 'i')
 const BARE_COMPOSITE_REGEX = new RegExp(`^(${UUID_PATTERN}):(\\d+)$`, 'i')
 
 export type ParsedImportId =
@@ -22,6 +23,7 @@ export type ParsedImportId =
   | { type: 'payment_slip'; slipId: string }
   | { type: 'merged_slip_email'; slipId: string; emailId: string }
   | { type: 'merged_slip_stmt'; slipId: string; statementId: string; index: number }
+  | { type: 'self_transfer'; debitStatementId: string; debitIndex: number; creditStatementId: string; creditIndex: number }
 
 /**
  * Parse a prefixed import ID into its components.
@@ -32,7 +34,19 @@ export type ParsedImportId =
  * - <uuid>:<index> (backward compat — treated as statement)
  */
 export function parseImportId(id: string): ParsedImportId | null {
-  // Try merged: prefix first (most specific)
+  // Try self-transfer prefix first (most specific)
+  const selfTransferMatch = id.match(SELF_TRANSFER_REGEX)
+  if (selfTransferMatch) {
+    return {
+      type: 'self_transfer',
+      debitStatementId: selfTransferMatch[1],
+      debitIndex: parseInt(selfTransferMatch[2], 10),
+      creditStatementId: selfTransferMatch[3],
+      creditIndex: parseInt(selfTransferMatch[4], 10),
+    }
+  }
+
+  // Try merged: prefix (most specific after self-transfer)
   const mergedSlipEmailMatch = id.match(MERGED_SLIP_EMAIL_REGEX)
   if (mergedSlipEmailMatch) {
     return { type: 'merged_slip_email', slipId: mergedSlipEmailMatch[1], emailId: mergedSlipEmailMatch[2] }
@@ -103,4 +117,12 @@ export function makeMergedSlipEmailId(slipId: string, emailId: string): string {
 /** Construct a merged ID for payment slip + statement pair */
 export function makeMergedSlipStmtId(slipId: string, statementId: string, index: number): string {
   return `merged:slip:${slipId}+stmt:${statementId}:${index}`
+}
+
+/** Construct a self-transfer ID from two statement entries */
+export function makeSelfTransferId(
+  debitStatementId: string, debitIndex: number,
+  creditStatementId: string, creditIndex: number
+): string {
+  return `self-transfer:stmt:${debitStatementId}:${debitIndex}+stmt:${creditStatementId}:${creditIndex}`
 }

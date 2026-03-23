@@ -12,7 +12,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE transaction_type AS ENUM ('income', 'expense');
+    CREATE TYPE transaction_type AS ENUM ('income', 'expense', 'transfer');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -55,8 +55,12 @@ CREATE TABLE public.transactions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
-  -- Constraints
+  -- Source tracking
   source_payment_slip_id UUID REFERENCES public.payment_slip_uploads(id) ON DELETE SET NULL,
+
+  -- Self-transfer metadata
+  transfer_from_account TEXT,
+  transfer_to_account TEXT,
 
   -- Constraints
   CONSTRAINT positive_amount CHECK (amount > 0)

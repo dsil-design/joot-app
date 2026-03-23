@@ -28,7 +28,7 @@ export function useCreateAndLink(
       amount: data.amount,
       originalCurrency: data.currency as 'USD' | 'THB',
       transactionDate: data.date,
-      transactionType: data.transactionType as 'expense' | 'income',
+      transactionType: data.transactionType as 'expense' | 'income' | 'transfer',
       vendorId: data.vendorId,
       paymentMethodId: data.paymentMethodId,
       tagIds: data.tagIds,

@@ -120,7 +120,7 @@ export async function fetchPaymentSlipQueueItems(
       bankDetected: slip.bank_detected ?? undefined,
       transactionReference: slip.transaction_reference ?? undefined,
       memo: slip.memo ?? undefined,
-      detectedDirection: slip.detected_direction as 'expense' | 'income' | null,
+      detectedDirection: slip.detected_direction as 'expense' | 'income' | 'transfer' | null,
       slipUploadId: slip.id,
     }
 

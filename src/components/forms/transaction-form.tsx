@@ -20,7 +20,7 @@ import {
 import { useVendorSearch } from "@/hooks/use-vendor-search"
 import { usePaymentMethodOptions, useTagOptions } from "@/hooks"
 import { toast } from "sonner"
-import { CreditCard, DollarSign, ChevronLeft, ChevronRight } from "lucide-react"
+import { CreditCard, DollarSign, ArrowLeftRight, ChevronLeft, ChevronRight } from "lucide-react"
 import type { CurrencyType, TransactionType } from "@/lib/supabase/types"
 
 export interface TransactionFormData {
@@ -374,6 +374,19 @@ export function TransactionForm({
           >
             <DollarSign className="h-4 w-4" />
             <span className="text-sm font-medium">Income</span>
+          </Button>
+          <Button
+            variant={transactionType === "transfer" ? "default" : "ghost"}
+            size="sm"
+            className={`h-9 gap-2 px-2.5 py-0 rounded-md ${
+              transactionType === "transfer"
+                ? "bg-accent text-accent-foreground hover:bg-accent/80"
+                : "bg-transparent text-foreground hover:bg-accent"
+            }`}
+            onClick={() => setTransactionType("transfer")}
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+            <span className="text-sm font-medium">Transfer</span>
           </Button>
         </div>
 

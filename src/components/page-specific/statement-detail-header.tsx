@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft, RefreshCw, Eye } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Eye, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -20,7 +20,9 @@ interface StatementDetailHeaderProps {
   matchRate: number
   onReprocess?: () => void
   onViewStatement?: () => void
+  onDelete?: () => void
   isReprocessing?: boolean
+  isDeleting?: boolean
 }
 
 function formatPeriod(start: string | null, end: string | null): string {
@@ -60,8 +62,12 @@ export function StatementDetailHeader({
   matchRate,
   onReprocess,
   onViewStatement,
+  onDelete,
   isReprocessing,
+  isDeleting,
 }: StatementDetailHeaderProps) {
+  const isProcessed = ['ready_for_review', 'in_review', 'done'].includes(status)
+  const isUnprocessed = ['pending', 'failed'].includes(status)
   return (
     <div className="space-y-4">
       {/* Added to system date */}
@@ -98,7 +104,7 @@ export function StatementDetailHeader({
               View Statement
             </Button>
           )}
-          {onReprocess && ['ready_for_review', 'in_review', 'done'].includes(status) && (
+          {onReprocess && isProcessed && (
             <Button
               variant="outline"
               size="sm"
@@ -109,11 +115,26 @@ export function StatementDetailHeader({
               {isReprocessing ? 'Reprocessing...' : 'Reprocess'}
             </Button>
           )}
+          {onDelete && status !== 'processing' && (
+            <Button
+              variant={isUnprocessed ? 'outline' : 'ghost'}
+              size="sm"
+              onClick={onDelete}
+              disabled={isDeleting}
+              className={isUnprocessed
+                ? 'border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700'
+                : 'text-muted-foreground hover:text-red-600'
+              }
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Stats row */}
-      {['ready_for_review', 'in_review', 'done'].includes(status) && (
+      {isProcessed && (
         <div className="space-y-2">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
