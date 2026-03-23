@@ -1,38 +1,46 @@
 import { CurrencyType } from '../supabase/types';
-import { 
-  ECBRate, 
-  ProcessedRate, 
-  CURRENCY_PAIRS, 
-  CrossRateCalculation 
+import {
+  ECBRate,
+  ProcessedRate,
+  CrossRateCalculation
 } from '../types/exchange-rates';
 
 export class RateCalculator {
   /**
    * Convert EUR-based ECB rates to cross-rates between other currencies
    * ECB provides rates as EUR/XXX, we need to calculate XXX/YYY cross-rates
+   *
+   * @param eurRates - Raw ECB rates (EUR-based)
+   * @param currencyPairs - Optional list of pairs to generate. When omitted, all possible
+   *   combinations from the available currencies are generated (same as generateAllPairs).
    */
-  calculateCrossRates(eurRates: ECBRate[]): ProcessedRate[] {
+  calculateCrossRates(eurRates: ECBRate[], currencyPairs?: [CurrencyType, CurrencyType][]): ProcessedRate[] {
+    // When no explicit pairs are provided, generate all possible combinations.
+    if (!currencyPairs) {
+      return this.generateAllPairs(eurRates);
+    }
+
     const processedRates: ProcessedRate[] = [];
-    
+
     // Group rates by date for easier processing
     const ratesByDate = this.groupRatesByDate(eurRates);
-    
+
     for (const [date, rates] of Object.entries(ratesByDate)) {
       // Create a lookup map for this date's rates
       const rateMap = new Map<string, number>();
-      
+
       // Add EUR as base (rate = 1.0)
       rateMap.set('EUR', 1.0);
-      
+
       // Add all ECB rates
       for (const rate of rates) {
         rateMap.set(rate.currency, rate.rate);
       }
-      
-      // Generate all required currency pairs
-      for (const [fromCurrency, toCurrency] of CURRENCY_PAIRS) {
+
+      // Generate required currency pairs
+      for (const [fromCurrency, toCurrency] of currencyPairs) {
         const crossRate = this.calculateCrossRate(fromCurrency, toCurrency, rateMap);
-        
+
         if (crossRate !== null) {
           processedRates.push({
             from_currency: fromCurrency,
@@ -45,7 +53,7 @@ export class RateCalculator {
         }
       }
     }
-    
+
     return processedRates;
   }
 

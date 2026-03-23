@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/supabase/database';
 import { dateHelpers, COMMON_HOLIDAYS } from '@/lib/utils/date-helpers';
-import { CURRENCY_PAIRS } from '@/lib/types/exchange-rates';
+import { currencyConfigService } from '@/lib/services/currency-config-service';
+import { CurrencyType } from '@/lib/supabase/types';
 
 export interface HealthStatus {
   status: 'healthy' | 'stale' | 'degraded' | 'unhealthy';
@@ -93,9 +94,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         isStale: true
       },
       coverage: {
-        totalPairs: CURRENCY_PAIRS.length,
+        totalPairs: 0,
         availablePairs: 0,
-        missingPairs: CURRENCY_PAIRS.map(pair => `${pair[0]}/${pair[1]}`),
+        missingPairs: [],
         coveragePercentage: 0
       },
       gaps: {
@@ -162,9 +163,10 @@ async function performDetailedHealthCheck(
   basicStatus: HealthStatus
 ): Promise<DetailedHealthCheck> {
   
+  const currencyPairs = await currencyConfigService.getCurrencyPairs() as [CurrencyType, CurrencyType][];
   // Check status for each currency pair
   const currencyPairStatus = await Promise.all(
-    CURRENCY_PAIRS.map(async ([from, to]) => {
+    currencyPairs.map(async ([from, to]) => {
       try {
         const { data } = await db.exchangeRates.getLatest(from, to);
         
@@ -231,11 +233,12 @@ function calculateDataFreshness(expectedLastDate: string, hasRecentData: boolean
  * Calculate coverage across currency pairs
  */
 async function calculateCoverage(expectedLastDate: string) {
-  const totalPairs = CURRENCY_PAIRS.length;
+  const currencyPairs = await currencyConfigService.getCurrencyPairs() as [CurrencyType, CurrencyType][];
+  const totalPairs = currencyPairs.length;
   let availablePairs = 0;
   const missingPairs: string[] = [];
-  
-  for (const [from, to] of CURRENCY_PAIRS) {
+
+  for (const [from, to] of currencyPairs) {
     try {
       const { data } = await db.exchangeRates.getByDate(from, to, expectedLastDate);
       if (data) {
@@ -248,7 +251,9 @@ async function calculateCoverage(expectedLastDate: string) {
     }
   }
   
-  const coveragePercentage = Math.round((availablePairs / totalPairs) * 100);
+  const coveragePercentage = totalPairs > 0
+    ? Math.round((availablePairs / totalPairs) * 100)
+    : 0;
   
   return {
     totalPairs,

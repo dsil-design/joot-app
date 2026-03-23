@@ -64,6 +64,7 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
 };
 
 // Currency pairs that we want to track (only those available from ECB)
+/** @deprecated Use currencyConfigService.getCurrencyPairs() instead */
 export const CURRENCY_PAIRS: [CurrencyType, CurrencyType][] = [
   // USD pairs
   ['USD', 'THB'], ['USD', 'EUR'], ['USD', 'GBP'],

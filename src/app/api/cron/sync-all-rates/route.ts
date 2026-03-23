@@ -313,6 +313,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 5a. Sync non-ECB currencies (e.g., VND)
+    if (autoSyncEnabled) {
+      try {
+        console.log('📡 Syncing non-ECB currency rates...');
+        const { exchangeRateAPIService } = await import('@/lib/services/exchangerate-api-service');
+        const nonECBResult = await exchangeRateAPIService.syncNonECBRates();
+        console.log(`  ✅ Non-ECB sync: ${nonECBResult.inserted} rates inserted`);
+        if (nonECBResult.errors.length > 0) {
+          console.warn(`  ⚠️  Non-ECB errors: ${nonECBResult.errors.join(', ')}`);
+        }
+      } catch (error) {
+        console.error('⚠️  Non-ECB rate sync failed (non-critical):', error);
+      }
+    }
+
     // 5. Get coverage stats for reporting
     let coveragePercentage: number | undefined;
     try {

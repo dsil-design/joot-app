@@ -58,7 +58,10 @@ export async function calculateTransactionDisplayAmounts(
   const primary = formatCurrency(recordedAmount, recordedCurrency)
 
   // For secondary amount, we calculate using CURRENT exchange rates (today's rate or most recent)
-  const oppositeCurrency: CurrencyType = recordedCurrency === 'USD' ? 'THB' : 'USD'
+  // Display currency is USD; for USD transactions, show THB as secondary (local currency)
+  const displayCurrency: CurrencyType = 'USD'
+  const localCurrency: CurrencyType = 'THB'
+  const oppositeCurrency: CurrencyType = recordedCurrency === displayCurrency ? localCurrency : displayCurrency
 
   try {
     const { rate, needsSync } = await getCurrentExchangeRate(

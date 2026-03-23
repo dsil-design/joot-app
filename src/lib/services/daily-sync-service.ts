@@ -190,7 +190,11 @@ export class DailySyncService {
 
       // Step 6: Calculate cross-rates
       console.log(`🔄 Calculating cross-rates for ${config.targetDate}`);
-      const processedRates = this.rateCalculator.calculateCrossRates(targetDateRates);
+      const currencyPairs = await currencyConfigService.getCurrencyPairs();
+      const processedRates = this.rateCalculator.calculateCrossRates(
+        targetDateRates,
+        currencyPairs as [CurrencyType, CurrencyType][]
+      );
       
       // Add EUR direct rates
       const eurRates = this.addEurDirectRates(targetDateRates, config.targetDate!);
@@ -562,8 +566,11 @@ export class DailySyncService {
       return result;
     }
 
-    // Check for required currencies
-    const requiredCurrencies = ['USD', 'THB', 'EUR', 'GBP'];
+    // Check for required currencies.
+    // EUR is intentionally excluded: ECB uses EUR as the base currency (EUR = 1.0
+    // implicitly), so EUR never appears in the rate data — all other rates are
+    // already expressed relative to EUR.
+    const requiredCurrencies = ['USD', 'THB', 'GBP'];
     const presentCurrencies = new Set(rates.map(r => r.currency));
     
     for (const currency of requiredCurrencies) {

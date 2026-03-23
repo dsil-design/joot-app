@@ -126,7 +126,7 @@ CREATE TABLE public.exchange_rates (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   from_currency currency_type NOT NULL,
   to_currency currency_type NOT NULL,
-  rate DECIMAL(10, 4) NOT NULL,
+  rate DECIMAL(18, 8) NOT NULL,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
   source TEXT,
   is_interpolated BOOLEAN DEFAULT FALSE,
@@ -1370,7 +1370,7 @@ CREATE TRIGGER update_transaction_proposals_updated_at
 -- Insert some sample exchange rates
 INSERT INTO public.exchange_rates (from_currency, to_currency, rate, date) VALUES
   ('USD', 'THB', 35.50, CURRENT_DATE),
-  ('THB', 'USD', 0.0282, CURRENT_DATE)
+  ('THB', 'USD', 0.02816901, CURRENT_DATE)
 ON CONFLICT (from_currency, to_currency, date) DO NOTHING;
 
 -- ============================================================================

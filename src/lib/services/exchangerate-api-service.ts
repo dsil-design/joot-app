@@ -10,6 +10,7 @@
 
 import { createServiceRoleClient } from '../supabase/server';
 import { CurrencyType } from '../supabase/types';
+import { currencyConfigService } from './currency-config-service';
 
 export interface ExchangeRateAPIResponse {
   result: string;
@@ -309,6 +310,88 @@ class ExchangeRateAPIService {
       .limit(1);
 
     return !error && data && data.length > 0;
+  }
+  /**
+   * Sync today's rates for all non-ECB fiat currencies (e.g. VND).
+   * Called by the daily cron job after the ECB sync completes.
+   */
+  async syncNonECBRates(targetDate?: string): Promise<{
+    success: boolean;
+    inserted: number;
+    errors: string[];
+  }> {
+    // Determine which currencies are not covered by ECB or crypto
+    const ecbCurrencies = await currencyConfigService.getECBCurrencies();
+    const allTracked = await currencyConfigService.getCurrencyConfig();
+
+    const nonECBCurrencies = allTracked.allTracked.filter(
+      c => !ecbCurrencies.includes(c) && c !== 'EUR' && !allTracked.cryptoCurrencies.includes(c)
+    );
+
+    if (nonECBCurrencies.length === 0) {
+      return { success: true, inserted: 0, errors: [] };
+    }
+
+    const syncDate = targetDate || new Date().toISOString().split('T')[0];
+    console.log(`Syncing non-ECB currencies: ${nonECBCurrencies.join(', ')} for ${syncDate}`);
+
+    let inserted = 0;
+    const errors: string[] = [];
+    const supabase = createServiceRoleClient();
+
+    try {
+      const apiData = await this.fetchLatestRates('USD');
+
+      for (const currency of nonECBCurrencies) {
+        try {
+          const rate = apiData.rates[currency];
+          if (!rate) {
+            errors.push(`${currency} not found in API response`);
+            continue;
+          }
+
+          const ratesToInsert = [
+            {
+              from_currency: 'USD' as CurrencyType,
+              to_currency: currency as CurrencyType,
+              rate: rate,
+              date: syncDate,
+              source: 'EXCHANGERATE_API',
+              is_interpolated: false,
+              interpolated_from_date: null
+            },
+            {
+              from_currency: currency as CurrencyType,
+              to_currency: 'USD' as CurrencyType,
+              rate: 1 / rate,
+              date: syncDate,
+              source: 'EXCHANGERATE_API',
+              is_interpolated: false,
+              interpolated_from_date: null
+            }
+          ];
+
+          const { error } = await supabase
+            .from('exchange_rates')
+            .upsert(ratesToInsert, {
+              onConflict: 'from_currency,to_currency,date',
+              ignoreDuplicates: false
+            });
+
+          if (error) {
+            errors.push(`Failed to insert ${currency}: ${error.message}`);
+          } else {
+            inserted += 2;
+          }
+        } catch (err) {
+          errors.push(`${currency}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    } catch (err) {
+      errors.push(`API fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    return { success: errors.length === 0, inserted, errors };
   }
 }
 
