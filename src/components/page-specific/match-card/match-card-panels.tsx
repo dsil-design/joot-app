@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { parseImportId } from "@/lib/utils/import-id"
 import { StatementViewerModal } from "@/components/page-specific/statement-viewer-modal"
+import { PaymentSlipViewerModal } from "@/components/page-specific/payment-slip-viewer-modal"
 import { EmailViewerModal } from "@/components/page-specific/email-viewer-modal"
 import { cn } from "@/lib/utils"
 import { getParserTag } from "@/lib/utils/parser-tags"
@@ -49,6 +50,15 @@ function getSourceLink(id: string): string | null {
   if (parsed.type === "merged") {
     // Default to statement for merged items
     return `/imports/statements/${parsed.statementId}/results`
+  }
+  if (parsed.type === "payment_slip") {
+    return `/imports/payment-slips/${parsed.slipId}`
+  }
+  if (parsed.type === "merged_slip_email") {
+    return `/imports/payment-slips/${parsed.slipId}`
+  }
+  if (parsed.type === "merged_slip_stmt") {
+    return `/imports/payment-slips/${parsed.slipId}`
   }
   return null
 }
@@ -233,6 +243,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
   const [previewModal, setPreviewModal] = React.useState<
     | { type: "statement"; statementId: string; filename: string }
     | { type: "email"; emailId: string }
+    | { type: "payment_slip"; slipId: string; filename: string }
     | null
   >(null)
 
@@ -254,6 +265,22 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
     }
   }, [parsed])
 
+  const openSlipPreview = React.useCallback(() => {
+    if (parsed && parsed.type === "payment_slip") {
+      setPreviewModal({
+        type: "payment_slip",
+        slipId: parsed.slipId,
+        filename: data.statementTransaction.sourceFilename || "Payment Slip",
+      })
+    } else if (parsed && (parsed.type === "merged_slip_email" || parsed.type === "merged_slip_stmt")) {
+      setPreviewModal({
+        type: "payment_slip",
+        slipId: parsed.slipId,
+        filename: data.statementTransaction.sourceFilename || "Payment Slip",
+      })
+    }
+  }, [parsed, data.statementTransaction.sourceFilename])
+
   const previewModals = (
     <>
       {previewModal?.type === "statement" && (
@@ -273,6 +300,14 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
           fromName={data.emailMetadata?.fromName ?? data.mergedEmailData?.metadata.fromName ?? null}
           fromAddress={data.emailMetadata?.fromAddress ?? data.mergedEmailData?.metadata.fromAddress ?? null}
           emailDate={data.emailMetadata?.emailDate ?? data.mergedEmailData?.metadata.emailDate ?? null}
+        />
+      )}
+      {previewModal?.type === "payment_slip" && (
+        <PaymentSlipViewerModal
+          open
+          onOpenChange={(open) => { if (!open) setPreviewModal(null) }}
+          slipId={previewModal.slipId}
+          filename={previewModal.filename}
         />
       )}
     </>
@@ -394,7 +429,8 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
   }
 
   const isEmail = data.source === "email"
-  const displayDescription = isEmail
+  const isPaymentSlip = data.source === "payment_slip"
+  const displayDescription = isEmail || isPaymentSlip
     ? data.statementTransaction.description
     : cleanStatementDescription(data.statementTransaction.description)
 
@@ -429,9 +465,9 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
       ) : (
         <div className="space-y-1.5">
           <SourceLabel
-            label="From Statement"
+            label={isPaymentSlip ? "From Payment Slip" : "From Statement"}
             href={getSourceLink(data.id)}
-            onPreview={openStatementPreview}
+            onPreview={isPaymentSlip ? openSlipPreview : openStatementPreview}
           />
           <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
             <span>{formatMatchDate(data.statementTransaction.date)}</span>

@@ -8,10 +8,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import {
   ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock,
-  ArrowDownLeft, ArrowUpRight, Loader2,
+  ArrowDownLeft, ArrowUpRight, Loader2, Eye,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { PaymentSlipViewerModal } from '@/components/page-specific/payment-slip-viewer-modal'
 
 interface SlipDetail {
   id: string
@@ -81,6 +82,7 @@ export default function PaymentSlipDetailPage() {
   const [slip, setSlip] = useState<SlipDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [viewerOpen, setViewerOpen] = useState(false)
 
   const fetchSlip = useCallback(async () => {
     try {
@@ -207,19 +209,26 @@ export default function PaymentSlipDetailPage() {
           </p>
         </div>
 
-        {slip.status === 'pending' && (
-          <Button size="sm" onClick={handleProcess} disabled={isProcessing}>
-            {isProcessing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Process
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setViewerOpen(true)}>
+            <Eye className="h-4 w-4 mr-2" />
+            Preview
           </Button>
-        )}
 
-        {slip.status === 'failed' && (
-          <Button size="sm" variant="outline" onClick={handleProcess} disabled={isProcessing}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Retry
-          </Button>
-        )}
+          {slip.status === 'pending' && (
+            <Button size="sm" onClick={handleProcess} disabled={isProcessing}>
+              {isProcessing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              Process
+            </Button>
+          )}
+
+          {slip.status === 'failed' && (
+            <Button size="sm" variant="outline" onClick={handleProcess} disabled={isProcessing}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Processing state */}
@@ -344,6 +353,14 @@ export default function PaymentSlipDetailPage() {
           )}
         </>
       )}
+
+      {/* Viewer modal */}
+      <PaymentSlipViewerModal
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+        slipId={slipId}
+        filename={slip.filename}
+      />
     </div>
   )
 }

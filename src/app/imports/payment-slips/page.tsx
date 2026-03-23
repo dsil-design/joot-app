@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Upload, Receipt, ArrowRight } from 'lucide-react'
+import { Upload, Receipt, ArrowRight, Eye } from 'lucide-react'
 import { UploadPaymentSlipDialog } from '@/components/page-specific/upload-payment-slip-dialog'
+import { PaymentSlipViewerModal } from '@/components/page-specific/payment-slip-viewer-modal'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -59,6 +60,7 @@ export default function PaymentSlipsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [previewSlip, setPreviewSlip] = useState<{ id: string; filename: string } | null>(null)
 
   const fetchSlips = useCallback(async () => {
     try {
@@ -182,13 +184,24 @@ export default function PaymentSlipsPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setPreviewSlip({ id: slip.id, filename: slip.filename })
+                }}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-zinc-100 transition-colors cursor-pointer"
+                title="Preview slip"
+              >
+                <Eye className="h-4 w-4" />
+              </button>
               {slip.amount && (
                 <span className={cn("text-sm font-medium", isIncome ? "text-green-600" : "")}>
                   {isIncome ? '+' : ''}{formatAmount(slip.amount)} {slip.currency || 'THB'}
                 </span>
               )}
-              <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
             </div>
           </Link>
         )
@@ -200,6 +213,15 @@ export default function PaymentSlipsPage() {
         onOpenChange={setUploadOpen}
         onUploadComplete={() => fetchSlips()}
       />
+
+      {previewSlip && (
+        <PaymentSlipViewerModal
+          open={!!previewSlip}
+          onOpenChange={(open) => { if (!open) setPreviewSlip(null) }}
+          slipId={previewSlip.id}
+          filename={previewSlip.filename}
+        />
+      )}
     </div>
   )
 }
