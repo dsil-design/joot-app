@@ -56,6 +56,9 @@ CREATE TABLE public.transactions (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
   -- Constraints
+  source_payment_slip_id UUID REFERENCES public.payment_slip_uploads(id) ON DELETE SET NULL,
+
+  -- Constraints
   CONSTRAINT positive_amount CHECK (amount > 0)
 );
 
@@ -164,6 +167,8 @@ CREATE INDEX idx_transactions_source_email ON public.transactions(source_email_t
   WHERE source_email_transaction_id IS NOT NULL;
 CREATE INDEX idx_transactions_source_statement ON public.transactions(source_statement_upload_id)
   WHERE source_statement_upload_id IS NOT NULL;
+CREATE INDEX idx_transactions_source_payment_slip ON public.transactions(source_payment_slip_id)
+  WHERE source_payment_slip_id IS NOT NULL;
 CREATE INDEX idx_payment_methods_user_id ON public.payment_methods(user_id);
 CREATE INDEX idx_payment_methods_name ON public.payment_methods(name);
 CREATE INDEX idx_vendors_user_id ON public.vendors(user_id);
@@ -931,6 +936,146 @@ CREATE POLICY "Users can delete own statement uploads" ON public.statement_uploa
 CREATE TRIGGER update_statement_uploads_updated_at BEFORE UPDATE ON public.statement_uploads
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- ============================================================================
+-- PAYMENT SLIP UPLOADS
+-- ============================================================================
+
+-- Payment slip uploads table - stores metadata and extracted data from Thai bank transfer slips
+-- Images are processed via Claude Vision API for structured data extraction
+CREATE TABLE public.payment_slip_uploads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+
+  -- File metadata
+  filename TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  file_size INTEGER,
+  file_type TEXT,
+  file_hash TEXT,
+
+  -- Extracted transaction fields
+  transaction_date DATE,
+  transaction_time TIME,
+  amount DECIMAL(12, 2),
+  fee DECIMAL(12, 2) DEFAULT 0,
+  currency TEXT DEFAULT 'THB',
+  sender_name TEXT,
+  sender_bank TEXT,
+  sender_account TEXT,
+  recipient_name TEXT,
+  recipient_bank TEXT,
+  recipient_account TEXT,
+  transaction_reference TEXT,
+  bank_reference TEXT,
+  memo TEXT,
+  bank_detected TEXT,
+  transfer_type TEXT,
+  detected_direction TEXT CHECK (detected_direction IS NULL OR detected_direction IN ('expense', 'income')),
+  payment_method_id UUID REFERENCES public.payment_methods(id) ON DELETE SET NULL,
+
+  -- Full extraction data from Claude Vision
+  extraction_data JSONB,
+
+  -- Processing status
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN (
+    'pending',
+    'processing',
+    'ready_for_review',
+    'done',
+    'failed'
+  )),
+
+  -- Processing metadata
+  extraction_started_at TIMESTAMPTZ,
+  extraction_completed_at TIMESTAMPTZ,
+  extraction_error TEXT,
+  extraction_log JSONB,
+  extraction_confidence INTEGER CHECK (
+    extraction_confidence IS NULL OR (extraction_confidence >= 0 AND extraction_confidence <= 100)
+  ),
+  ai_prompt_tokens INTEGER,
+  ai_response_tokens INTEGER,
+  ai_duration_ms INTEGER,
+
+  -- Matched transaction
+  matched_transaction_id UUID REFERENCES public.transactions(id) ON DELETE SET NULL,
+  match_confidence INTEGER CHECK (
+    match_confidence IS NULL OR (match_confidence >= 0 AND match_confidence <= 100)
+  ),
+
+  -- Review status (for queue)
+  review_status TEXT NOT NULL DEFAULT 'pending' CHECK (review_status IN ('pending', 'approved', 'rejected')),
+
+  -- Timestamps
+  uploaded_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_payment_slip_uploads_user_id ON public.payment_slip_uploads(user_id);
+CREATE INDEX idx_payment_slip_uploads_status ON public.payment_slip_uploads(user_id, status);
+CREATE INDEX idx_payment_slip_uploads_review ON public.payment_slip_uploads(user_id, review_status)
+  WHERE review_status = 'pending';
+CREATE INDEX idx_payment_slip_uploads_uploaded_at ON public.payment_slip_uploads(uploaded_at DESC);
+CREATE INDEX idx_payment_slip_uploads_file_hash ON public.payment_slip_uploads(file_hash)
+  WHERE file_hash IS NOT NULL;
+CREATE UNIQUE INDEX idx_payment_slip_uploads_user_file_hash_unique
+  ON public.payment_slip_uploads(user_id, file_hash)
+  WHERE file_hash IS NOT NULL;
+CREATE INDEX idx_payment_slip_uploads_transaction_ref ON public.payment_slip_uploads(transaction_reference)
+  WHERE transaction_reference IS NOT NULL;
+
+ALTER TABLE public.payment_slip_uploads ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own payment slip uploads" ON public.payment_slip_uploads
+  FOR SELECT USING ((select auth.uid()) = user_id);
+CREATE POLICY "Users can insert own payment slip uploads" ON public.payment_slip_uploads
+  FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
+CREATE POLICY "Users can update own payment slip uploads" ON public.payment_slip_uploads
+  FOR UPDATE USING ((select auth.uid()) = user_id);
+CREATE POLICY "Users can delete own payment slip uploads" ON public.payment_slip_uploads
+  FOR DELETE USING ((select auth.uid()) = user_id);
+
+CREATE TRIGGER update_payment_slip_uploads_updated_at BEFORE UPDATE ON public.payment_slip_uploads
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- USER BANK ACCOUNTS
+-- ============================================================================
+
+-- Stores user's known bank accounts for auto-detecting payment direction (income vs expense)
+CREATE TABLE public.user_bank_accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  bank_name TEXT NOT NULL,
+  account_identifier TEXT NOT NULL,
+  account_holder_name TEXT,
+  payment_method_id UUID REFERENCES public.payment_methods(id) ON DELETE SET NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_bank_accounts_user ON public.user_bank_accounts(user_id);
+CREATE UNIQUE INDEX idx_user_bank_accounts_unique
+  ON public.user_bank_accounts(user_id, bank_name, account_identifier);
+CREATE INDEX idx_user_bank_accounts_payment_method ON public.user_bank_accounts(payment_method_id)
+  WHERE payment_method_id IS NOT NULL;
+
+ALTER TABLE public.user_bank_accounts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own bank accounts" ON public.user_bank_accounts
+  FOR SELECT USING ((select auth.uid()) = user_id);
+CREATE POLICY "Users can insert own bank accounts" ON public.user_bank_accounts
+  FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
+CREATE POLICY "Users can update own bank accounts" ON public.user_bank_accounts
+  FOR UPDATE USING ((select auth.uid()) = user_id);
+CREATE POLICY "Users can delete own bank accounts" ON public.user_bank_accounts
+  FOR DELETE USING ((select auth.uid()) = user_id);
+
+CREATE TRIGGER update_user_bank_accounts_updated_at BEFORE UPDATE ON public.user_bank_accounts
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Import activities table - provides an audit trail of all import actions
 -- Tracks email syncs, statement uploads, matches, imports, and user actions
 CREATE TABLE public.import_activities (
@@ -951,7 +1096,9 @@ CREATE TABLE public.import_activities (
     'transaction_skipped',  -- User marked email as non-transaction
     'batch_import',         -- Multiple transactions imported at once
     'sync_error',           -- Error during sync process
-    'extraction_error'      -- Error during data extraction
+    'extraction_error',     -- Error during data extraction
+    'slip_uploaded',        -- Payment slip image uploaded
+    'slip_processed'        -- Payment slip extraction completed
   )),
 
   -- Optional reference to related statement upload
@@ -959,6 +1106,9 @@ CREATE TABLE public.import_activities (
 
   -- Optional reference to related email transaction
   email_transaction_id UUID REFERENCES public.email_transactions(id) ON DELETE SET NULL,
+
+  -- Optional reference to related payment slip upload
+  payment_slip_upload_id UUID REFERENCES public.payment_slip_uploads(id) ON DELETE SET NULL,
 
   -- Activity description
   description TEXT NOT NULL,
@@ -1139,11 +1289,12 @@ CREATE TABLE public.transaction_proposals (
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
 
   -- Source reference
-  source_type TEXT NOT NULL CHECK (source_type IN ('statement', 'email', 'merged')),
+  source_type TEXT NOT NULL CHECK (source_type IN ('statement', 'email', 'merged', 'payment_slip')),
   composite_id TEXT NOT NULL,
   statement_upload_id UUID REFERENCES public.statement_uploads(id) ON DELETE CASCADE,
   suggestion_index INTEGER,
   email_transaction_id UUID REFERENCES public.email_transactions(id) ON DELETE CASCADE,
+  payment_slip_upload_id UUID REFERENCES public.payment_slip_uploads(id) ON DELETE CASCADE,
 
   -- Proposed transaction fields
   proposed_description TEXT,
@@ -1183,6 +1334,7 @@ CREATE TABLE public.transaction_proposals (
   CONSTRAINT proposal_source_check CHECK (
     (statement_upload_id IS NOT NULL AND suggestion_index IS NOT NULL)
     OR email_transaction_id IS NOT NULL
+    OR payment_slip_upload_id IS NOT NULL
   ),
   UNIQUE(composite_id, user_id)
 );
@@ -1193,6 +1345,8 @@ CREATE INDEX idx_proposals_statement ON transaction_proposals(statement_upload_i
   WHERE statement_upload_id IS NOT NULL;
 CREATE INDEX idx_proposals_email ON transaction_proposals(email_transaction_id)
   WHERE email_transaction_id IS NOT NULL;
+CREATE INDEX idx_proposals_payment_slip ON transaction_proposals(payment_slip_upload_id)
+  WHERE payment_slip_upload_id IS NOT NULL;
 
 ALTER TABLE public.transaction_proposals ENABLE ROW LEVEL SECURITY;
 

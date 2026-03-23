@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { File, Mail, GitMerge } from "lucide-react"
+import { File, Mail, GitMerge, Receipt } from "lucide-react"
 import { getParserTag } from "@/lib/utils/parser-tags"
 import type { MatchCardData, MatchCardVariant, VariantConfig, MatchCardCallbacks } from "./types"
 
@@ -45,6 +45,7 @@ export function MatchCardHeader({
   const isRejected = data.status === "rejected"
   const isEmail = data.source === "email"
   const isMerged = data.source === "merged"
+  const isPaymentSlip = data.source === "payment_slip"
 
   const source = data.sourceStatement || data.statementTransaction.sourceFilename
   const parserTag = (isEmail || isMerged)
@@ -59,6 +60,11 @@ export function MatchCardHeader({
           <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
             <GitMerge className="h-3 w-3 shrink-0" />
             Cross-Source
+          </span>
+        ) : isPaymentSlip ? (
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
+            <Receipt className="h-3 w-3 shrink-0" />
+            Payment Slip
           </span>
         ) : data.source === "email" ? (
           <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-600">

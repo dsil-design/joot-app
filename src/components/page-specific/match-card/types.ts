@@ -14,7 +14,7 @@ export type MatchCardVariant =
 /**
  * Import source type
  */
-export type ImportSource = "statement" | "email" | "merged"
+export type ImportSource = "statement" | "email" | "merged" | "payment_slip"
 
 /**
  * Email metadata for email-sourced queue items.

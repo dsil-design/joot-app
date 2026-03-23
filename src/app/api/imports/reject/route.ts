@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
     // Parse and separate IDs by type — merged IDs decompose into both statement + email
     const statementIds: { id: string; statementId: string; index: number }[] = []
     const emailItemIds: string[] = []
+    const paymentSlipIds: string[] = []
     const invalidIds: string[] = []
 
     for (const id of idsToReject) {
@@ -114,11 +115,20 @@ export async function POST(request: NextRequest) {
       if (!parsed) {
         invalidIds.push(id)
       } else if (parsed.type === 'merged') {
-        // Decompose merged into both statement rejection + email rejection
         statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
         emailItemIds.push(parsed.emailId)
+      } else if (parsed.type === 'merged_slip_email') {
+        // Decompose: reject both the slip and the email
+        paymentSlipIds.push(parsed.slipId)
+        emailItemIds.push(parsed.emailId)
+      } else if (parsed.type === 'merged_slip_stmt') {
+        // Decompose: reject both the slip and the statement suggestion
+        paymentSlipIds.push(parsed.slipId)
+        statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
       } else if (parsed.type === 'statement') {
         statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
+      } else if (parsed.type === 'payment_slip') {
+        paymentSlipIds.push(parsed.slipId)
       } else {
         emailItemIds.push(parsed.emailId)
       }
@@ -283,6 +293,23 @@ export async function POST(request: NextRequest) {
           .eq('user_id', user.id)
           .in('composite_id', compositeIds)
           .in('status', ['pending', 'stale'])
+      }
+    }
+
+    // --- Process PAYMENT SLIP items ---
+    if (paymentSlipIds.length > 0) {
+      const { data: updated, error: slipUpdateError } = await serviceClient
+        .from('payment_slip_uploads')
+        .update({ review_status: 'rejected' })
+        .in('id', paymentSlipIds)
+        .eq('user_id', user.id)
+        .select('id')
+
+      if (slipUpdateError) {
+        results.errors.push('Failed to reject payment slips')
+        results.failed += paymentSlipIds.length
+      } else {
+        results.rejected += updated?.length ?? 0
       }
     }
 

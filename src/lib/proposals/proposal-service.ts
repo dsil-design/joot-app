@@ -479,6 +479,7 @@ async function upsertProposal(
     statement_upload_id: item.statementUploadId || null,
     suggestion_index: item.suggestionIndex ?? null,
     email_transaction_id: item.emailTransactionId || null,
+    payment_slip_upload_id: item.paymentSlipUploadId || null,
     proposed_description: result.fields.description || null,
     proposed_amount: result.fields.amount ?? null,
     proposed_currency: result.fields.currency || null,

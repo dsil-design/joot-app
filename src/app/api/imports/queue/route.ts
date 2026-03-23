@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { fetchStatementQueueItems } from '@/lib/imports/statement-queue-builder'
 import { fetchEmailQueueItems } from '@/lib/imports/email-queue-builder'
+import { fetchPaymentSlipQueueItems } from '@/lib/imports/payment-slip-queue-builder'
 import { aggregateQueueItems } from '@/lib/imports/queue-aggregator'
 import { getProposalsForItems, transformProposalRow } from '@/lib/proposals/proposal-service'
 import type { QueueFilters } from '@/lib/imports/queue-types'
@@ -39,8 +40,9 @@ export async function GET(request: NextRequest) {
     // When filtering by a specific statement, don't fetch email items (they're irrelevant)
     const shouldFetchStatements = filters.sourceFilter === 'all' || filters.sourceFilter === 'statement' || filters.sourceFilter === 'merged'
     const shouldFetchEmails = !filters.statementUploadId && (filters.sourceFilter === 'all' || filters.sourceFilter === 'email' || filters.sourceFilter === 'merged')
+    const shouldFetchSlips = !filters.statementUploadId && (filters.sourceFilter === 'all' || filters.sourceFilter === 'payment_slip')
 
-    const [statementItems, emailItems] = await Promise.all([
+    const [statementItems, emailItems, paymentSlipItems] = await Promise.all([
       shouldFetchStatements
         ? fetchStatementQueueItems(supabase, user.id, {
             statementUploadId: filters.statementUploadId,
@@ -58,10 +60,18 @@ export async function GET(request: NextRequest) {
             toDate: filters.toDate,
           })
         : Promise.resolve([]),
+      shouldFetchSlips
+        ? fetchPaymentSlipQueueItems(supabase, user.id, {
+            currencyFilter: filters.currencyFilter,
+            searchQuery: filters.searchQuery,
+            fromDate: filters.fromDate,
+            toDate: filters.toDate,
+          })
+        : Promise.resolve([]),
     ])
 
     // Aggregate, pair, filter, sort
-    const result = await aggregateQueueItems(supabase, statementItems, emailItems, filters)
+    const result = await aggregateQueueItems(supabase, statementItems, emailItems, filters, paymentSlipItems)
 
     // Paginate
     const startIndex = (page - 1) * limit

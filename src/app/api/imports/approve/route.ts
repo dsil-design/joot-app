@@ -72,11 +72,13 @@ export async function POST(request: NextRequest) {
       // Fetch IDs from the queue API logic
       const { fetchStatementQueueItems } = await import('@/lib/imports/statement-queue-builder')
       const { fetchEmailQueueItems } = await import('@/lib/imports/email-queue-builder')
+      const { fetchPaymentSlipQueueItems } = await import('@/lib/imports/payment-slip-queue-builder')
       const { aggregateQueueItems } = await import('@/lib/imports/queue-aggregator')
 
-      const [stmtItems, emailItemsList] = await Promise.all([
+      const [stmtItems, emailItemsList, slipItems] = await Promise.all([
         fetchStatementQueueItems(supabase, user.id, {}),
         fetchEmailQueueItems(supabase, user.id, {}),
+        fetchPaymentSlipQueueItems(supabase, user.id, {}),
       ])
 
       const result = await aggregateQueueItems(supabase, stmtItems, emailItemsList, {
@@ -85,7 +87,7 @@ export async function POST(request: NextRequest) {
         confidenceFilter: 'all',
         sourceFilter: 'all',
         searchQuery: '',
-      })
+      }, slipItems)
 
       emailIds = result.items
         .filter(item => item.status === 'pending' && item.confidence >= minConf)
@@ -119,6 +121,9 @@ export async function POST(request: NextRequest) {
     const statementIds: { id: string; statementId: string; index: number }[] = []
     const emailItemIds: string[] = []
     const mergedIds: { id: string; emailId: string; statementId: string; index: number }[] = []
+    const paymentSlipIds: string[] = []
+    const mergedSlipEmailIds: { id: string; slipId: string; emailId: string }[] = []
+    const mergedSlipStmtIds: { id: string; slipId: string; statementId: string; index: number }[] = []
     const invalidIds: string[] = []
 
     for (const id of emailIds) {
@@ -127,8 +132,14 @@ export async function POST(request: NextRequest) {
         invalidIds.push(id)
       } else if (parsed.type === 'merged') {
         mergedIds.push({ id, emailId: parsed.emailId, statementId: parsed.statementId, index: parsed.index })
+      } else if (parsed.type === 'merged_slip_email') {
+        mergedSlipEmailIds.push({ id, slipId: parsed.slipId, emailId: parsed.emailId })
+      } else if (parsed.type === 'merged_slip_stmt') {
+        mergedSlipStmtIds.push({ id, slipId: parsed.slipId, statementId: parsed.statementId, index: parsed.index })
       } else if (parsed.type === 'statement') {
         statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
+      } else if (parsed.type === 'payment_slip') {
+        paymentSlipIds.push(parsed.slipId)
       } else {
         emailItemIds.push(parsed.emailId)
       }
@@ -445,6 +456,225 @@ export async function POST(request: NextRequest) {
         results.success++
         results.transactionsCreated++
         results.totalAmount += Math.abs(suggestion.amount)
+      }
+    }
+
+    // --- Process PAYMENT SLIP items ---
+    if (paymentSlipIds.length > 0) {
+      const { data: slips, error: slipFetchError } = await serviceClient
+        .from('payment_slip_uploads')
+        .select('id, amount, currency, transaction_date, memo, sender_name, recipient_name, detected_direction, review_status, matched_transaction_id, payment_method_id')
+        .in('id', paymentSlipIds)
+        .eq('user_id', user.id)
+
+      if (slipFetchError) {
+        results.errors.push('Failed to fetch payment slips')
+      } else if (slips) {
+        for (const slip of slips) {
+          if (slip.review_status === 'approved') {
+            results.skipped++
+            continue
+          }
+
+          if (createTransactions && slip.amount && slip.transaction_date) {
+            const transactionType = slip.detected_direction === 'income' ? 'income' : 'expense'
+            const direction = slip.detected_direction === 'income' ? 'From' : 'To'
+            const counterparty = slip.detected_direction === 'income'
+              ? slip.sender_name
+              : slip.recipient_name
+            const description = slip.memo || `${direction} ${counterparty || 'unknown'}`
+
+            const { error: insertError } = await serviceClient
+              .from('transactions')
+              .insert({
+                user_id: user.id,
+                amount: slip.amount,
+                original_currency: (slip.currency || 'THB') as 'USD' | 'THB',
+                transaction_type: transactionType as 'expense' | 'income',
+                transaction_date: slip.transaction_date,
+                description,
+                payment_method_id: slip.payment_method_id || null,
+                source_payment_slip_id: slip.id,
+              })
+
+            if (insertError) {
+              results.failed++
+              results.errors.push(`Failed to create transaction for slip ${slip.id}: ${insertError.message}`)
+              continue
+            }
+
+            results.transactionsCreated++
+            results.totalAmount += Math.abs(Number(slip.amount))
+          } else if (!createTransactions && slip.matched_transaction_id) {
+            // Link existing transaction
+            const { error: fkError } = await serviceClient
+              .from('transactions')
+              .update({ source_payment_slip_id: slip.id })
+              .eq('id', slip.matched_transaction_id)
+              .eq('user_id', user.id)
+
+            if (fkError) {
+              results.errors.push(`Failed to link transaction for slip ${slip.id}: ${fkError.message}`)
+            }
+          }
+
+          // Update slip review status
+          await serviceClient
+            .from('payment_slip_uploads')
+            .update({ review_status: 'approved', status: 'done' })
+            .eq('id', slip.id)
+
+          results.success++
+        }
+      }
+    }
+
+    // --- Process MERGED SLIP+EMAIL items ---
+    if (mergedSlipEmailIds.length > 0) {
+      for (const merged of mergedSlipEmailIds) {
+        // Fetch the slip data
+        const { data: slip } = await serviceClient
+          .from('payment_slip_uploads')
+          .select('id, amount, currency, transaction_date, memo, sender_name, recipient_name, detected_direction, payment_method_id')
+          .eq('id', merged.slipId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (!slip || !slip.amount || !slip.transaction_date) {
+          results.failed++
+          results.errors.push(`Slip not found for merged ID ${merged.id}`)
+          continue
+        }
+
+        const transactionType = slip.detected_direction === 'income' ? 'income' : 'expense'
+        const direction = slip.detected_direction === 'income' ? 'From' : 'To'
+        const counterparty = slip.detected_direction === 'income' ? slip.sender_name : slip.recipient_name
+        const description = slip.memo || `${direction} ${counterparty || 'unknown'}`
+
+        // Create one transaction from the slip (authoritative amount)
+        const { data: newTx, error: txError } = await serviceClient
+          .from('transactions')
+          .insert({
+            user_id: user.id,
+            amount: slip.amount,
+            original_currency: (slip.currency || 'THB') as 'USD' | 'THB',
+            transaction_type: transactionType as 'expense' | 'income',
+            transaction_date: slip.transaction_date,
+            description,
+            payment_method_id: slip.payment_method_id || null,
+            source_payment_slip_id: merged.slipId,
+            source_email_transaction_id: merged.emailId,
+          })
+          .select('id')
+          .single()
+
+        if (txError || !newTx) {
+          results.failed++
+          results.errors.push(`Failed to create transaction for ${merged.id}: ${txError?.message}`)
+          continue
+        }
+
+        // Update slip
+        await serviceClient
+          .from('payment_slip_uploads')
+          .update({ review_status: 'approved', status: 'done' })
+          .eq('id', merged.slipId)
+
+        // Update email
+        await serviceClient
+          .from('email_transactions')
+          .update({
+            status: 'imported',
+            matched_transaction_id: newTx.id,
+            match_method: 'cross_source',
+            matched_at: new Date().toISOString(),
+          })
+          .eq('id', merged.emailId)
+          .eq('user_id', user.id)
+
+        results.success++
+        results.transactionsCreated++
+        results.totalAmount += Math.abs(Number(slip.amount))
+      }
+    }
+
+    // --- Process MERGED SLIP+STATEMENT items ---
+    if (mergedSlipStmtIds.length > 0) {
+      for (const merged of mergedSlipStmtIds) {
+        const { data: slip } = await serviceClient
+          .from('payment_slip_uploads')
+          .select('id, amount, currency, transaction_date, memo, sender_name, recipient_name, detected_direction, payment_method_id')
+          .eq('id', merged.slipId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (!slip || !slip.amount || !slip.transaction_date) {
+          results.failed++
+          results.errors.push(`Slip not found for merged ID ${merged.id}`)
+          continue
+        }
+
+        const transactionType = slip.detected_direction === 'income' ? 'income' : 'expense'
+        const direction = slip.detected_direction === 'income' ? 'From' : 'To'
+        const counterparty = slip.detected_direction === 'income' ? slip.sender_name : slip.recipient_name
+        const description = slip.memo || `${direction} ${counterparty || 'unknown'}`
+
+        const { data: newTx, error: txError } = await serviceClient
+          .from('transactions')
+          .insert({
+            user_id: user.id,
+            amount: slip.amount,
+            original_currency: (slip.currency || 'THB') as 'USD' | 'THB',
+            transaction_type: transactionType as 'expense' | 'income',
+            transaction_date: slip.transaction_date,
+            description,
+            payment_method_id: slip.payment_method_id || null,
+            source_payment_slip_id: merged.slipId,
+            source_statement_upload_id: merged.statementId,
+            source_statement_suggestion_index: merged.index,
+          })
+          .select('id')
+          .single()
+
+        if (txError || !newTx) {
+          results.failed++
+          results.errors.push(`Failed to create transaction for ${merged.id}: ${txError?.message}`)
+          continue
+        }
+
+        // Update slip
+        await serviceClient
+          .from('payment_slip_uploads')
+          .update({ review_status: 'approved', status: 'done' })
+          .eq('id', merged.slipId)
+
+        // Update statement suggestion status
+        const { data: statement } = await serviceClient
+          .from('statement_uploads')
+          .select('id, extraction_log')
+          .eq('id', merged.statementId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (statement) {
+          const extractionLog = statement.extraction_log as ExtractionLog | null
+          const suggestions = extractionLog?.suggestions || []
+          if (merged.index >= 0 && merged.index < suggestions.length) {
+            suggestions[merged.index] = {
+              ...suggestions[merged.index],
+              status: 'approved',
+              matched_transaction_id: newTx.id,
+            }
+            await serviceClient
+              .from('statement_uploads')
+              .update({ extraction_log: { ...extractionLog, suggestions } as unknown as Json })
+              .eq('id', statement.id)
+          }
+        }
+
+        results.success++
+        results.transactionsCreated++
+        results.totalAmount += Math.abs(Number(slip.amount))
       }
     }
 

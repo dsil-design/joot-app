@@ -52,7 +52,7 @@ export interface TransactionProposal {
 
 // ── Engine types ─────────────────────────────────────────────────────────
 
-export type ProposalSourceType = 'statement' | 'email' | 'merged'
+export type ProposalSourceType = 'statement' | 'email' | 'merged' | 'payment_slip'
 export type ProposalEngine = 'rule_based' | 'llm' | 'hybrid'
 export type ProposalStatus = 'pending' | 'accepted' | 'modified' | 'rejected' | 'stale'
 
@@ -259,6 +259,13 @@ export interface ProposalInput {
   // Statement-specific
   paymentMethodId?: string
   paymentMethodName?: string
+
+  // Payment slip-specific
+  paymentSlipUploadId?: string
+  senderName?: string
+  recipientName?: string
+  bankDetected?: string
+  detectedDirection?: 'expense' | 'income'
 
   // Prior rejection feedback (for re-queued items)
   rejectionFeedback?: string[]

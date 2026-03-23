@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { generateAndStoreProposals } from '@/lib/proposals/proposal-service'
 import { fetchStatementQueueItems } from '@/lib/imports/statement-queue-builder'
 import { fetchEmailQueueItems } from '@/lib/imports/email-queue-builder'
+import { fetchPaymentSlipQueueItems } from '@/lib/imports/payment-slip-queue-builder'
 import type { ProposalInput } from '@/lib/proposals/types'
 
 /**
@@ -36,17 +37,20 @@ export async function POST(request: NextRequest) {
 
     // Fetch queue items to generate proposals for
     // When scoped to a specific statement, skip email items entirely
-    const [statementItems, emailItems] = await Promise.all([
+    const [statementItems, emailItems, slipItems] = await Promise.all([
       fetchStatementQueueItems(supabase, user.id, {
         statementUploadId: statementUploadId || undefined,
       }),
       statementUploadId
         ? Promise.resolve([])
         : fetchEmailQueueItems(supabase, user.id, {}),
+      statementUploadId
+        ? Promise.resolve([])
+        : fetchPaymentSlipQueueItems(supabase, user.id, {}),
     ])
 
     // Combine all items
-    const allItems = [...statementItems, ...emailItems]
+    const allItems = [...statementItems, ...emailItems, ...slipItems]
 
     // Filter to only new (unmatched) items
     let targetItems = allItems.filter((item) => item.isNew)
@@ -72,7 +76,9 @@ export async function POST(request: NextRequest) {
       const parts = item.id.split(':')
       const emailMeta = item.emailMetadata
       const mergedEmail = item.mergedEmailData
+      const slipMeta = item.paymentSlipMetadata
       const isMerged = item.source === 'merged'
+      const isSlip = item.source === 'payment_slip'
 
       return {
         compositeId: item.id,
@@ -98,6 +104,14 @@ export async function POST(request: NextRequest) {
         extractionConfidence: emailMeta?.extractionConfidence,
         paymentCardLastFour: emailMeta?.paymentCardLastFour,
         paymentCardType: emailMeta?.paymentCardType,
+        // Payment slip-specific fields
+        ...(isSlip && slipMeta && {
+          paymentSlipUploadId: slipMeta.slipUploadId,
+          senderName: slipMeta.senderName,
+          recipientName: slipMeta.recipientName,
+          bankDetected: slipMeta.bankDetected,
+          detectedDirection: slipMeta.detectedDirection ?? undefined,
+        }),
       }
     })
 

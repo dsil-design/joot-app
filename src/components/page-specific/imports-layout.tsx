@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboard, FileText, Mail, Clock } from 'lucide-react'
+import { LayoutDashboard, FileText, Mail, Clock, Receipt } from 'lucide-react'
 import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
 import { PageHeader } from '@/components/page-specific/page-header'
 import { SubNavigation, type SubNavItem } from '@/components/page-specific/sub-navigation'
@@ -29,6 +29,11 @@ const navigationItems: SubNavItem[] = [
     name: 'Statements',
     href: '/imports/statements',
     icon: FileText,
+  },
+  {
+    name: 'Payment Slips',
+    href: '/imports/payment-slips',
+    icon: Receipt,
   },
   {
     name: 'History',

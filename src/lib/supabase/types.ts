@@ -1,4 +1,3 @@
-Initialising login role...
 export type Json =
   | string
   | number
@@ -751,6 +750,7 @@ export type Database = {
           email_transaction_id: string | null
           id: string
           metadata: Json | null
+          payment_slip_upload_id: string | null
           statement_upload_id: string | null
           total_amount: number | null
           transactions_affected: number | null
@@ -764,6 +764,7 @@ export type Database = {
           email_transaction_id?: string | null
           id?: string
           metadata?: Json | null
+          payment_slip_upload_id?: string | null
           statement_upload_id?: string | null
           total_amount?: number | null
           transactions_affected?: number | null
@@ -777,6 +778,7 @@ export type Database = {
           email_transaction_id?: string | null
           id?: string
           metadata?: Json | null
+          payment_slip_upload_id?: string | null
           statement_upload_id?: string | null
           total_amount?: number | null
           transactions_affected?: number | null
@@ -795,6 +797,13 @@ export type Database = {
             columns: ["email_transaction_id"]
             isOneToOne: false
             referencedRelation: "email_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "import_activities_payment_slip_upload_id_fkey"
+            columns: ["payment_slip_upload_id"]
+            isOneToOne: false
+            referencedRelation: "payment_slip_uploads"
             referencedColumns: ["id"]
           },
           {
@@ -874,6 +883,160 @@ export type Database = {
           },
           {
             foreignKeyName: "payment_methods_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_slip_uploads: {
+        Row: {
+          ai_duration_ms: number | null
+          ai_prompt_tokens: number | null
+          ai_response_tokens: number | null
+          amount: number | null
+          bank_detected: string | null
+          bank_reference: string | null
+          created_at: string | null
+          currency: string | null
+          detected_direction: string | null
+          extraction_completed_at: string | null
+          extraction_confidence: number | null
+          extraction_data: Json | null
+          extraction_error: string | null
+          extraction_log: Json | null
+          extraction_started_at: string | null
+          fee: number | null
+          file_hash: string | null
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          filename: string
+          id: string
+          match_confidence: number | null
+          matched_transaction_id: string | null
+          memo: string | null
+          payment_method_id: string | null
+          recipient_account: string | null
+          recipient_bank: string | null
+          recipient_name: string | null
+          review_status: string
+          sender_account: string | null
+          sender_bank: string | null
+          sender_name: string | null
+          status: string
+          transaction_date: string | null
+          transaction_reference: string | null
+          transaction_time: string | null
+          transfer_type: string | null
+          updated_at: string | null
+          uploaded_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_duration_ms?: number | null
+          ai_prompt_tokens?: number | null
+          ai_response_tokens?: number | null
+          amount?: number | null
+          bank_detected?: string | null
+          bank_reference?: string | null
+          created_at?: string | null
+          currency?: string | null
+          detected_direction?: string | null
+          extraction_completed_at?: string | null
+          extraction_confidence?: number | null
+          extraction_data?: Json | null
+          extraction_error?: string | null
+          extraction_log?: Json | null
+          extraction_started_at?: string | null
+          fee?: number | null
+          file_hash?: string | null
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          filename: string
+          id?: string
+          match_confidence?: number | null
+          matched_transaction_id?: string | null
+          memo?: string | null
+          payment_method_id?: string | null
+          recipient_account?: string | null
+          recipient_bank?: string | null
+          recipient_name?: string | null
+          review_status?: string
+          sender_account?: string | null
+          sender_bank?: string | null
+          sender_name?: string | null
+          status?: string
+          transaction_date?: string | null
+          transaction_reference?: string | null
+          transaction_time?: string | null
+          transfer_type?: string | null
+          updated_at?: string | null
+          uploaded_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_duration_ms?: number | null
+          ai_prompt_tokens?: number | null
+          ai_response_tokens?: number | null
+          amount?: number | null
+          bank_detected?: string | null
+          bank_reference?: string | null
+          created_at?: string | null
+          currency?: string | null
+          detected_direction?: string | null
+          extraction_completed_at?: string | null
+          extraction_confidence?: number | null
+          extraction_data?: Json | null
+          extraction_error?: string | null
+          extraction_log?: Json | null
+          extraction_started_at?: string | null
+          fee?: number | null
+          file_hash?: string | null
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          filename?: string
+          id?: string
+          match_confidence?: number | null
+          matched_transaction_id?: string | null
+          memo?: string | null
+          payment_method_id?: string | null
+          recipient_account?: string | null
+          recipient_bank?: string | null
+          recipient_name?: string | null
+          review_status?: string
+          sender_account?: string | null
+          sender_bank?: string | null
+          sender_name?: string | null
+          status?: string
+          transaction_date?: string | null
+          transaction_reference?: string | null
+          transaction_time?: string | null
+          transfer_type?: string | null
+          updated_at?: string | null
+          uploaded_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_slip_uploads_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_slip_uploads_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_slip_uploads_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1397,6 +1560,7 @@ export type Database = {
           llm_prompt_tokens: number | null
           llm_response_tokens: number | null
           overall_confidence: number
+          payment_slip_upload_id: string | null
           proposed_amount: number | null
           proposed_currency: Database["public"]["Enums"]["currency_type"] | null
           proposed_date: string | null
@@ -1430,6 +1594,7 @@ export type Database = {
           llm_prompt_tokens?: number | null
           llm_response_tokens?: number | null
           overall_confidence?: number
+          payment_slip_upload_id?: string | null
           proposed_amount?: number | null
           proposed_currency?:
             | Database["public"]["Enums"]["currency_type"]
@@ -1465,6 +1630,7 @@ export type Database = {
           llm_prompt_tokens?: number | null
           llm_response_tokens?: number | null
           overall_confidence?: number
+          payment_slip_upload_id?: string | null
           proposed_amount?: number | null
           proposed_currency?:
             | Database["public"]["Enums"]["currency_type"]
@@ -1506,6 +1672,13 @@ export type Database = {
             columns: ["email_transaction_id"]
             isOneToOne: false
             referencedRelation: "email_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_proposals_payment_slip_upload_id_fkey"
+            columns: ["payment_slip_upload_id"]
+            isOneToOne: false
+            referencedRelation: "payment_slip_uploads"
             referencedColumns: ["id"]
           },
           {
@@ -1583,6 +1756,7 @@ export type Database = {
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id: string | null
           source_email_transaction_id: string | null
+          source_payment_slip_id: string | null
           source_statement_match_confidence: number | null
           source_statement_suggestion_index: number | null
           source_statement_upload_id: string | null
@@ -1600,6 +1774,7 @@ export type Database = {
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
           source_email_transaction_id?: string | null
+          source_payment_slip_id?: string | null
           source_statement_match_confidence?: number | null
           source_statement_suggestion_index?: number | null
           source_statement_upload_id?: string | null
@@ -1617,6 +1792,7 @@ export type Database = {
           original_currency?: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
           source_email_transaction_id?: string | null
+          source_payment_slip_id?: string | null
           source_statement_match_confidence?: number | null
           source_statement_suggestion_index?: number | null
           source_statement_upload_id?: string | null
@@ -1649,6 +1825,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "transactions_source_payment_slip_id_fkey"
+            columns: ["source_payment_slip_id"]
+            isOneToOne: false
+            referencedRelation: "payment_slip_uploads"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transactions_source_statement_upload_id_fkey"
             columns: ["source_statement_upload_id"]
             isOneToOne: false
@@ -1667,6 +1850,57 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_bank_accounts: {
+        Row: {
+          account_holder_name: string | null
+          account_identifier: string
+          bank_name: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          payment_method_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_holder_name?: string | null
+          account_identifier: string
+          bank_name: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          payment_method_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_holder_name?: string | null
+          account_identifier?: string
+          bank_name?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          payment_method_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_bank_accounts_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_bank_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1761,6 +1995,50 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_recipient_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          last_used_at: string
+          match_count: number
+          parser_key: string
+          recipient_name_normalized: string
+          recipient_name_raw: string
+          user_id: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_used_at?: string
+          match_count?: number
+          parser_key: string
+          recipient_name_normalized: string
+          recipient_name_raw: string
+          user_id: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_used_at?: string
+          match_count?: number
+          parser_key?: string
+          recipient_name_normalized?: string
+          recipient_name_raw?: string
+          user_id?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_recipient_mappings_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]

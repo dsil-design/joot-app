@@ -1,20 +1,22 @@
 import { SupabaseClient } from '@supabase/supabase-js'
-import { makeMergedId } from '@/lib/utils/import-id'
+import { makeMergedId, makeMergedSlipEmailId, makeMergedSlipStmtId } from '@/lib/utils/import-id'
 import { findCrossSourcePairs, type PairCandidate } from '@/lib/matching/cross-source-pairer'
+import { calculateDaysDiff } from '@/lib/matching/date-matcher'
 import type { QueueItem, QueueFilters, QueueStats, EmailMetadata } from './queue-types'
 
 export async function aggregateQueueItems(
   supabase: SupabaseClient,
   statementItems: QueueItem[],
   emailItems: QueueItem[],
-  filters: QueueFilters
+  filters: QueueFilters,
+  paymentSlipItems: QueueItem[] = []
 ): Promise<{ items: QueueItem[]; stats: QueueStats; hasMore: boolean; total: number; page: number; limit: number }> {
   const page = Math.max(1, parseInt(String(filters.statusFilter === 'page' ? '1' : '1'), 10))
 
   // Separate waiting-for-statement items — they get their own section
   const waitingItems = emailItems.filter(item => item.waitingForStatement)
   const activeEmailItems = emailItems.filter(item => !item.waitingForStatement)
-  const allItems = [...statementItems, ...activeEmailItems]
+  const allItems = [...statementItems, ...activeEmailItems, ...paymentSlipItems]
 
   // Cross-source pairing
   if (filters.sourceFilter === 'all' || filters.sourceFilter === 'merged') {
@@ -130,6 +132,133 @@ export async function aggregateQueueItems(
     }
   }
 
+  // ── Payment slip pairing ─────────────────────────────────────────────
+  // Match pending payment slip items against unpaired email and statement items.
+  // - Expense slips pair with email receipts (same amount, same currency, ±3 days)
+  // - Income slips pair with statement entries (same amount, ±3 days)
+  if (filters.sourceFilter === 'all' || filters.sourceFilter === 'merged' || filters.sourceFilter === 'payment_slip') {
+    const pendingSlips = allItems.filter(item => item.source === 'payment_slip' && item.status === 'pending')
+    if (pendingSlips.length > 0) {
+      const pairedItemIds = new Set<string>()
+      const mergedSlipItems: QueueItem[] = []
+
+      for (const slip of pendingSlips) {
+        const slipId = slip.id.replace(/^slip:/, '')
+        const slipMeta = slip.paymentSlipMetadata
+        const isExpense = slipMeta?.detectedDirection !== 'income'
+
+        // Expense slips → try matching with emails (same THB amount, close date)
+        if (isExpense) {
+          const candidateEmails = allItems.filter(item =>
+            item.source === 'email' && item.status === 'pending' && !pairedItemIds.has(item.id)
+          )
+
+          let bestEmailMatch: { item: QueueItem; daysDiff: number } | null = null
+          for (const email of candidateEmails) {
+            if (email.statementTransaction.currency !== slip.statementTransaction.currency) continue
+            const amountDiff = Math.abs(email.statementTransaction.amount - slip.statementTransaction.amount)
+            if (amountDiff > 0.01) continue
+            const daysDiff = calculateDaysDiff(slip.statementTransaction.date, email.statementTransaction.date)
+            if (daysDiff > 3) continue
+            if (!bestEmailMatch || daysDiff < bestEmailMatch.daysDiff) {
+              bestEmailMatch = { item: email, daysDiff }
+            }
+          }
+
+          if (bestEmailMatch) {
+            const emailId = bestEmailMatch.item.id.replace(/^email:/, '')
+            const mergedId = makeMergedSlipEmailId(slipId, emailId)
+            const emailMeta: EmailMetadata = bestEmailMatch.item.emailMetadata ?? {}
+
+            pairedItemIds.add(slip.id)
+            pairedItemIds.add(bestEmailMatch.item.id)
+
+            mergedSlipItems.push({
+              id: mergedId,
+              statementFilename: slip.statementFilename,
+              paymentMethod: slip.paymentMethod,
+              statementTransaction: slip.statementTransaction,
+              matchedTransaction: slip.matchedTransaction ?? bestEmailMatch.item.matchedTransaction,
+              confidence: 95,
+              confidenceLevel: 'high',
+              reasons: [
+                `Cross-source match: payment slip + email receipt`,
+                `Same amount: ${slip.statementTransaction.amount} ${slip.statementTransaction.currency}`,
+              ],
+              isNew: !slip.matchedTransaction && !bestEmailMatch.item.matchedTransaction,
+              status: 'pending',
+              source: 'merged',
+              emailMetadata: emailMeta,
+              paymentSlipMetadata: slipMeta,
+              mergedEmailData: {
+                date: bestEmailMatch.item.statementTransaction.date,
+                description: bestEmailMatch.item.statementTransaction.description,
+                amount: bestEmailMatch.item.statementTransaction.amount,
+                currency: bestEmailMatch.item.statementTransaction.currency,
+                metadata: emailMeta,
+              },
+            })
+            continue
+          }
+        }
+
+        // Income slips → try matching with statement entries (same amount, close date)
+        if (!isExpense) {
+          const candidateStmts = allItems.filter(item =>
+            item.source === 'statement' && item.status === 'pending' && !pairedItemIds.has(item.id)
+          )
+
+          let bestStmtMatch: { item: QueueItem; daysDiff: number } | null = null
+          for (const stmt of candidateStmts) {
+            if (stmt.statementTransaction.currency !== slip.statementTransaction.currency) continue
+            const amountDiff = Math.abs(stmt.statementTransaction.amount - slip.statementTransaction.amount)
+            if (amountDiff > 0.01) continue
+            const daysDiff = calculateDaysDiff(slip.statementTransaction.date, stmt.statementTransaction.date)
+            if (daysDiff > 3) continue
+            if (!bestStmtMatch || daysDiff < bestStmtMatch.daysDiff) {
+              bestStmtMatch = { item: stmt, daysDiff }
+            }
+          }
+
+          if (bestStmtMatch) {
+            const stmtParts = bestStmtMatch.item.id.replace(/^stmt:/, '').split(':')
+            const mergedId = makeMergedSlipStmtId(slipId, stmtParts[0], parseInt(stmtParts[1], 10))
+
+            pairedItemIds.add(slip.id)
+            pairedItemIds.add(bestStmtMatch.item.id)
+
+            mergedSlipItems.push({
+              id: mergedId,
+              statementUploadId: bestStmtMatch.item.statementUploadId,
+              statementFilename: bestStmtMatch.item.statementFilename,
+              paymentMethod: bestStmtMatch.item.paymentMethod ?? slip.paymentMethod,
+              statementTransaction: slip.statementTransaction,
+              matchedTransaction: bestStmtMatch.item.matchedTransaction ?? slip.matchedTransaction,
+              confidence: 95,
+              confidenceLevel: 'high',
+              reasons: [
+                `Cross-source match: payment slip + bank statement`,
+                `Same amount: ${slip.statementTransaction.amount} ${slip.statementTransaction.currency}`,
+              ],
+              isNew: !slip.matchedTransaction && !bestStmtMatch.item.matchedTransaction,
+              status: 'pending',
+              source: 'merged',
+              paymentSlipMetadata: slipMeta,
+            })
+            continue
+          }
+        }
+      }
+
+      // Remove paired items and add merged ones
+      if (pairedItemIds.size > 0) {
+        const remaining = allItems.filter(item => !pairedItemIds.has(item.id))
+        allItems.length = 0
+        allItems.push(...remaining, ...mergedSlipItems)
+      }
+    }
+  }
+
   // Sort: pending first, then by date descending
   const statusOrder: Record<string, number> = { pending: 0, approved: 1, rejected: 2 }
   allItems.sort((a, b) => {
@@ -143,6 +272,8 @@ export async function aggregateQueueItems(
 
   if (filters.sourceFilter === 'merged') {
     filteredItems = filteredItems.filter(item => item.source === 'merged')
+  } else if (filters.sourceFilter === 'payment_slip') {
+    filteredItems = filteredItems.filter(item => item.source === 'payment_slip')
   }
 
   if (filters.statusFilter !== 'all') {

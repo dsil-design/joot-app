@@ -1,4 +1,4 @@
-export type ImportSource = 'statement' | 'email' | 'merged'
+export type ImportSource = 'statement' | 'email' | 'merged' | 'payment_slip'
 
 export interface EmailMetadata {
   subject?: string
@@ -67,6 +67,17 @@ export interface QueueItem {
   emailMetadata?: EmailMetadata
   mergedEmailData?: MergedEmailData
   crossCurrencyInfo?: CrossCurrencyInfo
+  paymentSlipMetadata?: PaymentSlipMetadata
+}
+
+export interface PaymentSlipMetadata {
+  senderName?: string
+  recipientName?: string
+  bankDetected?: string
+  transactionReference?: string
+  memo?: string
+  detectedDirection?: 'expense' | 'income' | null
+  slipUploadId?: string
 }
 
 export interface Suggestion {
