@@ -10,6 +10,7 @@ import {
 import { generateHybridProposal } from '@/lib/proposals/hybrid-engine'
 import { fetchStatementQueueItems } from '@/lib/imports/statement-queue-builder'
 import { fetchEmailQueueItems } from '@/lib/imports/email-queue-builder'
+import { fetchPaymentSlipQueueItems } from '@/lib/imports/payment-slip-queue-builder'
 import { aggregateQueueItems } from '@/lib/imports/queue-aggregator'
 import { parseImportId } from '@/lib/utils/import-id'
 import type { ProposalInput, RuleEngineContext } from '@/lib/proposals/types'
@@ -40,19 +41,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch queue items — merged items only exist after aggregation
-    const [statementItems, emailItems] = await Promise.all([
+    const statementUploadId = (parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt')
+      ? parsed.statementId : undefined
+
+    const [statementItems, emailItems, slipItems] = await Promise.all([
       fetchStatementQueueItems(supabase, user.id, {
-        statementUploadId: parsed.type === 'statement' ? parsed.statementId
-          : parsed.type === 'merged' ? parsed.statementId : undefined,
+        statementUploadId,
       }),
       fetchEmailQueueItems(supabase, user.id, {}),
+      fetchPaymentSlipQueueItems(supabase, user.id, {}),
     ])
 
     // Run aggregator to produce merged items
     const aggregated = await aggregateQueueItems(supabase, statementItems, emailItems, {
       statusFilter: 'all', currencyFilter: 'all', confidenceFilter: 'all',
       sourceFilter: 'all', searchQuery: '',
-    })
+    }, slipItems)
 
     const targetItem = aggregated.items.find((item) => item.id === compositeId)
 
@@ -67,14 +71,20 @@ export async function POST(request: NextRequest) {
     // For merged items, prefer the email's parsed description over the raw statement description
     const emailMeta = targetItem.emailMetadata
     const mergedEmail = targetItem.mergedEmailData
+    const slipMeta = targetItem.paymentSlipMetadata
     const isMerged = targetItem.source === 'merged'
+    const isSlip = targetItem.source === 'payment_slip'
+
+    const hasStatementId = parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt'
+    const hasIndex = parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt'
+    const hasEmailId = parsed.type === 'email' || parsed.type === 'merged' || parsed.type === 'merged_slip_email'
 
     const proposalInput: ProposalInput = {
       compositeId,
       sourceType: targetItem.source || 'statement',
-      statementUploadId: parsed.type === 'statement' || parsed.type === 'merged' ? parsed.statementId : undefined,
-      suggestionIndex: parsed.type === 'statement' || parsed.type === 'merged' ? parsed.index : undefined,
-      emailTransactionId: parsed.type === 'email' || parsed.type === 'merged' ? parsed.emailId : undefined,
+      statementUploadId: hasStatementId ? parsed.statementId : undefined,
+      suggestionIndex: hasIndex ? parsed.index : undefined,
+      emailTransactionId: hasEmailId ? parsed.emailId : undefined,
       description: (isMerged && mergedEmail?.description) ? mergedEmail.description : targetItem.statementTransaction.description,
       amount: targetItem.statementTransaction.amount,
       currency: targetItem.statementTransaction.currency,
@@ -92,6 +102,14 @@ export async function POST(request: NextRequest) {
       extractionConfidence: emailMeta?.extractionConfidence,
       paymentCardLastFour: emailMeta?.paymentCardLastFour,
       paymentCardType: emailMeta?.paymentCardType,
+      // Payment slip-specific fields
+      ...(isSlip && slipMeta && {
+        paymentSlipUploadId: slipMeta.slipUploadId,
+        senderName: slipMeta.senderName,
+        recipientName: slipMeta.recipientName,
+        bankDetected: slipMeta.bankDetected,
+        detectedDirection: slipMeta.detectedDirection ?? undefined,
+      }),
     }
 
     // Fetch prior rejection feedback for this item (stored in ai_feedback with compositeId in email_subject)
