@@ -107,6 +107,16 @@ function proposeTransactionType(
   fields: ProposedFields,
   fc: FieldConfidenceMap
 ) {
+  // Payment slip direction detection (highest priority — derived from bank account matching)
+  if (item.detectedDirection) {
+    fields.transactionType = item.detectedDirection
+    fc.transaction_type = {
+      score: 95,
+      reasoning: `Payment slip detected as ${item.detectedDirection} based on sender/recipient bank account matching`,
+    }
+    return
+  }
+
   // Email classification signals
   if (item.classification === 'refund_notification') {
     fields.transactionType = 'income'
@@ -275,6 +285,27 @@ function proposeVendor(
           reasoning: `Learned mapping: "${item.vendorNameRaw}" → ${vendor.name} (${mapping.matchCount}× confirmed)`,
         }
         return
+      }
+    }
+  }
+
+  // Strategy 1b: Payment slip counterparty mapping
+  if (context.vendorRecipientMappings.length > 0) {
+    const counterpartyName = item.detectedDirection === 'income'
+      ? item.senderName : item.recipientName
+    if (counterpartyName && item.bankDetected) {
+      const mapping = findMappingMatch(counterpartyName, item.bankDetected, context.vendorRecipientMappings)
+      if (mapping) {
+        const vendor = context.vendors.find((v) => v.id === mapping.vendorId)
+        if (vendor) {
+          const confidence = Math.min(92, 80 + mapping.matchCount * 3)
+          fields.vendorId = vendor.id
+          fc.vendor_id = {
+            score: confidence,
+            reasoning: `Learned from payment slip: "${counterpartyName}" → ${vendor.name} (${mapping.matchCount}× confirmed)`,
+          }
+          return
+        }
       }
     }
   }

@@ -13,7 +13,7 @@ interface ActiveFilterChipsProps {
   searchKeyword?: string
   vendorIds?: string[]
   paymentMethodIds?: string[]
-  sourceType?: "any" | "email" | "statement" | "none"
+  sourceType?: "any" | "email" | "statement" | "payment_slip" | "none"
   vendors?: Array<{ id: string; name: string }>
   paymentMethods?: Array<{ id: string; name: string }>
   onDateRangeClick?: () => void
@@ -196,6 +196,7 @@ export function ActiveFilterChips({
               {sourceType === 'any' && 'Source: Any'}
               {sourceType === 'email' && 'Source: Email'}
               {sourceType === 'statement' && 'Source: Statement'}
+              {sourceType === 'payment_slip' && 'Source: Slip'}
               {sourceType === 'none' && 'Unlinked'}
               <button
                 onClick={onRemoveSourceType}

@@ -3,6 +3,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import type { Json } from '@/lib/supabase/types'
 import { parseImportId } from '@/lib/utils/import-id'
 import { updateStatementReviewStatus } from '@/lib/utils/statement-status'
+import { learnPaymentSlipMapping } from '@/lib/services/payment-slip-learning'
 
 interface Suggestion {
   transaction_date: string
@@ -477,31 +478,72 @@ export async function POST(request: NextRequest) {
           }
 
           if (createTransactions && slip.amount && slip.transaction_date) {
-            const transactionType = slip.detected_direction === 'income' ? 'income' : 'expense'
+            const defaultTxType = slip.detected_direction === 'income' ? 'income' : 'expense'
             const direction = slip.detected_direction === 'income' ? 'From' : 'To'
             const counterparty = slip.detected_direction === 'income'
               ? slip.sender_name
               : slip.recipient_name
-            const description = slip.memo || `${direction} ${counterparty || 'unknown'}`
+            const defaultDescription = slip.memo || `${direction} ${counterparty || 'unknown'}`
 
-            const { error: insertError } = await serviceClient
+            // Look up existing proposal to enrich with vendor/tags/payment method
+            const slipCompositeId = `slip:${slip.id}`
+            const { data: proposal } = await serviceClient
+              .from('transaction_proposals')
+              .select('id, proposed_vendor_id, proposed_tag_ids, proposed_payment_method_id, proposed_transaction_type, proposed_description')
+              .eq('composite_id', slipCompositeId)
+              .eq('user_id', user.id)
+              .in('status', ['pending', 'stale'])
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+
+            const { data: newTx, error: insertError } = await serviceClient
               .from('transactions')
               .insert({
                 user_id: user.id,
                 amount: slip.amount,
                 original_currency: (slip.currency || 'THB') as 'USD' | 'THB',
-                transaction_type: transactionType as 'expense' | 'income',
+                transaction_type: (proposal?.proposed_transaction_type || defaultTxType) as 'expense' | 'income',
                 transaction_date: slip.transaction_date,
-                description,
-                payment_method_id: slip.payment_method_id || null,
+                description: proposal?.proposed_description || defaultDescription,
+                vendor_id: proposal?.proposed_vendor_id || null,
+                payment_method_id: proposal?.proposed_payment_method_id || slip.payment_method_id || null,
                 source_payment_slip_id: slip.id,
               })
+              .select('id')
+              .single()
 
-            if (insertError) {
+            if (insertError || !newTx) {
               results.failed++
-              results.errors.push(`Failed to create transaction for slip ${slip.id}: ${insertError.message}`)
+              results.errors.push(`Failed to create transaction for slip ${slip.id}: ${insertError?.message}`)
               continue
             }
+
+            // Apply proposal tags if available
+            const tagIds = proposal?.proposed_tag_ids as string[] | null
+            if (tagIds && tagIds.length > 0) {
+              await serviceClient
+                .from('transaction_tags')
+                .insert(tagIds.map((tagId) => ({
+                  transaction_id: newTx.id,
+                  tag_id: tagId,
+                })))
+            }
+
+            // Mark proposal as accepted
+            if (proposal) {
+              await serviceClient
+                .from('transaction_proposals')
+                .update({
+                  status: 'accepted',
+                  created_transaction_id: newTx.id,
+                })
+                .eq('id', proposal.id)
+            }
+
+            // Learn vendor mapping from slip (fire-and-forget)
+            learnPaymentSlipMapping(serviceClient, user.id, slip.id, newTx.id)
+              .catch((err) => console.error('Payment slip learning error:', err))
 
             results.transactionsCreated++
             results.totalAmount += Math.abs(Number(slip.amount))
@@ -515,6 +557,9 @@ export async function POST(request: NextRequest) {
 
             if (fkError) {
               results.errors.push(`Failed to link transaction for slip ${slip.id}: ${fkError.message}`)
+            } else {
+              learnPaymentSlipMapping(serviceClient, user.id, slip.id, slip.matched_transaction_id)
+                .catch((err) => console.error('Payment slip learning error:', err))
             }
           }
 
@@ -591,6 +636,10 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', merged.emailId)
           .eq('user_id', user.id)
+
+        // Learn vendor mapping from slip (fire-and-forget)
+        learnPaymentSlipMapping(serviceClient, user.id, merged.slipId, newTx.id)
+          .catch((err) => console.error('Payment slip learning error:', err))
 
         results.success++
         results.transactionsCreated++
@@ -671,6 +720,10 @@ export async function POST(request: NextRequest) {
               .eq('id', statement.id)
           }
         }
+
+        // Learn vendor mapping from slip (fire-and-forget)
+        learnPaymentSlipMapping(serviceClient, user.id, merged.slipId, newTx.id)
+          .catch((err) => console.error('Payment slip learning error:', err))
 
         results.success++
         results.transactionsCreated++

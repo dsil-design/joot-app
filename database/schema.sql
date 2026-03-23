@@ -1003,6 +1003,9 @@ CREATE TABLE public.payment_slip_uploads (
     match_confidence IS NULL OR (match_confidence >= 0 AND match_confidence <= 100)
   ),
 
+  -- Rejected match tracking (parity with email_transactions)
+  rejected_transaction_ids UUID[] NOT NULL DEFAULT '{}',
+
   -- Review status (for queue)
   review_status TEXT NOT NULL DEFAULT 'pending' CHECK (review_status IN ('pending', 'approved', 'rejected')),
 
@@ -1038,6 +1041,26 @@ CREATE POLICY "Users can delete own payment slip uploads" ON public.payment_slip
 
 CREATE TRIGGER update_payment_slip_uploads_updated_at BEFORE UPDATE ON public.payment_slip_uploads
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Reset payment slip state when its link to a transaction is cleared
+-- (e.g. transaction deleted or manually unlinked)
+CREATE OR REPLACE FUNCTION public.reset_payment_slip_on_unlink()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.matched_transaction_id IS NOT NULL AND NEW.matched_transaction_id IS NULL THEN
+    NEW.review_status := 'pending';
+    NEW.status := 'ready_for_review';
+    NEW.match_confidence := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_reset_payment_slip_on_unlink
+  BEFORE UPDATE OF matched_transaction_id
+  ON public.payment_slip_uploads
+  FOR EACH ROW
+  EXECUTE FUNCTION public.reset_payment_slip_on_unlink();
 
 -- ============================================================================
 -- USER BANK ACCOUNTS

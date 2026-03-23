@@ -145,6 +145,7 @@ export async function POST(request: NextRequest) {
       statement_upload_id: proposalInput.statementUploadId || null,
       suggestion_index: proposalInput.suggestionIndex ?? null,
       email_transaction_id: proposalInput.emailTransactionId || null,
+      payment_slip_upload_id: proposalInput.paymentSlipUploadId || null,
       proposed_description: engineResult.fields.description || null,
       proposed_amount: engineResult.fields.amount ?? null,
       proposed_currency: engineResult.fields.currency || null,

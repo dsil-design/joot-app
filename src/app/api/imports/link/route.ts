@@ -4,6 +4,7 @@ import type { Json } from '@/lib/supabase/types'
 import { parseImportId } from '@/lib/utils/import-id'
 import { updateStatementReviewStatus } from '@/lib/utils/statement-status'
 import { learnVendorRecipientMapping } from '@/lib/services/vendor-recipient-learning'
+import { learnPaymentSlipMapping } from '@/lib/services/payment-slip-learning'
 
 interface Suggestion {
   transaction_date: string
@@ -236,6 +237,134 @@ export async function POST(request: NextRequest) {
       }
 
       await updateStatementReviewStatus(serviceClient, parsed.statementId)
+    } else if (parsed.type === 'payment_slip') {
+      // --- PAYMENT SLIP link ---
+      const { error: txUpdateError } = await serviceClient
+        .from('transactions')
+        .update({ source_payment_slip_id: parsed.slipId })
+        .eq('id', transactionId)
+
+      if (txUpdateError) {
+        console.error('Error setting payment slip source on transaction:', txUpdateError)
+        return NextResponse.json(
+          { error: 'Failed to save link' },
+          { status: 500 }
+        )
+      }
+
+      await serviceClient
+        .from('payment_slip_uploads')
+        .update({
+          review_status: 'approved',
+          status: 'done',
+          matched_transaction_id: transactionId,
+        })
+        .eq('id', parsed.slipId)
+        .eq('user_id', user.id)
+
+    } else if (parsed.type === 'merged_slip_email') {
+      // --- MERGED SLIP+EMAIL link ---
+      const { error: txUpdateError } = await serviceClient
+        .from('transactions')
+        .update({
+          source_payment_slip_id: parsed.slipId,
+          source_email_transaction_id: parsed.emailId,
+        })
+        .eq('id', transactionId)
+
+      if (txUpdateError) {
+        console.error('Error setting slip+email source on transaction:', txUpdateError)
+        return NextResponse.json(
+          { error: 'Failed to save link' },
+          { status: 500 }
+        )
+      }
+
+      await serviceClient
+        .from('payment_slip_uploads')
+        .update({
+          review_status: 'approved',
+          status: 'done',
+          matched_transaction_id: transactionId,
+        })
+        .eq('id', parsed.slipId)
+        .eq('user_id', user.id)
+
+      await serviceClient
+        .from('email_transactions')
+        .update({
+          matched_transaction_id: transactionId,
+          status: 'matched',
+          match_method: 'cross_source',
+          matched_at: new Date().toISOString(),
+        })
+        .eq('id', parsed.emailId)
+        .eq('user_id', user.id)
+
+    } else if (parsed.type === 'merged_slip_stmt') {
+      // --- MERGED SLIP+STATEMENT link ---
+      const { data: statement, error: stmtFetchError } = await serviceClient
+        .from('statement_uploads')
+        .select('id, extraction_log')
+        .eq('id', parsed.statementId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (stmtFetchError || !statement) {
+        return NextResponse.json(
+          { error: 'Statement not found' },
+          { status: 404 }
+        )
+      }
+
+      const extractionLog = statement.extraction_log as ExtractionLog | null
+      const suggestions = extractionLog?.suggestions || []
+
+      if (parsed.index >= 0 && parsed.index < suggestions.length) {
+        suggestions[parsed.index] = {
+          ...suggestions[parsed.index],
+          matched_transaction_id: transactionId,
+          status: 'approved',
+          is_new: false,
+        }
+
+        await serviceClient
+          .from('statement_uploads')
+          .update({
+            extraction_log: { ...extractionLog, suggestions } as unknown as Json,
+          })
+          .eq('id', statement.id)
+
+        await updateStatementReviewStatus(serviceClient, parsed.statementId)
+      }
+
+      const { error: txUpdateError } = await serviceClient
+        .from('transactions')
+        .update({
+          source_payment_slip_id: parsed.slipId,
+          source_statement_upload_id: parsed.statementId,
+          source_statement_suggestion_index: parsed.index,
+        })
+        .eq('id', transactionId)
+
+      if (txUpdateError) {
+        console.error('Error setting slip+stmt source on transaction:', txUpdateError)
+        return NextResponse.json(
+          { error: 'Failed to save link' },
+          { status: 500 }
+        )
+      }
+
+      await serviceClient
+        .from('payment_slip_uploads')
+        .update({
+          review_status: 'approved',
+          status: 'done',
+          matched_transaction_id: transactionId,
+        })
+        .eq('id', parsed.slipId)
+        .eq('user_id', user.id)
+
     } else {
       // --- EMAIL link ---
       // The emailId may be an emails.id (from the unified view) or an
@@ -320,13 +449,25 @@ export async function POST(request: NextRequest) {
     // Learn vendor-recipient mapping from bank transfer emails (fire-and-forget)
     const emailIdForLearning = parsed.type === 'email'
       ? parsed.emailId
-      : parsed.type === 'merged'
+      : (parsed.type === 'merged' || parsed.type === 'merged_slip_email')
         ? parsed.emailId
         : undefined
 
     if (emailIdForLearning) {
       learnVendorRecipientMapping(serviceClient, user.id, emailIdForLearning, transactionId)
         .catch((err) => console.error('Vendor-recipient learning error:', err))
+    }
+
+    // Learn vendor mapping from payment slips (fire-and-forget)
+    const slipIdForLearning = parsed.type === 'payment_slip'
+      ? parsed.slipId
+      : (parsed.type === 'merged_slip_email' || parsed.type === 'merged_slip_stmt')
+        ? parsed.slipId
+        : undefined
+
+    if (slipIdForLearning) {
+      learnPaymentSlipMapping(serviceClient, user.id, slipIdForLearning, transactionId)
+        .catch((err) => console.error('Payment slip learning error:', err))
     }
 
     return NextResponse.json({ success: true })

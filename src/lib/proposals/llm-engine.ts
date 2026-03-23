@@ -180,6 +180,10 @@ function buildPrompt(
   parts.push(`- Source: ${item.sourceType}`)
   if (item.parserKey) parts.push(`- Parser key: ${item.parserKey}`)
   if (item.paymentCardLastFour) parts.push(`- Payment card: ${item.paymentCardType || 'card'} ending ${item.paymentCardLastFour}`)
+  if (item.senderName) parts.push(`- Sender: ${item.senderName}`)
+  if (item.recipientName) parts.push(`- Recipient: ${item.recipientName}`)
+  if (item.bankDetected) parts.push(`- Bank: ${item.bankDetected}`)
+  if (item.detectedDirection) parts.push(`- Detected direction: ${item.detectedDirection} (based on bank account matching)`)
 
   if (similarTxns.length > 0) {
     parts.push('')

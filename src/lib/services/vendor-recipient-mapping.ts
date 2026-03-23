@@ -15,7 +15,7 @@ export interface VendorRecipientMapping {
   matchCount: number
 }
 
-const BANK_PARSER_KEYS = ['bangkok-bank', 'kasikorn']
+const BANK_PARSER_KEYS = ['bangkok-bank', 'kasikorn', 'kbank', 'bangkok_bank']
 
 function normalizeRecipientName(name: string): string {
   return name

@@ -56,9 +56,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (sourceType !== 'email' && sourceType !== 'statement') {
+    if (sourceType !== 'email' && sourceType !== 'statement' && sourceType !== 'payment_slip') {
       return NextResponse.json(
-        { error: 'sourceType must be "email" or "statement"' },
+        { error: 'sourceType must be "email", "statement", or "payment_slip"' },
         { status: 400 }
       )
     }
@@ -71,12 +71,13 @@ export async function POST(request: NextRequest) {
       source_email_transaction_id: string | null
       source_statement_upload_id: string | null
       source_statement_suggestion_index: number | null
+      source_payment_slip_id: string | null
     } | null = null
 
     if (transactionId) {
       const { data } = await serviceClient
         .from('transactions')
-        .select('id, source_email_transaction_id, source_statement_upload_id, source_statement_suggestion_index')
+        .select('id, source_email_transaction_id, source_statement_upload_id, source_statement_suggestion_index, source_payment_slip_id')
         .eq('id', transactionId)
         .eq('user_id', user.id)
         .single()
@@ -130,8 +131,7 @@ export async function POST(request: NextRequest) {
       if (emailUpdateError) {
         console.error('Error resetting email transaction:', emailUpdateError)
       }
-    } else {
-      // sourceType === 'statement'
+    } else if (sourceType === 'statement') {
       // Use transaction data if available, otherwise fall back to explicit params
       const stmtId = transaction?.source_statement_upload_id ?? statementUploadId
       const sugIdx = transaction?.source_statement_suggestion_index ?? suggestionIndex
@@ -194,6 +194,44 @@ export async function POST(request: NextRequest) {
           await updateStatementReviewStatus(serviceClient, stmtId)
         }
       }
+    } else if (sourceType === 'payment_slip') {
+      if (!transaction) {
+        return NextResponse.json(
+          { error: 'Transaction not found' },
+          { status: 404 }
+        )
+      }
+
+      const slipId = transaction.source_payment_slip_id
+      if (!slipId) {
+        return NextResponse.json(
+          { error: 'Transaction has no linked payment slip source' },
+          { status: 400 }
+        )
+      }
+
+      // Clear the payment slip source reference on the transaction
+      const { error: txUpdateError } = await serviceClient
+        .from('transactions')
+        .update({ source_payment_slip_id: null })
+        .eq('id', transactionId!)
+
+      if (txUpdateError) {
+        console.error('Error clearing payment slip source on transaction:', txUpdateError)
+        return NextResponse.json(
+          { error: 'Failed to unlink payment slip source' },
+          { status: 500 }
+        )
+      }
+
+      // Reset the payment slip back to pending (trigger also handles this via matched_transaction_id)
+      await serviceClient
+        .from('payment_slip_uploads')
+        .update({
+          matched_transaction_id: null,
+        })
+        .eq('id', slipId)
+        .eq('user_id', user.id)
     }
 
     // Log activity

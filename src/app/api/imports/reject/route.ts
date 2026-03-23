@@ -298,18 +298,66 @@ export async function POST(request: NextRequest) {
 
     // --- Process PAYMENT SLIP items ---
     if (paymentSlipIds.length > 0) {
-      const { data: updated, error: slipUpdateError } = await serviceClient
+      // Fetch slips that have a matched_transaction_id so we can record the rejected pairing
+      // Note: rejected_transaction_ids column requires migration 20260323165607
+      const { data: slipsWithMatch } = await serviceClient
         .from('payment_slip_uploads')
-        .update({ review_status: 'rejected' })
+        .select('id, matched_transaction_id')
         .in('id', paymentSlipIds)
         .eq('user_id', user.id)
-        .select('id')
+        .not('matched_transaction_id', 'is', null) as { data: Array<{ id: string; matched_transaction_id: string | null; rejected_transaction_ids?: string[] }> | null }
 
-      if (slipUpdateError) {
-        results.errors.push('Failed to reject payment slips')
-        results.failed += paymentSlipIds.length
-      } else {
-        results.rejected += updated?.length ?? 0
+      if (slipsWithMatch && slipsWithMatch.length > 0) {
+        for (const slip of slipsWithMatch) {
+          const existingRejected = ((slip as any).rejected_transaction_ids || []) as string[]
+          const matchedId = slip.matched_transaction_id as string
+          const updatedRejected = existingRejected.includes(matchedId)
+            ? existingRejected
+            : [...existingRejected, matchedId]
+
+          await serviceClient
+            .from('payment_slip_uploads')
+            .update({
+              review_status: 'rejected',
+              matched_transaction_id: null,
+              match_confidence: null,
+              rejected_transaction_ids: updatedRejected,
+            } as any)
+            .eq('id', slip.id)
+            .eq('user_id', user.id)
+        }
+        results.rejected += slipsWithMatch.length
+      }
+
+      // Update remaining slips without a match (just status change)
+      const slipsWithMatchIds = new Set((slipsWithMatch || []).map((s) => s.id))
+      const slipsWithoutMatch = paymentSlipIds.filter((id) => !slipsWithMatchIds.has(id))
+
+      if (slipsWithoutMatch.length > 0) {
+        const { data: updated, error: slipUpdateError } = await serviceClient
+          .from('payment_slip_uploads')
+          .update({ review_status: 'rejected' })
+          .in('id', slipsWithoutMatch)
+          .eq('user_id', user.id)
+          .select('id')
+
+        if (slipUpdateError) {
+          results.errors.push('Failed to reject payment slips')
+          results.failed += slipsWithoutMatch.length
+        } else {
+          results.rejected += updated?.length ?? 0
+        }
+      }
+
+      // Mark associated proposals as rejected so they don't resurface
+      const slipCompositeIds = paymentSlipIds.map((id) => `slip:${id}`)
+      if (slipCompositeIds.length > 0) {
+        await serviceClient
+          .from('transaction_proposals')
+          .update({ status: 'rejected' })
+          .eq('user_id', user.id)
+          .in('composite_id', slipCompositeIds)
+          .in('status', ['pending', 'stale'])
       }
     }
 

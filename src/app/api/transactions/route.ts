@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 export const dynamic = "force-dynamic"
 
-type SourceType = "any" | "email" | "statement" | "none"
+type SourceType = "any" | "email" | "statement" | "payment_slip" | "none"
 
 interface TransactionFilters {
   datePreset?: string
@@ -199,7 +199,7 @@ export async function GET(request: NextRequest) {
     if (filters.sourceType) {
       switch (filters.sourceType) {
         case "any":
-          query = query.or("source_email_transaction_id.not.is.null,source_statement_upload_id.not.is.null")
+          query = query.or("source_email_transaction_id.not.is.null,source_statement_upload_id.not.is.null,source_payment_slip_id.not.is.null")
           break
         case "email":
           query = query.not("source_email_transaction_id", "is", null)
@@ -207,8 +207,11 @@ export async function GET(request: NextRequest) {
         case "statement":
           query = query.not("source_statement_upload_id", "is", null)
           break
+        case "payment_slip":
+          query = query.not("source_payment_slip_id", "is", null)
+          break
         case "none":
-          query = query.is("source_email_transaction_id", null).is("source_statement_upload_id", null)
+          query = query.is("source_email_transaction_id", null).is("source_statement_upload_id", null).is("source_payment_slip_id", null)
           break
       }
     }
@@ -293,7 +296,7 @@ export async function GET(request: NextRequest) {
     if (filters.sourceType) {
       switch (filters.sourceType) {
         case "any":
-          totalsQuery = totalsQuery.or("source_email_transaction_id.not.is.null,source_statement_upload_id.not.is.null")
+          totalsQuery = totalsQuery.or("source_email_transaction_id.not.is.null,source_statement_upload_id.not.is.null,source_payment_slip_id.not.is.null")
           break
         case "email":
           totalsQuery = totalsQuery.not("source_email_transaction_id", "is", null)
@@ -301,8 +304,11 @@ export async function GET(request: NextRequest) {
         case "statement":
           totalsQuery = totalsQuery.not("source_statement_upload_id", "is", null)
           break
+        case "payment_slip":
+          totalsQuery = totalsQuery.not("source_payment_slip_id", "is", null)
+          break
         case "none":
-          totalsQuery = totalsQuery.is("source_email_transaction_id", null).is("source_statement_upload_id", null)
+          totalsQuery = totalsQuery.is("source_email_transaction_id", null).is("source_statement_upload_id", null).is("source_payment_slip_id", null)
           break
       }
     }

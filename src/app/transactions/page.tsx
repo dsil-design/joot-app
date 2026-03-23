@@ -482,7 +482,7 @@ function TransactionsTable({
                     {formatAmount(transaction)}
                   </TableCell>
                   <TableCell>
-                    {(transaction as any).source_email_transaction_id || (transaction as any).source_statement_upload_id ? (
+                    {(transaction as any).source_email_transaction_id || (transaction as any).source_statement_upload_id || (transaction as any).source_payment_slip_id ? (
                       <div className="flex flex-wrap gap-1">
                         {(transaction as any).source_email_transaction_id && (
                           <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs">
@@ -492,6 +492,11 @@ function TransactionsTable({
                         {(transaction as any).source_statement_upload_id && (
                           <Badge variant="secondary" className="bg-slate-100 text-slate-800 border border-slate-200 text-xs">
                             Statement
+                          </Badge>
+                        )}
+                        {(transaction as any).source_payment_slip_id && (
+                          <Badge variant="secondary" className="bg-amber-100 text-amber-800 border border-amber-200 text-xs">
+                            Slip
                           </Badge>
                         )}
                       </div>

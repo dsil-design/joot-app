@@ -13,13 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
-import { Search, X, SlidersHorizontal, Mail, FileText, GitMerge } from "lucide-react"
+import { Search, X, SlidersHorizontal, Mail, FileText, GitMerge, Receipt } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 
 export type FilterStatus = "all" | "pending" | "approved" | "rejected"
 export type FilterCurrency = "all" | "USD" | "THB"
 export type FilterConfidence = "all" | "high" | "medium" | "low"
-export type FilterSource = "all" | "statement" | "email" | "merged"
+export type FilterSource = "all" | "statement" | "email" | "payment_slip" | "merged"
 export type FilterPaymentMethodType = "all" | "credit_card" | "bank_account"
 
 export interface ReviewQueueFilters {
@@ -81,6 +81,7 @@ const sourceButtons: Array<{ value: FilterSource; label: string; icon?: React.Re
   { value: "all", label: "All" },
   { value: "email", label: "Email", icon: <Mail className="h-3 w-3" /> },
   { value: "statement", label: "Statement", icon: <FileText className="h-3 w-3" /> },
+  { value: "payment_slip", label: "Slip", icon: <Receipt className="h-3 w-3" /> },
   { value: "merged", label: "Cross-Source", icon: <GitMerge className="h-3 w-3" /> },
 ]
 
@@ -103,7 +104,7 @@ function parseUrlParams(searchParams: URLSearchParams): Partial<ReviewQueueFilte
   }
 
   const source = searchParams.get("source")
-  if (source && ["all", "statement", "email", "merged"].includes(source)) {
+  if (source && ["all", "statement", "email", "payment_slip", "merged"].includes(source)) {
     filters.source = source as FilterSource
   }
 
