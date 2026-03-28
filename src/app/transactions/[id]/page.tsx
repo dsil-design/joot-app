@@ -129,6 +129,8 @@ function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData
     source.statement_period_start,
     source.statement_period_end
   )
+  const sourceAmount = (source as any).source_amount as number | null
+  const sourceCurrency = (source as any).source_currency as string | null
 
   return (
     <div className="bg-zinc-50 rounded-lg border border-zinc-200 p-4 w-full">
@@ -144,6 +146,11 @@ function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData
           {source.payment_method_name && (
             <p className="text-[14px] font-normal text-zinc-500">
               {source.payment_method_name}
+            </p>
+          )}
+          {sourceAmount != null && sourceCurrency && (
+            <p className="text-[14px] font-normal text-zinc-950">
+              {formatCurrency(sourceAmount, sourceCurrency)} {sourceCurrency}
             </p>
           )}
           {source.match_confidence !== null && (

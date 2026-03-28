@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Check, Copy, ExternalLink, Eye, Mail, Unlink } from "lucide-react"
 import { format, parseISO } from "date-fns"
+import { formatCurrency } from "@/lib/utils"
 import { EmailViewerModal } from "./email-viewer-modal"
 
 export interface EmailSourceCardData {
@@ -13,6 +14,8 @@ export interface EmailSourceCardData {
   from_address: string | null
   from_name: string | null
   email_date: string | null
+  amount: number | null
+  currency: string | null
   extraction_confidence: number | null
   match_confidence: number | null
   match_method: string | null
@@ -72,6 +75,11 @@ export function EmailSourceCard({ source, onUnlink }: { source: EmailSourceCardD
             {formattedDate && (
               <p className="text-[14px] font-normal text-zinc-500">
                 {formattedDate}
+              </p>
+            )}
+            {source.amount != null && source.currency && (
+              <p className="text-[14px] font-normal text-zinc-950">
+                {formatCurrency(source.amount, source.currency)} {source.currency}
               </p>
             )}
             {source.extraction_confidence !== null && (

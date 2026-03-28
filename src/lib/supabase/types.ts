@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -828,6 +829,7 @@ export type Database = {
           card_last_four: string | null
           created_at: string | null
           id: string
+          is_import_source: boolean
           name: string
           preferred_currency: string | null
           sort_order: number
@@ -840,6 +842,7 @@ export type Database = {
           card_last_four?: string | null
           created_at?: string | null
           id?: string
+          is_import_source?: boolean
           name: string
           preferred_currency?: string | null
           sort_order: number
@@ -852,6 +855,7 @@ export type Database = {
           card_last_four?: string | null
           created_at?: string | null
           id?: string
+          is_import_source?: boolean
           name?: string
           preferred_currency?: string | null
           sort_order?: number

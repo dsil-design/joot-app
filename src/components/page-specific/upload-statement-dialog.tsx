@@ -140,7 +140,7 @@ export function UploadStatementDialog({
                   <SelectValue placeholder="Select payment method..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {paymentMethods.map(pm => (
+                  {paymentMethods.filter(pm => pm.is_import_source !== false).map(pm => (
                     <SelectItem key={pm.id} value={pm.id}>
                       {pm.name}
                     </SelectItem>

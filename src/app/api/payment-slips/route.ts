@@ -21,7 +21,7 @@ export async function GET() {
         id, filename, file_path, file_type, status, review_status,
         transaction_date, amount, currency, sender_name, recipient_name,
         bank_detected, memo, detected_direction,
-        extraction_confidence, extraction_error,
+        extraction_confidence, extraction_error, extraction_started_at,
         matched_transaction_id, match_confidence,
         uploaded_at, created_at
       `)

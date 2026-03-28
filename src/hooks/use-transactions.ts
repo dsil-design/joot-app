@@ -360,6 +360,8 @@ export function useTransactions() {
             from_address,
             from_name,
             email_date,
+            amount,
+            currency,
             extraction_confidence,
             match_confidence,
             match_method,
@@ -368,6 +370,7 @@ export function useTransactions() {
           statement_uploads!transactions_source_statement_upload_id_fkey (
             id,
             filename,
+            extraction_log,
             statement_period_start,
             statement_period_end,
             payment_methods!statement_uploads_payment_method_id_fkey (
@@ -406,6 +409,18 @@ export function useTransactions() {
         }
       }
 
+      // Extract amount/currency from statement suggestion if available
+      let statementSourceAmount: number | null = null
+      let statementSourceCurrency: string | null = null
+      if (statementUpload?.extraction_log && (data as any).source_statement_suggestion_index != null) {
+        const suggestions = statementUpload.extraction_log as any[]
+        const suggestion = suggestions[(data as any).source_statement_suggestion_index]
+        if (suggestion) {
+          statementSourceAmount = suggestion.amount ?? null
+          statementSourceCurrency = suggestion.currency ?? null
+        }
+      }
+
       const transformed = {
         ...data,
         vendor: (data as any).vendors,
@@ -414,8 +429,11 @@ export function useTransactions() {
         emailSource,
         statementSource: statementUpload ? {
           ...statementUpload,
+          extraction_log: undefined, // Don't pass raw extraction_log to UI
           payment_method_name: statementUpload.payment_methods?.name ?? null,
           match_confidence: (data as any).source_statement_match_confidence ?? null,
+          source_amount: statementSourceAmount,
+          source_currency: statementSourceCurrency,
         } : null,
       }
 

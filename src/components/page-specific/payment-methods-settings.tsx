@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Edit2, Trash2, GitMerge, GripVertical, ChevronUp, ChevronDown, Info } from 'lucide-react'
+import { Plus, Edit2, Trash2, GitMerge, GripVertical, ChevronUp, ChevronDown, Info, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -49,6 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 
 interface Currency {
@@ -64,6 +65,7 @@ interface PaymentMethod {
   sort_order: number
   preferred_currency?: string | null
   card_last_four?: string | null
+  is_import_source?: boolean
 }
 
 interface PaymentMethodsSettingsProps {
@@ -133,8 +135,13 @@ function SortableItem({ item, index, totalItems, onRename, onMerge, onDelete, on
             <span className="text-zinc-400 font-normal"> •••• {item.card_last_four}</span>
           )}
         </span>
-        <span className="text-xs text-zinc-500">
+        <span className="text-xs text-zinc-500 flex items-center gap-2">
           {item.transactionCount} {item.transactionCount === 1 ? 'transaction' : 'transactions'}
+          {item.is_import_source !== false && (
+            <span className="inline-flex items-center gap-1 text-zinc-400">
+              <Upload className="h-3 w-3" />
+            </span>
+          )}
         </span>
       </div>
 
@@ -214,6 +221,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
   const [inputValue, setInputValue] = useState('')
   const [preferredCurrency, setPreferredCurrency] = useState<string>('')
   const [cardLastFour, setCardLastFour] = useState<string>('')
+  const [isImportSource, setIsImportSource] = useState<boolean>(true)
   const [mergeTargetId, setMergeTargetId] = useState<string>('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<PaymentMethod | null>(null)
@@ -231,6 +239,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
     setInputValue('')
     setPreferredCurrency('')
     setCardLastFour('')
+    setIsImportSource(true)
     setDialogOpen(true)
   }
 
@@ -240,6 +249,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
     setInputValue(item.name)
     setPreferredCurrency(item.preferred_currency || '')
     setCardLastFour(item.card_last_four || '')
+    setIsImportSource(item.is_import_source !== false)
     setDialogOpen(true)
   }
 
@@ -356,6 +366,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
             name: inputValue.trim(),
             preferred_currency: preferredCurrency || null,
             card_last_four: cardLastFour.trim() || null,
+            is_import_source: isImportSource,
           }),
         })
 
@@ -373,6 +384,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
             name: inputValue.trim(),
             preferred_currency: preferredCurrency || null,
             card_last_four: cardLastFour.trim() || null,
+            is_import_source: isImportSource,
           }),
         })
 
@@ -403,6 +415,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
       setInputValue('')
       setPreferredCurrency('')
       setCardLastFour('')
+      setIsImportSource(true)
       setMergeTargetId('')
       router.refresh()
     } catch (error) {
@@ -542,6 +555,22 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
                       Auto-selects this currency when adding transactions with this payment method
                     </span>
                   </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-zinc-200 p-3">
+                  <div className="flex flex-col gap-0.5">
+                    <Label htmlFor="hide-from-imports" className="text-sm font-medium">
+                      Hide from Import Sources
+                    </Label>
+                    <span className="text-xs text-zinc-500">
+                      Don&apos;t show this payment method when uploading statements
+                    </span>
+                  </div>
+                  <Switch
+                    id="hide-from-imports"
+                    checked={!isImportSource}
+                    onCheckedChange={(checked) => setIsImportSource(!checked)}
+                  />
                 </div>
               </>
             ) : (

@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, preferred_currency, card_last_four } = await request.json()
+    const { name, preferred_currency, card_last_four, is_import_source } = await request.json()
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
@@ -53,6 +53,7 @@ export async function POST(request: Request) {
         sort_order: nextSortOrder,
         preferred_currency: preferred_currency || null,
         card_last_four: card_last_four || null,
+        is_import_source: is_import_source !== undefined ? Boolean(is_import_source) : true,
       })
       .select()
       .single()

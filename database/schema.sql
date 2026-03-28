@@ -76,6 +76,7 @@ CREATE TABLE public.payment_methods (
   preferred_currency TEXT REFERENCES public.currency_configuration(currency_code),
   billing_cycle_start_day INTEGER DEFAULT NULL CHECK (billing_cycle_start_day BETWEEN 1 AND 28),
   card_last_four TEXT DEFAULT NULL CHECK (card_last_four IS NULL OR card_last_four ~ '^\d{4}$'),
+  is_import_source BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(name, user_id)

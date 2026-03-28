@@ -17,7 +17,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { name, preferred_currency, billing_cycle_start_day, card_last_four } = body
+    const { name, preferred_currency, billing_cycle_start_day, card_last_four, is_import_source } = body
 
     // Verify ownership
     const { data: paymentMethod } = await supabase
@@ -85,6 +85,10 @@ export async function PATCH(
         )
       }
       updateData.card_last_four = card_last_four || null
+    }
+
+    if (is_import_source !== undefined) {
+      updateData.is_import_source = Boolean(is_import_source)
     }
 
     if (Object.keys(updateData).length === 0) {

@@ -38,6 +38,7 @@ interface SlipDetail {
   detected_direction: string | null
   extraction_confidence: number | null
   extraction_error: string | null
+  extraction_started_at: string | null
   matched_transaction_id: string | null
   uploaded_at: string
   extraction_completed_at: string | null
@@ -232,20 +233,43 @@ export default function PaymentSlipDetailPage() {
       </div>
 
       {/* Processing state */}
-      {slip.status === 'processing' && (
-        <Card>
-          <CardContent className="py-8 flex flex-col items-center gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            <div className="text-center">
-              <p className="text-sm font-medium">Processing payment slip...</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Extracting transaction data with Claude Vision
-              </p>
-            </div>
-            <Progress value={50} className="w-48" />
-          </CardContent>
-        </Card>
-      )}
+      {slip.status === 'processing' && (() => {
+        const startedAt = slip.extraction_started_at
+        const isStuck = startedAt && (Date.now() - new Date(startedAt).getTime()) > 2 * 60 * 1000
+
+        return (
+          <Card>
+            <CardContent className="py-8 flex flex-col items-center gap-4">
+              {isStuck ? (
+                <>
+                  <XCircle className="h-8 w-8 text-amber-500" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium">Processing appears stuck</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This slip has been processing for over 2 minutes
+                    </p>
+                  </div>
+                  <Button size="sm" onClick={handleProcess} disabled={isProcessing}>
+                    {isProcessing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    Retry Processing
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium">Processing payment slip...</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Extracting transaction data with Claude Vision
+                    </p>
+                  </div>
+                  <Progress value={50} className="w-48" />
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )
+      })()}
 
       {/* Failed state */}
       {slip.status === 'failed' && (

@@ -46,10 +46,30 @@ export async function POST(
     }
 
     if (slip.status === 'processing') {
-      return NextResponse.json(
-        { error: 'Payment slip is already being processed', status: 'processing' },
-        { status: 409 }
-      )
+      // Allow re-triggering if stuck for more than 2 minutes
+      const { data: fullSlip } = await supabase
+        .from('payment_slip_uploads')
+        .select('extraction_started_at')
+        .eq('id', slipId)
+        .single()
+
+      const startedAt = fullSlip?.extraction_started_at
+        ? new Date(fullSlip.extraction_started_at).getTime()
+        : 0
+      const stuckThresholdMs = 2 * 60 * 1000 // 2 minutes
+
+      if (startedAt && Date.now() - startedAt < stuckThresholdMs) {
+        return NextResponse.json(
+          { error: 'Payment slip is already being processed', status: 'processing' },
+          { status: 409 }
+        )
+      }
+
+      // Reset stuck slip so it can be reprocessed
+      await supabase
+        .from('payment_slip_uploads')
+        .update({ status: 'pending', extraction_error: null })
+        .eq('id', slipId)
     }
 
     // Return 202 immediately
@@ -100,7 +120,7 @@ export async function GET(
 
     const { data: slip, error: fetchError } = await supabase
       .from('payment_slip_uploads')
-      .select('id, status, extraction_confidence, extraction_error, extraction_completed_at')
+      .select('id, status, extraction_confidence, extraction_error, extraction_started_at, extraction_completed_at')
       .eq('id', slipId)
       .eq('user_id', user.id)
       .single()
@@ -114,6 +134,7 @@ export async function GET(
       status: slip.status,
       confidence: slip.extraction_confidence,
       error: slip.extraction_error,
+      started_at: slip.extraction_started_at,
       completed_at: slip.extraction_completed_at,
     })
   } catch (error) {

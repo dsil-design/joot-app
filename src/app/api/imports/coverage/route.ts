@@ -17,11 +17,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch payment methods with extended fields
+    // Fetch payment methods with extended fields (only import sources)
     const { data: paymentMethods, error: pmError } = await supabase
       .from('payment_methods')
       .select('id, name, preferred_currency, billing_cycle_start_day, sort_order')
       .eq('user_id', user.id)
+      .eq('is_import_source', true)
       .order('sort_order', { ascending: true })
 
     if (pmError) {
