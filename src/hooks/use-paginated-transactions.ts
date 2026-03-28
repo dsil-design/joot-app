@@ -11,6 +11,9 @@ interface TransactionFilters {
   paymentMethodIds?: string[]
   transactionType?: "all" | "expense" | "income" | "transfer"
   sourceType?: "any" | "email" | "statement" | "none"
+  amountMin?: number
+  amountMax?: number
+  amountCurrency?: string
 }
 
 interface TransactionTotals {
@@ -67,6 +70,9 @@ export function usePaginatedTransactions({
       if (filters.paymentMethodIds?.length) params.set("paymentMethodIds", filters.paymentMethodIds.join(","))
       if (filters.transactionType) params.set("transactionType", filters.transactionType)
       if (filters.sourceType) params.set("sourceType", filters.sourceType)
+      if (filters.amountMin !== undefined) params.set("amountMin", filters.amountMin.toString())
+      if (filters.amountMax !== undefined) params.set("amountMax", filters.amountMax.toString())
+      if (filters.amountCurrency) params.set("amountCurrency", filters.amountCurrency)
 
       const response = await fetch(`/api/transactions?${params.toString()}`)
 

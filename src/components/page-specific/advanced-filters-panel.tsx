@@ -6,9 +6,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MultiSelectComboBox } from "@/components/ui/multi-select-combobox"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { CURRENCY_CONFIG_FALLBACK } from "@/lib/utils/currency-symbols-sync"
 
 type TransactionType = "all" | "expense" | "income" | "transfer"
 type SourceType = "any" | "email" | "statement" | "none"
+
+const AMOUNT_CURRENCIES = ["USD", "THB", "VND", "MYR", "CNY", "EUR", "GBP", "SGD", "JPY"]
 
 interface TransactionFilters {
   dateRange?: DateRange
@@ -17,6 +27,9 @@ interface TransactionFilters {
   paymentMethodIds: string[]
   transactionType: TransactionType
   sourceType?: SourceType
+  amountMin?: number
+  amountMax?: number
+  amountCurrency?: string
 }
 
 interface AdvancedFiltersPanelProps {
@@ -44,7 +57,16 @@ export function AdvancedFiltersPanel({
   }, [filters])
 
   const handleApply = () => {
-    onApplyFilters(localFilters)
+    const filtersToApply = { ...localFilters }
+    // Only include amountCurrency if min or max is set
+    const hasAmountFilter = filtersToApply.amountMin !== undefined || filtersToApply.amountMax !== undefined
+    if (hasAmountFilter && !filtersToApply.amountCurrency) {
+      filtersToApply.amountCurrency = "USD"
+    }
+    if (!hasAmountFilter) {
+      filtersToApply.amountCurrency = undefined
+    }
+    onApplyFilters(filtersToApply)
     onClose()
   }
 
@@ -56,6 +78,9 @@ export function AdvancedFiltersPanel({
       paymentMethodIds: [],
       transactionType: "all",
       sourceType: undefined,
+      amountMin: undefined,
+      amountMax: undefined,
+      amountCurrency: undefined,
     })
   }
 
@@ -113,18 +138,18 @@ export function AdvancedFiltersPanel({
                     if (value) setLocalFilters({ ...localFilters, transactionType: value })
                   }}
                   variant="outline"
-                  className="justify-start gap-0"
+                  className="w-full gap-0"
                 >
-                  <ToggleGroupItem value="all" aria-label="All transactions" className="h-10 px-4">
+                  <ToggleGroupItem value="all" aria-label="All transactions" className="h-10 flex-1">
                     All
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="expense" aria-label="Expense transactions" className="h-10 px-4">
+                  <ToggleGroupItem value="expense" aria-label="Expense transactions" className="h-10 flex-1">
                     Expense
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="income" aria-label="Income transactions" className="h-10 px-4">
+                  <ToggleGroupItem value="income" aria-label="Income transactions" className="h-10 flex-1">
                     Income
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="transfer" aria-label="Transfer transactions" className="h-10 px-4">
+                  <ToggleGroupItem value="transfer" aria-label="Transfer transactions" className="h-10 flex-1">
                     Transfer
                   </ToggleGroupItem>
                 </ToggleGroup>
@@ -201,24 +226,97 @@ export function AdvancedFiltersPanel({
                     }
                   }}
                   variant="outline"
-                  className="justify-start gap-0 flex-wrap"
+                  className="w-full gap-0"
                 >
-                  <ToggleGroupItem value="all" aria-label="All sources" className="h-10 px-4">
+                  <ToggleGroupItem value="all" aria-label="All sources" className="h-10 flex-1">
                     All
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="any" aria-label="Any source" className="h-10 px-4">
+                  <ToggleGroupItem value="any" aria-label="Any source" className="h-10 flex-1">
                     Any Source
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="email" aria-label="Email source" className="h-10 px-4">
+                  <ToggleGroupItem value="email" aria-label="Email source" className="h-10 flex-1">
                     Email
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="statement" aria-label="Statement source" className="h-10 px-4">
+                  <ToggleGroupItem value="statement" aria-label="Statement source" className="h-10 flex-1">
                     Statement
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="none" aria-label="No source" className="h-10 px-4">
+                  <ToggleGroupItem value="none" aria-label="No source" className="h-10 flex-1">
                     Unlinked
                   </ToggleGroupItem>
                 </ToggleGroup>
+              </div>
+
+              {/* Amount Range Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Amount Range
+                </label>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={localFilters.amountCurrency || "USD"}
+                    onValueChange={(value) =>
+                      setLocalFilters({ ...localFilters, amountCurrency: value })
+                    }
+                  >
+                    <SelectTrigger className="w-[100px] bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AMOUNT_CURRENCIES.map((currency) => (
+                        <SelectItem key={currency} value={currency}>
+                          {currency}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {(() => {
+                    const symbol = CURRENCY_CONFIG_FALLBACK[localFilters.amountCurrency || "USD"]?.symbol ?? "$"
+                    const inputPl = symbol.length > 1 ? "pl-10" : "pl-7"
+                    return (
+                      <>
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">
+                            {symbol}
+                          </span>
+                          <Input
+                            type="number"
+                            placeholder="Min"
+                            value={localFilters.amountMin ?? ""}
+                            onChange={(e) =>
+                              setLocalFilters({
+                                ...localFilters,
+                                amountMin: e.target.value ? parseFloat(e.target.value) : undefined,
+                              })
+                            }
+                            className={`bg-background ${inputPl}`}
+                            min={0}
+                            step="any"
+                          />
+                        </div>
+                        <span className="text-muted-foreground text-sm">to</span>
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">
+                            {symbol}
+                          </span>
+                          <Input
+                            type="number"
+                            placeholder="Max"
+                            value={localFilters.amountMax ?? ""}
+                            onChange={(e) =>
+                              setLocalFilters({
+                                ...localFilters,
+                                amountMax: e.target.value ? parseFloat(e.target.value) : undefined,
+                              })
+                            }
+                            className={`bg-background ${inputPl}`}
+                            min={0}
+                            step="any"
+                          />
+                        </div>
+                      </>
+                    )
+                  })()}
+                </div>
               </div>
             </div>
 

@@ -96,6 +96,9 @@ interface TransactionFilters {
   paymentMethodIds: string[]
   transactionType: TransactionType
   sourceType?: SourceType
+  amountMin?: number
+  amountMax?: number
+  amountCurrency?: string
 }
 
 interface TransactionTotals {
@@ -753,6 +756,9 @@ interface SavedListState {
     paymentMethodIds: string[]
     transactionType: TransactionType
     sourceType?: SourceType
+    amountMin?: number
+    amountMax?: number
+    amountCurrency?: string
   }
   scrollY: number
 }
@@ -791,6 +797,9 @@ function restoreFilters(saved: SavedListState['filters']): TransactionFilters {
     paymentMethodIds: saved.paymentMethodIds || [],
     transactionType: saved.transactionType || "all",
     sourceType: saved.sourceType || undefined,
+    amountMin: saved.amountMin,
+    amountMax: saved.amountMax,
+    amountCurrency: saved.amountCurrency,
   }
 }
 
@@ -841,6 +850,9 @@ export default function AllTransactionsPage() {
     paymentMethodIds: filters.paymentMethodIds.length > 0 ? filters.paymentMethodIds : undefined,
     transactionType: filters.transactionType !== "all" ? filters.transactionType : undefined,
     sourceType: filters.sourceType || undefined,
+    amountMin: filters.amountMin,
+    amountMax: filters.amountMax,
+    amountCurrency: filters.amountCurrency || undefined,
   }), [filters])
 
   // Sorting state (needs to be declared before usePaginatedTransactions)
@@ -902,6 +914,9 @@ export default function AllTransactionsPage() {
         paymentMethodIds: filters.paymentMethodIds,
         transactionType: filters.transactionType,
         sourceType: filters.sourceType,
+        amountMin: filters.amountMin,
+        amountMax: filters.amountMax,
+        amountCurrency: filters.amountCurrency,
       },
       scrollY: window.scrollY,
     })
@@ -1161,6 +1176,9 @@ export default function AllTransactionsPage() {
       paymentMethodIds: [],
       transactionType: "all",
       sourceType: undefined,
+      amountMin: undefined,
+      amountMax: undefined,
+      amountCurrency: undefined,
     })
     setShowAdvancedFilters(false)
   }
@@ -1176,7 +1194,7 @@ export default function AllTransactionsPage() {
   // Check if any filters are active
   const hasActiveFilters = filters.dateRange || filters.searchKeyword ||
     filters.vendorIds.length > 0 || filters.paymentMethodIds.length > 0 || filters.transactionType !== "all" ||
-    filters.sourceType
+    filters.sourceType || filters.amountMin !== undefined || filters.amountMax !== undefined || filters.amountCurrency
 
   // Check if there are transactions without payment methods (for "None" option)
   const [hasNoneTransactions, setHasNoneTransactions] = React.useState(false)
@@ -1573,6 +1591,10 @@ export default function AllTransactionsPage() {
           onRemoveAllPaymentMethods={handleRemoveAllPaymentMethods}
           sourceType={filters.sourceType}
           onRemoveSourceType={() => setFilters({ ...filters, sourceType: undefined })}
+          amountMin={filters.amountMin}
+          amountMax={filters.amountMax}
+          amountCurrency={filters.amountCurrency}
+          onRemoveAmountRange={() => setFilters({ ...filters, amountMin: undefined, amountMax: undefined, amountCurrency: undefined })}
           onClearAll={handleClearAll}
           resultCount={allTransactions.length}
         />

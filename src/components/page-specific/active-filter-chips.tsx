@@ -16,6 +16,9 @@ interface ActiveFilterChipsProps {
   sourceType?: "any" | "email" | "statement" | "payment_slip" | "none"
   vendors?: Array<{ id: string; name: string }>
   paymentMethods?: Array<{ id: string; name: string }>
+  amountMin?: number
+  amountMax?: number
+  amountCurrency?: string
   onDateRangeClick?: () => void
   onRemoveDateRange: () => void
   onRemoveTransactionType: () => void
@@ -25,6 +28,7 @@ interface ActiveFilterChipsProps {
   onRemoveAllVendors?: () => void
   onRemoveAllPaymentMethods?: () => void
   onRemoveSourceType?: () => void
+  onRemoveAmountRange?: () => void
   onClearAll: () => void
   resultCount: number
 }
@@ -38,6 +42,9 @@ export function ActiveFilterChips({
   sourceType,
   vendors = [],
   paymentMethods = [],
+  amountMin,
+  amountMax,
+  amountCurrency,
   onDateRangeClick,
   onRemoveDateRange,
   onRemoveTransactionType,
@@ -47,16 +54,19 @@ export function ActiveFilterChips({
   onRemoveAllVendors,
   onRemoveAllPaymentMethods,
   onRemoveSourceType,
+  onRemoveAmountRange,
   onClearAll,
   resultCount,
 }: ActiveFilterChipsProps) {
+  const hasAmountFilter = amountMin !== undefined || amountMax !== undefined || amountCurrency
   const hasFilters =
     dateRange ||
     transactionType !== 'all' ||
     searchKeyword ||
     vendorIds.length > 0 ||
     paymentMethodIds.length > 0 ||
-    sourceType
+    sourceType ||
+    hasAmountFilter
 
   if (!hasFilters) return null
 
@@ -202,6 +212,30 @@ export function ActiveFilterChips({
                 onClick={onRemoveSourceType}
                 className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
                 aria-label="Remove source filter"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+
+          {/* Amount Range Chip */}
+          {hasAmountFilter && (
+            <Badge
+              variant="secondary"
+              className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
+            >
+              Amount: {amountMin !== undefined && amountMax !== undefined
+                ? `${amountMin}–${amountMax}`
+                : amountMin !== undefined
+                  ? `≥ ${amountMin}`
+                  : amountMax !== undefined
+                    ? `≤ ${amountMax}`
+                    : ''
+              }{amountCurrency ? ` ${amountCurrency}` : ''}
+              <button
+                onClick={onRemoveAmountRange}
+                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                aria-label="Remove amount filter"
               >
                 <X className="h-3 w-3" />
               </button>

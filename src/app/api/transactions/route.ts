@@ -14,6 +14,9 @@ interface TransactionFilters {
   paymentMethodIds?: string[]
   transactionType?: "all" | "expense" | "income"
   sourceType?: SourceType
+  amountMin?: number
+  amountMax?: number
+  amountCurrency?: string
 }
 
 export async function GET(request: NextRequest) {
@@ -52,6 +55,9 @@ export async function GET(request: NextRequest) {
       paymentMethodIds: searchParams.get("paymentMethodIds")?.split(",").filter(Boolean).slice(0, 50),
       transactionType: (searchParams.get("transactionType") as "all" | "expense" | "income") || "all",
       sourceType: (searchParams.get("sourceType") as SourceType) || undefined,
+      amountMin: searchParams.get("amountMin") ? parseFloat(searchParams.get("amountMin")!) : undefined,
+      amountMax: searchParams.get("amountMax") ? parseFloat(searchParams.get("amountMax")!) : undefined,
+      amountCurrency: searchParams.get("amountCurrency") || undefined,
     }
 
     // Build base query (without tags for now)
@@ -216,6 +222,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Apply amount range filter
+    if (filters.amountCurrency) {
+      query = query.eq("original_currency", filters.amountCurrency)
+    }
+    if (filters.amountMin !== undefined && !isNaN(filters.amountMin)) {
+      query = query.gte("amount", filters.amountMin)
+    }
+    if (filters.amountMax !== undefined && !isNaN(filters.amountMax)) {
+      query = query.lte("amount", filters.amountMax)
+    }
+
     // Fetch one extra to determine if there's a next page
     query = query.limit(pageSize + 1)
 
@@ -311,6 +328,17 @@ export async function GET(request: NextRequest) {
           totalsQuery = totalsQuery.is("source_email_transaction_id", null).is("source_statement_upload_id", null).is("source_payment_slip_id", null)
           break
       }
+    }
+
+    // Apply amount range filter to totals
+    if (filters.amountCurrency) {
+      totalsQuery = totalsQuery.eq("original_currency", filters.amountCurrency)
+    }
+    if (filters.amountMin !== undefined && !isNaN(filters.amountMin)) {
+      totalsQuery = totalsQuery.gte("amount", filters.amountMin)
+    }
+    if (filters.amountMax !== undefined && !isNaN(filters.amountMax)) {
+      totalsQuery = totalsQuery.lte("amount", filters.amountMax)
     }
 
     const { data: totalsData, error: totalsError } = await totalsQuery
