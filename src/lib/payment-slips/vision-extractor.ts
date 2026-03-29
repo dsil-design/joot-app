@@ -9,7 +9,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { AI_MODEL } from '@/lib/email/ai-client'
 import type { PaymentSlipExtraction } from './types'
 
-const VISION_TIMEOUT_MS = 20000
+const VISION_TIMEOUT_MS = 60000
 
 const EXTRACTION_PROMPT = `You are analyzing a Thai bank payment slip (transfer receipt) image.
 Extract all transaction data into the JSON schema below.
@@ -81,39 +81,32 @@ export async function extractFromPaymentSlip(
     throw new Error('ANTHROPIC_API_KEY not configured')
   }
 
-  const client = new Anthropic({ apiKey })
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('Claude Vision API timeout')), VISION_TIMEOUT_MS)
-  })
+  const client = new Anthropic({ apiKey, timeout: VISION_TIMEOUT_MS })
 
   const startTime = Date.now()
-  const result = await Promise.race([
-    client.messages.create({
-      model: AI_MODEL,
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mediaType,
-                data: imageBase64,
-              },
+  const result = await client.messages.create({
+    model: AI_MODEL,
+    max_tokens: 1024,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: mediaType,
+              data: imageBase64,
             },
-            {
-              type: 'text',
-              text: EXTRACTION_PROMPT,
-            },
-          ],
-        },
-      ],
-    }),
-    timeoutPromise,
-  ])
+          },
+          {
+            type: 'text',
+            text: EXTRACTION_PROMPT,
+          },
+        ],
+      },
+    ],
+  })
   const durationMs = Date.now() - startTime
 
   const textBlock = result.content.find((block) => block.type === 'text')
