@@ -399,19 +399,17 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
                   {data.matchedTransaction.vendor_name || "Unknown vendor"}
                 </span>
               </TransactionDetailRow>
+              <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+                <span className="font-medium truncate" title={data.matchedTransaction.description}>
+                  {data.matchedTransaction.description || "—"}
+                </span>
+              </TransactionDetailRow>
               {data.matchedTransaction.payment_method_name && (
                 <TransactionDetailRow
                   icon={<CreditCard className="h-3.5 w-3.5" />}
                   className="text-muted-foreground"
                 >
                   <span>{data.matchedTransaction.payment_method_name}</span>
-                </TransactionDetailRow>
-              )}
-              {data.matchedTransaction.description && (
-                <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
-                  <span className="font-medium truncate">
-                    {data.matchedTransaction.description}
-                  </span>
                 </TransactionDetailRow>
               )}
             </div>
@@ -510,13 +508,11 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
               {data.matchedTransaction.vendor_name || "Unknown vendor"}
             </span>
           </TransactionDetailRow>
-          {data.matchedTransaction.description && (
-            <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
-              <span className="font-medium truncate">
-                {data.matchedTransaction.description}
-              </span>
-            </TransactionDetailRow>
-          )}
+          <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+            <span className="font-medium truncate" title={data.matchedTransaction.description}>
+              {data.matchedTransaction.description || "—"}
+            </span>
+          </TransactionDetailRow>
           <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
             <span className="font-medium">
               {formatMatchAmount(

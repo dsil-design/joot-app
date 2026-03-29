@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { makeStatementId } from '@/lib/utils/import-id'
 import type { QueueItem, Suggestion } from './queue-types'
+import { fetchMatchedTransactions } from './fetch-matched-transactions'
 
 /**
  * Normalize an ISO timestamp or date string to YYYY-MM-DD.
@@ -78,34 +79,8 @@ export async function fetchStatementQueueItems(
     }
   }
 
-  // Fetch matched transactions
-  type MatchedTx = {
-    id: string
-    description: string | null
-    transaction_date: string
-    amount: number
-    original_currency: string
-    vendors: { name: string } | null
-    payment_methods: { name: string } | null
-  }
-
-  const matchedMap = new Map<string, MatchedTx>()
-  if (matchedTransactionIds.length > 0) {
-    const { data: matchedTransactions } = await supabase
-      .from('transactions')
-      .select(`
-        id, description, transaction_date, amount, original_currency,
-        vendors ( name ),
-        payment_methods ( name )
-      `)
-      .in('id', matchedTransactionIds)
-
-    if (matchedTransactions) {
-      for (const tx of matchedTransactions as MatchedTx[]) {
-        matchedMap.set(tx.id, tx)
-      }
-    }
-  }
+  // Fetch matched transactions (batched to avoid URL-length errors with large ID sets)
+  const matchedMap = await fetchMatchedTransactions(supabase, matchedTransactionIds)
 
   // Build queue items
   const items: QueueItem[] = []

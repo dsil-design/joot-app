@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { makePaymentSlipId } from '@/lib/utils/import-id'
 import type { QueueItem, PaymentSlipMetadata } from './queue-types'
+import { fetchMatchedTransactions } from './fetch-matched-transactions'
 
 interface SlipFilters {
   currencyFilter?: string
@@ -43,38 +44,12 @@ export async function fetchPaymentSlipQueueItems(
 
   if (!slips || slips.length === 0) return []
 
-  // Fetch matched transactions if any
+  // Fetch matched transactions (batched to avoid URL-length errors with large ID sets)
   const matchedIds = slips
     .map(s => s.matched_transaction_id)
     .filter((id): id is string => !!id)
 
-  type MatchedTx = {
-    id: string
-    description: string | null
-    transaction_date: string
-    amount: number
-    original_currency: string
-    vendors: { name: string } | null
-    payment_methods: { name: string } | null
-  }
-
-  const matchedMap = new Map<string, MatchedTx>()
-  if (matchedIds.length > 0) {
-    const { data: matchedTransactions } = await supabase
-      .from('transactions')
-      .select(`
-        id, description, transaction_date, amount, original_currency,
-        vendors ( name ),
-        payment_methods ( name )
-      `)
-      .in('id', matchedIds)
-
-    if (matchedTransactions) {
-      for (const tx of matchedTransactions as MatchedTx[]) {
-        matchedMap.set(tx.id, tx)
-      }
-    }
-  }
+  const matchedMap = await fetchMatchedTransactions(supabase, matchedIds)
 
   const items: QueueItem[] = []
 

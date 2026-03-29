@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { makeEmailId } from '@/lib/utils/import-id'
 import type { QueueItem } from './queue-types'
+import { fetchMatchedTransactions } from './fetch-matched-transactions'
 
 interface EmailFilters {
   currencyFilter?: string
@@ -50,38 +51,12 @@ export async function fetchEmailQueueItems(
 
   if (!emailRows) return []
 
-  // Fetch matched transactions
+  // Fetch matched transactions (batched to avoid URL-length errors with large ID sets)
   const emailMatchedIds = emailRows
     .filter(r => r.matched_transaction_id)
     .map(r => r.matched_transaction_id as string)
 
-  type MatchedTx = {
-    id: string
-    description: string | null
-    transaction_date: string
-    amount: number
-    original_currency: string
-    vendors: { name: string } | null
-    payment_methods: { name: string } | null
-  }
-
-  const matchedMap = new Map<string, MatchedTx>()
-  if (emailMatchedIds.length > 0) {
-    const { data: matchedTxs } = await supabase
-      .from('transactions')
-      .select(`
-        id, description, transaction_date, amount, original_currency,
-        vendors ( name ),
-        payment_methods ( name )
-      `)
-      .in('id', emailMatchedIds)
-
-    if (matchedTxs) {
-      for (const tx of matchedTxs as MatchedTx[]) {
-        matchedMap.set(tx.id, tx)
-      }
-    }
-  }
+  const matchedMap = await fetchMatchedTransactions(supabase, emailMatchedIds)
 
   const items: QueueItem[] = []
 
