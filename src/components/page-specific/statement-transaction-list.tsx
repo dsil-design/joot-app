@@ -220,14 +220,24 @@ export const StatementTransactionList = React.forwardRef<
                 {cleanStatementDescription(item.description)}
               </span>
 
-              {/* Amount */}
-              <span className={cn(
-                "text-sm font-medium flex-shrink-0",
-                isIgnored && "line-through text-muted-foreground",
-                !isIgnored && item.amount < 0 && "text-green-600"
-              )}>
-                {item.amount < 0 ? '−' : ''}{formatMatchAmount(item.amount, item.currency)}
-              </span>
+              {/* Amount — bank accounts use type field for sign/color, credit cards use amount sign */}
+              {(() => {
+                const isCredit = isBankAccount
+                  ? (item.type === 'credit' || item.type === 'transfer_in')
+                  : item.amount < 0
+                const prefix = isBankAccount
+                  ? (isCredit ? '+' : '−')
+                  : (item.amount < 0 ? '−' : '')
+                return (
+                  <span className={cn(
+                    "text-sm font-medium flex-shrink-0",
+                    isIgnored && "line-through text-muted-foreground",
+                    !isIgnored && isCredit && "text-green-600"
+                  )}>
+                    {prefix}{formatMatchAmount(item.amount, item.currency)}
+                  </span>
+                )
+              })()}
 
               {/* Ignored badge + undo */}
               {isIgnored && (

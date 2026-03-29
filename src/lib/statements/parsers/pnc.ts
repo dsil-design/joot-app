@@ -223,11 +223,13 @@ function parseTransactions(text: string, period?: { startDate: Date; endDate: Da
       // Determine if it's a credit or debit
       const isCredit = currentSection === 'deposits';
 
+      // Convention: positive = charges/money out, negative = credits/money in
+      // (consistent with credit card parsers and ParsedStatementTransaction docs)
       transactions.push({
         transactionDate,
         postingDate: transactionDate,
         description: cleanDescription(description),
-        amount: isCredit ? amount : -amount,
+        amount: isCredit ? -amount : amount,
         currency: 'USD',
         type: isCredit ? 'credit' : 'charge',
         category: categorizeTransaction(description),

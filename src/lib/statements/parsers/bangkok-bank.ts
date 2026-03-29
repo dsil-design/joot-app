@@ -32,6 +32,27 @@ const BANGKOK_BANK_IDENTIFIERS = [
   'บัตรบัวหลวง', // Bualuang card
 ];
 
+// Savings account identifiers
+const SAVINGS_ACCOUNT_IDENTIFIERS = [
+  'saving account',
+  'เงินฝากสะสมทรัพย',
+];
+
+/**
+ * Savings account transaction line pattern.
+ * pdf-parse concatenates columns with no spaces, producing lines like:
+ *   01/10/25TRANSFER2,782.0053,506.43mPhone
+ *   02/10/25TRF FR OTH BK228.2553,734.68mPhone
+ *   18/10/25CASH W/D ATM2,000.0019,010.90ATM SARAPHI,CHIANG MAI
+ *
+ * Structure: date(DD/MM/YY) + description(letters/spaces/dots/slashes) + amount(s) + via?
+ * Descriptions never contain digits, so the first digit after the description marks amounts.
+ */
+const SAVINGS_TX_PATTERN = /^(\d{2}\/\d{2}\/\d{2})([A-Z][A-Z/. ,'&]+?)([\d,]+\.\d{2})([\d,]+\.\d{2})?(.*)$/;
+
+// B/F (brought forward) line - only has balance
+const SAVINGS_BF_PATTERN = /^(\d{2}\/\d{2}\/\d{2})B\/F([\d,]+\.\d{2})$/;
+
 // Date patterns in Bangkok Bank statements
 // DD/MM/YYYY or DD/MM/YY (Thai format - day first)
 const DATE_PATTERN_NUMERIC = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/;
@@ -530,7 +551,204 @@ function parseAccountInfo(text: string): StatementParseResult['accountInfo'] | u
 }
 
 /**
- * Parse transactions from statement text
+ * Extract a valid amount from a string that may have a count prefix concatenated.
+ * E.g., "3078,632.10" → 78632.10 (the "30" is the count, "78,632.10" is the amount)
+ * Tries all valid split points and returns the one that parses as a valid comma-formatted amount.
+ */
+function extractTrailingAmount(str: string): number | null {
+  // Try parsing from each position to find a valid amount (N,NNN.NN or NNN.NN)
+  for (let i = 0; i < str.length; i++) {
+    const candidate = str.slice(i);
+    // Must start with a digit, have proper comma formatting, and end with .NN
+    if (/^\d{1,3}(,\d{3})*\.\d{2}$/.test(candidate)) {
+      return parseAmount(candidate);
+    }
+  }
+  // Fallback: try parsing the whole string
+  return parseAmount(str);
+}
+
+/**
+ * Detect if text is a savings account statement
+ */
+function isSavingsAccount(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return SAVINGS_ACCOUNT_IDENTIFIERS.some((id) => lowerText.includes(id));
+}
+
+/**
+ * Parse savings account period from text.
+ * In pdf-parse output, "Statement Period" and dates may be on separate lines:
+ *   รอบรายการบัญชี / Statement Period
+ *   967-0-12337-2
+ *   THB
+ *   01/10/2025 - 31/10/2025
+ */
+function parseSavingsPeriod(text: string): StatementPeriod | undefined {
+  // Look for standalone date range line: DD/MM/YYYY - DD/MM/YYYY
+  const dateRangeMatch = text.match(
+    /(\d{1,2}\/\d{1,2}\/\d{4})\s*[-–]\s*(\d{1,2}\/\d{1,2}\/\d{4})/
+  );
+  if (dateRangeMatch) {
+    const startDate = parseThaiDate(dateRangeMatch[1]);
+    const endDate = parseThaiDate(dateRangeMatch[2]);
+    if (startDate && endDate) {
+      return { startDate, endDate };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Parse savings account summary from text.
+ * The concatenated pdf-parse output for the summary section looks like:
+ *   106จํานวนรายการถอน/Total No. of Debits
+ *   จํานวนรายการฝาก/Total No. of Creditsจํานวนเงินฝาก/Total Credit Amount
+ *   จํานวนเงินถอน/Total Debit Amount
+ *   3078,632.10       ← "30" (credit count) + "78,632.10" (credit amount)
+ *   92,149.01         ← total debit amount
+ *
+ * We extract the two totals from the lines after the summary labels.
+ */
+function parseSavingsSummary(text: string): StatementSummary | undefined {
+  const summary: StatementSummary = {};
+  let hasData = false;
+
+  // Find the summary section: look for Total Debit Amount label, then extract amounts
+  // The concatenated line "3078,632.10" = count "30" + amount "78,632.10"
+  // We need to separate them: the amount always has format N,NNN.NN or NNN.NN
+  const summaryMatch = text.match(
+    /Total Debit Amount\s*\n(\d+(?:,\d{3})*\.\d{2})\s*\n(\d+(?:,\d{3})*\.\d{2})/i
+  );
+  if (summaryMatch) {
+    // Due to concatenation, the first "amount" includes the credit count prefix.
+    // E.g., "3078,632.10" - we need to find where the real amount starts.
+    // The amount format uses commas for thousands, so look for the rightmost valid amount.
+    const rawCredit = summaryMatch[1];
+    const creditTotal = extractTrailingAmount(rawCredit);
+    const debitTotal = parseAmount(summaryMatch[2]);
+    if (creditTotal !== null) {
+      summary.paymentsAndCredits = creditTotal;
+      hasData = true;
+    }
+    if (debitTotal !== null) {
+      summary.purchasesAndCharges = debitTotal;
+      hasData = true;
+    }
+  }
+
+  return hasData ? summary : undefined;
+}
+
+/**
+ * Parse savings account transactions from concatenated pdf-parse output.
+ * Uses running balance to determine if each transaction is a withdrawal or deposit.
+ */
+function parseSavingsTransactions(
+  text: string,
+): { transactions: ParsedStatementTransaction[]; warnings: string[] } {
+  const transactions: ParsedStatementTransaction[] = [];
+  const warnings: string[] = [];
+
+  const lines = text.split('\n');
+  let previousBalance: number | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Check for B/F (brought forward) line - sets opening balance
+    const bfMatch = trimmed.match(SAVINGS_BF_PATTERN);
+    if (bfMatch) {
+      previousBalance = parseAmount(bfMatch[2]);
+      continue;
+    }
+
+    // Try savings transaction pattern
+    const match = trimmed.match(SAVINGS_TX_PATTERN);
+    if (!match) continue;
+
+    const dateStr = match[1];
+    const description = match[2].trim();
+    const firstAmount = parseAmount(match[3]);
+    const secondAmount = match[4] ? parseAmount(match[4]) : null;
+
+    // Skip header-like lines or summary lines
+    if (!description || description.length < 2) continue;
+    if (/^(TOTAL|SUMMARY)/i.test(description)) continue;
+
+    // Parse date (DD/MM/YY with 2-digit year)
+    const transactionDate = parseThaiDate(dateStr);
+    if (!transactionDate) continue;
+
+    // Determine amounts:
+    // If two amounts: first is transaction amount, second is balance
+    // If one amount and no previous balance: this might be a balance-only line
+    let txAmount: number | null = null;
+    let currentBalance: number | null = null;
+
+    if (secondAmount !== null && firstAmount !== null) {
+      txAmount = firstAmount;
+      currentBalance = secondAmount;
+    } else if (firstAmount !== null && previousBalance !== null) {
+      // Only one amount - it's the balance, derive tx amount from balance change
+      currentBalance = firstAmount;
+      txAmount = Math.abs(currentBalance - previousBalance);
+      // Round to 2 decimal places to avoid floating point issues
+      txAmount = Math.round(txAmount * 100) / 100;
+    } else {
+      continue;
+    }
+
+    if (txAmount === null || txAmount === 0 || currentBalance === null) continue;
+
+    // Determine direction from balance change
+    let isWithdrawal: boolean;
+    if (previousBalance !== null) {
+      isWithdrawal = currentBalance < previousBalance;
+    } else {
+      // Fallback: infer from description
+      isWithdrawal = !description.includes('FR OTH BK') && !description.includes('FOREIGN T/T');
+    }
+
+    previousBalance = currentBalance;
+
+    // Determine transaction type
+    const lowerDesc = description.toLowerCase();
+    let type: ParsedStatementTransaction['type'] = isWithdrawal ? 'charge' : 'credit';
+    if (lowerDesc.includes('fee') || lowerDesc.includes('ค่าธรรมเนียม') || lowerDesc.includes('com/annual')) {
+      type = 'fee';
+    } else if (lowerDesc.includes('interest') || lowerDesc.includes('ดอกเบี้ย')) {
+      type = 'interest';
+    }
+
+    // Amount sign convention: positive = money out, negative = money in
+    const signedAmount = isWithdrawal ? Math.abs(txAmount) : -Math.abs(txAmount);
+
+    const transaction: ParsedStatementTransaction = {
+      transactionDate,
+      description,
+      amount: signedAmount,
+      currency: 'THB',
+      type,
+      rawLine: trimmed,
+    };
+
+    // Detect category
+    transaction.category = detectCategory(description);
+
+    transactions.push(transaction);
+  }
+
+  if (transactions.length === 0) {
+    warnings.push('No savings account transactions extracted');
+  }
+
+  return { transactions, warnings };
+}
+
+/**
+ * Parse transactions from credit card statement text
  */
 function parseTransactions(
   text: string,
@@ -705,20 +923,24 @@ export const bangkokBankParser: StatementParser = {
       };
     }
 
+    const savingsMode = isSavingsAccount(text);
+
     // Extract statement period
-    const period = parseStatementPeriod(text);
+    const period = savingsMode ? parseSavingsPeriod(text) : parseStatementPeriod(text);
     if (!period) {
       warnings.push('Could not extract statement period');
     }
 
     // Extract summary
-    const summary = parseSummary(text);
+    const summary = savingsMode ? parseSavingsSummary(text) : parseSummary(text);
 
     // Extract account info
     const accountInfo = parseAccountInfo(text);
 
     // Parse transactions
-    const { transactions, warnings: txWarnings } = parseTransactions(text, period);
+    const { transactions, warnings: txWarnings } = savingsMode
+      ? parseSavingsTransactions(text)
+      : parseTransactions(text, period);
     warnings.push(...txWarnings);
 
     if (transactions.length === 0) {
@@ -762,13 +984,20 @@ export {
   parseSummary,
   parseAccountInfo,
   parseTransactions,
+  parseSavingsTransactions,
+  parseSavingsPeriod,
+  parseSavingsSummary,
+  isSavingsAccount,
   determineTransactionType,
   detectCategory,
   calculateConfidence,
   BANGKOK_BANK_IDENTIFIERS,
+  SAVINGS_ACCOUNT_IDENTIFIERS,
   THAI_MONTH_NAMES,
   DATE_PATTERN_NUMERIC,
   DATE_PATTERN_THAI_ABBREV,
   PERIOD_PATTERNS,
   TRANSACTION_PATTERNS,
+  SAVINGS_TX_PATTERN,
+  SAVINGS_BF_PATTERN,
 };

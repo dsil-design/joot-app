@@ -3,6 +3,15 @@
  *
  * Shared types for credit card and bank statement parsers.
  * These parsers extract transaction data from PDF statement text.
+ *
+ * ## Amount Sign Convention (ALL parsers must follow this)
+ *
+ * - **Positive** amounts = charges, debits, withdrawals (money OUT)
+ * - **Negative** amounts = credits, deposits, payments, refunds (money IN)
+ *
+ * This matches the credit card convention and is what the UI expects:
+ * negative amounts render in green (income), positive in default color (expense).
+ * Bank account parsers must invert their natural signs to match this convention.
  */
 
 /**
@@ -18,7 +27,11 @@ export interface ParsedStatementTransaction {
   /** Merchant/vendor description from statement */
   description: string;
 
-  /** Transaction amount (positive for charges, negative for credits) */
+  /**
+   * Transaction amount.
+   * CONVENTION: positive = money out (charges/debits), negative = money in (credits/deposits).
+   * All parsers must follow this regardless of the source format.
+   */
   amount: number;
 
   /** Currency code (e.g., 'USD', 'THB') */

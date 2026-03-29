@@ -125,16 +125,22 @@ export class ECBFetcher {
       } catch (error) {
         lastError = error as Error;
         this.metrics.errors++;
-        
+
+        const errorDetail = error instanceof Error
+          ? `${error.name}: ${error.message}`
+          : String(error);
+
         if (attempt < this.retryConfig.maxAttempts) {
           this.metrics.retries++;
           const delay = Math.min(
             this.retryConfig.baseDelay * Math.pow(this.retryConfig.backoffFactor, attempt - 1),
             this.retryConfig.maxDelay
           );
-          
-          console.warn(`ECB fetch attempt ${attempt} failed, retrying in ${delay}ms:`, error);
+
+          console.warn(`ECB fetch attempt ${attempt}/${this.retryConfig.maxAttempts} failed (${errorDetail}), retrying in ${delay}ms`);
           await this.sleep(delay);
+        } else {
+          console.error(`ECB fetch failed after ${this.retryConfig.maxAttempts} attempts. Last error: ${errorDetail}`);
         }
       }
     }

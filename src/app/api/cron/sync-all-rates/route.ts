@@ -188,13 +188,16 @@ export async function GET(request: NextRequest) {
           success: dailyResult.success,
           message: dailyResult.skippedReason
             ? `Skipped: ${dailyResult.skippedReason}`
-            : `Inserted ${dailyResult.ratesInserted} rates for ${dailyResult.targetDate}`,
+            : dailyResult.success
+              ? `Inserted ${dailyResult.ratesInserted} rates for ${dailyResult.targetDate}`
+              : `Failed for ${dailyResult.targetDate}: ${dailyResult.errors.map(e => e.message).join('; ')}`,
           data: {
             targetDate: dailyResult.targetDate,
             ratesInserted: dailyResult.ratesInserted,
             gapsFilled: dailyResult.gapsFilled,
             skippedReason: dailyResult.skippedReason,
-            duration: dailyResult.duration
+            duration: dailyResult.duration,
+            errors: dailyResult.errors.length > 0 ? dailyResult.errors.slice(0, 5) : undefined
           }
         };
 
@@ -222,14 +225,15 @@ export async function GET(request: NextRequest) {
             ? syncResult.totalGaps === 0
               ? 'No gaps found - all transactions have rates'
               : `Filled ${syncResult.ratesInserted} rate gaps`
-            : 'Surgical sync completed with errors',
+            : `Surgical sync completed with ${syncResult.errors.length} error(s): ${syncResult.errors.slice(0, 3).map(e => `${e.currency}/${e.date}: ${e.message}`).join('; ')}`,
           data: {
             totalGaps: syncResult.totalGaps,
             ratesInserted: syncResult.ratesInserted,
             ratesSkipped: syncResult.ratesSkipped,
             errorCount: syncResult.errors.length,
             duration: syncResult.duration,
-            details: syncResult.details
+            details: syncResult.details,
+            errors: syncResult.errors.slice(0, 10)
           }
         };
 
@@ -285,11 +289,12 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         console.error('❌ Surgical sync failed:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : undefined;
 
         results.surgicalSync = {
           success: false,
           message: errorMessage,
-          data: null
+          data: { errorStack }
         };
 
         // Send failure notification
@@ -464,6 +469,20 @@ export async function GET(request: NextRequest) {
     console.log(`✨ Daily sync completed in ${(duration / 1000).toFixed(1)}s`);
 
     // 7. Complete sync_history record
+    // Collect error details from surgical sync for logging
+    const surgicalErrors = results.surgicalSync.data?.details?.errors
+      ?? results.surgicalSync.data?.errors
+      ?? [];
+    const surgicalErrorMessage = !results.surgicalSync.success
+      ? [
+          results.surgicalSync.message,
+          ...(Array.isArray(surgicalErrors)
+            ? surgicalErrors.slice(0, 5).map((e: any) =>
+                typeof e === 'string' ? e : `${e.currency}/${e.date}: ${e.message}`)
+            : [])
+        ].filter(Boolean).join(' | ') || 'Surgical sync failed (no details captured)'
+      : undefined;
+
     await completeSyncHistoryRecord(
       syncHistoryId,
       results.surgicalSync.success,
@@ -474,7 +493,8 @@ export async function GET(request: NextRequest) {
         ratesSkipped: results.surgicalSync.data?.ratesSkipped ?? 0,
         coveragePercentage,
         errorCount: results.surgicalSync.data?.errorCount ?? 0
-      }
+      },
+      surgicalErrorMessage
     );
 
     return NextResponse.json({
