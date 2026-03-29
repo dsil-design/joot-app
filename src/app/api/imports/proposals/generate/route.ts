@@ -27,26 +27,53 @@ export async function POST(request: NextRequest) {
       compositeIds,
       statementUploadId,
       emailTransactionIds,
+      source,
+      currency,
+      from: fromDate,
+      to: toDate,
       force = false,
     } = body as {
       compositeIds?: string[]
       statementUploadId?: string
       emailTransactionIds?: string[]
+      source?: string
+      currency?: string
+      from?: string
+      to?: string
       force?: boolean
     }
 
+    // Determine which sources to fetch based on filters
+    const shouldFetchStatements = !source || source === 'statement' || source === 'merged'
+    const shouldFetchEmails = !statementUploadId && (!source || source === 'email' || source === 'merged')
+    const shouldFetchSlips = !statementUploadId && (!source || source === 'payment_slip')
+
+    const fetchOpts = {
+      statementUploadId: statementUploadId || undefined,
+      currencyFilter: currency,
+      fromDate,
+      toDate,
+    }
+
     // Fetch queue items to generate proposals for
-    // When scoped to a specific statement, skip email items entirely
     const [statementItems, emailItems, slipItems] = await Promise.all([
-      fetchStatementQueueItems(supabase, user.id, {
-        statementUploadId: statementUploadId || undefined,
-      }),
-      statementUploadId
-        ? Promise.resolve([])
-        : fetchEmailQueueItems(supabase, user.id, {}),
-      statementUploadId
-        ? Promise.resolve([])
-        : fetchPaymentSlipQueueItems(supabase, user.id, {}),
+      shouldFetchStatements
+        ? fetchStatementQueueItems(supabase, user.id, fetchOpts)
+        : Promise.resolve([]),
+      shouldFetchEmails
+        ? fetchEmailQueueItems(supabase, user.id, {
+            currencyFilter: currency,
+            fromDate,
+            toDate,
+          })
+        : Promise.resolve([]),
+      shouldFetchSlips
+        ? fetchPaymentSlipQueueItems(supabase, user.id, {
+            currencyFilter: currency,
+            fromDate,
+            toDate,
+          })
+        : Promise.resolve([]),
     ])
 
     // Combine all items

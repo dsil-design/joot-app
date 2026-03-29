@@ -50,6 +50,7 @@ import {
   AlertCircle,
   CalendarDays,
   RefreshCw,
+  Sparkles,
   Zap,
   Hourglass,
   ChevronDown,
@@ -306,37 +307,74 @@ export default function ReviewQueuePage() {
     setLinkingItemId(null)
   }
 
-  const [rematchStatus, setRematchStatus] = React.useState<string | null>(null)
+  const [isGeneratingProposals, setIsGeneratingProposals] = React.useState(false)
 
-  const handleRefreshWithRematch = React.useCallback(async () => {
+  const buildFilterBody = React.useCallback(() => {
+    const filterBody: Record<string, unknown> = {}
+    if (filters.source !== "all") filterBody.source = filters.source
+    if (filters.currency !== "all") filterBody.currency = filters.currency
+    if (filters.statementUploadId) filterBody.statementUploadId = filters.statementUploadId
+    if (filters.dateRange?.from) {
+      const d = filters.dateRange.from
+      filterBody.from = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    }
+    if (filters.dateRange?.to) {
+      const d = filters.dateRange.to
+      filterBody.to = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    }
+    return filterBody
+  }, [filters])
+
+  const handleRefresh = React.useCallback(async () => {
     setIsRematching(true)
     try {
-      setRematchStatus("Finding matches...")
-      await fetch('/api/imports/rematch', { method: 'POST' })
-      setRematchStatus("Generating proposals...")
-      const generateBody: Record<string, unknown> = {}
-      if (filters.statementUploadId) {
-        generateBody.statementUploadId = filters.statementUploadId
+      const res = await fetch('/api/imports/rematch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildFilterBody()),
+      })
+      if (res.ok) {
+        const { stats: rematchStats } = await res.json()
+        const totalNew = (rematchStats?.statementNewMatchesFound || 0) + (rematchStats?.emailNewMatchesFound || 0)
+        if (totalNew > 0) {
+          toast.success(`Found ${totalNew} new match${totalNew === 1 ? '' : 'es'}`)
+        } else {
+          toast.info('No new matches found')
+        }
       }
+    } catch (e) {
+      console.error('Refresh failed:', e)
+      toast.error('Refresh failed')
+    } finally {
+      setIsRematching(false)
+    }
+    refresh()
+  }, [refresh, buildFilterBody])
+
+  const handleGenerateProposals = React.useCallback(async () => {
+    setIsGeneratingProposals(true)
+    try {
       const res = await fetch('/api/imports/proposals/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(generateBody),
+        body: JSON.stringify(buildFilterBody()),
       })
       if (res.ok) {
         const result = await res.json()
         if (result.generated > 0) {
           toast.success(`Generated ${result.generated} proposal${result.generated === 1 ? '' : 's'}`)
+        } else {
+          toast.info('No new proposals to generate')
         }
       }
     } catch (e) {
-      console.error('Refresh failed:', e)
+      console.error('Proposal generation failed:', e)
+      toast.error('Failed to generate proposals')
     } finally {
-      setIsRematching(false)
-      setRematchStatus(null)
+      setIsGeneratingProposals(false)
     }
     refresh()
-  }, [refresh, filters.statementUploadId])
+  }, [refresh, buildFilterBody])
 
   const { createAndLink } = useCreateAndLink(linkToExisting)
   const { acceptProposal } = useProposalAccept()
@@ -678,13 +716,26 @@ export default function ReviewQueuePage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRefreshWithRematch}
+            onClick={handleRefresh}
             disabled={isLoading || isRematching}
+            title="Re-match against existing transactions"
           >
             <RefreshCw
-              className={`h-4 w-4 mr-2 ${isLoading || isRematching ? "animate-spin" : ""}`}
+              className={`h-4 w-4 mr-2 ${isRematching ? "animate-spin" : ""}`}
             />
-            {rematchStatus || "Refresh"}
+            {isRematching ? "Finding matches..." : "Refresh"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleGenerateProposals}
+            disabled={isLoading || isGeneratingProposals}
+            title="Generate AI proposals for unmatched items"
+          >
+            <Sparkles
+              className={`h-4 w-4 mr-2 ${isGeneratingProposals ? "animate-pulse" : ""}`}
+            />
+            {isGeneratingProposals ? "Generating..." : "Generate Proposals"}
           </Button>
         </div>
       </div>

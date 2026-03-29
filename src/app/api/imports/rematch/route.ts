@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { Suggestion } from '@/lib/imports/queue-types'
 
@@ -17,13 +17,29 @@ interface RematchStats {
  * against current transactions in the database. Updates stored
  * suggestions/email records so the review queue reflects new matches.
  */
-export async function POST() {
+interface RematchFilters {
+  source?: string     // 'email' | 'statement' | 'merged' | 'payment_slip'
+  currency?: string   // 'USD' | 'THB' etc.
+  statementUploadId?: string
+  from?: string       // date string YYYY-MM-DD
+  to?: string         // date string YYYY-MM-DD
+}
+
+export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    let filters: RematchFilters = {}
+    try {
+      const body = await request.json()
+      filters = body || {}
+    } catch {
+      // No body or invalid JSON — rematch everything (backwards-compatible)
     }
 
     const stats: RematchStats = {
@@ -34,11 +50,19 @@ export async function POST() {
       emailNewMatchesFound: 0,
     }
 
+    // Only rematch sources that match the active filter
+    const shouldRematchStatements = !filters.source || filters.source === 'statement' || filters.source === 'merged'
+    const shouldRematchEmails = !filters.source || filters.source === 'email' || filters.source === 'merged'
+
     // --- 1. Re-match statement suggestions ---
-    await rematchStatementSuggestions(supabase, user.id, stats)
+    if (shouldRematchStatements) {
+      await rematchStatementSuggestions(supabase, user.id, stats, filters)
+    }
 
     // --- 2. Re-match email transactions ---
-    await rematchEmailTransactions(supabase, user.id, stats)
+    if (shouldRematchEmails) {
+      await rematchEmailTransactions(supabase, user.id, stats, filters)
+    }
 
     // After rematch, mark affected proposals as stale
     try {
@@ -67,13 +91,20 @@ export async function POST() {
 async function rematchStatementSuggestions(
   supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
   userId: string,
-  stats: RematchStats
+  stats: RematchStats,
+  filters: RematchFilters = {}
 ) {
-  const { data: statements, error } = await supabase
+  let query = supabase
     .from('statement_uploads')
     .select('id, extraction_log, statement_period_start, statement_period_end')
     .eq('user_id', userId)
     .in('status', ['ready_for_review', 'in_review', 'done'])
+
+  if (filters.statementUploadId) {
+    query = query.eq('id', filters.statementUploadId)
+  }
+
+  const { data: statements, error } = await query
 
   if (error || !statements) return
 
@@ -88,6 +119,11 @@ async function rematchStatementSuggestions(
       const s = suggestions[i]
       if (s.status && s.status !== 'pending') continue
       if (s.is_new || (s.confidence > 0 && s.confidence < 55)) {
+        // Apply currency filter
+        if (filters.currency && s.currency !== filters.currency) continue
+        // Apply date range filter
+        if (filters.from && s.transaction_date < filters.from) continue
+        if (filters.to && s.transaction_date > filters.to) continue
         rematchIndices.push(i)
       }
     }
@@ -152,14 +188,27 @@ async function rematchStatementSuggestions(
 async function rematchEmailTransactions(
   supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
   userId: string,
-  stats: RematchStats
+  stats: RematchStats,
+  filters: RematchFilters = {}
 ) {
-  const { data: emails, error } = await supabase
+  let query = supabase
     .from('email_transactions')
     .select('id, amount, currency, transaction_date, description, vendor_name_raw, rejected_transaction_ids')
     .eq('user_id', userId)
     .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement', 'waiting_for_email'])
     .is('matched_transaction_id', null)
+
+  if (filters.currency) {
+    query = query.eq('currency', filters.currency)
+  }
+  if (filters.from) {
+    query = query.gte('transaction_date', filters.from)
+  }
+  if (filters.to) {
+    query = query.lte('transaction_date', filters.to)
+  }
+
+  const { data: emails, error } = await query
 
   if (error || !emails || emails.length === 0) return
 
