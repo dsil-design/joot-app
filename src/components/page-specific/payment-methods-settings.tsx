@@ -58,11 +58,21 @@ interface Currency {
   currency_symbol: string
 }
 
+type PaymentMethodType = 'credit_card' | 'bank_account' | 'debit_card' | 'other'
+
+const paymentMethodTypeOptions: { value: PaymentMethodType; label: string }[] = [
+  { value: 'credit_card', label: 'Credit Card' },
+  { value: 'bank_account', label: 'Bank Account' },
+  { value: 'debit_card', label: 'Debit Card' },
+  { value: 'other', label: 'Other' },
+]
+
 interface PaymentMethod {
   id: string
   name: string
   transactionCount: number
   sort_order: number
+  type?: PaymentMethodType | null
   preferred_currency?: string | null
   card_last_four?: string | null
   is_import_source?: boolean
@@ -136,6 +146,8 @@ function SortableItem({ item, index, totalItems, onRename, onMerge, onDelete, on
           )}
         </span>
         <span className="text-xs text-zinc-500 flex items-center gap-2">
+          {paymentMethodTypeOptions.find(o => o.value === item.type)?.label ?? 'Credit Card'}
+          {' · '}
           {item.transactionCount} {item.transactionCount === 1 ? 'transaction' : 'transactions'}
           {item.is_import_source !== false && (
             <span className="inline-flex items-center gap-1 text-zinc-400">
@@ -221,6 +233,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
   const [inputValue, setInputValue] = useState('')
   const [preferredCurrency, setPreferredCurrency] = useState<string>('')
   const [cardLastFour, setCardLastFour] = useState<string>('')
+  const [paymentMethodType, setPaymentMethodType] = useState<PaymentMethodType>('credit_card')
   const [isImportSource, setIsImportSource] = useState<boolean>(true)
   const [mergeTargetId, setMergeTargetId] = useState<string>('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -239,6 +252,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
     setInputValue('')
     setPreferredCurrency('')
     setCardLastFour('')
+    setPaymentMethodType('credit_card')
     setIsImportSource(true)
     setDialogOpen(true)
   }
@@ -249,6 +263,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
     setInputValue(item.name)
     setPreferredCurrency(item.preferred_currency || '')
     setCardLastFour(item.card_last_four || '')
+    setPaymentMethodType(item.type || 'credit_card')
     setIsImportSource(item.is_import_source !== false)
     setDialogOpen(true)
   }
@@ -364,6 +379,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: inputValue.trim(),
+            type: paymentMethodType,
             preferred_currency: preferredCurrency || null,
             card_last_four: cardLastFour.trim() || null,
             is_import_source: isImportSource,
@@ -382,6 +398,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: inputValue.trim(),
+            type: paymentMethodType,
             preferred_currency: preferredCurrency || null,
             card_last_four: cardLastFour.trim() || null,
             is_import_source: isImportSource,
@@ -415,6 +432,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
       setInputValue('')
       setPreferredCurrency('')
       setCardLastFour('')
+      setPaymentMethodType('credit_card')
       setIsImportSource(true)
       setMergeTargetId('')
       router.refresh()
@@ -504,6 +522,25 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
                     onChange={(e) => setInputValue(e.target.value)}
                     placeholder="Enter payment method name"
                   />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="type">Type</Label>
+                  <Select
+                    value={paymentMethodType}
+                    onValueChange={(val) => setPaymentMethodType(val as PaymentMethodType)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paymentMethodTypeOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex flex-col gap-2">

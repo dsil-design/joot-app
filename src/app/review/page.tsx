@@ -301,6 +301,7 @@ export default function ReviewQueuePage() {
     for (const txId of transactionIds) {
       await linkToExisting(linkingItemId, txId)
     }
+    handleFocusItemRemove(linkingItemId)
     setLinkDialogOpen(false)
     setLinkingItemId(null)
   }
@@ -592,17 +593,51 @@ export default function ReviewQueuePage() {
       item.proposal.overallConfidence >= 85
   )
 
-  // Pending items for focused review mode
-  const pendingItems = React.useMemo(
-    () => activeItems.filter((item) => item.status === "pending"),
+  // Pending items for focused review mode — fetched independently to avoid pagination limits
+  const [focusItems, setFocusItems] = React.useState<MatchCardData[]>([])
+  const [focusLoading, setFocusLoading] = React.useState(false)
+
+  // Derive pending count from loaded items (for the button label)
+  const pendingCount = React.useMemo(
+    () => activeItems.filter((item) => item.status === "pending").length,
     [activeItems]
   )
 
-  const handleStartReview = () => {
-    if (pendingItems.length === 0) return
+  const fetchFocusItems = React.useCallback(async () => {
+    setFocusLoading(true)
+    try {
+      const result = await fetchMatches(1, 100, { ...filters, status: "pending" })
+      setFocusItems(result.items.filter((item) => !item.waitingForStatement))
+    } catch (e) {
+      console.error("Failed to fetch focus items:", e)
+      // Fall back to loaded items
+      setFocusItems(activeItems.filter((item) => item.status === "pending"))
+    } finally {
+      setFocusLoading(false)
+    }
+  }, [filters, activeItems])
+
+  const handleStartReview = async () => {
     setReviewFocusIndex(0)
     setReviewFocusOpen(true)
+    await fetchFocusItems()
   }
+
+  // Keep focus items in sync when main list actions change them (approve/reject/remove)
+  const handleFocusItemRemove = React.useCallback((id: string) => {
+    setFocusItems((prev) => prev.filter((item) => item.id !== id))
+  }, [])
+
+  // Wrap approve/reject to also update focus items
+  const handleFocusApprove = React.useCallback((id: string) => {
+    approve(id)
+    handleFocusItemRemove(id)
+  }, [approve, handleFocusItemRemove])
+
+  const handleFocusReject = React.useCallback((id: string) => {
+    reject(id)
+    handleFocusItemRemove(id)
+  }, [reject, handleFocusItemRemove])
 
   const renderMatchCard = (item: MatchCardData) => (
     <MatchCard
@@ -630,14 +665,14 @@ export default function ReviewQueuePage() {
         </p>
 
         <div className="flex items-center gap-2">
-          {pendingItems.length > 0 && (
+          {(pendingCount > 0 || stats.pending > 0) && (
             <Button
               size="sm"
               onClick={handleStartReview}
-              disabled={isLoading}
+              disabled={isLoading || focusLoading}
             >
               <Focus className="h-4 w-4 mr-2" />
-              Review ({pendingItems.length})
+              Review ({stats.pending || pendingCount})
             </Button>
           )}
           <Button
@@ -867,13 +902,17 @@ export default function ReviewQueuePage() {
       <ReviewFocusModal
         open={reviewFocusOpen}
         onOpenChange={setReviewFocusOpen}
-        items={pendingItems}
+        items={focusItems}
+        loading={focusLoading}
         currentIndex={reviewFocusIndex}
         onIndexChange={setReviewFocusIndex}
-        onApprove={(id) => approve(id)}
-        onReject={(id) => reject(id)}
+        onApprove={handleFocusApprove}
+        onReject={handleFocusReject}
         onLinkManually={handleLinkManually}
-        onCreateTransaction={handleCreateConfirm}
+        onCreateTransaction={async (compositeId, txData, meta) => {
+          await handleCreateConfirm(compositeId, txData, meta)
+          handleFocusItemRemove(compositeId)
+        }}
         isProcessing={isProcessing}
       />
     </div>

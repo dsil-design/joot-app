@@ -67,6 +67,7 @@ interface ReviewFocusModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   items: MatchCardData[]
+  loading?: boolean
   currentIndex: number
   onIndexChange: (index: number) => void
   onApprove: (id: string) => void
@@ -578,6 +579,7 @@ export function ReviewFocusModal({
   open,
   onOpenChange,
   items,
+  loading,
   currentIndex,
   onIndexChange,
   onApprove,
@@ -935,6 +937,21 @@ export function ReviewFocusModal({
 
   // ── Render ──
 
+  // Loading state
+  if (open && loading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogTitle className="sr-only">Loading review items</DialogTitle>
+          <div className="text-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+            <p className="text-sm text-muted-foreground">Loading pending items...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   // Completion state
   if (open && items.length === 0) {
     return (
@@ -1286,6 +1303,15 @@ export function ReviewFocusModal({
                   >
                     <Ban className="h-3.5 w-3.5 mr-1.5" />
                     Reject
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onLinkManually(item.id)}
+                    disabled={isSaving || isProcessing(item.id)}
+                  >
+                    <ArrowLeftRight className="h-3.5 w-3.5 mr-1.5" />
+                    Link to Existing
                   </Button>
                   <div className="flex-1" />
                   <Button

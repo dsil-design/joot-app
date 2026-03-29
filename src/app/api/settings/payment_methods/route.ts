@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, preferred_currency, card_last_four, is_import_source } = await request.json()
+    const { name, type, preferred_currency, card_last_four, is_import_source } = await request.json()
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
       .insert({
         name: name.trim(),
         user_id: user.id,
+        type: type || 'credit_card',
         sort_order: nextSortOrder,
         preferred_currency: preferred_currency || null,
         card_last_four: card_last_four || null,

@@ -17,7 +17,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { name, preferred_currency, billing_cycle_start_day, card_last_four, is_import_source } = body
+    const { name, type, preferred_currency, billing_cycle_start_day, card_last_four, is_import_source } = body
 
     // Verify ownership
     const { data: paymentMethod } = await supabase
@@ -56,6 +56,14 @@ export async function PATCH(
       }
 
       updateData.name = name.trim()
+    }
+
+    if (type !== undefined) {
+      const validTypes = ['credit_card', 'bank_account', 'debit_card', 'other']
+      if (!validTypes.includes(type)) {
+        return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
+      }
+      updateData.type = type
     }
 
     if (preferred_currency !== undefined) {
