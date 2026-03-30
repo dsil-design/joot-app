@@ -107,8 +107,7 @@ export function MatchCard({
         "transition-all duration-200 border-2 overflow-hidden",
         config.borderColor,
         selected && "ring-2 ring-primary ring-offset-2",
-        isApproved && "opacity-60 border-green-200 bg-green-50/50",
-        isRejected && "opacity-60 border-gray-200 bg-gray-50/50",
+        (isApproved || isRejected) && "hidden",
         className
       )}
     >

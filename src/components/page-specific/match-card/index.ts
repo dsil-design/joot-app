@@ -13,5 +13,7 @@ export type {
   ImportSource,
   EmailMetadata,
   MergedEmailData,
+  MergedPaymentSlipData,
   CrossCurrencyInfo,
+  PaymentSlipMetadata,
 } from "./types"

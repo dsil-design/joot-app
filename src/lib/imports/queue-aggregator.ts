@@ -295,7 +295,7 @@ export async function aggregateQueueItems(
               statementUploadId: bestStmtMatch.item.statementUploadId,
               statementFilename: bestStmtMatch.item.statementFilename,
               paymentMethod: bestStmtMatch.item.paymentMethod ?? slip.paymentMethod,
-              statementTransaction: slip.statementTransaction,
+              statementTransaction: bestStmtMatch.item.statementTransaction,
               matchedTransaction: bestStmtMatch.item.matchedTransaction ?? slip.matchedTransaction,
               confidence: 95,
               confidenceLevel: 'high',
@@ -307,6 +307,13 @@ export async function aggregateQueueItems(
               status: 'pending',
               source: 'merged',
               paymentSlipMetadata: slipMeta,
+              mergedPaymentSlipData: {
+                date: slip.statementTransaction.date,
+                description: slip.statementTransaction.description,
+                amount: slip.statementTransaction.amount,
+                currency: slip.statementTransaction.currency,
+                metadata: slipMeta ?? {},
+              },
             })
             continue
           }
@@ -319,6 +326,108 @@ export async function aggregateQueueItems(
         allItems.length = 0
         allItems.push(...remaining, ...mergedSlipItems)
       }
+    }
+  }
+
+  // ── Matched-transaction dedup ──────────────────────────────────────
+  // Safety net: if multiple items still point to the same Joot transaction
+  // (e.g., same-currency email+statement that the cross-source pairer missed,
+  // or items that were individually auto-matched to the same transaction),
+  // consolidate them into a single merged queue item.
+  {
+    const byMatchedTxn = new Map<string, QueueItem[]>()
+    for (const item of allItems) {
+      const txnId = item.matchedTransaction?.id
+      if (!txnId) continue
+      const group = byMatchedTxn.get(txnId)
+      if (group) group.push(item)
+      else byMatchedTxn.set(txnId, [item])
+    }
+
+    const dedupedIds = new Set<string>()
+    const mergedDedup: QueueItem[] = []
+
+    for (const [, group] of byMatchedTxn) {
+      if (group.length < 2) continue
+      // Already-merged items don't need re-merging
+      if (group.every(item => item.source === 'merged')) continue
+
+      // Pick the best item as the base (prefer statement, then email, then others)
+      const stmtItem = group.find(i => i.source === 'statement')
+      const emailItem = group.find(i => i.source === 'email')
+      const slipItem = group.find(i => i.source === 'payment_slip')
+      const base = stmtItem ?? emailItem ?? group[0]
+
+      // Build a merged ID from whatever sources we have
+      let mergedId: string
+      if (emailItem && stmtItem) {
+        const emailId = emailItem.id.replace(/^email:/, '')
+        const stmtParts = stmtItem.id.replace(/^stmt:/, '').split(':')
+        mergedId = makeMergedId(emailId, stmtParts[0], parseInt(stmtParts[1], 10))
+      } else if (slipItem && emailItem) {
+        const slipId = slipItem.id.replace(/^slip:/, '')
+        const emailId = emailItem.id.replace(/^email:/, '')
+        mergedId = makeMergedSlipEmailId(slipId, emailId)
+      } else if (slipItem && stmtItem) {
+        const slipId = slipItem.id.replace(/^slip:/, '')
+        const stmtParts = stmtItem.id.replace(/^stmt:/, '').split(':')
+        mergedId = makeMergedSlipStmtId(slipId, stmtParts[0], parseInt(stmtParts[1], 10))
+      } else {
+        // Fallback: keep the highest-confidence item, mark others for removal
+        const sorted = [...group].sort((a, b) => b.confidence - a.confidence)
+        for (let i = 1; i < sorted.length; i++) dedupedIds.add(sorted[i].id)
+        continue
+      }
+
+      // Mark all original items for removal
+      for (const item of group) dedupedIds.add(item.id)
+
+      // Combine reasons from all sources, deduped
+      const allReasons = new Set<string>()
+      allReasons.add(`Consolidated from ${group.length} sources matching same transaction`)
+      for (const item of group) {
+        for (const r of item.reasons) allReasons.add(r)
+      }
+
+      const emailMeta: EmailMetadata = emailItem?.emailMetadata ?? {}
+
+      mergedDedup.push({
+        id: mergedId,
+        statementUploadId: stmtItem?.statementUploadId ?? base.statementUploadId,
+        statementFilename: stmtItem?.statementFilename ?? base.statementFilename,
+        paymentMethod: stmtItem?.paymentMethod ?? base.paymentMethod,
+        paymentMethodType: stmtItem?.paymentMethodType ?? base.paymentMethodType,
+        statementTransaction: stmtItem?.statementTransaction ?? base.statementTransaction,
+        matchedTransaction: base.matchedTransaction,
+        confidence: Math.max(...group.map(i => i.confidence)),
+        confidenceLevel: 'high',
+        reasons: [...allReasons],
+        isNew: false,
+        status: 'pending',
+        source: 'merged',
+        emailMetadata: emailMeta,
+        mergedEmailData: emailItem ? {
+          date: emailItem.statementTransaction.date,
+          description: emailItem.statementTransaction.description,
+          amount: emailItem.statementTransaction.amount,
+          currency: emailItem.statementTransaction.currency,
+          metadata: emailMeta,
+        } : undefined,
+        paymentSlipMetadata: slipItem?.paymentSlipMetadata,
+        mergedPaymentSlipData: slipItem ? {
+          date: slipItem.statementTransaction.date,
+          description: slipItem.statementTransaction.description,
+          amount: slipItem.statementTransaction.amount,
+          currency: slipItem.statementTransaction.currency,
+          metadata: slipItem.paymentSlipMetadata ?? {},
+        } : undefined,
+      })
+    }
+
+    if (dedupedIds.size > 0) {
+      const remaining = allItems.filter(item => !dedupedIds.has(item.id))
+      allItems.length = 0
+      allItems.push(...remaining, ...mergedDedup)
     }
   }
 

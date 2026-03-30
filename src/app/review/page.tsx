@@ -16,6 +16,7 @@ import {
   type ImportSource,
   type EmailMetadata,
   type MergedEmailData,
+  type MergedPaymentSlipData,
   type CrossCurrencyInfo,
 } from "@/components/page-specific/match-card"
 import {
@@ -128,6 +129,7 @@ async function fetchMatches(
       source?: ImportSource
       emailMetadata?: EmailMetadata
       mergedEmailData?: MergedEmailData
+      mergedPaymentSlipData?: MergedPaymentSlipData
       crossCurrencyInfo?: CrossCurrencyInfo
       proposal?: TransactionProposal
       waitingForStatement?: boolean
@@ -146,6 +148,7 @@ async function fetchMatches(
       source: item.source,
       emailMetadata: item.emailMetadata,
       mergedEmailData: item.mergedEmailData,
+      mergedPaymentSlipData: item.mergedPaymentSlipData,
       crossCurrencyInfo: item.crossCurrencyInfo,
       proposal: item.proposal,
       waitingForStatement: item.waitingForStatement,
@@ -645,7 +648,13 @@ export default function ReviewQueuePage() {
     setFocusLoading(true)
     try {
       const result = await fetchMatches(1, 100, { ...filters, status: "pending" })
-      setFocusItems(result.items.filter((item) => !item.waitingForStatement))
+      const pending = result.items.filter((item) => !item.waitingForStatement)
+      // Show proposed matches first (matching the page layout), then new transactions
+      pending.sort((a, b) => {
+        if (a.isNew !== b.isNew) return a.isNew ? 1 : -1
+        return 0 // preserve existing order within each group
+      })
+      setFocusItems(pending)
     } catch (e) {
       console.error("Failed to fetch focus items:", e)
       // Fall back to loaded items

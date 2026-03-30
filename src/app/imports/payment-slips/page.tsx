@@ -1,11 +1,17 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Upload, Receipt, ArrowRight, Eye } from 'lucide-react'
 import { UploadPaymentSlipDialog } from '@/components/page-specific/upload-payment-slip-dialog'
 import { PaymentSlipViewerModal } from '@/components/page-specific/payment-slip-viewer-modal'
+import {
+  ReviewQueueFilterBar,
+  useReviewQueueFilters,
+  defaultPaymentSlipFilters,
+  type ReviewQueueFilters,
+} from '@/components/page-specific/review-queue-filter-bar'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -55,12 +61,100 @@ function formatAmount(amount: number): string {
   }).format(amount)
 }
 
+function applyFiltersAndSort(slips: PaymentSlip[], filters: ReviewQueueFilters): PaymentSlip[] {
+  let result = slips
+
+  // Search
+  if (filters.search) {
+    const q = filters.search.toLowerCase()
+    result = result.filter(s =>
+      (s.sender_name?.toLowerCase().includes(q)) ||
+      (s.recipient_name?.toLowerCase().includes(q)) ||
+      (s.memo?.toLowerCase().includes(q)) ||
+      (s.amount?.toString().includes(q))
+    )
+  }
+
+  // Direction
+  if (filters.direction && filters.direction !== "all") {
+    result = result.filter(s => s.detected_direction === filters.direction)
+  }
+
+  // Date range
+  if (filters.dateRange?.from) {
+    const from = filters.dateRange.from
+    result = result.filter(s => {
+      if (!s.transaction_date) return false
+      return new Date(s.transaction_date) >= from
+    })
+  }
+  if (filters.dateRange?.to) {
+    const to = filters.dateRange.to
+    result = result.filter(s => {
+      if (!s.transaction_date) return false
+      return new Date(s.transaction_date) <= to
+    })
+  }
+
+  // Processing status
+  if (filters.processingStatus && filters.processingStatus !== "all") {
+    result = result.filter(s => s.status === filters.processingStatus)
+  }
+
+  // Bank
+  if (filters.bank && filters.bank !== "all") {
+    result = result.filter(s => s.bank_detected === filters.bank)
+  }
+
+  // Review status (maps to the shared "status" filter field)
+  if (filters.status !== "all") {
+    result = result.filter(s => s.review_status === filters.status)
+  }
+
+  // Confidence
+  if (filters.confidence !== "all") {
+    result = result.filter(s => {
+      if (s.extraction_confidence == null) return false
+      if (filters.confidence === "high") return s.extraction_confidence >= 90
+      if (filters.confidence === "medium") return s.extraction_confidence >= 55 && s.extraction_confidence < 90
+      if (filters.confidence === "low") return s.extraction_confidence < 55
+      return true
+    })
+  }
+
+  // Sort
+  const field = filters.sortField || "uploaded_at"
+  const order = filters.sortOrder || "desc"
+  result = [...result].sort((a, b) => {
+    let cmp = 0
+    switch (field) {
+      case "uploaded_at":
+        cmp = new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime()
+        break
+      case "transaction_date":
+        cmp = (a.transaction_date ? new Date(a.transaction_date).getTime() : 0) -
+              (b.transaction_date ? new Date(b.transaction_date).getTime() : 0)
+        break
+      case "amount":
+        cmp = (a.amount || 0) - (b.amount || 0)
+        break
+      case "confidence":
+        cmp = (a.extraction_confidence || 0) - (b.extraction_confidence || 0)
+        break
+    }
+    return order === "asc" ? cmp : -cmp
+  })
+
+  return result
+}
+
 export default function PaymentSlipsPage() {
   const [slips, setSlips] = useState<PaymentSlip[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [previewSlip, setPreviewSlip] = useState<{ id: string; filename: string } | null>(null)
+  const [filters, setFilters] = useReviewQueueFilters(defaultPaymentSlipFilters)
 
   const fetchSlips = useCallback(async () => {
     try {
@@ -81,6 +175,8 @@ export default function PaymentSlipsPage() {
     fetchSlips()
   }, [fetchSlips])
 
+  const filteredSlips = useMemo(() => applyFiltersAndSort(slips, filters), [slips, filters])
+
   const readyCount = slips.filter(s => s.status === 'ready_for_review').length
   const processingCount = slips.filter(s => s.status === 'processing').length
 
@@ -98,7 +194,7 @@ export default function PaymentSlipsPage() {
       {/* Stats */}
       {!isLoading && slips.length > 0 && (
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>{slips.length} total</span>
+          <span>{filteredSlips.length === slips.length ? `${slips.length} total` : `${filteredSlips.length} of ${slips.length}`}</span>
           {readyCount > 0 && (
             <span className="text-amber-600 font-medium">{readyCount} ready for review</span>
           )}
@@ -106,6 +202,16 @@ export default function PaymentSlipsPage() {
             <span className="text-blue-600 font-medium">{processingCount} processing</span>
           )}
         </div>
+      )}
+
+      {/* Filters */}
+      {!isLoading && slips.length > 0 && (
+        <ReviewQueueFilterBar
+          filters={filters}
+          onFiltersChange={setFilters}
+          mode="payment-slips"
+          syncWithUrl
+        />
       )}
 
       {/* Error */}
@@ -140,8 +246,15 @@ export default function PaymentSlipsPage() {
         </div>
       )}
 
+      {/* No results after filtering */}
+      {!isLoading && slips.length > 0 && filteredSlips.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <p className="text-sm text-muted-foreground">No slips match the current filters.</p>
+        </div>
+      )}
+
       {/* Slip list */}
-      {!isLoading && slips.map(slip => {
+      {!isLoading && filteredSlips.map(slip => {
         const status = statusConfig[slip.status] || statusConfig.pending
         const bank = slip.bank_detected ? bankNames[slip.bank_detected] || slip.bank_detected : null
         const isIncome = slip.detected_direction === 'income'

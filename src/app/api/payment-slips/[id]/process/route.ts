@@ -75,6 +75,21 @@ export async function POST(
         .eq('id', slipId)
     }
 
+    // Allow reprocessing completed slips (ready_for_review, done, failed)
+    if (['ready_for_review', 'done', 'failed'].includes(slip.status)) {
+      await supabase
+        .from('payment_slip_uploads')
+        .update({
+          status: 'pending',
+          extraction_error: null,
+          extraction_data: null,
+          extraction_confidence: null,
+          matched_transaction_id: null,
+          match_confidence: null,
+        })
+        .eq('id', slipId)
+    }
+
     // Return 202 immediately
     const response = NextResponse.json(
       {

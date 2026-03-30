@@ -91,8 +91,13 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
     const visionResult = await extractFromPaymentSlip(base64, mediaType)
     const extraction = visionResult.extraction
 
-    // 3. Validate extraction
+    // 3. Validate extraction & cross-check date
     const validation = validateExtraction(extraction)
+
+    // Apply corrected date if deterministic parser disagrees with vision model
+    if (validation.correctedDate) {
+      extraction.date = validation.correctedDate
+    }
 
     if (!validation.isValid) {
       const errorMsg = `Extraction validation failed: ${validation.errors.join(', ')}`
@@ -126,6 +131,8 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
         extraction_confidence: validation.confidence,
         extraction_log: {
           warnings: validation.warnings,
+          date_raw: extraction.date_raw ?? null,
+          date_corrected: validation.correctedDate ?? null,
           direction_detection: {
             result: directionResult.direction,
             confidence: directionResult.confidence,

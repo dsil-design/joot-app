@@ -11,6 +11,7 @@
 export interface PaymentSlipExtraction {
   bank_detected: 'kbank' | 'bangkok_bank' | 'unknown'
   date: string            // ISO YYYY-MM-DD (converted from Thai BE if needed)
+  date_raw: string | null // Raw date string as shown on the slip (e.g. "20 ต.ค. 69")
   time: string | null     // HH:MM (24hr)
   amount: number
   fee: number

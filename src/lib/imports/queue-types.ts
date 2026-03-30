@@ -35,6 +35,14 @@ export interface CrossCurrencyInfo {
 
 export type { TransactionProposal } from '@/lib/proposals/types'
 
+export interface MergedPaymentSlipData {
+  date: string
+  description: string
+  amount: number
+  currency: string
+  metadata: PaymentSlipMetadata
+}
+
 export interface QueueItem {
   id: string
   statementUploadId?: string
@@ -68,6 +76,7 @@ export interface QueueItem {
   mergedEmailData?: MergedEmailData
   crossCurrencyInfo?: CrossCurrencyInfo
   paymentSlipMetadata?: PaymentSlipMetadata
+  mergedPaymentSlipData?: MergedPaymentSlipData
 }
 
 export interface PaymentSlipMetadata {

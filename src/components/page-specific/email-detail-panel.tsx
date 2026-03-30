@@ -8,7 +8,7 @@ import { ConfidenceIndicator } from "@/components/ui/confidence-indicator"
 import { cn } from "@/lib/utils"
 import {
   Calendar,
-  DollarSign,
+  Coins,
   Tag,
   Mail,
   Zap,
@@ -149,7 +149,7 @@ export function EmailDetailPanel({
             value={emailTransaction.subject || "No subject"}
           />
           <DetailRow
-            icon={<DollarSign className="h-4 w-4" />}
+            icon={<Coins className="h-4 w-4" />}
             label="Amount"
             value={formatAmount(emailTransaction.amount, emailTransaction.currency)}
           />
@@ -453,7 +453,7 @@ function TransactionPreview({
 
       {/* Amount */}
       <PreviewRow
-        icon={<DollarSign className="h-4 w-4" />}
+        icon={<Coins className="h-4 w-4" />}
         label="Amount"
         value={
           hasAmount

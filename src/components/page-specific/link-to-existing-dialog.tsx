@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import {
-  DollarSign,
+  Coins,
   FileText,
   Link as LinkIcon,
   Loader2,
@@ -270,7 +270,7 @@ export function LinkToExistingDialog({
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
-                <DollarSign className="h-3.5 w-3.5" />
+                <Coins className="h-3.5 w-3.5" />
                 {formatAmount(item.amount, item.currency)}
               </span>
               {item.date && (

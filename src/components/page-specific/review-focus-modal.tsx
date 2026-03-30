@@ -24,6 +24,7 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { StatementViewerModal } from "./statement-viewer-modal"
 import { EmailViewerModal } from "./email-viewer-modal"
+import { PaymentSlipViewerModal } from "./payment-slip-viewer-modal"
 import { cn } from "@/lib/utils"
 import { useVendorSearch } from "@/hooks/use-vendor-search"
 import { usePaymentMethodOptions, useTagOptions } from "@/hooks"
@@ -47,7 +48,7 @@ import {
   X,
   Mail,
   Calendar,
-  DollarSign,
+  Coins,
   FileText,
   Store,
   CreditCard,
@@ -59,6 +60,7 @@ import {
   CheckCircle2,
   Ban,
   ArrowRight,
+  Receipt,
 } from "lucide-react"
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -122,6 +124,9 @@ function getSourceLink(id: string): string | null {
   if (parsed.type === "statement") return `/imports/statements/${parsed.statementId}/results`
   if (parsed.type === "email") return `/imports/emails/${parsed.emailId}`
   if (parsed.type === "merged") return `/imports/statements/${parsed.statementId}/results`
+  if (parsed.type === "payment_slip") return `/imports/payment-slips/${parsed.slipId}`
+  if (parsed.type === "merged_slip_email") return `/imports/payment-slips/${parsed.slipId}`
+  if (parsed.type === "merged_slip_stmt") return `/imports/payment-slips/${parsed.slipId}`
   return null
 }
 
@@ -137,6 +142,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
   const [previewModal, setPreviewModal] = React.useState<
     | { type: "statement"; statementId: string; filename: string }
     | { type: "email"; emailId: string }
+    | { type: "payment_slip"; slipId: string; filename: string }
     | null
   >(null)
 
@@ -158,8 +164,18 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
     }
   }, [parsed])
 
-  // Merged layout: email + statement + cross-currency
-  if (data.source === "merged" && data.mergedEmailData && data.crossCurrencyInfo) {
+  const openSlipPreview = React.useCallback(() => {
+    if (parsed && (parsed.type === "payment_slip" || parsed.type === "merged_slip_email" || parsed.type === "merged_slip_stmt")) {
+      setPreviewModal({
+        type: "payment_slip",
+        slipId: parsed.slipId,
+        filename: data.statementTransaction.sourceFilename || "Payment Slip",
+      })
+    }
+  }, [parsed, data.statementTransaction.sourceFilename])
+
+  // Merged layout: email + statement (with optional cross-currency bar)
+  if (data.source === "merged" && data.mergedEmailData) {
     const cx = data.crossCurrencyInfo
     const meta = data.mergedEmailData.metadata
     const parserTag = getParserTag(meta.fromAddress, meta.parserKey)
@@ -199,7 +215,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
               </span>
             </TransactionDetailRow>
           )}
-          <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
             <span className="font-medium">
               {formatMatchAmount(data.mergedEmailData.amount, data.mergedEmailData.currency)}
             </span>
@@ -229,7 +245,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
               {cleanStatementDescription(data.statementTransaction.description)}
             </span>
           </TransactionDetailRow>
-          <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
             <span className="font-medium">
               {formatMatchAmount(data.statementTransaction.amount, data.statementTransaction.currency)}
             </span>
@@ -237,13 +253,15 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
         </div>
 
         {/* Cross-currency bar */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/30 rounded px-3 py-1.5">
-          <ArrowLeftRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-          <span>
-            {cx.emailCurrency} {cx.emailAmount.toFixed(2)} ≈ {cx.statementCurrency}{" "}
-            {cx.statementAmount.toFixed(2)}, rate: {cx.rate.toFixed(4)}, {cx.percentDiff.toFixed(1)}% diff
-          </span>
-        </div>
+        {cx && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/30 rounded px-3 py-1.5">
+            <ArrowLeftRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+            <span>
+              {cx.emailCurrency} {cx.emailAmount.toFixed(2)} ≈ {cx.statementCurrency}{" "}
+              {cx.statementAmount.toFixed(2)}, rate: {cx.rate.toFixed(4)}, {cx.percentDiff.toFixed(1)}% diff
+            </span>
+          </div>
+        )}
 
         {/* Preview modals */}
         {previewModal?.type === "statement" && (
@@ -263,6 +281,87 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
             fromName={data.mergedEmailData?.metadata.fromName ?? null}
             fromAddress={data.mergedEmailData?.metadata.fromAddress ?? null}
             emailDate={data.mergedEmailData?.metadata.emailDate ?? null}
+          />
+        )}
+      </div>
+    )
+  }
+
+  // Merged layout: payment slip + statement
+  if (data.source === "merged" && data.mergedPaymentSlipData) {
+    const slip = data.mergedPaymentSlipData
+
+    return (
+      <div className="space-y-4">
+        {/* Payment slip section */}
+        <div className="space-y-2">
+          <SourceSectionLabel
+            label="From Payment Slip"
+            href={getSourceLink(data.id)}
+            onPreview={openSlipPreview}
+          />
+          <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+            <span>{formatMatchDate(slip.date)}</span>
+          </TransactionDetailRow>
+          <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+            <span className="font-medium truncate" title={slip.description}>
+              {slip.description}
+            </span>
+          </TransactionDetailRow>
+          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+            <span className="font-medium">
+              {formatMatchAmount(slip.amount, slip.currency)}
+            </span>
+          </TransactionDetailRow>
+          {slip.metadata.senderName && (
+            <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+              <span className="text-muted-foreground truncate">{slip.metadata.senderName}</span>
+            </TransactionDetailRow>
+          )}
+          {slip.metadata.bankDetected && (
+            <TransactionDetailRow icon={<CreditCard className="h-3.5 w-3.5" />}>
+              <span className="text-muted-foreground">{slip.metadata.bankDetected}</span>
+            </TransactionDetailRow>
+          )}
+        </div>
+
+        {/* Statement section */}
+        <div className="space-y-2 border-t pt-3">
+          <SourceSectionLabel
+            label="From Statement"
+            href={getSourceLink(data.id)}
+            onPreview={openStatementPreview}
+          />
+          <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+            <span>{formatMatchDate(data.statementTransaction.date)}</span>
+          </TransactionDetailRow>
+          <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+            <span className="font-medium truncate" title={data.statementTransaction.description}>
+              {cleanStatementDescription(data.statementTransaction.description)}
+            </span>
+          </TransactionDetailRow>
+          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+            <span className="font-medium">
+              {formatMatchAmount(data.statementTransaction.amount, data.statementTransaction.currency)}
+            </span>
+          </TransactionDetailRow>
+        </div>
+
+        {/* Preview modals */}
+        {previewModal?.type === "statement" && (
+          <StatementViewerModal
+            open
+            onOpenChange={(open) => { if (!open) setPreviewModal(null) }}
+            statementId={previewModal.statementId}
+            filename={previewModal.filename}
+          />
+        )}
+        {previewModal?.type === "payment_slip" && (
+          <PaymentSlipViewerModal
+            open
+            onOpenChange={(open) => { if (!open) setPreviewModal(null) }}
+            slipId={previewModal.slipId}
+            filename={previewModal.filename}
           />
         )}
       </div>
@@ -307,7 +406,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
             </span>
           </TransactionDetailRow>
         )}
-        <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+        <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
           <span className="font-medium">
             {formatMatchAmount(data.statementTransaction.amount, data.statementTransaction.currency)}
           </span>
@@ -367,7 +466,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
           {cleanStatementDescription(data.statementTransaction.description)}
         </span>
       </TransactionDetailRow>
-      <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+      <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
         <span className="font-medium">
           {formatMatchAmount(data.statementTransaction.amount, data.statementTransaction.currency)}
         </span>
@@ -487,7 +586,7 @@ function MatchedTransactionPanel({
               </span>
             </TransactionDetailRow>
           )}
-          <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
             <span className="font-medium">
               {formatMatchAmount(data.matchedTransaction.amount, data.matchedTransaction.currency)}
             </span>
@@ -811,6 +910,7 @@ export function ReviewFocusModal({
   // Bounds check when items change
   React.useEffect(() => {
     if (!open) return
+    if (loading) return
     if (items.length === 0) {
       // All items reviewed - close after brief delay
       const timeout = setTimeout(() => onOpenChange(false), 1500)
@@ -819,7 +919,7 @@ export function ReviewFocusModal({
     if (currentIndex >= items.length) {
       onIndexChange(items.length - 1)
     }
-  }, [open, items.length, currentIndex, onIndexChange, onOpenChange])
+  }, [open, loading, items.length, currentIndex, onIndexChange, onOpenChange])
 
   // ── Form handlers ──
 

@@ -153,23 +153,37 @@ export async function findCrossSourcePairs(
       const from = email.currency.toUpperCase()
       const to = stmt.currency.toUpperCase()
 
-      // Skip same-currency pairs
-      if (from === to) continue
-
       // Check date proximity
       const daysDiff = calculateDaysDiff(email.date, stmt.date)
       if (daysDiff > maxDaysDiff) continue
 
-      // Look up pre-fetched rate
-      const cacheKey = `${from}:${to}:${email.date}`
-      const cached = rateCache.get(cacheKey)
-      if (!cached) continue
+      let convertedAmount: number
+      let rate: number
+      let rateDate: string
 
-      const convertedAmount = email.amount * cached.rate
+      if (from === to) {
+        // Same-currency: direct comparison, no exchange rate needed
+        convertedAmount = email.amount
+        rate = 1
+        rateDate = email.date
+        // For same-currency, require amounts within tolerance % directly
+        const directPercentDiff = stmt.amount === 0 ? (email.amount === 0 ? 0 : 100)
+          : (Math.abs(email.amount - stmt.amount) / Math.abs(stmt.amount)) * 100
+        if (directPercentDiff > tolerance) continue
+      } else {
+        // Cross-currency: look up pre-fetched rate
+        const cacheKey = `${from}:${to}:${email.date}`
+        const cached = rateCache.get(cacheKey)
+        if (!cached) continue
 
-      // Check amount tolerance
-      if (!isWithinConversionTolerance(email.amount, convertedAmount, stmt.amount, tolerance)) {
-        continue
+        convertedAmount = email.amount * cached.rate
+        rate = cached.rate
+        rateDate = cached.rateDate
+
+        // Check amount tolerance
+        if (!isWithinConversionTolerance(email.amount, convertedAmount, stmt.amount, tolerance)) {
+          continue
+        }
       }
 
       const percentDiff = (Math.abs(convertedAmount - stmt.amount) / Math.abs(stmt.amount)) * 100
@@ -180,8 +194,8 @@ export async function findCrossSourcePairs(
           stmtIdx: si,
           stmt,
           convertedAmount,
-          rate: cached.rate,
-          rateDate: cached.rateDate,
+          rate,
+          rateDate,
           percentDiff,
         }
       }

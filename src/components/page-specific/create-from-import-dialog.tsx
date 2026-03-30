@@ -20,7 +20,7 @@ import {
   Plus,
   Loader2,
   FileText,
-  DollarSign,
+  Coins,
   Calendar,
   Zap,
 } from "lucide-react"
@@ -508,7 +508,7 @@ export function CreateFromImportDialog({
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
-                <DollarSign className="h-3.5 w-3.5" />
+                <Coins className="h-3.5 w-3.5" />
                 {formatAmount(data.amount, data.currency)}
               </span>
               <span className="flex items-center gap-1">

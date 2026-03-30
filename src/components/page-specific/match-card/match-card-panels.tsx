@@ -10,7 +10,7 @@ import {
 } from "@/lib/utils/match-formatting"
 import {
   Calendar,
-  DollarSign,
+  Coins,
   Store,
   FileText,
   CreditCard,
@@ -33,7 +33,7 @@ import { PaymentSlipViewerModal } from "@/components/page-specific/payment-slip-
 import { EmailViewerModal } from "@/components/page-specific/email-viewer-modal"
 import { cn } from "@/lib/utils"
 import { getParserTag } from "@/lib/utils/parser-tags"
-import type { MatchCardData, EmailMetadata } from "./types"
+import type { MatchCardData, EmailMetadata, MergedPaymentSlipData } from "./types"
 
 /**
  * Build a link to the source page (statement or email) from the queue item ID.
@@ -161,7 +161,7 @@ function EmailSourcePanel({
       )}
 
       {/* Amount */}
-      <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+      <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
         <span className="font-medium">
           {formatMatchAmount(
             data.statementTransaction.amount,
@@ -313,8 +313,8 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
     </>
   )
 
-  // Merged card layout — email + statement side-by-side with conversion bar
-  if (data.source === "merged" && data.mergedEmailData && data.crossCurrencyInfo) {
+  // Merged card layout — email + statement side-by-side (with optional conversion bar)
+  if (data.source === "merged" && data.mergedEmailData) {
     const cx = data.crossCurrencyInfo
     return (
       <div className="space-y-3">
@@ -357,7 +357,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
                 {cleanStatementDescription(data.statementTransaction.description)}
               </span>
             </TransactionDetailRow>
-            <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+            <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
               <span className="font-medium">
                 {formatMatchAmount(
                   data.statementTransaction.amount,
@@ -368,13 +368,15 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
           </div>
         </div>
 
-        {/* Cross-currency conversion info bar */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 rounded px-3 py-1.5">
-          <ArrowLeftRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-          <span>
-            {cx.emailCurrency} {cx.emailAmount.toFixed(2)} ≈ {cx.statementCurrency} {cx.statementAmount.toFixed(2)}, rate: {cx.rate.toFixed(4)}, {cx.percentDiff.toFixed(1)}% diff
-          </span>
-        </div>
+        {/* Cross-currency conversion info bar (only for cross-currency pairs) */}
+        {cx && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 rounded px-3 py-1.5">
+            <ArrowLeftRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+            <span>
+              {cx.emailCurrency} {cx.emailAmount.toFixed(2)} ≈ {cx.statementCurrency} {cx.statementAmount.toFixed(2)}, rate: {cx.rate.toFixed(4)}, {cx.percentDiff.toFixed(1)}% diff
+            </span>
+          </div>
+        )}
 
         {/* Matched Joot transaction (when a DB match exists for this merged pair) */}
         {data.matchedTransaction && !data.isNew && (
@@ -386,7 +388,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
               <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
                 <span>{formatMatchDate(data.matchedTransaction.date)}</span>
               </TransactionDetailRow>
-              <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+              <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
                 <span className="font-medium">
                   {formatMatchAmount(
                     data.matchedTransaction.amount,
@@ -402,6 +404,127 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
               <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
                 <span className="font-medium truncate" title={data.matchedTransaction.description}>
                   {data.matchedTransaction.description || "—"}
+                </span>
+              </TransactionDetailRow>
+              {data.matchedTransaction.payment_method_name && (
+                <TransactionDetailRow
+                  icon={<CreditCard className="h-3.5 w-3.5" />}
+                  className="text-muted-foreground"
+                >
+                  <span>{data.matchedTransaction.payment_method_name}</span>
+                </TransactionDetailRow>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Proposal for unmatched merged items */}
+        {data.isNew && data.proposal && (
+          <div className="border-t pt-3">
+            <ProposalPanel proposal={data.proposal} />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Merged card layout — payment slip + statement side-by-side
+  if (data.source === "merged" && data.mergedPaymentSlipData) {
+    const slip = data.mergedPaymentSlipData
+    return (
+      <div className="space-y-3">
+        {previewModals}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Left panel: Payment slip data */}
+          <div className="space-y-1.5">
+            <SourceLabel
+              label="From Payment Slip"
+              href={getSourceLink(data.id)}
+              onPreview={openSlipPreview}
+            />
+            <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+              <span>{formatMatchDate(slip.date)}</span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+              <span
+                className="font-medium truncate"
+                title={slip.description}
+              >
+                {slip.description}
+              </span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+              <span className="font-medium">
+                {formatMatchAmount(slip.amount, slip.currency)}
+              </span>
+            </TransactionDetailRow>
+            {slip.metadata.senderName && (
+              <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+                <span className="text-muted-foreground truncate">
+                  {slip.metadata.senderName}
+                </span>
+              </TransactionDetailRow>
+            )}
+            {slip.metadata.bankDetected && (
+              <TransactionDetailRow icon={<CreditCard className="h-3.5 w-3.5" />}>
+                <span className="text-muted-foreground">
+                  {slip.metadata.bankDetected}
+                </span>
+              </TransactionDetailRow>
+            )}
+          </div>
+
+          {/* Right panel: Statement data */}
+          <div className="space-y-1.5 md:border-l md:pl-3">
+            <SourceLabel label="From Statement" href={null} onPreview={openStatementPreview} />
+            <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+              <span>{formatMatchDate(data.statementTransaction.date)}</span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+              <span
+                className="font-medium truncate"
+                title={data.statementTransaction.description}
+              >
+                {cleanStatementDescription(data.statementTransaction.description)}
+              </span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+              <span className="font-medium">
+                {formatMatchAmount(
+                  data.statementTransaction.amount,
+                  data.statementTransaction.currency
+                )}
+              </span>
+            </TransactionDetailRow>
+          </div>
+        </div>
+
+        {/* Matched Joot transaction (when a DB match exists) */}
+        {data.matchedTransaction && !data.isNew && (
+          <div className="border-t pt-3 space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Matched Joot Transaction
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-1.5">
+              <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+                <span>{formatMatchDate(data.matchedTransaction.date)}</span>
+              </TransactionDetailRow>
+              <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+                <span className="font-medium">
+                  {formatMatchAmount(
+                    data.matchedTransaction.amount,
+                    data.matchedTransaction.currency
+                  )}
+                </span>
+              </TransactionDetailRow>
+              <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+                <span className="font-medium truncate">
+                  {data.matchedTransaction.vendor_name || "Unknown vendor"}
+                </span>
+              </TransactionDetailRow>
+              <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+                <span className="font-medium truncate" title={data.matchedTransaction.description}>
+                  {data.matchedTransaction.description || "\u2014"}
                 </span>
               </TransactionDetailRow>
               {data.matchedTransaction.payment_method_name && (
@@ -478,7 +601,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
               {displayDescription}
             </span>
           </TransactionDetailRow>
-          <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
             <span className="font-medium">
               {formatMatchAmount(
                 data.statementTransaction.amount,
@@ -513,7 +636,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
               {data.matchedTransaction.description || "—"}
             </span>
           </TransactionDetailRow>
-          <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
             <span className="font-medium">
               {formatMatchAmount(
                 data.matchedTransaction.amount,
@@ -600,7 +723,7 @@ function ProposalPanel({
 
       {/* Amount */}
       {proposal.amount && proposal.currency && (
-        <TransactionDetailRow icon={<DollarSign className="h-3.5 w-3.5" />}>
+        <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
           <span className="font-medium">
             {formatMatchAmount(proposal.amount.value, proposal.currency.value)}
           </span>

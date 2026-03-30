@@ -86,6 +86,30 @@ export interface CrossCurrencyInfo {
 /**
  * Match card data
  */
+/**
+ * Payment slip metadata for slip-sourced or merged queue items.
+ */
+export interface PaymentSlipMetadata {
+  senderName?: string
+  recipientName?: string
+  bankDetected?: string
+  transactionReference?: string
+  memo?: string
+  detectedDirection?: "expense" | "income" | "transfer" | null
+  slipUploadId?: string
+}
+
+/**
+ * Payment slip data for merged (cross-source) cards that include a payment slip
+ */
+export interface MergedPaymentSlipData {
+  date: string
+  description: string
+  amount: number
+  currency: string
+  metadata: PaymentSlipMetadata
+}
+
 export interface MatchCardData {
   id: string
   statementTransaction: StatementTransaction
@@ -100,6 +124,7 @@ export interface MatchCardData {
   emailMetadata?: EmailMetadata
   mergedEmailData?: MergedEmailData
   crossCurrencyInfo?: CrossCurrencyInfo
+  mergedPaymentSlipData?: MergedPaymentSlipData
   proposal?: TransactionProposal
   proposalModified?: boolean
   waitingForStatement?: boolean

@@ -40,6 +40,7 @@ Return ONLY valid JSON matching this schema:
 {
   "bank_detected": "kbank" | "bangkok_bank" | "unknown",
   "date": "YYYY-MM-DD",
+  "date_raw": "<exact date string as shown on the slip, e.g. '20 ต.ค. 69' or '14 Mar 26'>",
   "time": "HH:MM" | null,
   "amount": <number>,
   "fee": <number>,
@@ -57,7 +58,8 @@ Return ONLY valid JSON matching this schema:
 }
 
 Important:
-- Convert Thai BE dates to CE (Western calendar)
+- date_raw: Copy the EXACT date text from the slip — do not modify or translate it
+- date: Convert Thai BE dates to CE (Western calendar). Double-check the Thai month abbreviation carefully: ก.ย.=Sep, ต.ค.=Oct — these are commonly confused
 - Convert Thai bank names to English: ธ.กสิกรไทย = "Kasikorn Bank", ธ.กรุงเทพ = "Bangkok Bank"
 - Amount and fee must be numbers (no currency symbols)
 - Return ONLY the JSON object, no markdown`

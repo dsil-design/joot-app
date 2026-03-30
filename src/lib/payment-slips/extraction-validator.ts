@@ -2,15 +2,19 @@
  * Payment Slip Extraction Validator
  *
  * Validates extracted data from Claude Vision and calculates confidence score.
+ * Includes deterministic cross-check of dates extracted by the vision model.
  */
 
 import type { PaymentSlipExtraction } from './types'
+import { parseThaiSlipDate } from './thai-date-parser'
 
 export interface ValidationResult {
   isValid: boolean
   confidence: number
   warnings: string[]
   errors: string[]
+  /** If the deterministic parser disagrees with the vision model, this holds the corrected date */
+  correctedDate: string | null
 }
 
 /**
@@ -20,6 +24,18 @@ export function validateExtraction(extraction: PaymentSlipExtraction): Validatio
   const errors: string[] = []
   const warnings: string[] = []
   let confidence = 40 // base score for successful parse
+  let correctedDate: string | null = null
+
+  // Cross-check: parse date_raw deterministically and compare with vision model's date
+  if (extraction.date_raw) {
+    const parsed = parseThaiSlipDate(extraction.date_raw)
+    if (parsed && extraction.date && parsed.date !== extraction.date) {
+      warnings.push(
+        `Date mismatch: vision model returned "${extraction.date}" but raw date "${extraction.date_raw}" parses to "${parsed.date}" — using deterministic parse`
+      )
+      correctedDate = parsed.date
+    }
+  }
 
   // Required: amount
   if (!extraction.amount || extraction.amount <= 0) {
@@ -85,5 +101,6 @@ export function validateExtraction(extraction: PaymentSlipExtraction): Validatio
     confidence: Math.min(100, confidence),
     warnings,
     errors,
+    correctedDate,
   }
 }
