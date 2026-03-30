@@ -1,10 +1,11 @@
-import { 
-  ECBRate, 
-  FetchResult, 
-  ECBError, 
-  ECBErrorType, 
-  RetryConfig, 
-  DEFAULT_RETRY_CONFIG, 
+import { parseStringPromise } from 'xml2js';
+import {
+  ECBRate,
+  FetchResult,
+  ECBError,
+  ECBErrorType,
+  RetryConfig,
+  DEFAULT_RETRY_CONFIG,
   ECB_ENDPOINTS,
   ValidationResult,
   ECBFetchMetrics,
@@ -12,18 +13,6 @@ import {
   ECBXMLData
 } from '../types/exchange-rates';
 import { currencyConfigService } from './currency-config-service';
-
-// XML parsing library - we'll use native DOMParser for browser compatibility
-const parseXML = (xmlString: string): Document => {
-  if (typeof DOMParser !== 'undefined') {
-    return new DOMParser().parseFromString(xmlString, 'text/xml');
-  } else {
-    // Node.js environment fallback
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { JSDOM } = require('jsdom');
-    return new JSDOM(xmlString, { contentType: 'text/xml' }).window.document;
-  }
-};
 
 export class ECBFetcher {
   private retryConfig: RetryConfig;
@@ -153,38 +142,32 @@ export class ECBFetcher {
    */
   private async parseECBXML(xmlString: string): Promise<ECBRate[]> {
     try {
-      const doc = parseXML(xmlString);
-      
-      // Check for parsing errors
-      const parseError = doc.querySelector('parsererror');
-      if (parseError) {
-        throw new ECBError(ECBErrorType.PARSE_ERROR, 'XML parsing failed');
-      }
+      const parsed = await parseStringPromise(xmlString, { explicitArray: true });
 
       const rates: ECBRate[] = [];
-      
-      // Navigate the XML structure: Envelope > Cube > Cube (with time) > Cube (with currency/rate)
-      const timeCubes = Array.from(doc.querySelectorAll('Cube[time]'));
-      
+
+      // Navigate: gesmes:Envelope > Cube > Cube (with $.time) > Cube (with $.currency, $.rate)
+      const envelope = parsed['gesmes:Envelope'];
+      if (!envelope?.Cube?.[0]?.Cube) {
+        throw new ECBError(ECBErrorType.PARSE_ERROR, 'Unexpected XML structure');
+      }
+
+      const timeCubes = envelope.Cube[0].Cube;
+
       for (const timeCube of timeCubes) {
-        const date = timeCube.getAttribute('time');
+        const date = timeCube?.$?.time;
         if (!date) continue;
 
-        const rateCubes = Array.from(timeCube.querySelectorAll('Cube[currency][rate]'));
-        
+        const rateCubes = timeCube.Cube || [];
         for (const rateCube of rateCubes) {
-          const currency = rateCube.getAttribute('currency');
-          const rateStr = rateCube.getAttribute('rate');
-          
+          const currency = rateCube?.$?.currency;
+          const rateStr = rateCube?.$?.rate;
+
           if (currency && rateStr) {
             const rate = parseFloat(rateStr);
-            
+
             if (!isNaN(rate) && rate > 0) {
-              rates.push({
-                date,
-                currency,
-                rate
-              });
+              rates.push({ date, currency, rate });
             }
           }
         }

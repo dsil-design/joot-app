@@ -44,8 +44,13 @@ export async function fetchPaymentSlipQueueItems(
 
   if (!slips || slips.length === 0) return []
 
+  // ── Deduplicate slips with the same transaction reference ────────────
+  // Different photos of the same bank transfer share a transaction_reference.
+  // Keep the best extraction (highest confidence, then most recent) and skip the rest.
+  const dedupedSlips = deduplicateByTransactionRef(slips)
+
   // Fetch matched transactions (batched to avoid URL-length errors with large ID sets)
-  const matchedIds = slips
+  const matchedIds = dedupedSlips
     .map(s => s.matched_transaction_id)
     .filter((id): id is string => !!id)
 
@@ -53,7 +58,7 @@ export async function fetchPaymentSlipQueueItems(
 
   const items: QueueItem[] = []
 
-  for (const slip of slips) {
+  for (const slip of dedupedSlips) {
     if (!slip.amount || !slip.transaction_date) continue
 
     const id = makePaymentSlipId(slip.id)
@@ -127,4 +132,49 @@ export async function fetchPaymentSlipQueueItems(
   }
 
   return items
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SlipRow = Record<string, any>
+
+/**
+ * Deduplicate slip rows that share the same transaction_reference.
+ * Keeps the one with the highest extraction_confidence (ties broken by most recent extraction).
+ * Slips without a transaction_reference are always kept (can't determine duplication).
+ */
+function deduplicateByTransactionRef(slips: SlipRow[]): SlipRow[] {
+  const groups = new Map<string, SlipRow[]>()
+  const unique: SlipRow[] = []
+
+  for (const slip of slips) {
+    const ref = slip.transaction_reference as string | null
+    if (!ref) {
+      unique.push(slip)
+      continue
+    }
+    const existing = groups.get(ref)
+    if (existing) {
+      existing.push(slip)
+    } else {
+      groups.set(ref, [slip])
+    }
+  }
+
+  for (const group of groups.values()) {
+    // Sort: approved first, then highest confidence, then most recent
+    group.sort((a, b) => {
+      // Approved/done slips take priority over pending
+      const aApproved = a.review_status === 'approved' ? 1 : 0
+      const bApproved = b.review_status === 'approved' ? 1 : 0
+      if (bApproved !== aApproved) return bApproved - aApproved
+
+      const confDiff = (b.extraction_confidence ?? 0) - (a.extraction_confidence ?? 0)
+      if (confDiff !== 0) return confDiff
+
+      return (b.extraction_completed_at ?? '').localeCompare(a.extraction_completed_at ?? '')
+    })
+    unique.push(group[0])
+  }
+
+  return unique
 }

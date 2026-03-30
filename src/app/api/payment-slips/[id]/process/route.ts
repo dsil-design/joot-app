@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { processPaymentSlip } from '@/lib/payment-slips/slip-processor'
+
+export const maxDuration = 60
 
 /**
  * POST /api/payment-slips/[id]/process
@@ -84,9 +87,13 @@ export async function POST(
       { status: 202 }
     )
 
-    // Process in background (fire-and-forget)
-    processPaymentSlip(slipId).catch((error) => {
-      console.error(`Payment slip processing failed for ${slipId}:`, error)
+    // Process after response is sent — keeps the function alive on Vercel
+    after(async () => {
+      try {
+        await processPaymentSlip(slipId)
+      } catch (error) {
+        console.error(`Payment slip processing failed for ${slipId}:`, error)
+      }
     })
 
     return response
