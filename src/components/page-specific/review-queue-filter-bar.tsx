@@ -66,7 +66,7 @@ export const defaultPaymentSlipFilters: ReviewQueueFilters = {
   direction: "all",
   bank: "all",
   processingStatus: "all",
-  sortField: "uploaded_at",
+  sortField: "transaction_date",
   sortOrder: "desc",
 }
 
@@ -390,7 +390,7 @@ export function ReviewQueueFilterBar({
         (filters.bank !== undefined && filters.bank !== "all") ||
         filters.status !== "all" ||
         filters.confidence !== "all" ||
-        (filters.sortField !== undefined && filters.sortField !== "uploaded_at") ||
+        (filters.sortField !== undefined && filters.sortField !== "transaction_date") ||
         (filters.sortOrder !== undefined && filters.sortOrder !== "desc")
       )
     : (

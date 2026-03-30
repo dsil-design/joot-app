@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Upload, Receipt, ArrowRight, Eye } from 'lucide-react'
+import { Upload, Receipt, ArrowRight, Eye, RefreshCw, X } from 'lucide-react'
 import { UploadPaymentSlipDialog } from '@/components/page-specific/upload-payment-slip-dialog'
 import { PaymentSlipViewerModal } from '@/components/page-specific/payment-slip-viewer-modal'
 import {
@@ -155,6 +156,8 @@ export default function PaymentSlipsPage() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [previewSlip, setPreviewSlip] = useState<{ id: string; filename: string } | null>(null)
   const [filters, setFilters] = useReviewQueueFilters(defaultPaymentSlipFilters)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isReprocessing, setIsReprocessing] = useState(false)
 
   const fetchSlips = useCallback(async () => {
     try {
@@ -179,6 +182,42 @@ export default function PaymentSlipsPage() {
 
   const readyCount = slips.filter(s => s.status === 'ready_for_review').length
   const processingCount = slips.filter(s => s.status === 'processing').length
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      if (prev.size === filteredSlips.length) return new Set()
+      return new Set(filteredSlips.map(s => s.id))
+    })
+  }, [filteredSlips])
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
+
+  const reprocessSelected = useCallback(async () => {
+    setIsReprocessing(true)
+    try {
+      await Promise.all(
+        Array.from(selectedIds).map(id =>
+          fetch(`/api/payment-slips/${id}/process`, { method: 'POST' })
+        )
+      )
+      clearSelection()
+      // Brief delay then refresh to show updated statuses
+      setTimeout(() => fetchSlips(), 1000)
+    } catch {
+      setError('Failed to reprocess some slips')
+    } finally {
+      setIsReprocessing(false)
+    }
+  }, [selectedIds, clearSelection, fetchSlips])
 
   return (
     <div className="flex flex-col gap-6">
@@ -253,6 +292,38 @@ export default function PaymentSlipsPage() {
         </div>
       )}
 
+      {/* Selection action bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border bg-zinc-50 sticky top-0 z-10">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={reprocessSelected}
+            disabled={isReprocessing}
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isReprocessing && "animate-spin")} />
+            {isReprocessing ? 'Reprocessing...' : 'Reprocess Selected'}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearSelection}>
+            <X className="h-3.5 w-3.5 mr-1" />
+            Clear
+          </Button>
+        </div>
+      )}
+
+      {/* Select all header */}
+      {!isLoading && filteredSlips.length > 0 && (
+        <div className="flex items-center gap-3 px-4 -mb-4">
+          <Checkbox
+            checked={selectedIds.size === filteredSlips.length && filteredSlips.length > 0}
+            onCheckedChange={toggleSelectAll}
+            aria-label="Select all"
+          />
+          <span className="text-xs text-muted-foreground">Select all</span>
+        </div>
+      )}
+
       {/* Slip list */}
       {!isLoading && filteredSlips.map(slip => {
         const status = statusConfig[slip.status] || statusConfig.pending
@@ -262,11 +333,20 @@ export default function PaymentSlipsPage() {
         const description = slip.memo || (counterparty ? `${isIncome ? 'From' : 'To'} ${counterparty}` : 'Unknown')
 
         return (
-          <Link
+          <div
             key={slip.id}
-            href={`/imports/payment-slips/${slip.id}`}
-            className="flex items-center justify-between p-4 rounded-lg border hover:bg-zinc-50 transition-colors group"
+            className="flex items-center gap-3 p-4 rounded-lg border hover:bg-zinc-50 transition-colors group"
           >
+            <Checkbox
+              checked={selectedIds.has(slip.id)}
+              onCheckedChange={() => toggleSelect(slip.id)}
+              aria-label={`Select ${description}`}
+              className="shrink-0"
+            />
+            <Link
+              href={`/imports/payment-slips/${slip.id}`}
+              className="flex items-center justify-between flex-1 min-w-0"
+            >
             <div className="flex items-center gap-4 min-w-0">
               <div className="flex flex-col gap-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -317,6 +397,7 @@ export default function PaymentSlipsPage() {
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
             </div>
           </Link>
+          </div>
         )
       })}
 
