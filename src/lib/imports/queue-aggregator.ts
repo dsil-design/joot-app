@@ -263,6 +263,58 @@ export async function aggregateQueueItems(
             })
             continue
           }
+
+          // Expense slip didn't match any email — fall back to statement entries
+          const candidateStmtsForExpense = allItems.filter(item =>
+            item.source === 'statement' && item.status === 'pending' && !pairedItemIds.has(item.id)
+          )
+
+          let bestStmtMatchForExpense: { item: QueueItem; daysDiff: number } | null = null
+          for (const stmt of candidateStmtsForExpense) {
+            if (stmt.statementTransaction.currency !== slip.statementTransaction.currency) continue
+            const amountDiff = Math.abs(stmt.statementTransaction.amount - slip.statementTransaction.amount)
+            if (amountDiff > 0.01) continue
+            const daysDiff = calculateDaysDiff(slip.statementTransaction.date, stmt.statementTransaction.date)
+            if (daysDiff > 3) continue
+            if (!bestStmtMatchForExpense || daysDiff < bestStmtMatchForExpense.daysDiff) {
+              bestStmtMatchForExpense = { item: stmt, daysDiff }
+            }
+          }
+
+          if (bestStmtMatchForExpense) {
+            const stmtParts = bestStmtMatchForExpense.item.id.replace(/^stmt:/, '').split(':')
+            const mergedId = makeMergedSlipStmtId(slipId, stmtParts[0], parseInt(stmtParts[1], 10))
+
+            pairedItemIds.add(slip.id)
+            pairedItemIds.add(bestStmtMatchForExpense.item.id)
+
+            mergedSlipItems.push({
+              id: mergedId,
+              statementUploadId: bestStmtMatchForExpense.item.statementUploadId,
+              statementFilename: bestStmtMatchForExpense.item.statementFilename,
+              paymentMethod: bestStmtMatchForExpense.item.paymentMethod ?? slip.paymentMethod,
+              statementTransaction: bestStmtMatchForExpense.item.statementTransaction,
+              matchedTransaction: bestStmtMatchForExpense.item.matchedTransaction ?? slip.matchedTransaction,
+              confidence: 95,
+              confidenceLevel: 'high',
+              reasons: [
+                `Cross-source match: payment slip + bank statement`,
+                `Same amount: ${slip.statementTransaction.amount} ${slip.statementTransaction.currency}`,
+              ],
+              isNew: !slip.matchedTransaction && !bestStmtMatchForExpense.item.matchedTransaction,
+              status: 'pending',
+              source: 'merged',
+              paymentSlipMetadata: slipMeta,
+              mergedPaymentSlipData: {
+                date: slip.statementTransaction.date,
+                description: slip.statementTransaction.description,
+                amount: slip.statementTransaction.amount,
+                currency: slip.statementTransaction.currency,
+                metadata: slipMeta ?? {},
+              },
+            })
+            continue
+          }
         }
 
         // Income slips → try matching with statement entries (same amount, close date)
