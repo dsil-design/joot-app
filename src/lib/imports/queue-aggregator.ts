@@ -219,7 +219,7 @@ export async function aggregateQueueItems(
           let bestEmailMatch: { item: QueueItem; daysDiff: number } | null = null
           for (const email of candidateEmails) {
             if (email.statementTransaction.currency !== slip.statementTransaction.currency) continue
-            const amountDiff = Math.abs(email.statementTransaction.amount - slip.statementTransaction.amount)
+            const amountDiff = Math.abs(Math.abs(email.statementTransaction.amount) - Math.abs(slip.statementTransaction.amount))
             if (amountDiff > 0.01) continue
             const daysDiff = calculateDaysDiff(slip.statementTransaction.date, email.statementTransaction.date)
             if (daysDiff > 3) continue
@@ -272,7 +272,7 @@ export async function aggregateQueueItems(
           let bestStmtMatchForExpense: { item: QueueItem; daysDiff: number } | null = null
           for (const stmt of candidateStmtsForExpense) {
             if (stmt.statementTransaction.currency !== slip.statementTransaction.currency) continue
-            const amountDiff = Math.abs(stmt.statementTransaction.amount - slip.statementTransaction.amount)
+            const amountDiff = Math.abs(Math.abs(stmt.statementTransaction.amount) - Math.abs(slip.statementTransaction.amount))
             if (amountDiff > 0.01) continue
             const daysDiff = calculateDaysDiff(slip.statementTransaction.date, stmt.statementTransaction.date)
             if (daysDiff > 3) continue
@@ -326,7 +326,7 @@ export async function aggregateQueueItems(
           let bestStmtMatch: { item: QueueItem; daysDiff: number } | null = null
           for (const stmt of candidateStmts) {
             if (stmt.statementTransaction.currency !== slip.statementTransaction.currency) continue
-            const amountDiff = Math.abs(stmt.statementTransaction.amount - slip.statementTransaction.amount)
+            const amountDiff = Math.abs(Math.abs(stmt.statementTransaction.amount) - Math.abs(slip.statementTransaction.amount))
             if (amountDiff > 0.01) continue
             const daysDiff = calculateDaysDiff(slip.statementTransaction.date, stmt.statementTransaction.date)
             if (daysDiff > 3) continue
