@@ -395,35 +395,64 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Create ONE transaction from statement data (USD = primary)
-        const { data: newTx, error: txError } = await serviceClient
-          .from('transactions')
-          .insert({
-            user_id: user.id,
-            amount: suggestion.amount,
-            original_currency: (suggestion.currency || 'USD') as 'USD' | 'THB',
-            transaction_type: 'expense' as const,
-            transaction_date: suggestion.transaction_date,
-            description: suggestion.description || 'Imported from cross-source match',
-            source_email_transaction_id: merged.emailId,
-            source_statement_upload_id: merged.statementId,
-            source_statement_suggestion_index: merged.index,
-            source_statement_match_confidence: suggestion.confidence ?? null,
-          })
-          .select('id')
-          .single()
+        // Determine the transaction ID to link to:
+        // - If the suggestion already has a matched transaction, link to it (avoid duplicates)
+        // - Otherwise, create a new transaction
+        let transactionId: string | null = suggestion.matched_transaction_id ?? null
+        let createdNewTransaction = false
 
-        if (txError || !newTx) {
-          results.failed++
-          results.errors.push(`Failed to create transaction for merged ID ${merged.id}: ${txError?.message}`)
-          continue
+        if (transactionId) {
+          // Link existing transaction to this cross-source match
+          const { error: fkError } = await serviceClient
+            .from('transactions')
+            .update({
+              source_email_transaction_id: merged.emailId,
+              source_statement_upload_id: merged.statementId,
+              source_statement_suggestion_index: merged.index,
+              source_statement_match_confidence: suggestion.confidence ?? null,
+            })
+            .eq('id', transactionId)
+            .eq('user_id', user.id)
+
+          if (fkError) {
+            console.error('Error linking existing transaction for merged item:', fkError)
+            results.errors.push(`Failed to link existing transaction for merged ID ${merged.id}: ${fkError.message}`)
+          }
+        } else {
+          // Create ONE transaction from statement data
+          const { data: newTx, error: txError } = await serviceClient
+            .from('transactions')
+            .insert({
+              user_id: user.id,
+              amount: suggestion.amount,
+              original_currency: (suggestion.currency || 'USD') as 'USD' | 'THB',
+              transaction_type: 'expense' as const,
+              transaction_date: suggestion.transaction_date,
+              description: suggestion.description || 'Imported from cross-source match',
+              source_email_transaction_id: merged.emailId,
+              source_statement_upload_id: merged.statementId,
+              source_statement_suggestion_index: merged.index,
+              source_statement_match_confidence: suggestion.confidence ?? null,
+            })
+            .select('id')
+            .single()
+
+          if (txError || !newTx) {
+            console.error('Error creating transaction for merged item:', txError)
+            results.errors.push(`Failed to create transaction for merged ID ${merged.id}: ${txError?.message}`)
+            // Continue to update statuses anyway so items don't reappear in the queue
+          } else {
+            transactionId = newTx.id
+            createdNewTransaction = true
+          }
         }
 
-        // Update statement suggestion
+        // Always update statement suggestion status to 'approved' (even if tx creation failed)
+        // so the item doesn't keep reappearing in the review queue
         suggestions[merged.index] = {
           ...suggestion,
           status: 'approved',
-          matched_transaction_id: newTx.id,
+          ...(transactionId ? { matched_transaction_id: transactionId } : {}),
         }
 
         const { error: stmtUpdateError } = await serviceClient
@@ -440,11 +469,11 @@ export async function POST(request: NextRequest) {
           await updateStatementReviewStatus(serviceClient, statement.id)
         }
 
-        // Update email_transaction
+        // Always update email_transaction status (even if tx creation failed)
         const { error: emailUpdateError } = await serviceClient
           .from('email_transactions')
           .update({
-            matched_transaction_id: newTx.id,
+            ...(transactionId ? { matched_transaction_id: transactionId } : {}),
             status: 'imported',
             match_method: 'cross_source',
             matched_at: new Date().toISOString(),
@@ -458,7 +487,9 @@ export async function POST(request: NextRequest) {
         }
 
         results.success++
-        results.transactionsCreated++
+        if (createdNewTransaction) {
+          results.transactionsCreated++
+        }
         results.totalAmount += Math.abs(suggestion.amount)
       }
     }

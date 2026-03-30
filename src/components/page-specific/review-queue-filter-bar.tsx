@@ -45,7 +45,7 @@ export interface ReviewQueueFilters {
 }
 
 export const defaultFilters: ReviewQueueFilters = {
-  status: "all",
+  status: "pending",
   currency: "all",
   confidence: "all",
   source: "all",

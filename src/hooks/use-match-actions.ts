@@ -117,6 +117,8 @@ export function useMatchActions({
           throw new Error(data.error || "Failed to approve")
         }
 
+        const result = await response.json()
+
         setState({ isLoading: false, processingId: null, error: null })
 
         // Show undo toast unless skipped
@@ -133,14 +135,22 @@ export function useMatchActions({
             timeoutId,
           })
 
-          toast.success("Match approved", {
-            description: "Transaction match confirmed.",
-            action: {
-              label: "Undo",
-              onClick: () => undoAction(id),
-            },
-            duration: undoDuration,
-          })
+          // Warn if there were partial errors during approval
+          if (result.results?.errors?.length > 0) {
+            toast.warning("Approved with warnings", {
+              description: result.results.errors[0],
+              duration: undoDuration,
+            })
+          } else {
+            toast.success("Match approved", {
+              description: "Transaction match confirmed.",
+              action: {
+                label: "Undo",
+                onClick: () => undoAction(id),
+              },
+              duration: undoDuration,
+            })
+          }
         }
 
         return true
@@ -322,11 +332,17 @@ export function useMatchActions({
           ids.forEach((id) => onItemRemove?.(id))
         }, 1000)
 
-        toast.success(`${result.results.approved} matches approved`, {
-          description: result.results.transactions_created
-            ? `${result.results.transactions_created} transactions created`
-            : "Transactions confirmed",
-        })
+        if (result.results?.errors?.length > 0) {
+          toast.warning(`${result.results.approved} approved with ${result.results.errors.length} warning(s)`, {
+            description: result.results.errors[0],
+          })
+        } else {
+          toast.success(`${result.results.approved} matches approved`, {
+            description: result.results.transactions_created
+              ? `${result.results.transactions_created} transactions created`
+              : "Transactions confirmed",
+          })
+        }
 
         return result
       } catch (error) {
