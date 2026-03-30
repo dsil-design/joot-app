@@ -391,12 +391,13 @@ export async function aggregateQueueItems(
 
       const emailMeta: EmailMetadata = emailItem?.emailMetadata ?? {}
 
-      // Derive status from constituent items — if all are approved, the merged
-      // item should also be approved (not reset to pending).
-      const allApproved = group.every(item => item.status === 'approved')
+      // Derive status from constituent items — if ANY item is approved, the
+      // whole group is approved because they all point to the same matched
+      // transaction (the match is already confirmed by at least one source).
+      const anyApproved = group.some(item => item.status === 'approved')
       const anyRejected = group.some(item => item.status === 'rejected')
       const derivedStatus: 'pending' | 'approved' | 'rejected' =
-        allApproved ? 'approved' : anyRejected ? 'rejected' : 'pending'
+        anyApproved ? 'approved' : anyRejected ? 'rejected' : 'pending'
 
       mergedDedup.push({
         id: mergedId,
