@@ -391,6 +391,13 @@ export async function aggregateQueueItems(
 
       const emailMeta: EmailMetadata = emailItem?.emailMetadata ?? {}
 
+      // Derive status from constituent items — if all are approved, the merged
+      // item should also be approved (not reset to pending).
+      const allApproved = group.every(item => item.status === 'approved')
+      const anyRejected = group.some(item => item.status === 'rejected')
+      const derivedStatus: 'pending' | 'approved' | 'rejected' =
+        allApproved ? 'approved' : anyRejected ? 'rejected' : 'pending'
+
       mergedDedup.push({
         id: mergedId,
         statementUploadId: stmtItem?.statementUploadId ?? base.statementUploadId,
@@ -403,7 +410,7 @@ export async function aggregateQueueItems(
         confidenceLevel: 'high',
         reasons: [...allReasons],
         isNew: false,
-        status: 'pending',
+        status: derivedStatus,
         source: 'merged',
         emailMetadata: emailMeta,
         mergedEmailData: emailItem ? {
