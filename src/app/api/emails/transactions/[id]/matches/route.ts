@@ -44,7 +44,7 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const dateWindowDays = parseInt(searchParams.get('dateWindowDays') || '7', 10)
 
-    // Fetch the email transaction
+    // Fetch the email transaction (including rejected_transaction_ids to filter them out)
     const { data: emailTx, error: fetchError } = await supabase
       .from('email_transactions')
       .select(`
@@ -53,6 +53,7 @@ export async function GET(
         description, order_id, matched_transaction_id, match_confidence,
         match_method, status, classification, extraction_confidence,
         extraction_notes, processed_at, matched_at,
+        rejected_transaction_ids,
         vendors:vendor_id (id, name)
       `)
       .eq('id', id)
@@ -136,6 +137,12 @@ export async function GET(
       )
     }
 
+    // Exclude transactions the user previously rejected for this email
+    const rejectedIds = new Set(((emailTx as Record<string, unknown>).rejected_transaction_ids as string[] | null) || [])
+    const filteredCandidates = rejectedIds.size > 0
+      ? (candidates || []).filter((c) => !rejectedIds.has(c.id))
+      : (candidates || [])
+
     // Build source transaction
     const vendorName = (emailTx.vendors as { name: string } | null)?.name || emailTx.vendor_name_raw || ''
     const source: SourceTransaction = {
@@ -147,7 +154,7 @@ export async function GET(
     }
 
     // Build target transactions
-    const targets: TargetTransaction[] = (candidates || []).map((tx) => ({
+    const targets: TargetTransaction[] = filteredCandidates.map((tx) => ({
       id: tx.id,
       amount: Number(tx.amount),
       currency: tx.original_currency,
@@ -161,7 +168,7 @@ export async function GET(
 
     // Enrich suggestions with transaction details
     const enrichedSuggestions = ranked.suggestions.map((suggestion) => {
-      const candidate = (candidates || []).find((c) => c.id === suggestion.targetId)
+      const candidate = filteredCandidates.find((c) => c.id === suggestion.targetId)
       return {
         ...suggestion,
         transaction: candidate || null,

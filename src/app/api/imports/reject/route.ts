@@ -105,17 +105,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse and separate IDs by type — merged IDs decompose into both statement + email
-    const statementIds: { id: string; statementId: string; index: number }[] = []
+    const statementIds: { id: string; statementId: string; index: number; fromMerged?: boolean }[] = []
     const emailItemIds: string[] = []
     const paymentSlipIds: string[] = []
     const invalidIds: string[] = []
+    // Track statement items that came from merged IDs — these should always be
+    // marked 'rejected' even when nextStatus is 'pending_review', so the
+    // cross-source pairer doesn't re-pair the same email+statement again.
+    const mergedStatementKeys = new Set<string>()
 
     for (const id of idsToReject) {
       const parsed = parseImportId(id)
       if (!parsed) {
         invalidIds.push(id)
       } else if (parsed.type === 'merged') {
-        statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
+        statementIds.push({ id, statementId: parsed.statementId, index: parsed.index, fromMerged: true })
+        mergedStatementKeys.add(`${parsed.statementId}:${parsed.index}`)
         emailItemIds.push(parsed.emailId)
       } else if (parsed.type === 'merged_slip_email') {
         // Decompose: reject both the slip and the email
@@ -197,7 +202,12 @@ export async function POST(request: NextRequest) {
               continue
             }
 
-            suggestion.status = effectiveStatus === 'pending_review' ? 'pending' : 'rejected'
+            // Statement suggestions from merged items should always be rejected,
+            // even when nextStatus is 'pending_review'. This prevents the
+            // cross-source pairer from re-pairing the same email+statement.
+            // Only the email side gets re-queued for fresh matching.
+            const isMerged = mergedStatementKeys.has(`${statement.id}:${idx}`)
+            suggestion.status = (effectiveStatus === 'pending_review' && !isMerged) ? 'pending' : 'rejected'
             hasChanges = true
             results.rejected++
           }
