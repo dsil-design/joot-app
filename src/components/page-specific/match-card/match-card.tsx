@@ -18,8 +18,8 @@ import { MatchCardActions } from "./match-card-actions"
  * Derive variant from data when not explicitly provided
  */
 export function getVariant(data: { isNew: boolean; confidence: number; source?: string }): MatchCardVariant {
-  if (data.source === "merged") return "merged-match"
   if (data.isNew) return "new-transaction"
+  if (data.source === "merged") return "merged-match"
   if (data.confidence >= 90) return "high-confidence"
   if (data.confidence >= 55) return "review-needed"
   return "low-confidence"
