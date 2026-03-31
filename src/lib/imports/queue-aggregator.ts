@@ -21,7 +21,12 @@ export async function aggregateQueueItems(
 
   // Cross-source pairing
   if (filters.sourceFilter === 'all' || filters.sourceFilter === 'merged') {
-    const pendingItems = allItems.filter(item => item.status === 'pending')
+    // Only email and statement items participate in cross-source pairing.
+    // Payment slips have their own pairing section below and would produce
+    // invalid merged IDs if included here (slip:<uuid> ≠ stmt:<uuid>:<index>).
+    const pendingItems = allItems.filter(item =>
+      item.status === 'pending' && (item.source === 'email' || item.source === 'statement')
+    )
     const pairCandidates: PairCandidate[] = pendingItems.map(item => {
       if (item.source === 'email') {
         const emailId = item.id.replace(/^email:/, '')

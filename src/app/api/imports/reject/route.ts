@@ -134,6 +134,10 @@ export async function POST(request: NextRequest) {
         statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
       } else if (parsed.type === 'payment_slip') {
         paymentSlipIds.push(parsed.slipId)
+      } else if (parsed.type === 'self_transfer') {
+        // Self-transfers decompose into two statement suggestions
+        statementIds.push({ id, statementId: parsed.debitStatementId, index: parsed.debitIndex })
+        statementIds.push({ id, statementId: parsed.creditStatementId, index: parsed.creditIndex })
       } else {
         emailItemIds.push(parsed.emailId)
       }
