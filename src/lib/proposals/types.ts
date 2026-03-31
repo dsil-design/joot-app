@@ -262,6 +262,7 @@ export interface ProposalInput {
 
   // Payment slip-specific
   paymentSlipUploadId?: string
+  paymentSlipDescription?: string
   senderName?: string
   recipientName?: string
   bankDetected?: string

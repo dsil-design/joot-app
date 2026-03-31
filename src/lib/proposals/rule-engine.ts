@@ -444,7 +444,14 @@ function proposeDescription(
     }
   }
 
-  // Strategy 1: Email with dedicated parser + high confidence → use parser description
+  // Strategy 1: Payment slip description — manually typed by the sender, high confidence
+  if (item.paymentSlipDescription && item.paymentSlipDescription.trim()) {
+    fields.description = item.paymentSlipDescription.trim()
+    fc.description = { score: 88, reasoning: 'Payment slip description (manually entered by sender)' }
+    return
+  }
+
+  // Strategy 2: Email with dedicated parser + high confidence → use parser description
   if (
     item.sourceType === 'email' || item.sourceType === 'merged'
   ) {
@@ -459,14 +466,14 @@ function proposeDescription(
     }
   }
 
-  // Strategy 2: For merged items, prefer email description
+  // Strategy 3: For merged items, prefer email description
   if (item.sourceType === 'merged') {
     fields.description = item.description
     fc.description = { score: 75, reasoning: 'Email description (merged item)' }
     return
   }
 
-  // Strategy 3: Vendor description pattern analysis
+  // Strategy 4: Vendor description pattern analysis
   // If vendor is matched and has a dominant description pattern, use it
   if (fields.vendorId) {
     const patterns = context.vendorDescriptionPatterns
@@ -498,7 +505,7 @@ function proposeDescription(
     }
   }
 
-  // Strategy 4: Most recent vendor description (fallback for varied-description vendors)
+  // Strategy 5: Most recent vendor description (fallback for varied-description vendors)
   if (fields.vendorId) {
     const vendorTxns = context.recentTransactions.filter(
       (tx) => tx.vendorId === fields.vendorId
@@ -515,7 +522,7 @@ function proposeDescription(
     }
   }
 
-  // Strategy 5: Clean statement description
+  // Strategy 6: Clean statement description
   fields.description = cleanDescription(item.description)
   fc.description = { score: 75, reasoning: 'Cleaned statement description' }
 }

@@ -114,7 +114,11 @@ export async function POST(request: NextRequest) {
         suggestionIndex: parts[0] === 'stmt' ? parseInt(parts[2], 10) : undefined,
         emailTransactionId: parts[0] === 'email' ? parts[1] : undefined,
         // For merged items, prefer the email's parsed description over the raw statement description
-        description: (isMerged && mergedEmail?.description) ? mergedEmail.description : item.statementTransaction.description,
+        description: (isMerged && mergedEmail?.description)
+          ? mergedEmail.description
+          : (isMerged && item.mergedPaymentSlipData?.description)
+            ? item.mergedPaymentSlipData.description
+            : item.statementTransaction.description,
         amount: item.statementTransaction.amount,
         currency: item.statementTransaction.currency,
         date: item.statementTransaction.date,
@@ -131,8 +135,14 @@ export async function POST(request: NextRequest) {
         extractionConfidence: emailMeta?.extractionConfidence,
         paymentCardLastFour: emailMeta?.paymentCardLastFour,
         paymentCardType: emailMeta?.paymentCardType,
-        // Payment slip-specific fields
-        ...(isSlip && slipMeta && {
+        // Payment slip description (available on slip-only or merged slip+statement items)
+        ...((isSlip || item.mergedPaymentSlipData) && {
+          paymentSlipDescription: isSlip
+            ? item.statementTransaction.description
+            : item.mergedPaymentSlipData?.description,
+        }),
+        // Payment slip-specific fields (for slip-only or merged slip+statement items)
+        ...((isSlip || isMerged) && slipMeta && {
           paymentSlipUploadId: slipMeta.slipUploadId,
           senderName: slipMeta.senderName,
           recipientName: slipMeta.recipientName,
