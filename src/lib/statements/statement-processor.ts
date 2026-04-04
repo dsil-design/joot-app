@@ -200,9 +200,11 @@ export class StatementProcessor {
       }
 
       // Step 4: Extract and parse
+      // Derive parser from payment method name if not explicitly specified
+      const parserHint = options.parser || await this.inferParserFromPaymentMethod(upload.payment_method_id);
       this.reportProgress('extracting', 30, 'Extracting text from PDF...');
       const pdfResult = await processPDF(fileBuffer, {
-        parser: options.parser,
+        parser: parserHint,
         includeRawText: false,
       });
 
@@ -321,6 +323,33 @@ export class StatementProcessor {
       timestamp: new Date().toISOString(),
     };
     this.log.push(progress);
+  }
+
+  /**
+   * Infer parser key from the payment method name.
+   * Returns undefined if no mapping is found (falls back to auto-detection).
+   */
+  private async inferParserFromPaymentMethod(paymentMethodId: string | null): Promise<string | undefined> {
+    if (!paymentMethodId) return undefined;
+
+    const { data } = await this.supabase
+      .from('payment_methods')
+      .select('name')
+      .eq('id', paymentMethodId)
+      .single();
+
+    if (!data?.name) return undefined;
+
+    const name = data.name.toLowerCase();
+
+    // Map payment method names to parser keys
+    if (name.includes('pnc')) return 'pnc';
+    if (name.includes('chase')) return 'chase';
+    if (name.includes('amex') || name.includes('american express')) return 'amex';
+    if (name.includes('bangkok bank')) return 'bangkok-bank';
+    if (name.includes('kasikorn') || name.includes('kbank') || name.includes('k bank')) return 'kasikorn';
+
+    return undefined;
   }
 
   private async getUploadRecord(uploadId: string): Promise<StatementUploadRecord | null> {

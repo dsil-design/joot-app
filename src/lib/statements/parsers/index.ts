@@ -36,9 +36,9 @@ import { pncParser } from './pnc';
 export const parserRegistry: ParserRegistry = new Map([
   ['chase', chaseParser],
   ['amex', amexParser],
+  ['pnc', pncParser],
   ['bangkok-bank', bangkokBankParser],
   ['kasikorn', kasikornParser],
-  ['pnc', pncParser],
 ]);
 
 /**

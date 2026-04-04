@@ -186,6 +186,15 @@ function parseTransactions(text: string, period?: { startDate: Date; endDate: Da
     let txPattern = /^(\d{1,2}\/\d{1,2})\s+([\d,]*\.?\d+)\s+(.+)$/;
     let match = line.match(txPattern);
 
+    // Try pattern for small amounts starting with decimal and no space after date
+    // e.g. "03/05.07 InterestPayment" where date=03/05 amount=.07
+    // Must be checked before the general no-space pattern to avoid misparse
+    // (otherwise "03/05.07" would parse as date=03/0 amount=5.07)
+    if (!match) {
+      txPattern = /^(\d{1,2}\/\d{2})(\.\d{2})\s*(.+)$/;
+      match = line.match(txPattern);
+    }
+
     // Try alternate pattern without spaces (used by Spend accounts and Other Deductions)
     if (!match) {
       txPattern = /^(\d{1,2}\/\d{1,2})([\d,]+\.\d{2})(.+)$/;

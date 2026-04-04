@@ -27,16 +27,14 @@ import type {
 // Identifiers
 // ---------------------------------------------------------------------------
 
-const KASIKORN_IDENTIFIERS = [
+/** Simple substring identifiers — matched via `text.includes(id)` */
+const KASIKORN_SIMPLE_IDENTIFIERS = [
   'kasikornbank',
   'kasikorn bank',
   'kasikorn',
   'kbank',
   'k-bank',
-  'k plus',
   'kplus',
-  'k+',
-  'k biz',
   'kbpdf',
   'k-contact center',
   'ธนาคารกสิกรไทย',
@@ -46,10 +44,20 @@ const KASIKORN_IDENTIFIERS = [
   'เค พลัส',
   'บัตรเครดิตกสิกร',
   'k-credit card',
-  'k credit card',
-  'the wisdom',
   'มาสเตอร์การ์ดไทเทเนียม',
   'แพลทินัมกสิกร',
+];
+
+/**
+ * Word-boundary identifiers — too generic for substring matching.
+ * Uses \b to avoid false positives like "bank credit cards" → "k credit card".
+ */
+const KASIKORN_REGEX_IDENTIFIERS = [
+  /\bk credit card\b/i,
+  /\bk plus\b/i,
+  /\bk\+/i, // "K+" at start of word
+  /\bk biz\b/i,
+  /\bthe wisdom\b/i,
 ];
 
 // ---------------------------------------------------------------------------
@@ -645,7 +653,10 @@ export const kasikornParser: StatementParser = {
 
   canParse(text: string): boolean {
     const lower = text.toLowerCase();
-    return KASIKORN_IDENTIFIERS.some((id) => lower.includes(id));
+    return (
+      KASIKORN_SIMPLE_IDENTIFIERS.some((id) => lower.includes(id)) ||
+      KASIKORN_REGEX_IDENTIFIERS.some((re) => re.test(text))
+    );
   },
 
   parse(text: string, options?: ParseOptions): StatementParseResult {
@@ -713,7 +724,8 @@ export {
   cleanDescription,
   detectCategory,
   calculateConfidence,
-  KASIKORN_IDENTIFIERS,
+  KASIKORN_SIMPLE_IDENTIFIERS,
+  KASIKORN_REGEX_IDENTIFIERS,
   TYPE_KEYWORDS,
   TYPE_AMOUNT_PATTERN,
 };
