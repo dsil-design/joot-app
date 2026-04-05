@@ -44,7 +44,15 @@ function tokenOverlap(a: string, b: string): number {
 
   let matches = 0
   for (const ta of tokensA) {
-    if (tokensB.some((tb) => tb.includes(ta) || ta.includes(tb))) {
+    if (tokensB.some((tb) => {
+      // Exact token match
+      if (ta === tb) return true
+      // Only allow substring containment for tokens >= 4 chars
+      // to prevent short tokens like "pa" matching "payment"
+      const shorter = ta.length <= tb.length ? ta : tb
+      const longer = ta.length <= tb.length ? tb : ta
+      return shorter.length >= 4 && longer.includes(shorter)
+    })) {
       matches++
     }
   }
@@ -94,7 +102,18 @@ function scoreVendor(description: string, vendorName: string): number {
   const normVendor = normalize(vendorName)
 
   // Exact containment (highest signal)
-  if (normDesc.includes(normVendor) || normVendor.includes(normDesc)) {
+  // Guard: short vendor names (< 4 chars) must match as whole words to avoid
+  // false positives (e.g. vendor "PA" matching "payment", "mpay", etc.)
+  if (normVendor.length >= 4 && normDesc.includes(normVendor)) {
+    return 0.9
+  }
+  if (normVendor.length < 4 && normVendor.length > 0) {
+    const wordBoundary = new RegExp(`\\b${normVendor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`)
+    if (wordBoundary.test(normDesc)) {
+      return 0.9
+    }
+  }
+  if (normDesc.length >= 4 && normVendor.includes(normDesc)) {
     return 0.9
   }
 
