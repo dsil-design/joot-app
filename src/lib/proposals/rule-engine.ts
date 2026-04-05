@@ -380,6 +380,21 @@ function proposeVendor(
     }
   }
 
+  // Strategy 2b: Fuzzy match using vendorNameRaw (recipient name from bank emails)
+  // For bank transfers, item.description is often generic ("Bill Payment", "Bank Transfer")
+  // but vendorNameRaw has the actual recipient/company name which is much better for matching
+  if (item.vendorNameRaw && item.vendorNameRaw !== item.description) {
+    const rawMatch = matchVendor(item.vendorNameRaw, context.vendors, context.recentTransactions)
+    if (rawMatch) {
+      fields.vendorId = rawMatch.vendorId
+      fc.vendor_id = {
+        score: rawMatch.confidence,
+        reasoning: `Fuzzy match on recipient name: "${item.vendorNameRaw.slice(0, 40)}" → ${rawMatch.vendorName}`,
+      }
+      return
+    }
+  }
+
   // Strategy 3: Fuzzy match against vendors + historical descriptions
   const match = matchVendor(item.description, context.vendors, context.recentTransactions)
   if (match) {
