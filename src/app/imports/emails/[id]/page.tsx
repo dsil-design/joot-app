@@ -8,6 +8,8 @@ import { EmailDetailPanel } from "@/components/page-specific/email-detail-panel"
 import { useEmailHubActions } from "@/hooks/use-email-hub-actions"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { ArrowLeft } from "lucide-react"
+import { DeleteConfirmationDialog } from "@/components/page-specific/delete-confirmation-dialog"
+import { toast } from "sonner"
 
 export default function EmailDetailPage({
   params,
@@ -20,6 +22,8 @@ export default function EmailDetailPage({
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [resolvedId, setResolvedId] = React.useState<string | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
 
   // Actions
   const { processEmail, isProcessing, isExtracting } = useEmailHubActions({
@@ -54,6 +58,24 @@ export default function EmailDetailPage({
     fetchEmail()
   }, [resolvedId])
 
+  const handleDelete = async () => {
+    if (!resolvedId) return
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/emails/transactions/${resolvedId}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success('Email transaction deleted')
+        router.push(backUrl)
+      } else {
+        toast.error('Failed to delete email transaction')
+      }
+    } catch {
+      toast.error('Failed to delete email transaction')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   // Build back URL preserving filters
   const backUrl = React.useMemo(() => {
     const params = searchParams?.toString()
@@ -79,12 +101,24 @@ export default function EmailDetailPage({
           <p className="text-destructive">{error}</p>
         </div>
       ) : emailTx ? (
-        <EmailDetailPanel
-          emailTransaction={emailTx}
-          onProcess={(emailId) => processEmail(emailId)}
-          isProcessing={isProcessing(emailTx.id)}
-          isProcessingExtraction={isExtracting(emailTx.id)}
-        />
+        <>
+          <EmailDetailPanel
+            emailTransaction={emailTx}
+            onProcess={(emailId) => processEmail(emailId)}
+            onDelete={() => setDeleteConfirmOpen(true)}
+            isProcessing={isProcessing(emailTx.id)}
+            isProcessingExtraction={isExtracting(emailTx.id)}
+            isDeleting={isDeleting}
+          />
+          <DeleteConfirmationDialog
+            open={deleteConfirmOpen}
+            onOpenChange={setDeleteConfirmOpen}
+            onConfirm={handleDelete}
+            title="Delete email transaction?"
+            description="This will permanently delete this email transaction record. The original email will not be affected."
+            isDeleting={isDeleting}
+          />
+        </>
       ) : (
         <div className="text-center py-16">
           <p className="text-muted-foreground">Email transaction not found</p>

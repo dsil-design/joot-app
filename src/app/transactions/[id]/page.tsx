@@ -8,7 +8,7 @@
 
 import * as React from "react"
 import { useParams, useSearchParams } from "next/navigation"
-import { ArrowLeft, Edit, FileText, Copy, Check, Unlink } from "lucide-react"
+import { ArrowLeft, Edit, FileText, Copy, Check, Unlink, Trash2 } from "lucide-react"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
 import type { TransactionWithVendorAndPayment, EmailSourceData, StatementSourceData } from "@/lib/supabase/types"
@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
 import { formatCurrency } from "@/lib/utils"
 import { EmailSourceCard } from "@/components/page-specific/email-source-card"
+import { DeleteConfirmationDialog } from "@/components/page-specific/delete-confirmation-dialog"
 import { toast } from "sonner"
 
 
@@ -230,9 +231,11 @@ export default function ViewTransactionPage() {
   const id = params?.id as string
   const source = searchParams?.get('from') as 'home' | 'transactions' | null
   const { navigateBack, isPending } = useTransactionFlow()
-  const { getTransactionById } = useTransactions()
-  
+  const { getTransactionById, deleteTransaction } = useTransactions()
+
   const [transaction, setTransaction] = React.useState<TransactionWithVendorAndPayment | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
   const [exchangeRate, setExchangeRate] = React.useState<number | null>(null)
   const [exchangeRateTimestamp, setExchangeRateTimestamp] = React.useState<string | null>(null)
   const [isUsingLatestRate, setIsUsingLatestRate] = React.useState(false)
@@ -390,6 +393,24 @@ export default function ViewTransactionPage() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!transaction) return
+    setIsDeleting(true)
+    try {
+      const success = await deleteTransaction(transaction.id)
+      if (success) {
+        toast.success('Transaction deleted')
+        navigateBack()
+      } else {
+        toast.error('Failed to delete transaction')
+      }
+    } catch {
+      toast.error('Failed to delete transaction')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   if (loading) {
     return (
       <MainLayout showSidebar={true} showMobileNav={false}>
@@ -519,7 +540,24 @@ export default function ViewTransactionPage() {
               onUnlinkStatement={() => handleUnlink('statement')}
             />
           </div>
-          <TransactionId id={transaction.id} />
+          <div className="flex items-center justify-between w-full">
+            <TransactionId id={transaction.id} />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteConfirmOpen(true)}
+              className="text-zinc-400 hover:text-red-600 hover:bg-red-50 gap-1.5"
+            >
+              <Trash2 className="size-3.5" />
+              Delete
+            </Button>
+          </div>
+          <DeleteConfirmationDialog
+            open={deleteConfirmOpen}
+            onOpenChange={setDeleteConfirmOpen}
+            onConfirm={handleDelete}
+            isDeleting={isDeleting}
+          />
           <div className="h-10 shrink-0 w-full" />
         </div>
     </div>

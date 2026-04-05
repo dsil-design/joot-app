@@ -20,6 +20,15 @@ export const PARSER_PAYMENT_METHOD_MAP: Record<string, string[]> = {
 }
 
 /**
+ * Map payment slip bank_detected values to the same payment method name patterns.
+ * bank_detected comes from Claude Vision extraction (e.g. "kbank", "bangkok_bank").
+ */
+export const BANK_DETECTED_PAYMENT_METHOD_MAP: Record<string, string[]> = {
+  kbank: ["kasikorn", "kbank", "k plus", "kplus"],
+  bangkok_bank: ["bangkok bank", "bbl", "bualuang"],
+}
+
+/**
  * Find a payment method by matching card last 4 digits.
  * This takes priority over parser key matching since it's more specific.
  */
@@ -44,6 +53,23 @@ export function findPaymentMethodByParserKey(
   paymentMethods: Array<{ id: string; name: string }>
 ): { id: string; name: string } | null {
   const patterns = PARSER_PAYMENT_METHOD_MAP[parserKey]
+  if (!patterns) return null
+
+  const matched = paymentMethods.find((pm) =>
+    patterns.some((p) => pm.name.toLowerCase().includes(p))
+  )
+
+  return matched || null
+}
+
+/**
+ * Find a payment method by matching the bank_detected value from payment slip extraction.
+ */
+export function findPaymentMethodByBankDetected(
+  bankDetected: string,
+  paymentMethods: Array<{ id: string; name: string }>
+): { id: string; name: string } | null {
+  const patterns = BANK_DETECTED_PAYMENT_METHOD_MAP[bankDetected]
   if (!patterns) return null
 
   const matched = paymentMethods.find((pm) =>

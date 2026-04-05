@@ -1129,7 +1129,8 @@ CREATE TABLE public.import_activities (
     'sync_error',           -- Error during sync process
     'extraction_error',     -- Error during data extraction
     'slip_uploaded',        -- Payment slip image uploaded
-    'slip_processed'        -- Payment slip extraction completed
+    'slip_processed',       -- Payment slip extraction completed
+    'slip_corrected'        -- User manually corrected extracted slip data
   )),
 
   -- Optional reference to related statement upload

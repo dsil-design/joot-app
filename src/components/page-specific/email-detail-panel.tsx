@@ -23,6 +23,7 @@ import {
   CreditCard,
   FileText,
   ArrowRight,
+  Trash2,
 } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { EmailViewerModal } from "./email-viewer-modal"
@@ -32,15 +33,19 @@ import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour } from "@
 interface EmailDetailPanelProps {
   emailTransaction: EmailTransactionRow
   onProcess?: (emailId: string) => void
+  onDelete?: () => void
   isProcessing: boolean
   isProcessingExtraction?: boolean
+  isDeleting?: boolean
 }
 
 export function EmailDetailPanel({
   emailTransaction,
   onProcess,
+  onDelete,
   isProcessing,
   isProcessingExtraction,
+  isDeleting,
 }: EmailDetailPanelProps) {
   const [viewerOpen, setViewerOpen] = React.useState(false)
 
@@ -93,7 +98,21 @@ export function EmailDetailPanel({
             View Email
           </Button>
 
-          <CopyableId id={emailTransaction.id} />
+          <div className="flex items-center justify-between w-full">
+            <CopyableId id={emailTransaction.id} />
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDelete}
+                disabled={isDeleting}
+                className="text-muted-foreground hover:text-red-600 hover:bg-red-50 gap-1.5"
+              >
+                <Trash2 className="size-3.5" />
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Right: Extract Data action */}
@@ -236,7 +255,21 @@ export function EmailDetailPanel({
           </Button>
         )}
 
-        <CopyableId id={emailTransaction.id} />
+        <div className="flex items-center justify-between w-full">
+          <CopyableId id={emailTransaction.id} />
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onDelete}
+              disabled={isDeleting}
+              className="text-muted-foreground hover:text-red-600 hover:bg-red-50 gap-1.5"
+            >
+              <Trash2 className="size-3.5" />
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Right: Transaction Preview */}

@@ -15,7 +15,7 @@ import type {
   PastCorrection,
 } from './types'
 import { matchVendor, suggestVendorName } from './vendor-matcher'
-import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour } from './payment-method-mapper'
+import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour, findPaymentMethodByBankDetected } from './payment-method-mapper'
 import { findMappingMatch, isBankParser } from '@/lib/services/vendor-recipient-mapping'
 import { findStatementDescriptionMatch } from '@/lib/services/statement-description-learning'
 
@@ -242,7 +242,20 @@ function proposePaymentMethod(
     }
   }
 
-  // Strategy 3: Most-used PM for this vendor + currency
+  // Strategy 3b: Payment slip bank_detected mapping
+  if (item.bankDetected && item.bankDetected !== 'unknown') {
+    const matched = findPaymentMethodByBankDetected(
+      item.bankDetected,
+      context.paymentMethods.map((pm) => ({ id: pm.id, name: pm.name }))
+    )
+    if (matched) {
+      fields.paymentMethodId = matched.id
+      fc.payment_method_id = { score: 85, reasoning: `Slip bank '${item.bankDetected}' -> ${matched.name}` }
+      return
+    }
+  }
+
+  // Strategy 4: Most-used PM for this vendor + currency
   if (fields.vendorId) {
     const vendorTxns = context.recentTransactions.filter(
       (tx) => tx.vendorId === fields.vendorId && tx.currency === item.currency
