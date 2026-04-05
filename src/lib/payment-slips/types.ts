@@ -14,6 +14,7 @@ export interface PaymentSlipExtraction {
   date_raw: string | null // Raw date string as shown on the slip (e.g. "20 ต.ค. 69")
   time: string | null     // HH:MM (24hr)
   amount: number
+  amount_raw: string | null // Raw amount string as shown on the slip (e.g. "117.00")
   fee: number
   currency: 'THB'
   sender_name: string

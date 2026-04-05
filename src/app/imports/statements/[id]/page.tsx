@@ -31,7 +31,7 @@ import {
 import { useMatchActions } from '@/hooks/use-match-actions'
 import { useCreateAndLink } from '@/hooks/use-create-and-link'
 import { toast } from 'sonner'
-import { FileText, RefreshCw, XCircle, ArrowRight, Link2 } from 'lucide-react'
+import { FileText, RefreshCw, XCircle, ArrowRight, Link2, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
@@ -70,6 +70,29 @@ async function fetchResults(statementId: string): Promise<ProcessingResult | nul
   } catch {
     return null
   }
+}
+
+function CopyableId({ id }: { id: string }) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(id)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 pt-2">
+      <span className="text-[12px] text-zinc-400 font-mono">{id}</span>
+      <button
+        onClick={handleCopy}
+        className="text-zinc-400 hover:text-zinc-600 transition-colors p-0.5"
+        aria-label="Copy ID"
+      >
+        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+      </button>
+    </div>
+  )
 }
 
 export default function StatementDetailPage() {
@@ -529,6 +552,7 @@ export default function StatementDetailPage() {
               </div>
             </CardContent>
           </Card>
+          <CopyableId id={statementId} />
         </div>
         {statementViewerModal}
         <DeleteConfirmationDialog
@@ -573,6 +597,7 @@ export default function StatementDetailPage() {
               )}
             </CardContent>
           </Card>
+          <CopyableId id={statementId} />
         </div>
         {statementViewerModal}
       </>
@@ -619,6 +644,7 @@ export default function StatementDetailPage() {
               </div>
             </CardContent>
           </Card>
+          <CopyableId id={statementId} />
         </div>
         {statementViewerModal}
         <DeleteConfirmationDialog
@@ -817,6 +843,8 @@ export default function StatementDetailPage() {
         confirmLabel={extracted > 0 ? 'Delete Statement' : 'Delete'}
         isDeleting={isDeleting}
       />
+
+      <CopyableId id={statementId} />
     </div>
   )
 }

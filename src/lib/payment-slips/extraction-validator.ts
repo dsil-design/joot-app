@@ -37,6 +37,17 @@ export function validateExtraction(extraction: PaymentSlipExtraction): Validatio
     }
   }
 
+  // Cross-check: parse amount_raw and compare with vision model's amount
+  if (extraction.amount_raw && extraction.amount) {
+    const parsedRaw = parseFloat(extraction.amount_raw.replace(/,/g, ''))
+    if (!isNaN(parsedRaw) && Math.abs(parsedRaw - extraction.amount) > 0.01) {
+      warnings.push(
+        `Amount mismatch: vision model returned ${extraction.amount} but raw amount "${extraction.amount_raw}" parses to ${parsedRaw} — using raw amount`
+      )
+      extraction.amount = parsedRaw
+    }
+  }
+
   // Required: amount
   if (!extraction.amount || extraction.amount <= 0) {
     errors.push('Amount is missing or invalid')

@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import {
   ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock,
-  ArrowDownLeft, ArrowUpRight, Loader2, Eye,
+  ArrowDownLeft, ArrowUpRight, Loader2, Eye, Copy, Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -63,6 +63,29 @@ function formatAmount(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount)
+}
+
+function CopyableId({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(id)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 pt-2">
+      <span className="text-[12px] text-zinc-400 font-mono">{id}</span>
+      <button
+        onClick={handleCopy}
+        className="text-zinc-400 hover:text-zinc-600 transition-colors p-0.5"
+        aria-label="Copy ID"
+      >
+        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+      </button>
+    </div>
+  )
 }
 
 function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
@@ -384,6 +407,8 @@ export default function PaymentSlipDetailPage() {
           )}
         </>
       )}
+
+      <CopyableId id={slipId} />
 
       {/* Viewer modal */}
       <PaymentSlipViewerModal

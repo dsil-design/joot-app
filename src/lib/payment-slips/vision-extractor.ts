@@ -43,6 +43,7 @@ Return ONLY valid JSON matching this schema:
   "date_raw": "<exact date string as shown on the slip, e.g. '20 ต.ค. 69' or '14 Mar 26'>",
   "time": "HH:MM" | null,
   "amount": <number>,
+  "amount_raw": "<exact amount string as displayed on slip, e.g. '117.00' or '1,500.00'>",
   "fee": <number>,
   "currency": "THB",
   "sender_name": "<full name as shown>",
@@ -62,6 +63,7 @@ Important:
 - date: Convert Thai BE dates to CE (Western calendar). Double-check the Thai month abbreviation carefully: ก.ย.=Sep, ต.ค.=Oct — these are commonly confused
 - Convert Thai bank names to English: ธ.กสิกรไทย = "Kasikorn Bank", ธ.กรุงเทพ = "Bangkok Bank"
 - Amount and fee must be numbers (no currency symbols)
+- CRITICAL for amount: Read the EXACT digits and decimal point from the slip. The amount "117.00 บาท" means 117.00, NOT 11700. Thai slips use a period (.) as the decimal separator — for example "1,500.00" means 1500.00 and "117.00" means 117.00. Pay very careful attention to commas (thousands separator) vs periods (decimal point). Also provide the raw amount string exactly as shown on the slip.
 - Return ONLY the JSON object, no markdown`
 
 export interface VisionExtractionResult {
