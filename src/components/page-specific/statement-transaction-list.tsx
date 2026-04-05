@@ -248,14 +248,14 @@ export const StatementTransactionList = React.forwardRef<
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-zinc-400 hover:text-zinc-600"
+                    className="h-8 w-8 sm:h-6 sm:w-6 text-zinc-400 hover:text-zinc-600"
                     title="Restore"
                     onClick={e => {
                       e.stopPropagation()
                       onUnignoreClick?.(item)
                     }}
                   >
-                    <Undo2 className="h-3 w-3" />
+                    <Undo2 className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
                   </Button>
                 </div>
               )}
@@ -266,36 +266,36 @@ export const StatementTransactionList = React.forwardRef<
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6"
+                    className="h-8 w-8 sm:h-6 sm:w-6"
                     onClick={e => {
                       e.stopPropagation()
                       onLinkClick?.(item)
                     }}
                   >
-                    <Link2 className="h-3 w-3" />
+                    <Link2 className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6"
+                    className="h-8 w-8 sm:h-6 sm:w-6"
                     onClick={e => {
                       e.stopPropagation()
                       onCreateClick?.(item)
                     }}
                   >
-                    <Plus className="h-3 w-3" />
+                    <Plus className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-zinc-400 hover:text-zinc-600"
+                    className="h-8 w-8 sm:h-6 sm:w-6 text-zinc-400 hover:text-zinc-600"
                     title="Ignore"
                     onClick={e => {
                       e.stopPropagation()
                       onIgnoreClick?.(item)
                     }}
                   >
-                    <EyeOff className="h-3 w-3" />
+                    <EyeOff className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
                   </Button>
                 </div>
               )}

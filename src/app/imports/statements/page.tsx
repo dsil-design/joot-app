@@ -43,11 +43,11 @@ export default function StatementsPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Statements Hub</h2>
-        <Button size="sm" onClick={() => setUploadOpen(true)}>
-          <Upload className="h-4 w-4 mr-2" />
-          Upload Statement
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base sm:text-lg font-semibold truncate">Statements Hub</h2>
+        <Button size="sm" className="shrink-0" onClick={() => setUploadOpen(true)} aria-label="Upload Statement">
+          <Upload className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Upload Statement</span>
         </Button>
       </div>
 
@@ -60,13 +60,13 @@ export default function StatementsPage() {
 
       {/* Type filter tabs */}
       {!isLoading && stats.total > 0 && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {typeFilterTabs.map(tab => (
             <button
               key={tab.value}
               onClick={() => setTypeFilter(tab.value)}
               className={cn(
-                "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
+                "px-3 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium rounded-lg transition-colors",
                 typeFilter === tab.value
                   ? "bg-zinc-900 text-white"
                   : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"

@@ -159,14 +159,15 @@ export default function CoveragePage() {
       )}
 
       {/* Section header + Upload button */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Payment Methods</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base sm:text-lg font-semibold truncate">Payment Methods</h2>
         <Button
           size="sm"
+          className="shrink-0"
           onClick={() => setUploadDialog({ open: true, paymentMethodId: null, expectedPeriod: null })}
         >
-          <Upload className="h-4 w-4 mr-2" />
-          Upload Statement
+          <Upload className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Upload Statement</span>
         </Button>
       </div>
 

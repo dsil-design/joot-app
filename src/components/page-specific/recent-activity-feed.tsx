@@ -76,7 +76,7 @@ export function RecentActivityFeed({
   return (
     <section className={className} aria-labelledby={showTitle ? 'recent-activity-title' : undefined}>
       {/* Header with title and View All link */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-4 mb-4">
         {showTitle && (
           <h2 id="recent-activity-title" className="text-lg font-semibold">
             {title}
@@ -84,7 +84,7 @@ export function RecentActivityFeed({
         )}
         <Link
           href={viewAllHref}
-          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+          className="ml-auto text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
         >
           View All History
           <ArrowRight className="h-4 w-4" aria-hidden="true" />

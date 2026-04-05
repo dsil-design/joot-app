@@ -62,7 +62,7 @@ export function PaymentMethodCoverageCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-7 w-7 -m-2 p-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:m-0 sm:p-0"
               onClick={onSettingsClick}
             >
               <Settings className="h-3.5 w-3.5" />

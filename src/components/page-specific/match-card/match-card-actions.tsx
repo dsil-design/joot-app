@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import type { MatchCardVariant, MatchCardCallbacks } from "./types"
 import type { TransactionProposal } from "@/lib/proposals/types"
+import { cn } from "@/lib/utils"
 
 type CallbackKey = keyof Pick<
   MatchCardCallbacks,

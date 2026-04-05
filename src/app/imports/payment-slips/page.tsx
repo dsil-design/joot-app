@@ -294,18 +294,19 @@ export default function PaymentSlipsPage() {
 
       {/* Selection action bar */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border bg-zinc-50 sticky top-0 z-10">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-3 rounded-lg border bg-zinc-50 sticky top-0 z-10">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <Button
             size="sm"
             variant="outline"
             onClick={reprocessSelected}
             disabled={isReprocessing}
+            className="min-h-[44px] sm:min-h-0"
           >
             <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isReprocessing && "animate-spin")} />
             {isReprocessing ? 'Reprocessing...' : 'Reprocess Selected'}
           </Button>
-          <Button size="sm" variant="ghost" onClick={clearSelection}>
+          <Button size="sm" variant="ghost" onClick={clearSelection} className="min-h-[44px] sm:min-h-0">
             <X className="h-3.5 w-3.5 mr-1" />
             Clear
           </Button>
@@ -384,7 +385,7 @@ export default function PaymentSlipsPage() {
                   e.stopPropagation()
                   setPreviewSlip({ id: slip.id, filename: slip.filename })
                 }}
-                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-zinc-100 transition-colors cursor-pointer"
+                className="p-2.5 sm:p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-zinc-100 transition-colors cursor-pointer min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
                 title="Preview slip"
               >
                 <Eye className="h-4 w-4" />

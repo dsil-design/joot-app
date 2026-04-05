@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { LoadMoreTrigger } from "@/hooks/use-infinite-scroll"
 import { useEmailHubFilters, type EmailHubStatus } from "@/hooks/use-email-hub-filters"
@@ -17,7 +18,7 @@ import {
 import { EmailDetailPanel } from "@/components/page-specific/email-detail-panel"
 import { EmailBatchToolbar } from "@/components/page-specific/email-batch-toolbar"
 import { Card, CardContent } from "@/components/ui/card"
-import { RefreshCw, Mail, Inbox, AlertCircle, Sparkles } from "lucide-react"
+import { RefreshCw, Mail, Inbox, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 
 export default function EmailHubPage() {
@@ -28,7 +29,7 @@ export default function EmailHubPage() {
   const { stats, isLoading: statsLoading, refetch: refetchStats } = useEmailHubStats()
 
   // Email sync & processing
-  const { triggerSync, isSyncing, triggerProcess, isProcessing: isBulkProcessing } = useEmailSync()
+  const { triggerSync, isSyncing } = useEmailSync()
 
   // Email transactions with infinite scroll
   const {
@@ -87,7 +88,7 @@ export default function EmailHubPage() {
     const result = await triggerSync()
     if (result?.success) {
       toast.success(`Fetched ${result.synced} new email(s)`, {
-        description: result.synced > 0 ? "Use 'Process' to extract data with AI." : undefined,
+        description: result.synced > 0 ? "New emails are ready for review." : undefined,
       })
       refresh()
       refetchStats()
@@ -95,18 +96,6 @@ export default function EmailHubPage() {
       toast.error("Sync failed", {
         description: result.message || "Check server logs for details.",
       })
-      refetchStats()
-    }
-  }
-
-  // Handle bulk processing (AI extraction on all unprocessed)
-  const handleProcessAll = async () => {
-    const result = await triggerProcess()
-    if (result?.success) {
-      toast.success(`Processed ${result.processed} email(s)`, {
-        description: `${result.extracted} extracted, ${result.failed} failed, ${result.skipped} skipped`,
-      })
-      refresh()
       refetchStats()
     }
   }
@@ -202,19 +191,19 @@ export default function EmailHubPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold">Email Hub</h2>
           <p className="text-sm text-muted-foreground">
             Last sync: {syncTimeDisplay}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Button
             variant="outline"
             size="sm"
             onClick={handleSyncNow}
-            disabled={isSyncing || isBulkProcessing}
+            disabled={isSyncing}
           >
             {isSyncing ? (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -222,19 +211,6 @@ export default function EmailHubPage() {
               <Mail className="h-4 w-4 mr-2" />
             )}
             Fetch New
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleProcessAll}
-            disabled={isBulkProcessing || isSyncing}
-          >
-            {isBulkProcessing ? (
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-2" />
-            )}
-            Process All
           </Button>
         </div>
       </div>
@@ -292,7 +268,7 @@ export default function EmailHubPage() {
       )}
 
       {/* List */}
-      <div className="space-y-2">
+      <div className={cn("space-y-2", selectedIds.size > 0 && "pb-28 md:pb-0")}>
         {isInitialLoading ? (
           <>
             <EmailTransactionCardSkeleton />
@@ -312,7 +288,7 @@ export default function EmailHubPage() {
             <p className="text-muted-foreground mb-4">
               {filters.status !== "all" || filters.classification !== "all" || filters.search
                 ? "Try adjusting your filters to see more results."
-                : "Click 'Fetch New' to pull emails from IMAP, then 'Process All' to extract data."}
+                : "Click 'Fetch New' to pull emails from IMAP."}
             </p>
           </div>
         ) : (

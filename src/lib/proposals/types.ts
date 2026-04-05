@@ -216,6 +216,14 @@ export interface VendorRecipientMappingRecord {
   matchCount: number
 }
 
+export interface StatementDescriptionMappingRecord {
+  descriptionNormalized: string
+  vendorId: string
+  vendorName?: string
+  paymentMethodId: string | null
+  matchCount: number
+}
+
 export interface RuleEngineContext {
   vendors: VendorRecord[]
   paymentMethods: PaymentMethodRecord[]
@@ -225,6 +233,7 @@ export interface RuleEngineContext {
   vendorDescriptionPatterns: VendorDescriptionPattern[]
   pastCorrections: PastCorrection[]
   vendorRecipientMappings: VendorRecipientMappingRecord[]
+  statementDescriptionMappings: StatementDescriptionMappingRecord[]
   statementPaymentMethodId?: string
   statementPaymentMethodName?: string
 }

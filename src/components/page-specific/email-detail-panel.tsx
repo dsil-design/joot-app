@@ -273,11 +273,11 @@ function CopyableId({ id }: { id: string }) {
   }
 
   return (
-    <div className="flex items-center gap-1.5 pt-2">
-      <span className="text-[12px] text-muted-foreground font-mono">{id}</span>
+    <div className="flex items-center gap-2 pt-2 min-w-0">
+      <span className="text-[11px] text-muted-foreground font-mono truncate min-w-0">{id}</span>
       <button
         onClick={handleCopy}
-        className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+        className="text-muted-foreground hover:text-foreground transition-colors p-2 -mr-2 shrink-0"
         aria-label="Copy email ID"
       >
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}

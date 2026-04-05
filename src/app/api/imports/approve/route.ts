@@ -3,7 +3,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import type { Json } from '@/lib/supabase/types'
 import { parseImportId } from '@/lib/utils/import-id'
 import { updateStatementReviewStatus } from '@/lib/utils/statement-status'
-import { learnPaymentSlipMapping } from '@/lib/services/payment-slip-learning'
+import { recordDecision } from '@/lib/services/decision-learning'
 
 interface Suggestion {
   transaction_date: string
@@ -218,7 +218,9 @@ export async function POST(request: NextRequest) {
             hasChanges = true
 
             // If suggestion already has a matched transaction (pre-matched), set the FK on it
+            let stmtTransactionId: string | undefined
             if (!createTransactions && suggestion.matched_transaction_id) {
+              stmtTransactionId = suggestion.matched_transaction_id
               const { error: fkError } = await serviceClient
                 .from('transactions')
                 .update({
@@ -236,7 +238,7 @@ export async function POST(request: NextRequest) {
             }
 
             if (createTransactions && suggestion.amount && suggestion.transaction_date) {
-              const { error: insertError } = await serviceClient
+              const { data: newStmtTx, error: insertError } = await serviceClient
                 .from('transactions')
                 .insert({
                   user_id: user.id,
@@ -249,13 +251,42 @@ export async function POST(request: NextRequest) {
                   source_statement_suggestion_index: idx,
                   source_statement_match_confidence: suggestion.confidence ?? null,
                 })
+                .select('id')
+                .single()
 
               if (insertError) {
                 results.errors.push(`Failed to create transaction: ${insertError.message}`)
               } else {
+                stmtTransactionId = newStmtTx?.id
                 results.transactionsCreated++
                 results.totalAmount += Math.abs(suggestion.amount)
               }
+            }
+
+            // Learn from this decision (fire-and-forget)
+            if (stmtTransactionId) {
+              const { data: stmtTxData } = await serviceClient
+                .from('transactions')
+                .select('vendor_id, payment_method_id')
+                .eq('id', stmtTransactionId)
+                .single()
+
+              recordDecision(serviceClient, {
+                userId: user.id,
+                decisionType: createTransactions ? 'approve_create' : 'approve_match',
+                sourceType: 'statement',
+                compositeId: `stmt:${statement.id}:${idx}`,
+                statementUploadId: statement.id,
+                suggestionIndex: idx,
+                transactionId: stmtTransactionId,
+                vendorId: stmtTxData?.vendor_id || undefined,
+                paymentMethodId: stmtTxData?.payment_method_id || undefined,
+                statementDescription: suggestion.description,
+                amount: suggestion.amount,
+                currency: suggestion.currency,
+                matchConfidence: suggestion.confidence,
+                wasAutoMatched: !createTransactions,
+              }).catch((err) => console.error('Decision learning error:', err))
             }
 
             results.success++
@@ -286,7 +317,7 @@ export async function POST(request: NextRequest) {
         // Fetch email rows to create transactions from them
         const { data: emailRows, error: emailFetchError } = await serviceClient
           .from('email_transactions')
-          .select('id, amount, currency, transaction_date, email_date, description, subject, status')
+          .select('id, amount, currency, transaction_date, email_date, description, subject, status, from_address, vendor_name_raw, parser_key')
           .in('id', emailItemIds)
           .eq('user_id', user.id)
 
@@ -336,6 +367,21 @@ export async function POST(request: NextRequest) {
               results.errors.push(`Failed to update email status for ${row.id}: ${emailStatusError.message}`)
             }
 
+            // Learn from this decision (fire-and-forget)
+            recordDecision(serviceClient, {
+              userId: user.id,
+              decisionType: 'approve_create',
+              sourceType: 'email',
+              compositeId: `email:${row.id}`,
+              emailTransactionId: row.id,
+              transactionId: newTx.id,
+              emailFromAddress: row.from_address,
+              emailVendorNameRaw: row.vendor_name_raw,
+              emailParserKey: row.parser_key,
+              amount: row.amount,
+              currency: row.currency,
+            }).catch((err) => console.error('Decision learning error:', err))
+
             results.success++
             results.transactionsCreated++
             results.totalAmount += Math.abs(row.amount ?? 0)
@@ -343,6 +389,13 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // Just mark as matched (approve without creating transactions)
+        // Fetch email details for learning before updating
+        const { data: emailDetailsForLearning } = await serviceClient
+          .from('email_transactions')
+          .select('id, from_address, vendor_name_raw, parser_key, amount, currency, matched_transaction_id, match_confidence')
+          .in('id', emailItemIds)
+          .eq('user_id', user.id)
+
         const { data: updated, error: emailUpdateError } = await serviceClient
           .from('email_transactions')
           .update({
@@ -358,6 +411,36 @@ export async function POST(request: NextRequest) {
           results.failed += emailItemIds.length
         } else {
           results.success += updated?.length ?? 0
+
+          // Learn from each approved email (fire-and-forget)
+          if (emailDetailsForLearning) {
+            for (const emailDetail of emailDetailsForLearning) {
+              if (emailDetail.matched_transaction_id) {
+                const { data: matchedTx } = await serviceClient
+                  .from('transactions')
+                  .select('vendor_id')
+                  .eq('id', emailDetail.matched_transaction_id)
+                  .single()
+
+                recordDecision(serviceClient, {
+                  userId: user.id,
+                  decisionType: 'approve_match',
+                  sourceType: 'email',
+                  compositeId: `email:${emailDetail.id}`,
+                  emailTransactionId: emailDetail.id,
+                  transactionId: emailDetail.matched_transaction_id,
+                  vendorId: matchedTx?.vendor_id || undefined,
+                  emailFromAddress: emailDetail.from_address,
+                  emailVendorNameRaw: emailDetail.vendor_name_raw,
+                  emailParserKey: emailDetail.parser_key,
+                  amount: emailDetail.amount,
+                  currency: emailDetail.currency,
+                  matchConfidence: emailDetail.match_confidence,
+                  wasAutoMatched: true,
+                }).catch((err) => console.error('Decision learning error:', err))
+              }
+            }
+          }
         }
       }
     }
@@ -511,6 +594,33 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Learn from this merged decision (fire-and-forget)
+        if (transactionId) {
+          const { data: mergedTxData } = await serviceClient
+            .from('transactions')
+            .select('vendor_id, payment_method_id')
+            .eq('id', transactionId)
+            .single()
+
+          recordDecision(serviceClient, {
+            userId: user.id,
+            decisionType: createdNewTransaction ? 'approve_create' : 'approve_match',
+            sourceType: 'merged',
+            compositeId: merged.id,
+            statementUploadId: merged.statementId,
+            suggestionIndex: merged.index,
+            emailTransactionId: merged.emailId,
+            transactionId,
+            vendorId: mergedTxData?.vendor_id || undefined,
+            paymentMethodId: mergedTxData?.payment_method_id || undefined,
+            statementDescription: suggestion.description,
+            amount: suggestion.amount,
+            currency: suggestion.currency,
+            matchConfidence: suggestion.confidence,
+            wasAutoMatched: !createdNewTransaction,
+          }).catch((err) => console.error('Decision learning error:', err))
+        }
+
         results.success++
         if (createdNewTransaction) {
           results.transactionsCreated++
@@ -523,7 +633,7 @@ export async function POST(request: NextRequest) {
     if (paymentSlipIds.length > 0) {
       const { data: slips, error: slipFetchError } = await serviceClient
         .from('payment_slip_uploads')
-        .select('id, amount, currency, transaction_date, memo, sender_name, recipient_name, detected_direction, review_status, matched_transaction_id, payment_method_id')
+        .select('id, amount, currency, transaction_date, memo, sender_name, recipient_name, detected_direction, review_status, matched_transaction_id, match_confidence, payment_method_id')
         .in('id', paymentSlipIds)
         .eq('user_id', user.id)
 
@@ -600,9 +710,23 @@ export async function POST(request: NextRequest) {
                 .eq('id', proposal.id)
             }
 
-            // Learn vendor mapping from slip (fire-and-forget)
-            learnPaymentSlipMapping(serviceClient, user.id, slip.id, newTx.id)
-              .catch((err) => console.error('Payment slip learning error:', err))
+            // Learn from this decision (fire-and-forget)
+            const slipCounterparty = slip.detected_direction === 'income'
+              ? slip.sender_name : slip.recipient_name
+            recordDecision(serviceClient, {
+              userId: user.id,
+              decisionType: 'approve_create',
+              sourceType: 'payment_slip',
+              compositeId: `slip:${slip.id}`,
+              paymentSlipId: slip.id,
+              transactionId: newTx.id,
+              vendorId: proposal?.proposed_vendor_id || undefined,
+              paymentMethodId: proposal?.proposed_payment_method_id || slip.payment_method_id || undefined,
+              tagIds: (proposal?.proposed_tag_ids as string[] | null) || undefined,
+              slipCounterpartyName: slipCounterparty || undefined,
+              amount: Number(slip.amount),
+              currency: slip.currency,
+            }).catch((err) => console.error('Decision learning error:', err))
 
             results.transactionsCreated++
             results.totalAmount += Math.abs(Number(slip.amount))
@@ -617,8 +741,29 @@ export async function POST(request: NextRequest) {
             if (fkError) {
               results.errors.push(`Failed to link transaction for slip ${slip.id}: ${fkError.message}`)
             } else {
-              learnPaymentSlipMapping(serviceClient, user.id, slip.id, slip.matched_transaction_id)
-                .catch((err) => console.error('Payment slip learning error:', err))
+              const { data: matchedSlipTx } = await serviceClient
+                .from('transactions')
+                .select('vendor_id')
+                .eq('id', slip.matched_transaction_id)
+                .single()
+
+              const matchSlipCounterparty = slip.detected_direction === 'income'
+                ? slip.sender_name : slip.recipient_name
+              recordDecision(serviceClient, {
+                userId: user.id,
+                decisionType: 'approve_match',
+                sourceType: 'payment_slip',
+                compositeId: `slip:${slip.id}`,
+                paymentSlipId: slip.id,
+                transactionId: slip.matched_transaction_id,
+                vendorId: matchedSlipTx?.vendor_id || undefined,
+                paymentMethodId: slip.payment_method_id || undefined,
+                slipCounterpartyName: matchSlipCounterparty || undefined,
+                amount: Number(slip.amount),
+                currency: slip.currency,
+                matchConfidence: slip.match_confidence,
+                wasAutoMatched: true,
+              }).catch((err) => console.error('Decision learning error:', err))
             }
           }
 
@@ -696,9 +841,20 @@ export async function POST(request: NextRequest) {
           .eq('id', merged.emailId)
           .eq('user_id', user.id)
 
-        // Learn vendor mapping from slip (fire-and-forget)
-        learnPaymentSlipMapping(serviceClient, user.id, merged.slipId, newTx.id)
-          .catch((err) => console.error('Payment slip learning error:', err))
+        // Learn from this decision (fire-and-forget)
+        recordDecision(serviceClient, {
+          userId: user.id,
+          decisionType: 'approve_create',
+          sourceType: 'merged_slip_email',
+          compositeId: merged.id,
+          paymentSlipId: merged.slipId,
+          emailTransactionId: merged.emailId,
+          transactionId: newTx.id,
+          paymentMethodId: slip.payment_method_id || undefined,
+          slipCounterpartyName: counterparty || undefined,
+          amount: Number(slip.amount),
+          currency: slip.currency,
+        }).catch((err) => console.error('Decision learning error:', err))
 
         results.success++
         results.transactionsCreated++
@@ -780,9 +936,26 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Learn vendor mapping from slip (fire-and-forget)
-        learnPaymentSlipMapping(serviceClient, user.id, merged.slipId, newTx.id)
-          .catch((err) => console.error('Payment slip learning error:', err))
+        // Learn from this decision (fire-and-forget)
+        // Get the statement description for learning
+        const mergedStmtSuggestions = (statement?.extraction_log as ExtractionLog | null)?.suggestions
+        const mergedStmtDesc = mergedStmtSuggestions?.[merged.index]?.description
+
+        recordDecision(serviceClient, {
+          userId: user.id,
+          decisionType: 'approve_create',
+          sourceType: 'merged_slip_stmt',
+          compositeId: merged.id,
+          paymentSlipId: merged.slipId,
+          statementUploadId: merged.statementId,
+          suggestionIndex: merged.index,
+          transactionId: newTx.id,
+          paymentMethodId: slip.payment_method_id || undefined,
+          slipCounterpartyName: counterparty || undefined,
+          statementDescription: mergedStmtDesc,
+          amount: Number(slip.amount),
+          currency: slip.currency,
+        }).catch((err) => console.error('Decision learning error:', err))
 
         results.success++
         results.transactionsCreated++
@@ -890,6 +1063,21 @@ export async function POST(request: NextRequest) {
 
         await updateSuggestion(debitStmt, debitLog, st.debitIndex)
         await updateSuggestion(creditStmt, creditLog, st.creditIndex)
+
+        // Learn from this self-transfer decision (fire-and-forget)
+        recordDecision(serviceClient, {
+          userId: user.id,
+          decisionType: 'approve_create',
+          sourceType: 'self_transfer',
+          compositeId: st.id,
+          statementUploadId: st.debitStatementId,
+          suggestionIndex: st.debitIndex,
+          transactionId: newTx.id,
+          paymentMethodId: debitStmt.payment_method_id || undefined,
+          statementDescription: debitSuggestion.description,
+          amount: Math.abs(debitSuggestion.amount),
+          currency: debitSuggestion.currency,
+        }).catch((err) => console.error('Decision learning error:', err))
 
         results.success++
         results.transactionsCreated++

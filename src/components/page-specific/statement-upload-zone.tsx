@@ -180,7 +180,7 @@ export function StatementUploadZone({
       aria-busy={uploadState === 'uploading'}
       className={cn(
         // Base styles
-        'relative flex min-h-[200px] flex-col items-center justify-center rounded-lg p-8 transition-all duration-200',
+        'relative flex min-h-[160px] sm:min-h-[200px] flex-col items-center justify-center rounded-lg p-5 sm:p-8 transition-all duration-200',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500',
 
         // State-based styles

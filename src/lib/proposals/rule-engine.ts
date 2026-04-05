@@ -17,6 +17,7 @@ import type {
 import { matchVendor, suggestVendorName } from './vendor-matcher'
 import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour } from './payment-method-mapper'
 import { findMappingMatch, isBankParser } from '@/lib/services/vendor-recipient-mapping'
+import { findStatementDescriptionMatch } from '@/lib/services/statement-description-learning'
 
 /**
  * Generate a rule-based proposal for a single queue item.
@@ -329,6 +330,29 @@ function proposeVendor(
           }
           return
         }
+      }
+    }
+  }
+
+  // Strategy 1c: Learned statement description mapping
+  if (context.statementDescriptionMappings.length > 0 && (
+    item.sourceType === 'statement' || item.sourceType === 'merged' || item.sourceType === 'merged_slip_stmt'
+  )) {
+    const descMapping = findStatementDescriptionMatch(
+      item.description,
+      context.statementPaymentMethodId || null,
+      context.statementDescriptionMappings
+    )
+    if (descMapping) {
+      const vendor = context.vendors.find((v) => v.id === descMapping.vendorId)
+      if (vendor) {
+        const confidence = Math.min(92, 80 + descMapping.matchCount * 3)
+        fields.vendorId = vendor.id
+        fc.vendor_id = {
+          score: confidence,
+          reasoning: `Learned from statement: "${item.description}" → ${vendor.name} (${descMapping.matchCount}× confirmed)`,
+        }
+        return
       }
     }
   }

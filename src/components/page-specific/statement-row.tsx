@@ -68,13 +68,13 @@ export function StatementRow({ statement, paymentMethodType, onProcess }: Statem
           <div className="flex-shrink-0">
             {['ready_for_review', 'in_review', 'done'].includes(statement.status) && (
               <div className="text-right space-y-1">
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 gap-0.5 text-xs text-muted-foreground">
                   <span>{extracted} extracted</span>
                   <span className="text-green-600">{matched} linked</span>
                   <span className="text-amber-600">{newCount} new</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Progress value={matchRate} className="h-1.5 w-24" />
+                <div className="flex items-center justify-end gap-2">
+                  <Progress value={matchRate} className="h-1.5 w-20" />
                   <span className="text-xs text-muted-foreground">{matchRate}%</span>
                 </div>
               </div>
@@ -84,6 +84,7 @@ export function StatementRow({ statement, paymentMethodType, onProcess }: Statem
               <Button
                 size="sm"
                 variant="outline"
+                className="min-h-[44px] sm:min-h-0"
                 onClick={(e) => {
                   e.preventDefault()
                   onProcess(statement.id)
@@ -105,6 +106,7 @@ export function StatementRow({ statement, paymentMethodType, onProcess }: Statem
                 <Button
                   size="sm"
                   variant="outline"
+                  className="min-h-[44px] sm:min-h-0"
                   onClick={(e) => {
                     e.preventDefault()
                     onProcess(statement.id)

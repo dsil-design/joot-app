@@ -3,8 +3,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import type { Json } from '@/lib/supabase/types'
 import { parseImportId } from '@/lib/utils/import-id'
 import { updateStatementReviewStatus } from '@/lib/utils/statement-status'
-import { learnVendorRecipientMapping } from '@/lib/services/vendor-recipient-learning'
-import { learnPaymentSlipMapping } from '@/lib/services/payment-slip-learning'
+import { recordDecision } from '@/lib/services/decision-learning'
 
 interface Suggestion {
   transaction_date: string
@@ -495,29 +494,35 @@ export async function POST(request: NextRequest) {
         },
       })
 
-    // Learn vendor-recipient mapping from bank transfer emails (fire-and-forget)
-    const emailIdForLearning = parsed.type === 'email'
-      ? parsed.emailId
-      : (parsed.type === 'merged' || parsed.type === 'merged_slip_email')
-        ? parsed.emailId
-        : undefined
+    // Learn from this decision (fire-and-forget)
+    // Fetch the linked transaction's vendor/payment method for learning
+    const { data: linkedTx } = await serviceClient
+      .from('transactions')
+      .select('vendor_id, payment_method_id')
+      .eq('id', transactionId)
+      .eq('user_id', user.id)
+      .single()
 
-    if (emailIdForLearning) {
-      learnVendorRecipientMapping(serviceClient, user.id, emailIdForLearning, transactionId)
-        .catch((err) => console.error('Vendor-recipient learning error:', err))
-    }
+    // Build source-specific fields
+    const stmtDescription = (parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt')
+      ? await getStatementDescription(serviceClient, user.id, parsed.statementId, parsed.index)
+      : undefined
 
-    // Learn vendor mapping from payment slips (fire-and-forget)
-    const slipIdForLearning = parsed.type === 'payment_slip'
-      ? parsed.slipId
-      : (parsed.type === 'merged_slip_email' || parsed.type === 'merged_slip_stmt')
-        ? parsed.slipId
-        : undefined
-
-    if (slipIdForLearning) {
-      learnPaymentSlipMapping(serviceClient, user.id, slipIdForLearning, transactionId)
-        .catch((err) => console.error('Payment slip learning error:', err))
-    }
+    recordDecision(serviceClient, {
+      userId: user.id,
+      decisionType: 'link',
+      sourceType: parsed.type,
+      compositeId,
+      statementUploadId: 'statementId' in parsed ? parsed.statementId : undefined,
+      suggestionIndex: 'index' in parsed ? parsed.index : undefined,
+      emailTransactionId: 'emailId' in parsed ? parsed.emailId : undefined,
+      paymentSlipId: 'slipId' in parsed ? parsed.slipId : undefined,
+      transactionId,
+      vendorId: linkedTx?.vendor_id || undefined,
+      paymentMethodId: linkedTx?.payment_method_id || undefined,
+      statementDescription: stmtDescription,
+      wasAutoMatched: false,
+    }).catch((err) => console.error('Decision learning error:', err))
 
     return NextResponse.json({ success: true })
   } catch (error) {
@@ -527,4 +532,21 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+async function getStatementDescription(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  userId: string,
+  statementId: string,
+  index: number
+): Promise<string | undefined> {
+  const { data } = await supabase
+    .from('statement_uploads')
+    .select('extraction_log')
+    .eq('id', statementId)
+    .eq('user_id', userId)
+    .single()
+
+  const suggestions = (data?.extraction_log as ExtractionLog | null)?.suggestions
+  return suggestions?.[index]?.description
 }

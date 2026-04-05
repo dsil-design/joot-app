@@ -11,6 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceRoleClient } from '../supabase/server';
 import { callAi, isAiAvailable } from './ai-client';
 import { getJournalEntriesSince } from './ai-journal-service';
+import { getDecisionCountSince } from '../services/decision-learning';
 
 // ============================================================================
 // TYPES
@@ -25,6 +26,26 @@ interface InsightData {
   target_sender?: string;
   email_count?: number;
   format_consistency_pct?: number;
+}
+
+interface UnmappedDescription {
+  statement_description: string;
+  occurrence_count: number;
+  source_types: string[];
+}
+
+interface RejectionPattern {
+  statement_description: string;
+  rejection_count: number;
+  avg_confidence: number;
+}
+
+interface MatchAccuracy {
+  confidence_band: string;
+  total_decisions: number;
+  approvals: number;
+  rejections: number;
+  approval_rate: number;
 }
 
 interface AnalysisResult {
@@ -104,9 +125,13 @@ export async function runAnalysis(
   const journalFrom = lastRun?.journal_to ? new Date(lastRun.journal_to) : null;
 
   // Check minimum entries threshold for batch runs
+  // Count both AI journal entries AND user decision log entries
   if (!skipMinimumCheck) {
-    const newEntryCount = await getJournalEntriesSince(userId, journalFrom, supabase);
-    if (newEntryCount < MIN_ENTRIES_FOR_BATCH) {
+    const [newJournalCount, newDecisionCount] = await Promise.all([
+      getJournalEntriesSince(userId, journalFrom, supabase),
+      getDecisionCountSince(supabase, userId, journalFrom),
+    ]);
+    if (newJournalCount + newDecisionCount < MIN_ENTRIES_FOR_BATCH) {
       return null; // Not enough new entries
     }
   }
@@ -131,18 +156,26 @@ export async function runAnalysis(
 
   try {
     // Run all pattern detection queries in parallel
+    // Email-based patterns (from ai_journal)
+    // + Decision-based patterns (from user_decision_log)
     const [
       regexCandidates,
       vendorCorrections,
       skipPatterns,
       costMetrics,
       entriesAnalyzed,
+      unmappedDescriptions,
+      rejectionPatterns,
+      matchAccuracy,
     ] = await Promise.all([
       findRegexParserCandidates(userId, journalFrom, supabase),
       findVendorCorrections(userId, journalFrom, supabase),
       findSkipPatterns(userId, journalFrom, supabase),
       getCostMetrics(userId, journalFrom, supabase),
       countEntries(userId, journalFrom, supabase),
+      findUnmappedStatementDescriptions(userId, supabase),
+      findRejectionPatterns(userId, journalFrom, supabase),
+      getMatchAccuracyByConfidence(userId, journalFrom, supabase),
     ]);
 
     // Build insights from patterns
@@ -226,11 +259,66 @@ export async function runAnalysis(
       }
     }
 
+    // Unmapped statement description insights
+    for (const desc of unmappedDescriptions) {
+      insights.push({
+        insight_type: 'unmapped_description',
+        severity: desc.occurrence_count >= 5 ? 'action_needed' : 'suggestion',
+        title: `Unmapped statement description: "${desc.statement_description}"`,
+        description: `This description appears in ${desc.occurrence_count} approved items but has no vendor mapping. Assigning a vendor will enable automatic matching in future imports.`,
+        evidence: {
+          statement_description: desc.statement_description,
+          occurrence_count: desc.occurrence_count,
+          source_types: desc.source_types,
+        },
+        email_count: desc.occurrence_count,
+      });
+    }
+
+    // Rejection pattern insights
+    for (const pattern of rejectionPatterns) {
+      insights.push({
+        insight_type: 'rejection_pattern',
+        severity: pattern.rejection_count >= 5 ? 'action_needed' : 'suggestion',
+        title: `Frequently rejected: "${pattern.statement_description}"`,
+        description: `This description has been rejected ${pattern.rejection_count} times (avg confidence: ${pattern.avg_confidence}%). The matching algorithm may need tuning for this type of transaction.`,
+        evidence: {
+          statement_description: pattern.statement_description,
+          rejection_count: pattern.rejection_count,
+          avg_confidence: pattern.avg_confidence,
+        },
+        email_count: pattern.rejection_count,
+      });
+    }
+
+    // Match accuracy insight
+    if (matchAccuracy.length > 0) {
+      const lowBands = matchAccuracy.filter(b => b.approval_rate < 70 && b.total_decisions >= 3);
+      for (const band of lowBands) {
+        insights.push({
+          insight_type: 'match_accuracy',
+          severity: 'info',
+          title: `Low approval rate for ${band.confidence_band} confidence matches`,
+          description: `Only ${band.approval_rate}% of ${band.confidence_band} confidence matches are approved (${band.approvals}/${band.total_decisions}). Consider adjusting the confidence threshold.`,
+          evidence: {
+            confidence_band: band.confidence_band,
+            total_decisions: band.total_decisions,
+            approvals: band.approvals,
+            rejections: band.rejections,
+            approval_rate: band.approval_rate,
+          },
+        });
+      }
+    }
+
     // Build patterns and summary objects
     const patterns = {
       regex_candidates: regexCandidates,
       vendor_corrections: vendorCorrections,
       skip_patterns: skipPatterns,
+      unmapped_descriptions: unmappedDescriptions,
+      rejection_patterns: rejectionPatterns,
+      match_accuracy: matchAccuracy,
     };
 
     const summary = {
@@ -552,6 +640,156 @@ async function countEntries(
 }
 
 // ============================================================================
+// DECISION-BASED PATTERN QUERIES (from user_decision_log)
+// ============================================================================
+
+/**
+ * Find statement descriptions that appear frequently in approvals but have
+ * no vendor assigned. These are candidates for vendor mapping.
+ */
+async function findUnmappedStatementDescriptions(
+  userId: string,
+  supabase: SupabaseClient
+): Promise<UnmappedDescription[]> {
+  // Find descriptions from approved items that have no vendor
+  const { data, error } = await supabase
+    .from('user_decision_log')
+    .select('statement_description, source_type')
+    .eq('user_id', userId)
+    .in('decision_type', ['approve_match', 'approve_create', 'link'])
+    .not('statement_description', 'is', null)
+    .is('vendor_id', null);
+
+  if (error || !data || data.length === 0) return [];
+
+  // Group by description and count occurrences
+  const descMap = new Map<string, { count: number; sourceTypes: Set<string> }>();
+  for (const row of data) {
+    const desc = row.statement_description as string;
+    const existing = descMap.get(desc) || { count: 0, sourceTypes: new Set<string>() };
+    existing.count++;
+    existing.sourceTypes.add(row.source_type);
+    descMap.set(desc, existing);
+  }
+
+  return Array.from(descMap.entries())
+    .filter(([, v]) => v.count >= 3) // At least 3 occurrences
+    .map(([desc, v]) => ({
+      statement_description: desc,
+      occurrence_count: v.count,
+      source_types: Array.from(v.sourceTypes),
+    }))
+    .sort((a, b) => b.occurrence_count - a.occurrence_count)
+    .slice(0, 10); // Top 10
+}
+
+/**
+ * Find statement descriptions that get rejected frequently.
+ * These suggest the matching algorithm isn't working well for those items.
+ */
+async function findRejectionPatterns(
+  userId: string,
+  since: Date | null,
+  supabase: SupabaseClient
+): Promise<RejectionPattern[]> {
+  let query = supabase
+    .from('user_decision_log')
+    .select('statement_description, match_confidence')
+    .eq('user_id', userId)
+    .eq('decision_type', 'reject')
+    .not('statement_description', 'is', null);
+
+  if (since) {
+    query = query.gt('created_at', since.toISOString());
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data || data.length === 0) return [];
+
+  // Group by description
+  const descMap = new Map<string, { count: number; confidences: number[] }>();
+  for (const row of data) {
+    const desc = row.statement_description as string;
+    const existing = descMap.get(desc) || { count: 0, confidences: [] };
+    existing.count++;
+    if (row.match_confidence != null) {
+      existing.confidences.push(row.match_confidence);
+    }
+    descMap.set(desc, existing);
+  }
+
+  return Array.from(descMap.entries())
+    .filter(([, v]) => v.count >= 3) // At least 3 rejections
+    .map(([desc, v]) => ({
+      statement_description: desc,
+      rejection_count: v.count,
+      avg_confidence: v.confidences.length > 0
+        ? Math.round(v.confidences.reduce((a, b) => a + b, 0) / v.confidences.length)
+        : 0,
+    }))
+    .sort((a, b) => b.rejection_count - a.rejection_count)
+    .slice(0, 10);
+}
+
+/**
+ * Calculate match accuracy by confidence band.
+ * Shows what % of auto-matched items the user actually approves.
+ */
+async function getMatchAccuracyByConfidence(
+  userId: string,
+  since: Date | null,
+  supabase: SupabaseClient
+): Promise<MatchAccuracy[]> {
+  let query = supabase
+    .from('user_decision_log')
+    .select('decision_type, match_confidence')
+    .eq('user_id', userId)
+    .in('decision_type', ['approve_match', 'reject'])
+    .not('match_confidence', 'is', null);
+
+  if (since) {
+    query = query.gt('created_at', since.toISOString());
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data || data.length === 0) return [];
+
+  // Group into confidence bands
+  const bands = new Map<string, { approvals: number; rejections: number }>();
+  for (const row of data) {
+    const conf = row.match_confidence as number;
+    let band: string;
+    if (conf >= 90) band = '90-100';
+    else if (conf >= 70) band = '70-89';
+    else if (conf >= 50) band = '50-69';
+    else band = '0-49';
+
+    const existing = bands.get(band) || { approvals: 0, rejections: 0 };
+    if (row.decision_type === 'approve_match') {
+      existing.approvals++;
+    } else {
+      existing.rejections++;
+    }
+    bands.set(band, existing);
+  }
+
+  return Array.from(bands.entries())
+    .map(([band, v]) => ({
+      confidence_band: band,
+      total_decisions: v.approvals + v.rejections,
+      approvals: v.approvals,
+      rejections: v.rejections,
+      approval_rate: Math.round((v.approvals / (v.approvals + v.rejections)) * 100),
+    }))
+    .sort((a, b) => {
+      const bandOrder = ['0-49', '50-69', '70-89', '90-100'];
+      return bandOrder.indexOf(a.confidence_band) - bandOrder.indexOf(b.confidence_band);
+    });
+}
+
+// ============================================================================
 // AI SUMMARY (Optional, single call)
 // ============================================================================
 
@@ -587,8 +825,8 @@ Respond with a JSON object: {"summary": "your 2-3 sentence summary"}`;
 // ============================================================================
 
 /**
- * Trigger a batch analysis if enough new journal entries exist.
- * Called at the end of processNewEmails() — fire-and-forget.
+ * Trigger a batch analysis if enough new entries exist.
+ * Called at the end of processNewEmails() and from decision learning — fire-and-forget.
  */
 export async function triggerBatchAnalysis(userId: string): Promise<void> {
   try {

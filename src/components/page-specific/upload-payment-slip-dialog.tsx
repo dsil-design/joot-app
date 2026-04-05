@@ -156,12 +156,12 @@ export function UploadPaymentSlipDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[540px]">
+      <DialogContent className="sm:max-w-[540px] max-h-[90dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Upload Payment Slips</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto flex-1">
           {/* Drop zone (shown when no files yet or to add more) */}
           {!isProcessing && (
             <div
@@ -256,7 +256,7 @@ export function UploadPaymentSlipDialog({
           )}
 
           {allDone && (
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-green-600 font-medium">
                 {doneCount} slip{doneCount !== 1 ? 's' : ''} uploaded and processing
               </p>

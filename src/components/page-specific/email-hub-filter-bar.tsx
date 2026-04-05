@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { DateRangePickerTrigger } from "@/components/ui/date-range-dialog"
 import { Search, X, Filter, Play, ArrowUpDown } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 import {
@@ -150,9 +150,9 @@ export function EmailHubFilterBar({
   return (
     <div className={cn("space-y-4", className)} onKeyDown={handleKeyDown}>
       {/* Main filters row */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="relative flex-1 min-w-0 sm:min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
@@ -179,7 +179,7 @@ export function EmailHubFilterBar({
           value={draft.status}
           onValueChange={(value) => setDraft({ ...draft, status: value as EmailHubStatus })}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -194,7 +194,7 @@ export function EmailHubFilterBar({
           value={draft.classification}
           onValueChange={(value) => setDraft({ ...draft, classification: value as EmailHubClassification })}
         >
-          <SelectTrigger className="w-[170px]">
+          <SelectTrigger className="w-full sm:w-[170px]">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -210,7 +210,7 @@ export function EmailHubFilterBar({
           value={draft.confidence}
           onValueChange={(value) => setDraft({ ...draft, confidence: value as EmailHubConfidence })}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Confidence" />
           </SelectTrigger>
           <SelectContent>
@@ -224,12 +224,13 @@ export function EmailHubFilterBar({
       </div>
 
       {/* Date section */}
-      <div className="border-t pt-4 flex flex-wrap items-center gap-2">
+      <div className="border-t pt-4 flex items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
         {DATE_PRESET_TOGGLES.map((preset) => (
           <Button
             key={preset.value}
             variant={activePreset === preset.value ? "default" : "outline"}
             size="sm"
+            className="shrink-0"
             onClick={() => {
               const range = getPresetRange(preset.value)
               setDraft({ ...draft, dateRange: range })
@@ -238,36 +239,37 @@ export function EmailHubFilterBar({
             {preset.label}
           </Button>
         ))}
-        <DateRangePicker
+        <DateRangePickerTrigger
           dateRange={draft.dateRange}
           onDateRangeChange={(range: DateRange | undefined) => setDraft({ ...draft, dateRange: range })}
-          className="w-[260px]"
           placeholder="Custom range..."
         />
       </div>
 
       {/* Actions row */}
-      <div className="flex items-center gap-3">
-        <Button
-          size="sm"
-          onClick={handleApply}
-          disabled={!isDirty}
-        >
-          <Play className="h-3.5 w-3.5 mr-1.5" />
-          Apply
-        </Button>
-
-        {hasActiveFilters(filters) && (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex items-center gap-3">
           <Button
-            variant="ghost"
             size="sm"
-            onClick={handleClearAll}
-            className="text-muted-foreground hover:text-foreground"
+            onClick={handleApply}
+            disabled={!isDirty}
           >
-            <X className="h-4 w-4 mr-1" />
-            Clear All
+            <Play className="h-3.5 w-3.5 mr-1.5" />
+            Apply
           </Button>
-        )}
+
+          {hasActiveFilters(filters) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearAll}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Clear All
+            </Button>
+          )}
+        </div>
 
         {activeFilterCount > 0 && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -283,7 +285,7 @@ export function EmailHubFilterBar({
           variant="ghost"
           size="sm"
           onClick={onSortToggle}
-          className="ml-auto text-muted-foreground hover:text-foreground"
+          className="sm:ml-auto text-muted-foreground hover:text-foreground"
         >
           <ArrowUpDown className="h-4 w-4 mr-1.5" />
           {filters.sort === "email_date_asc" ? "Oldest First" : "Newest First"}

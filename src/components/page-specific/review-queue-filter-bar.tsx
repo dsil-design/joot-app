@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { DateRangePickerTrigger } from "@/components/ui/date-range-dialog"
 import { Search, X, SlidersHorizontal, Mail, FileText, GitMerge, Receipt, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 
@@ -404,9 +404,9 @@ export function ReviewQueueFilterBar({
   return (
     <div className={cn("space-y-3", className)}>
       {/* Primary row: Search + Source buttons + Date range */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
         {/* Search input */}
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
@@ -425,7 +425,7 @@ export function ReviewQueueFilterBar({
                 key={btn.value}
                 onClick={() => handleFilterChange("direction", btn.value)}
                 className={cn(
-                  "flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                  "flex items-center gap-1 px-3 py-2.5 sm:py-1.5 text-xs font-medium rounded-md transition-colors",
                   filters.direction === btn.value
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -439,13 +439,13 @@ export function ReviewQueueFilterBar({
 
         {/* Source button group (review-queue mode) */}
         {!isPaymentSlips && (
-          <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
+          <div className="flex items-center rounded-lg border bg-muted/30 p-0.5 overflow-x-auto">
             {sourceButtons.map((btn) => (
               <button
                 key={btn.value}
                 onClick={() => handleFilterChange("source", btn.value)}
                 className={cn(
-                  "flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                  "flex items-center gap-1 px-3 py-2.5 sm:py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
                   filters.source === btn.value
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -459,10 +459,9 @@ export function ReviewQueueFilterBar({
         )}
 
         {/* Date range picker */}
-        <DateRangePicker
+        <DateRangePickerTrigger
           dateRange={filters.dateRange}
           onDateRangeChange={(range: DateRange | undefined) => handleFilterChange("dateRange", range)}
-          className="w-[260px]"
         />
 
         {/* More Filters toggle (hidden in payment-slips mode) */}
@@ -509,7 +508,7 @@ export function ReviewQueueFilterBar({
                 value={filters.processingStatus || "all"}
                 onValueChange={(value) => handleFilterChange("processingStatus", value as FilterProcessingStatus)}
               >
-                <SelectTrigger className="w-[170px]">
+                <SelectTrigger className="w-full sm:w-[170px]">
                   <SelectValue placeholder="Processing Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -526,7 +525,7 @@ export function ReviewQueueFilterBar({
                 value={filters.bank || "all"}
                 onValueChange={(value) => handleFilterChange("bank", value as FilterBank)}
               >
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="Bank" />
                 </SelectTrigger>
                 <SelectContent>
@@ -543,7 +542,7 @@ export function ReviewQueueFilterBar({
                 value={filters.status}
                 onValueChange={(value) => handleFilterChange("status", value as FilterStatus)}
               >
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Review Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -560,7 +559,7 @@ export function ReviewQueueFilterBar({
                 value={filters.confidence}
                 onValueChange={(value) => handleFilterChange("confidence", value as FilterConfidence)}
               >
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Confidence" />
                 </SelectTrigger>
                 <SelectContent>
@@ -577,7 +576,7 @@ export function ReviewQueueFilterBar({
                 value={filters.sortField || "uploaded_at"}
                 onValueChange={(value) => handleFilterChange("sortField", value as FilterSortField)}
               >
-                <SelectTrigger className="w-[175px]">
+                <SelectTrigger className="w-full sm:w-[175px]">
                   <ArrowUpDown className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -618,7 +617,7 @@ export function ReviewQueueFilterBar({
                 value={filters.status}
                 onValueChange={(value) => handleFilterChange("status", value as FilterStatus)}
               >
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -635,7 +634,7 @@ export function ReviewQueueFilterBar({
                 value={filters.currency}
                 onValueChange={(value) => handleFilterChange("currency", value as FilterCurrency)}
               >
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="Currency" />
                 </SelectTrigger>
                 <SelectContent>
@@ -652,7 +651,7 @@ export function ReviewQueueFilterBar({
                 value={filters.confidence}
                 onValueChange={(value) => handleFilterChange("confidence", value as FilterConfidence)}
               >
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Confidence" />
                 </SelectTrigger>
                 <SelectContent>
@@ -672,7 +671,7 @@ export function ReviewQueueFilterBar({
                     handleFilterChange("statementUploadId", value === "all" ? "" : value)
                   }
                 >
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-full sm:w-[200px]">
                     <SelectValue placeholder="All Statements" />
                   </SelectTrigger>
                   <SelectContent>
@@ -693,7 +692,7 @@ export function ReviewQueueFilterBar({
                   handleFilterChange("paymentMethodType", value as FilterPaymentMethodType)
                 }
               >
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Payment Type" />
                 </SelectTrigger>
                 <SelectContent>

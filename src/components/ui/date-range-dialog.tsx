@@ -6,13 +6,26 @@ import type { DateRange } from "react-day-picker"
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { CalendarIcon } from "lucide-react"
 import { getPresetRange, type DatePresetKey } from "@/lib/utils/date-filters"
 
-interface CustomDateRangeDialogProps {
-  initialRange?: DateRange
-  onSubmit: (range: DateRange | undefined) => void
-  onCancel: () => void
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = React.useState(false)
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+    setIsMobile(mql.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mql.addEventListener("change", handler)
+    return () => mql.removeEventListener("change", handler)
+  }, [breakpoint])
+  return isMobile
 }
 
 /**
@@ -23,7 +36,6 @@ function parseDate(dateStr: string): Date | null {
   const trimmed = dateStr.trim()
   if (!trimmed) return null
 
-  // Try common date formats
   const formats = [
     "M/d/yyyy",
     "M/d/yy",
@@ -51,24 +63,19 @@ function parseDate(dateStr: string): Date | null {
   return null
 }
 
-/**
- * Phase 1 & 2: Enhanced Custom Date Range Dialog
- *
- * Features:
- * - Single-month calendar with showOutsideDays={false}
- * - Editable "From" and "To" text input fields with date parsing
- * - Quick preset buttons (7D, 30D, This Mo, Last Mo, YTD)
- * - Calendar synchronization when user types a date
- * - Clear Selection button below calendar
- * - Submit/Cancel buttons at bottom
- * - Modal width: max-w-md (448px)
- * - Validation: "To" date must be >= "From" date
- */
-export function CustomDateRangeDialog({
+// --- DateRangeDialogContent (the inner form) ---
+
+interface DateRangeDialogContentProps {
+  initialRange?: DateRange
+  onSubmit: (range: DateRange | undefined) => void
+  onCancel: () => void
+}
+
+export function DateRangeDialogContent({
   initialRange,
   onSubmit,
   onCancel,
-}: CustomDateRangeDialogProps) {
+}: DateRangeDialogContentProps) {
   const [selectedRange, setSelectedRange] = React.useState<DateRange | undefined>(initialRange)
   const [fromInputValue, setFromInputValue] = React.useState(() =>
     initialRange?.from ? format(initialRange.from, "MM/dd/yyyy") : ""
@@ -80,8 +87,8 @@ export function CustomDateRangeDialog({
     initialRange?.from || new Date()
   )
   const [validationError, setValidationError] = React.useState<string>("")
+  const isMobile = useIsMobile()
 
-  // Preset configurations
   const presets: Array<{ key: DatePresetKey; label: string }> = [
     { key: "last-7-days", label: "7D" },
     { key: "last-30-days", label: "30D" },
@@ -90,7 +97,6 @@ export function CustomDateRangeDialog({
     { key: "this-year", label: "YTD" },
   ]
 
-  // Handle preset button clicks
   const handlePresetClick = (presetKey: DatePresetKey) => {
     const range = getPresetRange(presetKey)
     if (range) {
@@ -104,7 +110,6 @@ export function CustomDateRangeDialog({
     }
   }
 
-  // Handle "From" input changes
   const handleFromInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setFromInputValue(value)
@@ -118,8 +123,6 @@ export function CustomDateRangeDialog({
     const parsed = parseDate(value)
     if (parsed && isValid(parsed)) {
       const newRange = { from: parsed, to: selectedRange?.to }
-
-      // Validate: from must be <= to
       if (newRange.to && parsed > newRange.to) {
         setValidationError("From date must be before or equal to To date")
       } else {
@@ -130,7 +133,6 @@ export function CustomDateRangeDialog({
     }
   }
 
-  // Handle "To" input changes
   const handleToInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setToInputValue(value)
@@ -144,8 +146,6 @@ export function CustomDateRangeDialog({
     const parsed = parseDate(value)
     if (parsed && isValid(parsed)) {
       const newRange = { from: selectedRange?.from, to: parsed }
-
-      // Validate: to must be >= from
       if (newRange.from && parsed < newRange.from) {
         setValidationError("To date must be after or equal to From date")
       } else {
@@ -156,15 +156,12 @@ export function CustomDateRangeDialog({
     }
   }
 
-  // Handle "From" input blur - format if valid
   const handleFromInputBlur = () => {
     if (!fromInputValue.trim()) return
-
     const parsed = parseDate(fromInputValue)
     if (parsed && isValid(parsed)) {
       setFromInputValue(format(parsed, "MM/dd/yyyy"))
     } else {
-      // Invalid - revert to last valid value or clear
       if (selectedRange?.from) {
         setFromInputValue(format(selectedRange.from, "MM/dd/yyyy"))
       } else {
@@ -173,15 +170,12 @@ export function CustomDateRangeDialog({
     }
   }
 
-  // Handle "To" input blur - format if valid
   const handleToInputBlur = () => {
     if (!toInputValue.trim()) return
-
     const parsed = parseDate(toInputValue)
     if (parsed && isValid(parsed)) {
       setToInputValue(format(parsed, "MM/dd/yyyy"))
     } else {
-      // Invalid - revert to last valid value or clear
       if (selectedRange?.to) {
         setToInputValue(format(selectedRange.to, "MM/dd/yyyy"))
       } else {
@@ -190,7 +184,6 @@ export function CustomDateRangeDialog({
     }
   }
 
-  // Handle calendar icon clicks - focus calendar on that field's date
   const handleFromCalendarClick = () => {
     if (selectedRange?.from) {
       setCalendarMonth(startOfMonth(selectedRange.from))
@@ -203,7 +196,6 @@ export function CustomDateRangeDialog({
     }
   }
 
-  // Handle calendar selection
   const handleCalendarSelect = (range: DateRange | undefined) => {
     if (!range) {
       setSelectedRange(undefined)
@@ -213,7 +205,6 @@ export function CustomDateRangeDialog({
       return
     }
 
-    // Validate range
     if (range.from && range.to && range.from > range.to) {
       setValidationError("From date must be before or equal to To date")
       return
@@ -225,7 +216,6 @@ export function CustomDateRangeDialog({
     setValidationError("")
   }
 
-  // Handle clear selection
   const handleClear = () => {
     setSelectedRange(undefined)
     setFromInputValue("")
@@ -233,14 +223,12 @@ export function CustomDateRangeDialog({
     setValidationError("")
   }
 
-  // Handle submit - only enabled if valid range exists
   const handleSubmit = () => {
     if (selectedRange?.from && selectedRange?.to && !validationError) {
       onSubmit(selectedRange)
     }
   }
 
-  // Check if Apply Filter button should be enabled
   const isSubmitEnabled = Boolean(
     selectedRange?.from &&
     selectedRange?.to &&
@@ -248,7 +236,7 @@ export function CustomDateRangeDialog({
   )
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3 sm:gap-4">
       {/* Quick Preset Buttons */}
       <div className="flex flex-wrap gap-2">
         {presets.map(({ key, label }) => (
@@ -329,15 +317,15 @@ export function CustomDateRangeDialog({
         </p>
       )}
 
-      {/* Dual-Month Calendar */}
-      <div className="flex justify-center py-2">
+      {/* Calendar - single month on mobile, dual on desktop */}
+      <div className="flex justify-center py-2 overflow-x-auto">
         <Calendar
           mode="range"
           selected={selectedRange}
           onSelect={handleCalendarSelect}
           month={calendarMonth}
           onMonthChange={setCalendarMonth}
-          numberOfMonths={2}
+          numberOfMonths={isMobile ? 1 : 2}
           fixedWeeks
           showOutsideDays={false}
           className="rounded-md border"
@@ -383,5 +371,67 @@ export function CustomDateRangeDialog({
         </Button>
       </div>
     </div>
+  )
+}
+
+// --- DateRangePickerTrigger (trigger button + dialog wrapper) ---
+
+interface DateRangePickerTriggerProps {
+  dateRange?: DateRange
+  onDateRangeChange: (range: DateRange | undefined) => void
+  placeholder?: string
+  disabled?: boolean
+  className?: string
+  dialogTitle?: string
+}
+
+export function DateRangePickerTrigger({
+  dateRange,
+  onDateRangeChange,
+  placeholder = "Pick a date range",
+  disabled = false,
+  className,
+  dialogTitle = "Select Date Range",
+}: DateRangePickerTriggerProps) {
+  const [open, setOpen] = React.useState(false)
+
+  const displayText = React.useMemo(() => {
+    if (!dateRange?.from) return null
+    if (!dateRange.to || dateRange.from.getTime() === dateRange.to.getTime()) {
+      return format(dateRange.from, "MMM d, yyyy")
+    }
+    return `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}`
+  }, [dateRange])
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          disabled={disabled}
+          className={className}
+        >
+          <CalendarIcon className="h-4 w-4 mr-2 shrink-0" />
+          <span className={displayText ? "text-foreground" : "text-muted-foreground"}>
+            {displayText || placeholder}
+          </span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-fit">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-medium text-zinc-950">
+            {dialogTitle}
+          </DialogTitle>
+        </DialogHeader>
+        <DateRangeDialogContent
+          initialRange={dateRange}
+          onSubmit={(range) => {
+            onDateRangeChange(range)
+            setOpen(false)
+          }}
+          onCancel={() => setOpen(false)}
+        />
+      </DialogContent>
+    </Dialog>
   )
 }

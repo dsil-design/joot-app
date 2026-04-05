@@ -48,7 +48,7 @@ export function ImportsLayout({ children, user }: ImportsLayoutProps) {
       <SidebarNavigation user={user} />
 
       <main className="lg:ml-[240px]">
-        <div className="flex flex-col gap-6 pb-12 pt-6 md:pt-12 px-6 md:px-10">
+        <div className="flex flex-col gap-6 pb-20 lg:pb-12 pt-6 md:pt-8 px-4 sm:px-6 lg:px-10">
           <PageHeader title="Sources" />
 
           {/* Main Content with Side Navigation */}

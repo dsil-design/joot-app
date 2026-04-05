@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PageShell } from '@/components/page-specific/page-shell'
 import { PageHeader } from '@/components/page-specific/page-header'
-import { MobileFab } from '@/components/page-specific/mobile-fab'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Plus, X } from 'lucide-react'
@@ -137,10 +136,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </div>
           </div>
 
-      {/* Mobile FAB - always visible on mobile for adding transactions */}
-      <div className="md:hidden">
-        <MobileFab />
-      </div>
     </PageShell>
   )
 }

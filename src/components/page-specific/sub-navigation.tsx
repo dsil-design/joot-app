@@ -64,7 +64,7 @@ export function SubNavigation({ items, exactRootMatch = true }: SubNavigationPro
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
+                "flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
                 active
                   ? "bg-zinc-100 text-zinc-950"
                   : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"

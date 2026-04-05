@@ -121,12 +121,12 @@ export function UploadStatementDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Upload Statement</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto flex-1">
           {/* Payment method selector (shown when no PM pre-selected) */}
           {!paymentMethodId && (
             <div className="space-y-2">

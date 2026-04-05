@@ -180,7 +180,8 @@ export function EmailTransactionCard({
                       }
                     }}
                     placeholder="e.g. bank transfer for $50"
-                    className="h-6 text-xs flex-1"
+                    className="h-9 text-sm sm:h-6 sm:text-xs flex-1"
+                    style={{ fontSize: '16px' }}
                     autoFocus
                     disabled={isFeedbackProcessing}
                   />
@@ -195,7 +196,7 @@ export function EmailTransactionCard({
                       }
                     }}
                     disabled={!feedbackText.trim() || isFeedbackProcessing}
-                    className="h-6 px-1.5"
+                    className="h-9 w-9 sm:h-6 sm:w-auto sm:px-1.5 p-0"
                   >
                     {isFeedbackProcessing ? (
                       <Bot className="h-3 w-3 animate-spin" />
@@ -222,10 +223,10 @@ export function EmailTransactionCard({
                 variant="ghost"
                 size="icon"
                 onClick={() => setViewerOpen(true)}
-                className="h-7 w-7"
+                className="h-9 w-9 sm:h-7 sm:w-7"
                 title="View Email"
               >
-                <Eye className="h-3.5 w-3.5" />
+                <Eye className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
               </Button>
               {onSkip && (
                 <Button
@@ -233,7 +234,7 @@ export function EmailTransactionCard({
                   size="sm"
                   onClick={() => onSkip(data.id)}
                   disabled={isSkipping || isProcessingExtraction}
-                  className="h-7 text-xs text-muted-foreground"
+                  className="h-9 sm:h-7 text-xs text-muted-foreground"
                   title="Skip this email"
                 >
                   <SkipForward className="h-3 w-3 mr-1" />
@@ -246,7 +247,7 @@ export function EmailTransactionCard({
                   size="sm"
                   onClick={() => onProcess(data.id)}
                   disabled={isProcessingExtraction || isSkipping}
-                  className="h-7 text-xs"
+                  className="h-9 sm:h-7 text-xs"
                 >
                   <Zap className="h-3 w-3 mr-1" />
                   {isProcessingExtraction ? "Processing..." : "Process"}
@@ -267,10 +268,10 @@ export function EmailTransactionCard({
                 variant="ghost"
                 size="icon"
                 onClick={() => setViewerOpen(true)}
-                className="h-7 w-7"
+                className="h-9 w-9 sm:h-7 sm:w-7"
                 title="View Email"
               >
-                <Eye className="h-3.5 w-3.5" />
+                <Eye className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
               </Button>
             </div>
           ) : (
@@ -289,10 +290,10 @@ export function EmailTransactionCard({
                 variant="ghost"
                 size="icon"
                 onClick={() => setViewerOpen(true)}
-                className="h-7 w-7"
+                className="h-9 w-9 sm:h-7 sm:w-7"
                 title="View Email"
               >
-                <Eye className="h-3.5 w-3.5" />
+                <Eye className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
               </Button>
               {onProcess && (
                 <Button
@@ -300,7 +301,7 @@ export function EmailTransactionCard({
                   size="sm"
                   onClick={() => onProcess(data.id)}
                   disabled={isProcessingExtraction}
-                  className="h-7 text-xs"
+                  className="h-9 sm:h-7 text-xs"
                 >
                   <RefreshCw className={cn("h-3 w-3 mr-1", isProcessingExtraction && "animate-spin")} />
                   {isProcessingExtraction ? "Processing..." : "Retry"}

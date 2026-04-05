@@ -5,13 +5,11 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { HomeTransactionList } from '@/components/page-specific/home-transaction-list'
-import { AddTransactionFooter } from '@/components/page-specific/add-transaction-footer'
 import { ComparisonMetric } from '@/components/ui/comparison-metric'
 import { MiniSparkline } from '@/components/ui/mini-sparkline'
 import { MonthlyTrendChart } from '@/components/ui/monthly-trend-chart'
 import { TrendChartCard } from '@/components/ui/trend-chart-card'
 import { TopVendorsWidget } from '@/components/ui/top-vendors-widget'
-import { MainNavigation } from '@/components/page-specific/main-navigation'
 import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
 import { X, Plus, ArrowRight } from 'lucide-react'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
@@ -194,7 +192,7 @@ export function HomePageClient({
         )}
 
         {/* Main scrollable content */}
-        <div className="flex flex-col gap-6 pb-12 pt-6 md:pt-12 px-6 md:px-10">
+        <div className="flex flex-col gap-6 pb-20 lg:pb-12 pt-6 md:pt-8 px-4 sm:px-6 lg:px-10">
         {/* Header with Navigation */}
         <div className="flex flex-col gap-4 w-full">
           <div className="flex items-center justify-between w-full">
@@ -210,10 +208,6 @@ export function HomePageClient({
                 Add transaction
               </span>
             </Button>
-          </div>
-          {/* Navigation Bar - Mobile/Tablet only */}
-          <div className="lg:hidden">
-            <MainNavigation />
           </div>
         </div>
 
@@ -460,8 +454,6 @@ export function HomePageClient({
         </div>
       </main>
 
-      {/* Fixed Sticky Footer - Always visible at bottom on mobile */}
-      <AddTransactionFooter />
 
       {/* Add Transaction Modal (Desktop only) */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>

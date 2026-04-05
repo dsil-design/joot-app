@@ -3,7 +3,7 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { StatCard } from "@/components/ui/stat-card"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   ReviewQueueFilterBar,
   useReviewQueueFilters,
@@ -49,7 +49,6 @@ import {
   FileText,
   Clock,
   AlertCircle,
-  CalendarDays,
   RefreshCw,
   Sparkles,
   Zap,
@@ -704,83 +703,95 @@ export default function ReviewQueuePage() {
   )
 
   return (
-    <div className="space-y-6">
-      {/* Action bar */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Review and link transaction matches
-        </p>
-
-        <div className="flex items-center gap-2">
-          {(pendingCount > 0 || stats.pending > 0) && (
-            <Button
-              size="sm"
-              onClick={handleStartReview}
-              disabled={isLoading || focusLoading}
-            >
-              <Focus className="h-4 w-4 mr-2" />
-              Review ({stats.pending || pendingCount})
-            </Button>
-          )}
+    <div className="space-y-4">
+      {/* Action row — primary Review button + utility actions */}
+      <div className="flex items-center justify-between gap-3">
+        {(pendingCount > 0 || stats.pending > 0) ? (
           <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isLoading || isRematching}
-            title="Re-match against existing transactions"
+            size="default"
+            onClick={handleStartReview}
+            disabled={isLoading || focusLoading}
+            className="flex-1 sm:flex-none sm:min-w-[160px]"
           >
-            <RefreshCw
-              className={`h-4 w-4 mr-2 ${isRematching ? "animate-spin" : ""}`}
-            />
-            {isRematching ? "Finding matches..." : "Refresh"}
+            <Focus className="h-4 w-4 mr-2" />
+            Review {stats.pending || pendingCount} item{(stats.pending || pendingCount) !== 1 ? "s" : ""}
           </Button>
+        ) : (
+          <p className="text-sm text-muted-foreground italic">All caught up</p>
+        )}
+
+        <div className="flex items-center gap-1">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={handleGenerateProposals}
             disabled={isLoading || isGeneratingProposals}
             title="Generate AI proposals for unmatched items"
+            className="text-muted-foreground hover:text-foreground"
           >
-            <Sparkles
-              className={`h-4 w-4 mr-2 ${isGeneratingProposals ? "animate-pulse" : ""}`}
-            />
-            {isGeneratingProposals ? "Generating..." : "Generate Proposals"}
+            <Sparkles className={`h-4 w-4 sm:mr-1.5 ${isGeneratingProposals ? "animate-pulse" : ""}`} />
+            <span className="hidden sm:inline text-xs">
+              {isGeneratingProposals ? "Generating..." : "Proposals"}
+            </span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isLoading || isRematching}
+            title="Re-match against existing transactions"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <RefreshCw className={`h-4 w-4 sm:mr-1.5 ${isRematching ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline text-xs">
+              {isRematching ? "Matching..." : "Refresh"}
+            </span>
           </Button>
         </div>
       </div>
 
-      {/* Stats cards — user-facing labels */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          icon={<Clock className="h-5 w-5" />}
-          label="Pending Review"
-          value={stats.pending}
-          isLoading={isInitialLoading}
-          className="text-amber-600 cursor-pointer hover:ring-1 hover:ring-amber-200 rounded-lg"
+      {/* Compact stats strip */}
+      <div className="flex items-stretch rounded-lg border bg-card overflow-hidden">
+        <button
+          type="button"
           onClick={() => handleStatClick({ status: "pending" })}
-        />
-        <StatCard
-          icon={<CheckCircle2 className="h-5 w-5" />}
-          label="Ready to Link"
-          value={readyToApprove}
-          isLoading={isInitialLoading}
-          className="text-green-600 cursor-pointer hover:ring-1 hover:ring-green-200 rounded-lg"
+          className="flex flex-1 flex-col items-center justify-center px-3 py-3 text-center hover:bg-accent/50 transition-colors border-r"
+        >
+          {isInitialLoading ? (
+            <Skeleton className="h-5 w-8 mb-1" />
+          ) : (
+            <span className="text-lg font-bold text-amber-600 leading-none tabular-nums">{stats.pending}</span>
+          )}
+          <span className="text-[11px] text-muted-foreground mt-1 leading-none">Pending</span>
+        </button>
+        <button
+          type="button"
           onClick={() => handleStatClick({ status: "pending", confidence: "high" })}
-        />
-        <StatCard
-          icon={<CalendarDays className="h-5 w-5" />}
-          label="This Week"
-          value={stats.thisWeekCount ?? 0}
-          isLoading={isInitialLoading}
-          className="cursor-pointer hover:ring-1 hover:ring-zinc-200 rounded-lg"
-        />
-        <StatCard
-          icon={<FileText className="h-5 w-5" />}
-          label="Resolved"
-          value={stats.resolvedCount ?? 0}
-          isLoading={isInitialLoading}
-          className="text-zinc-500 cursor-pointer hover:ring-1 hover:ring-zinc-200 rounded-lg"
-        />
+          className="flex flex-1 flex-col items-center justify-center px-3 py-3 text-center hover:bg-accent/50 transition-colors border-r"
+        >
+          {isInitialLoading ? (
+            <Skeleton className="h-5 w-8 mb-1" />
+          ) : (
+            <span className="text-lg font-bold text-green-600 leading-none tabular-nums">{readyToApprove}</span>
+          )}
+          <span className="text-[11px] text-muted-foreground mt-1 leading-none">Ready</span>
+        </button>
+        <div className="flex flex-1 flex-col items-center justify-center px-3 py-3 text-center border-r">
+          {isInitialLoading ? (
+            <Skeleton className="h-5 w-8 mb-1" />
+          ) : (
+            <span className="text-lg font-bold leading-none tabular-nums">{stats.thisWeekCount ?? 0}</span>
+          )}
+          <span className="text-[11px] text-muted-foreground mt-1 leading-none">This Week</span>
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center px-3 py-3 text-center">
+          {isInitialLoading ? (
+            <Skeleton className="h-5 w-8 mb-1" />
+          ) : (
+            <span className="text-lg font-bold text-zinc-500 leading-none tabular-nums">{stats.resolvedCount ?? 0}</span>
+          )}
+          <span className="text-[11px] text-muted-foreground mt-1 leading-none">Resolved</span>
+        </div>
       </div>
 
       {/* Context breadcrumb when filtered by statement */}
@@ -842,16 +853,20 @@ export default function ReviewQueuePage() {
             {/* Proposed Matches section */}
             {matchItems.length > 0 && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Proposed Matches ({matchItems.length})
-                  </h2>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-0.5 h-5 bg-green-500 rounded-full shrink-0" />
+                    <h2 className="text-sm font-semibold text-foreground">
+                      Proposed Matches
+                      <span className="ml-2 text-muted-foreground font-normal">({matchItems.length})</span>
+                    </h2>
+                  </div>
                   {highConfidenceItems.length > 0 && (
                     <Button
                       variant="default"
                       size="sm"
                       onClick={() => setBatchDialogOpen(true)}
-                      className="bg-green-600 hover:bg-green-700"
+                      className="bg-green-600 hover:bg-green-700 self-start sm:self-auto"
                     >
                       <CheckCircle2 className="h-4 w-4 mr-2" />
                       Link All High ({highConfidenceItems.length})
@@ -865,16 +880,20 @@ export default function ReviewQueuePage() {
             {/* New Transactions section */}
             {newItems.length > 0 && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    New Transactions ({newItems.length})
-                  </h2>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-0.5 h-5 bg-purple-500 rounded-full shrink-0" />
+                    <h2 className="text-sm font-semibold text-foreground">
+                      New Transactions
+                      <span className="ml-2 text-muted-foreground font-normal">({newItems.length})</span>
+                    </h2>
+                  </div>
                   {quickCreateItems.length >= 2 && (
                     <Button
                       variant="default"
                       size="sm"
                       onClick={() => handleBatchQuickCreate(quickCreateItems.map((i) => i.id))}
-                      className="bg-purple-600 hover:bg-purple-700"
+                      className="bg-purple-600 hover:bg-purple-700 self-start sm:self-auto"
                     >
                       <Zap className="h-4 w-4 mr-2" aria-hidden="true" />
                       Quick Create All ({quickCreateItems.length})
@@ -898,7 +917,7 @@ export default function ReviewQueuePage() {
                     <span className="font-medium">
                       Waiting for Statement ({waitingItems.length})
                     </span>
-                    <span className="text-xs">
+                    <span className="text-xs hidden sm:inline">
                       — Email receipts awaiting credit card statement
                     </span>
                   </div>

@@ -102,7 +102,7 @@ export function StatementViewerModal({
             {isPdf ? (
               <iframe
                 src={fileUrl}
-                className="w-full h-[70vh] border-0 rounded"
+                className="w-full h-[calc(90vh-100px)] border-0 rounded"
                 title="Statement PDF"
               />
             ) : isImage ? (

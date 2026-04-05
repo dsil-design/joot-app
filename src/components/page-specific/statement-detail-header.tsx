@@ -78,14 +78,14 @@ export function StatementDetailHeader({
       )}
 
       {/* Back link and title */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
+      <div className="flex items-start gap-3">
+        <Button variant="ghost" size="icon" asChild className="shrink-0 mt-0.5">
           <Link href="/imports/statements">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-xl font-semibold truncate">
               {paymentMethodName}
             </h1>
@@ -97,7 +97,7 @@ export function StatementDetailHeader({
             <span className="text-xs">{filename}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           {onViewStatement && (
             <Button variant="outline" size="sm" onClick={onViewStatement}>
               <Eye className="h-4 w-4 mr-1.5" />
@@ -131,6 +131,37 @@ export function StatementDetailHeader({
             </Button>
           )}
         </div>
+      </div>
+
+      {/* Mobile action buttons */}
+      <div className="flex sm:hidden items-center gap-2 flex-wrap -mt-2">
+        {onViewStatement && (
+          <Button variant="outline" size="sm" onClick={onViewStatement}>
+            <Eye className="h-4 w-4 mr-1.5" />
+            View Statement
+          </Button>
+        )}
+        {onReprocess && isProcessed && (
+          <Button variant="outline" size="sm" onClick={onReprocess} disabled={isReprocessing}>
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${isReprocessing ? 'animate-spin' : ''}`} />
+            {isReprocessing ? 'Reprocessing...' : 'Reprocess'}
+          </Button>
+        )}
+        {onDelete && status !== 'processing' && (
+          <Button
+            variant={isUnprocessed ? 'outline' : 'ghost'}
+            size="sm"
+            onClick={onDelete}
+            disabled={isDeleting}
+            className={isUnprocessed
+              ? 'border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700'
+              : 'text-muted-foreground hover:text-red-600'
+            }
+          >
+            <Trash2 className="h-4 w-4 mr-1.5" />
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        )}
       </div>
 
       {/* Stats row */}

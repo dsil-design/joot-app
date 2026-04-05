@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { MainNavigation } from '@/components/page-specific/main-navigation'
 
 interface PageHeaderProps {
   title: string
@@ -16,30 +15,24 @@ export function PageHeader({ title, actions, hideBack }: PageHeaderProps) {
   const router = useRouter()
 
   return (
-    <div className="flex flex-col gap-4 w-full">
-      <div className="flex items-center justify-between w-full">
-        <div className="flex items-center gap-3">
-          {!hideBack && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.back()}
-              className="h-10 w-10 shrink-0"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          )}
-          <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
-            {title}
-          </h1>
-        </div>
-        {actions && <div className="flex items-center gap-3">{actions}</div>}
+    <div className="flex items-center justify-between w-full">
+      <div className="flex items-center gap-3">
+        {!hideBack && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+            className="h-10 w-10 shrink-0"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
+        <h1 className="text-[36px] font-medium text-foreground leading-[40px]">
+          {title}
+        </h1>
       </div>
-      {/* Navigation Bar - Mobile/Tablet only */}
-      <div className="lg:hidden">
-        <MainNavigation />
-      </div>
+      {actions && <div className="flex items-center gap-3">{actions}</div>}
     </div>
   )
 }

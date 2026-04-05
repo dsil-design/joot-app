@@ -68,9 +68,9 @@ function formatAmount(amount: number): string {
 function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null
   return (
-    <div className="flex justify-between py-2 border-b border-zinc-100 last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-right">{value}</span>
+    <div className="flex justify-between gap-4 py-2 border-b border-zinc-100 last:border-0">
+      <span className="text-sm text-muted-foreground shrink-0">{label}</span>
+      <span className="text-sm font-medium text-right break-words min-w-0">{value}</span>
     </div>
   )
 }
@@ -202,15 +202,15 @@ export default function PaymentSlipDetailPage() {
       </Link>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">{slip.filename}</h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold truncate">{slip.filename}</h2>
           <p className="text-sm text-muted-foreground">
             Uploaded {formatDate(slip.uploaded_at)}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button size="sm" variant="outline" onClick={() => setViewerOpen(true)}>
             <Eye className="h-4 w-4 mr-2" />
             Preview
@@ -299,14 +299,14 @@ export default function PaymentSlipDetailPage() {
           {/* Amount & Direction */}
           <Card>
             <CardContent className="py-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   {isIncome ? (
-                    <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                       <ArrowDownLeft className="h-5 w-5 text-green-600" />
                     </div>
                   ) : (
-                    <div className="h-10 w-10 rounded-full bg-zinc-100 flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-full bg-zinc-100 flex items-center justify-center shrink-0">
                       <ArrowUpRight className="h-5 w-5 text-zinc-600" />
                     </div>
                   )}
@@ -368,14 +368,14 @@ export default function PaymentSlipDetailPage() {
 
           {/* Review queue link */}
           {slip.review_status === 'pending' && (
-            <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-amber-200 bg-amber-50 p-4">
               <div>
                 <p className="text-sm font-medium text-amber-800">Ready for review</p>
                 <p className="text-xs text-amber-600 mt-0.5">
                   Approve or reject this transaction in the review queue
                 </p>
               </div>
-              <Button size="sm" variant="outline" asChild>
+              <Button size="sm" variant="outline" asChild className="self-start sm:self-auto shrink-0">
                 <Link href="/review?source=payment_slip">
                   Go to Review Queue
                 </Link>

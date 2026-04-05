@@ -57,13 +57,13 @@ export function PaymentSlipViewerModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="border-b shrink-0 px-6 pt-6 pb-4">
+        <DialogHeader className="border-b shrink-0 px-4 sm:px-6 pt-5 sm:pt-6 pb-4">
           <div className="flex items-start justify-between gap-4 pr-8">
-            <DialogTitle className="text-base leading-snug">
+            <DialogTitle className="text-base leading-snug truncate">
               {filename}
             </DialogTitle>
             {fileUrl && (
-              <Button variant="outline" size="sm" asChild className="shrink-0">
+              <Button variant="outline" size="sm" asChild className="shrink-0 min-h-[44px] sm:min-h-0">
                 <a href={fileUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
                   Open
@@ -89,7 +89,7 @@ export function PaymentSlipViewerModal({
             </Button>
           </div>
         ) : fileUrl ? (
-          <div className="flex-1 overflow-auto px-6 py-4">
+          <div className="flex-1 overflow-auto px-4 sm:px-6 py-4 min-h-0">
             <div className="flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

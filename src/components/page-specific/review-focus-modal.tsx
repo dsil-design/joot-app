@@ -1156,7 +1156,7 @@ export function ReviewFocusModal({
         {/* ── Split pane content ── */}
         <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-[2fr_3fr] md:divide-x min-h-0">
           {/* Left panel: Source info */}
-          <div className="overflow-y-auto p-5 border-b md:border-b-0">
+          <div className="overflow-y-auto p-5 border-b md:border-b-0 max-h-48 sm:max-h-none">
             <SourceInfoPanel data={item} />
           </div>
 

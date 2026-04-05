@@ -661,11 +661,11 @@ export default function StatementDetailPage() {
       {['ready_for_review', 'in_review', 'done'].includes(status) && extracted > 0 && !calloutDismissed && (
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="py-4">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <p className="text-sm font-medium text-blue-900">
                 {extracted} transaction{extracted !== 1 ? 's' : ''} extracted.
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {(pendingMatchCount ?? 0) > 0 && (
                   <Button
                     variant="default"

@@ -34,13 +34,11 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { TransactionGroup } from "@/components/page-specific/transactions-list"
-import { AddTransactionFooter } from "@/components/page-specific/add-transaction-footer"
-import { MobileFab } from "@/components/page-specific/mobile-fab"
 import { format, parseISO } from "date-fns"
 import { getBatchExchangeRates, getCacheKey } from "@/lib/utils/exchange-rate-batch"
 import type { CurrencyType } from "@/lib/supabase/types"
 import { formatCurrency } from "@/lib/utils"
-import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { DateRangeDialogContent } from "@/components/ui/date-range-dialog"
 import type { DateRange } from "react-day-picker"
 import { Input } from "@/components/ui/input"
 import { MultiSelectComboBox } from "@/components/ui/multi-select-combobox"
@@ -75,7 +73,6 @@ import { createClient } from "@/lib/supabase/client"
 import { QuickFilterBar } from "@/components/page-specific/quick-filter-bar"
 import { ActiveFilterChips } from "@/components/page-specific/active-filter-chips"
 import { AdvancedFiltersPanel } from "@/components/page-specific/advanced-filters-panel"
-import { CustomDateRangeDialog } from "@/components/page-specific/custom-date-range-dialog"
 import { getPresetRange, type DatePresetKey } from "@/lib/utils/date-filters"
 
 type ViewMode = "recorded" | "all-usd" | "all-thb"
@@ -1504,7 +1501,6 @@ export default function AllTransactionsPage() {
           }
         />
         <TransactionListSkeleton count={10} viewMode={layoutMode} />
-        <AddTransactionFooter />
       </>
     )
   }
@@ -1536,7 +1532,6 @@ export default function AllTransactionsPage() {
             Retry
           </Button>
         </div>
-        <AddTransactionFooter />
       </>
     )
   }
@@ -1620,7 +1615,7 @@ export default function AllTransactionsPage() {
                 Select Custom Date Range
               </DialogTitle>
             </DialogHeader>
-            <CustomDateRangeDialog
+            <DateRangeDialogContent
               initialRange={filters.dateRange}
               onSubmit={(range) => {
                 setFilters({
@@ -1751,10 +1746,6 @@ export default function AllTransactionsPage() {
         />
       )}
 
-      {/* Mobile FAB - always visible on mobile for adding transactions */}
-      <div className="md:hidden">
-        <MobileFab />
-      </div>
 
       {/* Desktop: Show totals footer when filters are active and no selection */}
       {!selectedIds.size && hasActiveFilters && (

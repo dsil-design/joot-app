@@ -149,6 +149,7 @@ export function EmailBatchToolbar({
               size="sm"
               onClick={onProcessSelected}
               disabled={isProcessing}
+              aria-label="Process selected"
             >
               <RefreshCw className="h-4 w-4 mr-1" />
               Process
@@ -158,14 +159,27 @@ export function EmailBatchToolbar({
               size="sm"
               onClick={handleSkip}
               disabled={isProcessing}
+              aria-label="Skip selected"
             >
               <SkipForward className="h-4 w-4 mr-1" />
               Skip
             </Button>
             <Button
+              variant="outline"
+              size="sm"
+              onClick={onMarkPending}
+              disabled={isProcessing}
+              aria-label="Mark pending"
+            >
+              <Clock className="h-4 w-4 mr-1" />
+              Pending
+            </Button>
+            <Button
               variant="ghost"
               size="sm"
               onClick={onClearSelection}
+              aria-label="Clear selection"
+              className="ml-auto"
             >
               <X className="h-4 w-4" />
             </Button>

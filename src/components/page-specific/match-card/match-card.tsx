@@ -129,7 +129,7 @@ export function MatchCard({
         <MatchCardReasons reasons={data.reasons} isNew={data.isNew} />
       </CardContent>
 
-      <CardFooter className="pt-2 gap-2 flex-wrap">
+      <CardFooter className="pt-2 gap-2 flex-wrap [&>button]:min-h-[44px] [&>button]:sm:min-h-0">
         <MatchCardActions
           id={data.id}
           variant={variant}

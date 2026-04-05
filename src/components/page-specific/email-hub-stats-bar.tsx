@@ -41,12 +41,12 @@ export function EmailHubStatsBar({
           </div>
           <Progress value={extractionPercent} className="h-2" />
           <p className="text-xs text-amber-700 dark:text-amber-300">
-            {unprocessedForBanner.toLocaleString()} emails still need extraction. Use &apos;Process All&apos; to extract data with AI.
+            {unprocessedForBanner.toLocaleString()} emails still need extraction.
           </p>
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
         <StatCard
           icon={<Mail className="h-5 w-5" />}
           label="Total"

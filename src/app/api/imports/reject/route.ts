@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { parseImportId } from '@/lib/utils/import-id'
 import { updateStatementReviewStatus } from '@/lib/utils/statement-status'
+import { recordDecision } from '@/lib/services/decision-learning'
 
 interface Suggestion {
   transaction_date: string
@@ -213,6 +214,22 @@ export async function POST(request: NextRequest) {
             const isMerged = mergedStatementKeys.has(`${statement.id}:${idx}`)
             suggestion.status = (effectiveStatus === 'pending_review' && !isMerged) ? 'pending' : 'rejected'
             hasChanges = true
+
+            // Learn from this rejection (fire-and-forget)
+            recordDecision(serviceClient, {
+              userId: user.id,
+              decisionType: 'reject',
+              sourceType: isMerged ? 'merged' : 'statement',
+              compositeId: `stmt:${statement.id}:${idx}`,
+              statementUploadId: statement.id,
+              suggestionIndex: idx,
+              statementDescription: suggestion.description,
+              amount: suggestion.amount,
+              currency: suggestion.currency,
+              matchConfidence: suggestion.confidence,
+              rejectedTransactionId: suggestion.matched_transaction_id || undefined,
+            }).catch((err) => console.error('Decision learning error:', err))
+
             results.rejected++
           }
 
@@ -240,7 +257,7 @@ export async function POST(request: NextRequest) {
       // First, fetch emails that have a matched_transaction_id so we can record the rejected pairing
       const { data: emailsWithMatch } = await serviceClient
         .from('email_transactions')
-        .select('id, matched_transaction_id, rejected_transaction_ids')
+        .select('id, matched_transaction_id, rejected_transaction_ids, from_address, vendor_name_raw, parser_key, amount, currency, match_confidence')
         .in('id', emailItemIds)
         .eq('user_id', user.id)
         .not('matched_transaction_id', 'is', null)
@@ -274,6 +291,22 @@ export async function POST(request: NextRequest) {
               .eq('id', email.id)
               .eq('user_id', user.id)
           }
+
+          // Learn from this rejection (fire-and-forget)
+          recordDecision(serviceClient, {
+            userId: user.id,
+            decisionType: 'reject',
+            sourceType: 'email',
+            compositeId: `email:${email.id}`,
+            emailTransactionId: email.id,
+            emailFromAddress: email.from_address,
+            emailVendorNameRaw: email.vendor_name_raw,
+            emailParserKey: email.parser_key,
+            amount: email.amount,
+            currency: email.currency,
+            matchConfidence: email.match_confidence,
+            rejectedTransactionId: matchedId,
+          }).catch((err) => console.error('Decision learning error:', err))
         }
         results.rejected += emailsWithMatch.length
       }
@@ -316,10 +349,10 @@ export async function POST(request: NextRequest) {
       // Note: rejected_transaction_ids column requires migration 20260323165607
       const { data: slipsWithMatch } = await serviceClient
         .from('payment_slip_uploads')
-        .select('id, matched_transaction_id')
+        .select('id, matched_transaction_id, sender_name, recipient_name, detected_direction, amount, currency, match_confidence')
         .in('id', paymentSlipIds)
         .eq('user_id', user.id)
-        .not('matched_transaction_id', 'is', null) as { data: Array<{ id: string; matched_transaction_id: string | null; rejected_transaction_ids?: string[] }> | null }
+        .not('matched_transaction_id', 'is', null) as { data: Array<{ id: string; matched_transaction_id: string | null; rejected_transaction_ids?: string[]; sender_name?: string; recipient_name?: string; detected_direction?: string; amount?: number; currency?: string; match_confidence?: number }> | null }
 
       if (slipsWithMatch && slipsWithMatch.length > 0) {
         for (const slip of slipsWithMatch) {
@@ -339,6 +372,22 @@ export async function POST(request: NextRequest) {
             } as any)
             .eq('id', slip.id)
             .eq('user_id', user.id)
+
+          // Learn from this rejection (fire-and-forget)
+          const slipCounterparty = slip.detected_direction === 'income'
+            ? slip.sender_name : slip.recipient_name
+          recordDecision(serviceClient, {
+            userId: user.id,
+            decisionType: 'reject',
+            sourceType: 'payment_slip',
+            compositeId: `slip:${slip.id}`,
+            paymentSlipId: slip.id,
+            slipCounterpartyName: slipCounterparty || undefined,
+            amount: slip.amount,
+            currency: slip.currency,
+            matchConfidence: slip.match_confidence,
+            rejectedTransactionId: matchedId,
+          }).catch((err) => console.error('Decision learning error:', err))
         }
         results.rejected += slipsWithMatch.length
       }

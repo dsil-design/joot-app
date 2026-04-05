@@ -63,7 +63,7 @@ export default function EmailDetailPage({
   return (
     <div className="space-y-6">
       {/* Back button */}
-      <Button variant="ghost" size="sm" onClick={() => router.push(backUrl)}>
+      <Button variant="ghost" size="default" onClick={() => router.push(backUrl)} className="-ml-2">
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Emails
       </Button>
