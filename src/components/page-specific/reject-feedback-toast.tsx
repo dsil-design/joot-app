@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { X, RotateCcw, Hourglass, Trash2, Mail } from "lucide-react"
+import { X, RotateCcw, Hourglass, Trash2, Mail, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -10,6 +10,7 @@ const REJECT_REASONS = [
   { key: "wrong_amount", label: "Wrong amount" },
   { key: "needs_statement", label: "Needs statement pairing" },
   { key: "needs_email_receipt", label: "Needs email receipt" },
+  { key: "needs_payment_slip", label: "Needs payment slip" },
   { key: "wrong_vendor", label: "Wrong vendor" },
   { key: "wrong_classification", label: "Wrong classification" },
   { key: "parser_error", label: "Parser error" },
@@ -17,7 +18,7 @@ const REJECT_REASONS = [
   { key: "not_transaction", label: "Not a transaction" },
 ] as const
 
-type NextStatus = "pending_review" | "waiting_for_statement" | "waiting_for_email" | "skipped"
+type NextStatus = "pending_review" | "waiting_for_statement" | "waiting_for_email" | "waiting_for_slip" | "skipped"
 
 const NEXT_STATUS_OPTIONS: Array<{
   value: NextStatus
@@ -42,6 +43,12 @@ const NEXT_STATUS_OPTIONS: Array<{
     label: "Wait for email",
     description: "Needs email receipt",
     icon: <Mail className="h-3.5 w-3.5" />,
+  },
+  {
+    value: "waiting_for_slip",
+    label: "Wait for slip",
+    description: "Needs payment slip",
+    icon: <Receipt className="h-3.5 w-3.5" />,
   },
   {
     value: "skipped",
@@ -82,6 +89,8 @@ export function RejectFeedbackToast({
       setNextStatus("waiting_for_statement")
     } else if (selectedChip === "Needs email receipt") {
       setNextStatus("waiting_for_email")
+    } else if (selectedChip === "Needs payment slip") {
+      setNextStatus("waiting_for_slip")
     } else if (selectedChip === "Not a transaction") {
       setNextStatus("skipped")
     }
@@ -114,7 +123,9 @@ export function RejectFeedbackToast({
               ? "Moved to waiting for statement."
               : nextStatus === "waiting_for_email"
                 ? "Moved to waiting for email receipt."
-                : "Dismissed."}
+                : nextStatus === "waiting_for_slip"
+                  ? "Moved to waiting for payment slip."
+                  : "Dismissed."}
         </p>
       </div>
     )
@@ -170,7 +181,7 @@ export function RejectFeedbackToast({
       {/* What should happen next */}
       <div className="space-y-1.5">
         <p className="text-xs font-medium text-muted-foreground">Then:</p>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {NEXT_STATUS_OPTIONS.map((option) => (
             <button
               key={option.value}

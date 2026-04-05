@@ -21,7 +21,7 @@ export function EmailHubStatsBar({
   const totalSynced = stats?.total_synced_emails || 0
   const unprocessedCount = stats?.status_counts?.unprocessed || (totalSynced - totalEmails)
   const pendingCount = stats?.status_counts?.pending_review || 0
-  const waitingCount = stats?.status_counts?.waiting_for_statement || 0
+  const waitingCount = (stats?.status_counts?.waiting_for_statement || 0) + (stats?.status_counts?.waiting_for_slip || 0)
   const matchedCount = stats?.status_counts?.matched || 0
   const importedCount = stats?.status_counts?.imported || 0
 

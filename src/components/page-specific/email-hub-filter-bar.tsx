@@ -46,6 +46,7 @@ const statusOptions: Array<{ value: EmailHubStatus; label: string }> = [
   { value: "matched", label: "Linked" },
   { value: "waiting_for_statement", label: "Waiting (Statement)" },
   { value: "waiting_for_email", label: "Waiting (Email)" },
+  { value: "waiting_for_slip", label: "Waiting (Slip)" },
   { value: "ready_to_import", label: "Ready to Import" },
   { value: "imported", label: "Imported" },
   { value: "skipped", label: "Skipped" },

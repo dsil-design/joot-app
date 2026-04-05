@@ -30,6 +30,7 @@ export const EMAIL_TRANSACTION_STATUS = {
   MATCHED: 'matched',
   WAITING_FOR_STATEMENT: 'waiting_for_statement',
   WAITING_FOR_EMAIL: 'waiting_for_email',
+  WAITING_FOR_SLIP: 'waiting_for_slip',
   READY_TO_IMPORT: 'ready_to_import',
   IMPORTED: 'imported',
   SKIPPED: 'skipped',

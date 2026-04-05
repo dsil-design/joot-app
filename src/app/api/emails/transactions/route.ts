@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
       'matched',
       'waiting_for_statement',
       'waiting_for_email',
+      'waiting_for_slip',
       'ready_to_import',
       'imported',
       'skipped',

@@ -146,7 +146,7 @@ export async function GET() {
       }
 
       // Waiting summary
-      if (email.status === 'waiting_for_statement' || email.status === 'waiting_for_email') {
+      if (email.status === 'waiting_for_statement' || email.status === 'waiting_for_email' || email.status === 'waiting_for_slip') {
         waitingCount++
         if (email.amount) {
           waitingTotalAmount += Number(email.amount)

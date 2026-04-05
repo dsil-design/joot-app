@@ -499,7 +499,7 @@ export default function ReviewQueuePage() {
             await handleRefreshProposal(id)
           }
         } else {
-          // "waiting_for_statement" or "skipped" — remove from active queue
+          // "waiting_for_statement", "waiting_for_slip", or "skipped" — remove from active queue
           for (const id of compositeIds) {
             removeItemByKey(id)
           }

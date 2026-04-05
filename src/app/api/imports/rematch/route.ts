@@ -195,7 +195,7 @@ async function rematchEmailTransactions(
     .from('email_transactions')
     .select('id, amount, currency, transaction_date, description, vendor_name_raw, rejected_transaction_ids')
     .eq('user_id', userId)
-    .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement', 'waiting_for_email'])
+    .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement', 'waiting_for_email', 'waiting_for_slip'])
     .is('matched_transaction_id', null)
 
   if (filters.currency) {

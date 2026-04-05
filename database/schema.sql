@@ -669,6 +669,7 @@ CREATE TABLE public.email_transactions (
     'matched',               -- Linked to existing transaction
     'waiting_for_statement', -- THB receipt waiting for USD charge
     'waiting_for_email',     -- Needs email receipt before processing
+    'waiting_for_slip',      -- Needs payment slip before processing
     'ready_to_import',       -- Can create new transaction
     'imported',              -- Transaction created
     'skipped'                -- User marked as non-transaction
@@ -777,6 +778,8 @@ CREATE TABLE public.ai_feedback (
 CREATE INDEX idx_email_trans_user_status ON public.email_transactions(user_id, status);
 CREATE INDEX idx_email_transactions_waiting ON public.email_transactions(user_id, transaction_date)
   WHERE status = 'waiting_for_statement';
+CREATE INDEX idx_email_transactions_waiting_slip ON public.email_transactions(user_id, transaction_date)
+  WHERE status = 'waiting_for_slip';
 CREATE INDEX idx_email_transactions_stats ON public.email_transactions(user_id, status, classification, email_date DESC);
 CREATE INDEX idx_email_transactions_email_date ON public.email_transactions(user_id, email_date DESC);
 CREATE INDEX idx_email_trans_user_date ON public.email_transactions(user_id, email_date DESC);

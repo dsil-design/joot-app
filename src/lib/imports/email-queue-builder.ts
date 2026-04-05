@@ -26,7 +26,7 @@ export async function fetchEmailQueueItems(
       vendor_name_raw
     `)
     .eq('user_id', userId)
-    .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement', 'waiting_for_email', 'matched', 'imported', 'skipped'])
+    .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement', 'waiting_for_email', 'waiting_for_slip', 'matched', 'imported', 'skipped'])
     .order('email_date', { ascending: false })
 
   if (filters.currencyFilter && filters.currencyFilter !== 'all') {
