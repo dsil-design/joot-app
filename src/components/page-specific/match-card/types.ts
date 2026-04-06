@@ -136,6 +136,11 @@ export interface MatchCardData {
 export interface MatchCardCallbacks {
   onApprove?: (id: string) => void
   onReject?: (id: string) => void
+  /**
+   * Surgical per-source reject (merged cards only). Called when the user
+   * clicks the reject icon on a specific source section within a merged item.
+   */
+  onRejectSource?: (id: string, source: 'email' | 'statement' | 'slip') => void
   onLinkManually?: (id: string) => void
   onImport?: (id: string) => void
   onCreateAsNew?: (id: string) => void

@@ -662,6 +662,7 @@ CREATE TABLE public.email_transactions (
   match_confidence INTEGER CHECK (match_confidence IS NULL OR (match_confidence >= 0 AND match_confidence <= 100)),
   match_method TEXT CHECK (match_method IS NULL OR match_method IN ('auto', 'manual', 'cross_source')),
   rejected_transaction_ids UUID[] NOT NULL DEFAULT '{}',
+  rejected_pair_keys TEXT[] NOT NULL DEFAULT '{}',
 
   -- Status tracking
   status TEXT NOT NULL DEFAULT 'pending_review' CHECK (status IN (
@@ -1013,6 +1014,7 @@ CREATE TABLE public.payment_slip_uploads (
 
   -- Rejected match tracking (parity with email_transactions)
   rejected_transaction_ids UUID[] NOT NULL DEFAULT '{}',
+  rejected_pair_keys TEXT[] NOT NULL DEFAULT '{}',
 
   -- Review status (for queue)
   review_status TEXT NOT NULL DEFAULT 'pending' CHECK (review_status IN ('pending', 'approved', 'rejected')),

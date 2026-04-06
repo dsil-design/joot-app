@@ -14,10 +14,14 @@ export async function aggregateQueueItems(
 ): Promise<{ items: QueueItem[]; stats: QueueStats; hasMore: boolean; total: number; page: number; limit: number }> {
   const page = Math.max(1, parseInt(String(filters.statusFilter === 'page' ? '1' : '1'), 10))
 
-  // Separate waiting-for-statement items — they get their own section
-  const waitingItems = emailItems.filter(item => item.waitingForStatement)
-  const activeEmailItems = emailItems.filter(item => !item.waitingForStatement)
-  const allItems = [...statementItems, ...activeEmailItems, ...paymentSlipItems]
+  // Waiting-for-statement emails still participate in cross-source pairing so
+  // that previously-rejected "needs statement" emails can find a statement
+  // partner from the existing queue pool. If they don't pair up, they fall
+  // back into the waiting section at the end.
+  const waitingEmailIds = new Set(
+    emailItems.filter(item => item.waitingForStatement).map(item => item.id)
+  )
+  const allItems = [...statementItems, ...emailItems, ...paymentSlipItems]
 
   // Cross-source pairing
   if (filters.sourceFilter === 'all' || filters.sourceFilter === 'merged') {
@@ -37,6 +41,7 @@ export async function aggregateQueueItems(
           amount: item.statementTransaction.amount,
           currency: item.statementTransaction.currency,
           description: item.statementTransaction.description,
+          rejectedPairKeys: item.rejectedPairKeys,
         }
       } else {
         const parts = item.id.replace(/^stmt:/, '').split(':')
@@ -215,6 +220,27 @@ export async function aggregateQueueItems(
         const slipMeta = slip.paymentSlipMetadata
         const isExpense = slipMeta?.detectedDirection !== 'income'
 
+        // Surgical-reject support: if the user has rejected this slip from
+        // pairing with a specific counterpart, skip that counterpart here.
+        // Keys use the full composite-id format (`email:<id>`, `stmt:<id>:<idx>`).
+        // For a merged email+stmt candidate, either component being rejected
+        // disqualifies it.
+        const slipRejectedKeys = new Set(slip.rejectedPairKeys || [])
+        const isRejectedPair = (candidate: QueueItem): boolean => {
+          if (slipRejectedKeys.size === 0) return false
+          if (candidate.source === 'email' || candidate.source === 'statement') {
+            return slipRejectedKeys.has(candidate.id)
+          }
+          if (candidate.source === 'merged') {
+            const p = parseImportId(candidate.id)
+            if (p?.type === 'merged') {
+              if (slipRejectedKeys.has(`email:${p.emailId}`)) return true
+              if (slipRejectedKeys.has(`stmt:${p.statementId}:${p.index}`)) return true
+            }
+          }
+          return false
+        }
+
         // Expense slips → try matching with emails (same THB amount, close date).
         // Also consider already-merged (email+statement) items from Phase 1 —
         // if the slip matches one of those, emit a 3-way slip+email+statement group.
@@ -229,6 +255,7 @@ export async function aggregateQueueItems(
             // For merged items, only consider those that actually carry email data
             // (i.e., email+statement cross-source pairs — not self-transfers).
             if (email.source === 'merged' && !email.mergedEmailData) continue
+            if (isRejectedPair(email)) continue
             if (email.statementTransaction.currency !== slip.statementTransaction.currency) continue
             const amountDiff = Math.abs(Math.abs(email.statementTransaction.amount) - Math.abs(slip.statementTransaction.amount))
             if (amountDiff > 0.01) continue
@@ -328,6 +355,7 @@ export async function aggregateQueueItems(
 
           let bestStmtMatchForExpense: { item: QueueItem; daysDiff: number } | null = null
           for (const stmt of candidateStmtsForExpense) {
+            if (isRejectedPair(stmt)) continue
             if (stmt.statementTransaction.currency !== slip.statementTransaction.currency) continue
             const amountDiff = Math.abs(Math.abs(stmt.statementTransaction.amount) - Math.abs(slip.statementTransaction.amount))
             if (amountDiff > 0.01) continue
@@ -382,6 +410,7 @@ export async function aggregateQueueItems(
 
           let bestStmtMatch: { item: QueueItem; daysDiff: number } | null = null
           for (const stmt of candidateStmts) {
+            if (isRejectedPair(stmt)) continue
             if (stmt.statementTransaction.currency !== slip.statementTransaction.currency) continue
             const amountDiff = Math.abs(Math.abs(stmt.statementTransaction.amount) - Math.abs(slip.statementTransaction.amount))
             if (amountDiff > 0.01) continue
@@ -605,11 +634,26 @@ export async function aggregateQueueItems(
     lowConfidence: filteredItems.filter(item => item.confidenceLevel === 'low' || item.confidenceLevel === 'none').length,
     thisWeekCount: filteredItems.filter(item => item.statementTransaction.date >= oneWeekAgoStr).length,
     resolvedCount: filteredItems.filter(item => item.status === 'approved' || item.status === 'rejected').length,
-    waitingForStatementCount: waitingItems.length,
+    waitingForStatementCount: 0, // filled in below
   }
 
-  // Append waiting-for-statement items at the end (they render in their own collapsed section)
-  const allOutput = [...filteredItems, ...waitingItems]
+  // Pull out any still-unpaired waiting-for-statement emails and surface them
+  // in the dedicated waiting section instead of the main queue.
+  const waitingItems: QueueItem[] = []
+  const mainItems: QueueItem[] = []
+  for (const item of filteredItems) {
+    if (waitingEmailIds.has(item.id) && item.source === 'email') {
+      waitingItems.push(item)
+    } else {
+      mainItems.push(item)
+    }
+  }
+  stats.total = mainItems.length
+  stats.pending = mainItems.filter(item => item.status === 'pending').length
+  stats.waitingForStatementCount = waitingItems.length
 
-  return { items: allOutput, stats, hasMore: false, total: filteredItems.length, page: 1, limit: allOutput.length }
+  // Append waiting-for-statement items at the end (they render in their own collapsed section)
+  const allOutput = [...mainItems, ...waitingItems]
+
+  return { items: allOutput, stats, hasMore: false, total: mainItems.length, page: 1, limit: allOutput.length }
 }

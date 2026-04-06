@@ -4,7 +4,7 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import {
   Check,
-  X,
+  Ban,
   Link as LinkIcon,
   Plus,
   Loader2,
@@ -44,7 +44,7 @@ const APPROVE: ActionDescriptor = {
 const REJECT: ActionDescriptor = {
   id: "reject",
   label: "Reject",
-  icon: <X className="h-4 w-4" />,
+  icon: <Ban className="h-4 w-4" />,
   buttonVariant: "outline",
   callbackKey: "onReject",
 }
@@ -69,7 +69,7 @@ const LINK: ActionDescriptor = {
 const SKIP: ActionDescriptor = {
   id: "skip",
   label: "Reject",
-  icon: <X className="h-4 w-4" />,
+  icon: <Ban className="h-4 w-4" />,
   buttonVariant: "ghost",
   callbackKey: "onReject",
 }
@@ -204,7 +204,7 @@ export function MatchCardActions({
             onClick={() => callbacks.onReject?.(id)}
             disabled={loading}
           >
-            <X className="h-4 w-4" />
+            <Ban className="h-4 w-4" />
             Reject
           </Button>
           {callbacks.onRefreshProposal && (
@@ -271,7 +271,7 @@ export function MatchCardActions({
             onClick={() => callbacks.onReject?.(id)}
             disabled={loading}
           >
-            <X className="h-4 w-4" />
+            <Ban className="h-4 w-4" />
             Reject
           </Button>
         </>
@@ -336,7 +336,7 @@ export function MatchCardActions({
       return (
         <>
           <span className="flex items-center gap-1 text-sm text-gray-500 mr-auto">
-            <X className="h-4 w-4" />
+            <Ban className="h-4 w-4" />
             Match rejected
           </span>
           {callbacks.onCreateAsNew && (
@@ -368,7 +368,7 @@ export function MatchCardActions({
 
     return (
       <span className="flex items-center gap-1 text-sm text-gray-500">
-        <X className="h-4 w-4" />
+        <Ban className="h-4 w-4" />
         Rejected
       </span>
     )

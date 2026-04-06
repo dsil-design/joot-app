@@ -76,6 +76,7 @@ export function MatchCard({
   loading = false,
   onApprove,
   onReject,
+  onRejectSource,
   onLinkManually,
   onImport,
   onCreateAsNew,
@@ -93,6 +94,7 @@ export function MatchCard({
   const callbacks: MatchCardCallbacks = {
     onApprove,
     onReject,
+    onRejectSource,
     onLinkManually,
     onImport,
     onCreateAsNew,
@@ -122,7 +124,7 @@ export function MatchCard({
       </CardHeader>
 
       <CardContent className="py-2 space-y-3">
-        <MatchCardPanels data={data} />
+        <MatchCardPanels data={data} onRejectSource={onRejectSource} />
         {data.isNew && data.proposal && (
           <ProposalConfidenceBar score={data.proposal.overallConfidence} />
         )}

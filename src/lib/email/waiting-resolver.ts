@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { rankMatches, canAutoApprove } from '@/lib/matching/match-ranker'
+import { rankMatches } from '@/lib/matching/match-ranker'
 import type { SourceTransaction, TargetTransaction } from '@/lib/matching/match-scorer'
 
 interface ResolveResult {
@@ -84,34 +84,14 @@ export async function resolveWaitingEmailTransactions(
     // Pass supabase for cross-currency exchange rate lookups
     const ranked = await rankMatches(source, targets, { supabase })
 
-    if (canAutoApprove(ranked) && ranked.bestMatch) {
-      // Auto-link this email transaction
-      const { error: updateError } = await supabase
-        .from('email_transactions')
-        .update({
-          status: 'matched',
-          matched_transaction_id: ranked.bestMatch.targetId,
-          match_confidence: ranked.bestMatch.score,
-          match_method: 'auto',
-          matched_at: new Date().toISOString(),
-        })
-        .eq('id', email.id)
-        .eq('user_id', userId)
-
-      if (!updateError) {
-        // Set source reference on the matched transaction
-        await supabase
-          .from('transactions')
-          .update({ source_email_transaction_id: email.id })
-          .eq('id', ranked.bestMatch.targetId)
-
-        resolved++
-      }
-    } else if (ranked.bestMatch && ranked.bestMatch.score >= 55) {
-      // Medium confidence — store hint for user review
+    // Auto-approval intentionally disabled: every match (including HIGH
+    // confidence) now requires manual review. Store the suggestion as a
+    // hint so it surfaces in the review queue.
+    if (ranked.bestMatch && ranked.bestMatch.score >= 55) {
       await supabase
         .from('email_transactions')
         .update({
+          matched_transaction_id: ranked.bestMatch.targetId,
           match_confidence: ranked.bestMatch.score,
         })
         .eq('id', email.id)

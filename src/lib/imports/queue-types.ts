@@ -71,6 +71,8 @@ export interface QueueItem {
   isNew: boolean
   status: 'pending' | 'approved' | 'rejected'
   waitingForStatement?: boolean
+  /** For email items: statement-suggestion composite keys this email has been rejected from pairing with */
+  rejectedPairKeys?: string[]
   source: ImportSource
   emailMetadata?: EmailMetadata
   mergedEmailData?: MergedEmailData

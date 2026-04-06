@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { X, RotateCcw, Hourglass, Trash2, Mail, Receipt } from "lucide-react"
+import { Ban, RotateCcw, Hourglass, Trash2, Mail, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -17,6 +17,19 @@ const REJECT_REASONS = [
   { key: "duplicate", label: "Duplicate" },
   { key: "not_transaction", label: "Not a transaction" },
 ] as const
+
+type RejectReasonKey = typeof REJECT_REASONS[number]["key"]
+
+/**
+ * Reason keys relevant per source context when rejecting a single source
+ * within a merged match. Keeps the same underlying component while trimming
+ * the list to what makes sense for that source.
+ */
+const SOURCE_REASON_KEYS: Record<'email' | 'statement' | 'slip', RejectReasonKey[]> = {
+  email: ["wrong_amount", "needs_statement", "needs_payment_slip", "wrong_vendor", "parser_error", "duplicate", "not_transaction"],
+  statement: ["wrong_amount", "needs_email_receipt", "needs_payment_slip", "wrong_vendor", "wrong_classification", "parser_error", "duplicate"],
+  slip: ["wrong_amount", "needs_statement", "needs_email_receipt", "wrong_vendor", "parser_error", "duplicate"],
+}
 
 type NextStatus = "pending_review" | "waiting_for_statement" | "waiting_for_email" | "waiting_for_slip" | "skipped"
 
@@ -63,6 +76,12 @@ interface RejectFeedbackToastProps {
   compositeIds: string[]
   /** Number of items rejected (for display) */
   count: number
+  /**
+   * When set, scopes the toast to a single source within a merged item.
+   * Tailors the reason chip list + header copy accordingly. The overall
+   * layout/component is the same.
+   */
+  sourceContext?: 'email' | 'statement' | 'slip'
   /** Callback to submit feedback with next status */
   onSubmitFeedback: (ids: string[], reason: string, nextStatus: NextStatus) => void
   /** Undo callback */
@@ -74,10 +93,16 @@ interface RejectFeedbackToastProps {
 export function RejectFeedbackToast({
   compositeIds,
   count,
+  sourceContext,
   onSubmitFeedback,
   onUndo,
   onDismiss,
 }: RejectFeedbackToastProps) {
+  const reasons = React.useMemo(() => {
+    if (!sourceContext) return REJECT_REASONS
+    const allowed = new Set<RejectReasonKey>(SOURCE_REASON_KEYS[sourceContext])
+    return REJECT_REASONS.filter((r) => allowed.has(r.key))
+  }, [sourceContext])
   const [selectedChip, setSelectedChip] = React.useState<string | null>(null)
   const [notes, setNotes] = React.useState("")
   const [nextStatus, setNextStatus] = React.useState<NextStatus>("skipped")
@@ -136,7 +161,9 @@ export function RejectFeedbackToast({
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-medium">
-            {count === 1 ? "Proposal rejected" : `${count} proposal(s) rejected`}
+            {sourceContext
+              ? `${sourceContext === 'email' ? 'Email' : sourceContext === 'statement' ? 'Statement' : 'Payment slip'} removed from match`
+              : count === 1 ? "Proposal rejected" : `${count} proposal(s) rejected`}
           </p>
           <p className="text-xs text-muted-foreground">What went wrong?</p>
         </div>
@@ -144,13 +171,13 @@ export function RejectFeedbackToast({
           onClick={onDismiss}
           className="text-muted-foreground hover:text-foreground transition-colors p-0.5 -mt-0.5 shrink-0"
         >
-          <X className="h-3.5 w-3.5" />
+          <Ban className="h-3.5 w-3.5" />
         </button>
       </div>
 
       {/* Reason chips */}
       <div className="flex flex-wrap gap-1.5">
-        {REJECT_REASONS.map(({ key, label }) => (
+        {reasons.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => handleChipClick(label)}

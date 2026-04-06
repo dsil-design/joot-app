@@ -505,17 +505,42 @@ function proposeDescription(
     }
   }
 
-  // Strategy 2: Email with dedicated parser + high confidence → use parser description
+  // Strategy 2: Email with dedicated parser → use parser description.
+  //
+  // Known structured parsers (Grab, Bangkok Bank, etc.) build descriptions
+  // from extracted fields — merchant name, meal type, memo — and are
+  // considered trustworthy regardless of extraction confidence score. For
+  // other parsers (non-ai-fallback) we keep the 75% confidence gate.
+  //
+  // This deliberately outranks any historical recency-based fallback: when
+  // the parser has something structured to say, we trust it over whatever
+  // the user typed into a recent manual transaction.
+  // All non-AI extractors use structured field extraction (merchant, meal
+  // type, memo, etc.) and are trustworthy over recency-based fallbacks.
+  const STRUCTURED_PARSERS = new Set([
+    'grab',
+    'bangkok-bank',
+    'kasikorn',
+    'apple',
+    'stripe',
+    'bolt',
+    'lazada',
+  ])
   if (
-    item.sourceType === 'email' || item.sourceType === 'merged'
+    (item.sourceType === 'email' || item.sourceType === 'merged') &&
+    item.parserKey &&
+    item.parserKey !== 'ai-fallback'
   ) {
-    if (
-      item.parserKey &&
-      item.parserKey !== 'ai-fallback' &&
-      (item.extractionConfidence ?? 0) >= 75
-    ) {
+    const isStructured = STRUCTURED_PARSERS.has(item.parserKey)
+    const passesConfidence = (item.extractionConfidence ?? 0) >= 75
+    if (isStructured || passesConfidence) {
       fields.description = item.description
-      fc.description = { score: 85, reasoning: `Email parser '${item.parserKey}' description` }
+      fc.description = {
+        score: 90,
+        reasoning: isStructured
+          ? `Email parser '${item.parserKey}' description (structured parser)`
+          : `Email parser '${item.parserKey}' description`,
+      }
       return
     }
   }
@@ -559,22 +584,14 @@ function proposeDescription(
     }
   }
 
-  // Strategy 5: Most recent vendor description (fallback for varied-description vendors)
-  if (fields.vendorId) {
-    const vendorTxns = context.recentTransactions.filter(
-      (tx) => tx.vendorId === fields.vendorId
-    )
-    if (vendorTxns.length > 0) {
-      const mostRecent = vendorTxns.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      )[0]
-      if (mostRecent.description) {
-        fields.description = mostRecent.description
-        fc.description = { score: 70, reasoning: `Most recent description for vendor: "${mostRecent.description}"` }
-        return
-      }
-    }
-  }
+  // (Strategy 5 — "most recent vendor description" fallback — removed.
+  // It used to copy the description verbatim from the most recent transaction
+  // for the same vendor, regardless of whether that transaction was a
+  // parser-extracted receipt or a one-off manual entry. This created a
+  // feedback loop: a manual edit to a Grab proposal would become the next
+  // proposal's default, poisoning future suggestions. If a vendor doesn't
+  // have a stable description pattern (Strategy 4) we now fall through to
+  // the cleaned statement description below.)
 
   // Strategy 6: Clean statement description
   fields.description = cleanDescription(item.description)
@@ -619,10 +636,30 @@ function findBestCorrection(
   const corrections = context.pastCorrections.filter((c) => c.field === field)
   if (corrections.length === 0) return null
 
+  // For aggregator senders like `no-reply@grab.com` every receipt shares the
+  // same from-address, so sender-only matches are far too broad — a correction
+  // on one restaurant's receipt should not apply to a different restaurant's
+  // receipt. For the `description` field specifically we require meaningful
+  // overlap between the correction's original source description and the
+  // current item's description before considering any correction a match.
+  const isDescriptionField = field === 'description'
+
   let best: { correction: PastCorrection; score: number } | null = null
 
   for (const c of corrections) {
     let score = 0
+
+    // Compute source-description token overlap once — needed both for
+    // scoring and for the description-field gate below.
+    const overlap =
+      c.sourceDescription && item.description
+        ? quickTokenOverlap(c.sourceDescription, item.description)
+        : 0
+
+    // Gate: description-field corrections require the source descriptions
+    // to be similar enough that we can trust the correction applies here.
+    // Empirical threshold — half the tokens must match.
+    if (isDescriptionField && overlap < 0.5) continue
 
     // Strongest: same sender address
     if (c.fromAddress && item.fromAddress && c.fromAddress === item.fromAddress) {
@@ -635,10 +672,7 @@ function findBestCorrection(
     }
 
     // Moderate: similar source description (token overlap)
-    if (c.sourceDescription && item.description) {
-      const overlap = quickTokenOverlap(c.sourceDescription, item.description)
-      score += overlap * 20
-    }
+    score += overlap * 20
 
     // Must have at least some match signal
     if (score < 20) continue

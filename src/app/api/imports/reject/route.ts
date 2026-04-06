@@ -54,6 +54,13 @@ export async function POST(request: NextRequest) {
       emailIds?: string[]
       reason?: string
       nextStatus?: 'pending_review' | 'waiting_for_statement' | 'waiting_for_email' | 'waiting_for_slip' | 'skipped'
+      /**
+       * For merged composite IDs: when set, only reject that specific source's
+       * participation in the grouping. Other sources in the merged item are
+       * left completely untouched, and the rejected source's pair-rejection
+       * keys are updated so the aggregator won't re-form the same pairing.
+       */
+      rejectSource?: 'email' | 'statement' | 'slip'
     }
 
     try {
@@ -65,7 +72,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { emailId, emailIds, reason, nextStatus } = body
+    const { emailId, emailIds, reason, nextStatus, rejectSource } = body
+
+    if (rejectSource && !['email', 'statement', 'slip'].includes(rejectSource)) {
+      return NextResponse.json(
+        { error: `rejectSource must be one of: email, statement, slip` },
+        { status: 400 }
+      )
+    }
 
     // Validate nextStatus if provided
     const validStatuses = ['pending_review', 'waiting_for_statement', 'waiting_for_email', 'waiting_for_slip', 'skipped'] as const
@@ -77,11 +91,12 @@ export async function POST(request: NextRequest) {
     }
 
     const effectiveStatus = nextStatus || 'skipped'
-    // When re-queueing, items go back to pending for a fresh matching attempt
-    // rather than being hard-rejected. Proposals are marked stale (not rejected)
-    // so they regenerate — markStaleProposals only touches pending proposals,
-    // so rejected proposals would stay dead forever.
+    // When re-queueing OR parking in a waiting_for_* state, items stay live so
+    // the queue aggregator's cross-source pairer can still find them a partner.
+    // Proposals are marked stale (not rejected) so they regenerate on next load.
     const isRequeue = effectiveStatus === 'pending_review'
+    const isWaiting = effectiveStatus.startsWith('waiting_for_')
+    const keepAlive = isRequeue || isWaiting
 
     // Support both single and batch rejection
     const idsToReject: string[] = emailIds || (emailId ? [emailId] : [])
@@ -115,33 +130,98 @@ export async function POST(request: NextRequest) {
     const emailItemIds: string[] = []
     const paymentSlipIds: string[] = []
     const invalidIds: string[] = []
-    // Track statement items that came from merged IDs — these should always be
-    // marked 'rejected' even when nextStatus is 'pending_review', so the
-    // cross-source pairer doesn't re-pair the same email+statement again.
+    // Track statement items that came from merged IDs. When keeping the email
+    // alive (re-queue / waiting_for_*), we leave the statement suggestion
+    // pending and instead record the rejected pair key on the email so the
+    // cross-source pairer won't re-pair the same email+statement again —
+    // while still allowing the statement to stand on its own in the queue.
     const mergedStatementKeys = new Set<string>()
+    // Map of emailId → statement pair keys (`${statementId}:${index}`) the
+    // user has rejected as a cross-source pairing for that email.
+    const emailRejectedPairKeys = new Map<string, string[]>()
+    // Map of slipId → counterpart composite keys (email:<id> or stmt:<id>:<idx>)
+    // the user has rejected as a pairing for that slip.
+    const slipRejectedPairKeys = new Map<string, string[]>()
+
+    const addEmailPairKey = (emailId: string, key: string) => {
+      const existing = emailRejectedPairKeys.get(emailId) || []
+      if (!existing.includes(key)) existing.push(key)
+      emailRejectedPairKeys.set(emailId, existing)
+    }
+    const addSlipPairKey = (slipId: string, key: string) => {
+      const existing = slipRejectedPairKeys.get(slipId) || []
+      if (!existing.includes(key)) existing.push(key)
+      slipRejectedPairKeys.set(slipId, existing)
+    }
 
     for (const id of idsToReject) {
       const parsed = parseImportId(id)
       if (!parsed) {
         invalidIds.push(id)
       } else if (parsed.type === 'merged') {
-        statementIds.push({ id, statementId: parsed.statementId, index: parsed.index, fromMerged: true })
-        mergedStatementKeys.add(`${parsed.statementId}:${parsed.index}`)
-        emailItemIds.push(parsed.emailId)
+        // email + statement pair
+        if (rejectSource === 'email' || rejectSource === 'statement') {
+          // Surgical: break the pair, but leave both sources alive. Track
+          // the rejected pairing on the email side so re-pairing won't happen.
+          addEmailPairKey(parsed.emailId, `${parsed.statementId}:${parsed.index}`)
+          // We also need to wipe any existing matched_transaction_id on the
+          // email side only if rejectSource === 'email' (the user is saying
+          // the email side is wrong). Push into emailItemIds only in that
+          // case so the status/match reset runs; otherwise touch nothing.
+          if (rejectSource === 'email') {
+            emailItemIds.push(parsed.emailId)
+          }
+          // Statement is never touched on surgical reject — leave its pending
+          // status + matched transaction intact so it stands on its own.
+        } else {
+          // Top-level full reject: both sides
+          statementIds.push({ id, statementId: parsed.statementId, index: parsed.index, fromMerged: true })
+          mergedStatementKeys.add(`${parsed.statementId}:${parsed.index}`)
+          emailItemIds.push(parsed.emailId)
+          addEmailPairKey(parsed.emailId, `${parsed.statementId}:${parsed.index}`)
+        }
       } else if (parsed.type === 'merged_slip_email') {
-        // Decompose: reject both the slip and the email
-        paymentSlipIds.push(parsed.slipId)
-        emailItemIds.push(parsed.emailId)
+        if (rejectSource) {
+          // Surgical: break slip↔email. Track on slip.
+          addSlipPairKey(parsed.slipId, `email:${parsed.emailId}`)
+          if (rejectSource === 'slip') paymentSlipIds.push(parsed.slipId)
+          else if (rejectSource === 'email') emailItemIds.push(parsed.emailId)
+        } else {
+          paymentSlipIds.push(parsed.slipId)
+          emailItemIds.push(parsed.emailId)
+        }
       } else if (parsed.type === 'merged_slip_stmt') {
-        // Decompose: reject both the slip and the statement suggestion
-        paymentSlipIds.push(parsed.slipId)
-        statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
+        if (rejectSource) {
+          addSlipPairKey(parsed.slipId, `stmt:${parsed.statementId}:${parsed.index}`)
+          if (rejectSource === 'slip') paymentSlipIds.push(parsed.slipId)
+          // statement section: leave statement untouched (no ids pushed)
+        } else {
+          paymentSlipIds.push(parsed.slipId)
+          statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
+        }
       } else if (parsed.type === 'merged_slip_email_stmt') {
-        // Decompose: reject the slip, email, and the statement suggestion
-        paymentSlipIds.push(parsed.slipId)
-        emailItemIds.push(parsed.emailId)
-        statementIds.push({ id, statementId: parsed.statementId, index: parsed.index, fromMerged: true })
-        mergedStatementKeys.add(`${parsed.statementId}:${parsed.index}`)
+        if (rejectSource === 'slip') {
+          // Remove slip from the 3-way; other two re-merge naturally.
+          addSlipPairKey(parsed.slipId, `email:${parsed.emailId}`)
+          addSlipPairKey(parsed.slipId, `stmt:${parsed.statementId}:${parsed.index}`)
+          paymentSlipIds.push(parsed.slipId)
+        } else if (rejectSource === 'email') {
+          // Email out of the 3-way: break email↔stmt and slip↔email.
+          addEmailPairKey(parsed.emailId, `${parsed.statementId}:${parsed.index}`)
+          addSlipPairKey(parsed.slipId, `email:${parsed.emailId}`)
+          emailItemIds.push(parsed.emailId)
+        } else if (rejectSource === 'statement') {
+          // Statement out of the 3-way: break email↔stmt and slip↔stmt.
+          addEmailPairKey(parsed.emailId, `${parsed.statementId}:${parsed.index}`)
+          addSlipPairKey(parsed.slipId, `stmt:${parsed.statementId}:${parsed.index}`)
+        } else {
+          // Full reject
+          paymentSlipIds.push(parsed.slipId)
+          emailItemIds.push(parsed.emailId)
+          statementIds.push({ id, statementId: parsed.statementId, index: parsed.index, fromMerged: true })
+          mergedStatementKeys.add(`${parsed.statementId}:${parsed.index}`)
+          addEmailPairKey(parsed.emailId, `${parsed.statementId}:${parsed.index}`)
+        }
       } else if (parsed.type === 'statement') {
         statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
       } else if (parsed.type === 'payment_slip') {
@@ -218,12 +298,24 @@ export async function POST(request: NextRequest) {
               continue
             }
 
-            // Statement suggestions from merged items should always be rejected,
-            // even when nextStatus is 'pending_review'. This prevents the
-            // cross-source pairer from re-pairing the same email+statement.
-            // Only the email side gets re-queued for fresh matching.
+            // On keepAlive (re-queue / waiting_for_*) the statement suggestion
+            // stays pending even for merged rejections. The rejected email↔
+            // statement pairing is tracked via email.rejected_pair_keys so the
+            // cross-source pairer won't re-pair the same pair, while still
+            // letting the statement stand on its own in the queue.
             const isMerged = mergedStatementKeys.has(`${statement.id}:${idx}`)
-            suggestion.status = (effectiveStatus === 'pending_review' && !isMerged) ? 'pending' : 'rejected'
+            const keepSuggestionPending = keepAlive
+            suggestion.status = keepSuggestionPending ? 'pending' : 'rejected'
+            // For non-merged rejects we also clear a stale matched transaction
+            // so the next pairing attempt isn't biased. For merged rejects we
+            // leave the suggestion's match intact so the statement's own
+            // transaction pairing is preserved.
+            if (keepSuggestionPending && !isMerged && suggestion.matched_transaction_id) {
+              suggestion.matched_transaction_id = undefined
+              suggestion.confidence = 0
+              suggestion.is_new = true
+              suggestion.reasons = []
+            }
             hasChanges = true
 
             // Learn from this rejection (fire-and-forget)
@@ -268,7 +360,7 @@ export async function POST(request: NextRequest) {
       // First, fetch emails that have a matched_transaction_id so we can record the rejected pairing
       const { data: emailsWithMatch } = await serviceClient
         .from('email_transactions')
-        .select('id, matched_transaction_id, rejected_transaction_ids, from_address, vendor_name_raw, parser_key, amount, currency, match_confidence')
+        .select('id, matched_transaction_id, rejected_transaction_ids, rejected_pair_keys, from_address, vendor_name_raw, parser_key, amount, currency, match_confidence')
         .in('id', emailItemIds)
         .eq('user_id', user.id)
         .not('matched_transaction_id', 'is', null)
@@ -278,30 +370,24 @@ export async function POST(request: NextRequest) {
         for (const email of emailsWithMatch) {
           const existingRejected = (email.rejected_transaction_ids || []) as string[]
           const matchedId = email.matched_transaction_id as string
-          if (!existingRejected.includes(matchedId)) {
-            await serviceClient
-              .from('email_transactions')
-              .update({
-                status: effectiveStatus,
-                matched_transaction_id: null,
-                match_confidence: null,
-                match_method: null,
-                rejected_transaction_ids: [...existingRejected, matchedId],
-              })
-              .eq('id', email.id)
-              .eq('user_id', user.id)
-          } else {
-            await serviceClient
-              .from('email_transactions')
-              .update({
-                status: effectiveStatus,
-                matched_transaction_id: null,
-                match_confidence: null,
-                match_method: null,
-              })
-              .eq('id', email.id)
-              .eq('user_id', user.id)
+          const existingPairKeys = ((email as { rejected_pair_keys?: string[] }).rejected_pair_keys || []) as string[]
+          const newPairKeys = emailRejectedPairKeys.get(email.id) || []
+          const mergedPairKeys = Array.from(new Set([...existingPairKeys, ...newPairKeys]))
+          const updatePayload: Record<string, unknown> = {
+            status: effectiveStatus,
+            matched_transaction_id: null,
+            match_confidence: null,
+            match_method: null,
+            rejected_pair_keys: mergedPairKeys,
           }
+          if (!existingRejected.includes(matchedId)) {
+            updatePayload.rejected_transaction_ids = [...existingRejected, matchedId]
+          }
+          await serviceClient
+            .from('email_transactions')
+            .update(updatePayload)
+            .eq('id', email.id)
+            .eq('user_id', user.id)
 
           // Learn from this rejection (fire-and-forget)
           recordDecision(serviceClient, {
@@ -327,18 +413,49 @@ export async function POST(request: NextRequest) {
       const emailsWithoutMatch = emailItemIds.filter((id) => !emailsWithMatchIds.has(id))
 
       if (emailsWithoutMatch.length > 0) {
-        const { data: updated, error: emailUpdateError } = await serviceClient
-          .from('email_transactions')
-          .update({ status: effectiveStatus })
-          .in('id', emailsWithoutMatch)
-          .eq('user_id', user.id)
-          .select('id')
+        // Handle rejected_pair_keys for unmatched emails individually (need read-modify-write)
+        const emailsNeedingPairKeys = emailsWithoutMatch.filter((id) => emailRejectedPairKeys.has(id))
+        const emailsPlainUpdate = emailsWithoutMatch.filter((id) => !emailRejectedPairKeys.has(id))
 
-        if (emailUpdateError) {
-          results.errors.push('Failed to update email transactions')
-          results.failed += emailsWithoutMatch.length
-        } else {
-          results.rejected += updated?.length ?? 0
+        if (emailsPlainUpdate.length > 0) {
+          const { data: updated, error: emailUpdateError } = await serviceClient
+            .from('email_transactions')
+            .update({ status: effectiveStatus })
+            .in('id', emailsPlainUpdate)
+            .eq('user_id', user.id)
+            .select('id')
+
+          if (emailUpdateError) {
+            results.errors.push('Failed to update email transactions')
+            results.failed += emailsPlainUpdate.length
+          } else {
+            results.rejected += updated?.length ?? 0
+          }
+        }
+
+        if (emailsNeedingPairKeys.length > 0) {
+          const { data: existing } = await serviceClient
+            .from('email_transactions')
+            .select('id, rejected_pair_keys')
+            .in('id', emailsNeedingPairKeys)
+            .eq('user_id', user.id) as { data: Array<{ id: string; rejected_pair_keys?: string[] }> | null }
+
+          for (const row of existing || []) {
+            const existingPairKeys = (row.rejected_pair_keys || []) as string[]
+            const newPairKeys = emailRejectedPairKeys.get(row.id) || []
+            const mergedPairKeys = Array.from(new Set([...existingPairKeys, ...newPairKeys]))
+            const { error: updErr } = await serviceClient
+              .from('email_transactions')
+              .update({ status: effectiveStatus, rejected_pair_keys: mergedPairKeys } as Record<string, unknown>)
+              .eq('id', row.id)
+              .eq('user_id', user.id)
+            if (updErr) {
+              results.failed++
+              results.errors.push(`Failed to update email ${row.id}`)
+            } else {
+              results.rejected++
+            }
+          }
         }
       }
 
@@ -348,7 +465,7 @@ export async function POST(request: NextRequest) {
       if (compositeIds.length > 0) {
         await serviceClient
           .from('transaction_proposals')
-          .update({ status: isRequeue ? 'stale' : 'rejected' })
+          .update({ status: keepAlive ? 'stale' : 'rejected' })
           .eq('user_id', user.id)
           .in('composite_id', compositeIds)
           .in('status', ['pending', 'stale'])
@@ -377,7 +494,7 @@ export async function POST(request: NextRequest) {
           await serviceClient
             .from('payment_slip_uploads')
             .update({
-              review_status: isRequeue ? 'pending' : 'rejected',
+              review_status: keepAlive ? 'pending' : 'rejected',
               matched_transaction_id: null,
               match_confidence: null,
               rejected_transaction_ids: updatedRejected,
@@ -411,7 +528,7 @@ export async function POST(request: NextRequest) {
       if (slipsWithoutMatch.length > 0) {
         const { data: updated, error: slipUpdateError } = await serviceClient
           .from('payment_slip_uploads')
-          .update({ review_status: isRequeue ? 'pending' : 'rejected' })
+          .update({ review_status: keepAlive ? 'pending' : 'rejected' })
           .in('id', slipsWithoutMatch)
           .eq('user_id', user.id)
           .select('id')
@@ -430,9 +547,79 @@ export async function POST(request: NextRequest) {
       if (slipCompositeIds.length > 0) {
         await serviceClient
           .from('transaction_proposals')
-          .update({ status: isRequeue ? 'stale' : 'rejected' })
+          .update({ status: keepAlive ? 'stale' : 'rejected' })
           .eq('user_id', user.id)
           .in('composite_id', slipCompositeIds)
+          .in('status', ['pending', 'stale'])
+      }
+    }
+
+    // --- Flush pair-key updates ---
+    // Idempotent read-merge-write of rejected_pair_keys for any emails or
+    // slips whose pair-rejection keys were recorded but weren't already
+    // processed in the per-source loops (e.g., surgical rejects that only
+    // touch the counterpart's tracking).
+    if (emailRejectedPairKeys.size > 0) {
+      const emailIdsForKeys = Array.from(emailRejectedPairKeys.keys())
+      const { data: rows } = await serviceClient
+        .from('email_transactions')
+        .select('id, rejected_pair_keys')
+        .in('id', emailIdsForKeys)
+        .eq('user_id', user.id) as { data: Array<{ id: string; rejected_pair_keys?: string[] }> | null }
+
+      for (const row of rows || []) {
+        const existing = (row.rejected_pair_keys || []) as string[]
+        const newKeys = emailRejectedPairKeys.get(row.id) || []
+        const merged = Array.from(new Set([...existing, ...newKeys]))
+        if (merged.length === existing.length) continue
+        await serviceClient
+          .from('email_transactions')
+          .update({ rejected_pair_keys: merged } as Record<string, unknown>)
+          .eq('id', row.id)
+          .eq('user_id', user.id)
+      }
+    }
+
+    if (slipRejectedPairKeys.size > 0) {
+      const slipIdsForKeys = Array.from(slipRejectedPairKeys.keys())
+      const { data: rows } = await serviceClient
+        .from('payment_slip_uploads')
+        .select('id, rejected_pair_keys')
+        .in('id', slipIdsForKeys)
+        .eq('user_id', user.id) as { data: Array<{ id: string; rejected_pair_keys?: string[] }> | null }
+
+      for (const row of rows || []) {
+        const existing = (row.rejected_pair_keys || []) as string[]
+        const newKeys = slipRejectedPairKeys.get(row.id) || []
+        const merged = Array.from(new Set([...existing, ...newKeys]))
+        if (merged.length === existing.length) continue
+        await serviceClient
+          .from('payment_slip_uploads')
+          .update({ rejected_pair_keys: merged } as Record<string, unknown>)
+          .eq('id', row.id)
+          .eq('user_id', user.id)
+      }
+      // Bump results.rejected if nothing else was processed (surgical-only path)
+      if (results.rejected === 0 && slipRejectedPairKeys.size > 0) {
+        results.rejected += slipRejectedPairKeys.size
+      }
+    }
+    if (emailRejectedPairKeys.size > 0 && results.rejected === 0) {
+      results.rejected += emailRejectedPairKeys.size
+    }
+
+    // Also mark any affected proposals stale so they regenerate on next load
+    // (covers the surgical case where item ids weren't processed above).
+    {
+      const staleCompositeIds: string[] = []
+      for (const emailIdKey of emailRejectedPairKeys.keys()) staleCompositeIds.push(`email:${emailIdKey}`)
+      for (const slipIdKey of slipRejectedPairKeys.keys()) staleCompositeIds.push(`slip:${slipIdKey}`)
+      if (staleCompositeIds.length > 0) {
+        await serviceClient
+          .from('transaction_proposals')
+          .update({ status: 'stale' })
+          .eq('user_id', user.id)
+          .in('composite_id', staleCompositeIds)
           .in('status', ['pending', 'stale'])
       }
     }

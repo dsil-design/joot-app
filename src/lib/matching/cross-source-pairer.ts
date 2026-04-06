@@ -23,6 +23,8 @@ export interface PairCandidate {
   amount: number
   currency: string
   description: string
+  /** For email candidates: statement-suggestion composite keys (`${statementId}:${index}`) this email has been rejected from pairing with */
+  rejectedPairKeys?: string[]
 }
 
 /**
@@ -146,10 +148,19 @@ export async function findCrossSourcePairs(
       percentDiff: number
     } | null = null
 
+    const rejectedKeys = email.rejectedPairKeys && email.rejectedPairKeys.length > 0
+      ? new Set(email.rejectedPairKeys)
+      : null
+
     for (let si = 0; si < statementCandidates.length; si++) {
       if (usedStatements.has(si)) continue
 
       const stmt = statementCandidates[si]
+
+      // Skip pairs the user has previously rejected for this email
+      if (rejectedKeys && stmt.statementId !== undefined && stmt.statementIndex !== undefined) {
+        if (rejectedKeys.has(`${stmt.statementId}:${stmt.statementIndex}`)) continue
+      }
       const from = email.currency.toUpperCase()
       const to = stmt.currency.toUpperCase()
 

@@ -519,6 +519,7 @@ export type Database = {
           payment_card_type: string | null
           processed_at: string | null
           rejected_transaction_ids: string[]
+          rejected_pair_keys: string[]
           seen: boolean | null
           status: string
           subject: string | null
@@ -560,6 +561,7 @@ export type Database = {
           payment_card_type?: string | null
           processed_at?: string | null
           rejected_transaction_ids?: string[]
+          rejected_pair_keys?: string[]
           seen?: boolean | null
           status?: string
           subject?: string | null
@@ -601,6 +603,7 @@ export type Database = {
           payment_card_type?: string | null
           processed_at?: string | null
           rejected_transaction_ids?: string[]
+          rejected_pair_keys?: string[]
           seen?: boolean | null
           status?: string
           subject?: string | null
@@ -925,6 +928,7 @@ export type Database = {
           recipient_bank: string | null
           recipient_name: string | null
           rejected_transaction_ids: string[]
+          rejected_pair_keys: string[]
           review_status: string
           sender_account: string | null
           sender_bank: string | null
@@ -969,6 +973,7 @@ export type Database = {
           recipient_bank?: string | null
           recipient_name?: string | null
           rejected_transaction_ids?: string[]
+          rejected_pair_keys?: string[]
           review_status?: string
           sender_account?: string | null
           sender_bank?: string | null
@@ -1013,6 +1018,7 @@ export type Database = {
           recipient_bank?: string | null
           recipient_name?: string | null
           rejected_transaction_ids?: string[]
+          rejected_pair_keys?: string[]
           review_status?: string
           sender_account?: string | null
           sender_bank?: string | null

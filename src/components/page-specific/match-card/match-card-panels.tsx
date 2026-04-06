@@ -23,6 +23,7 @@ import {
   Mail,
   Copy,
   Check,
+  Ban,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -78,10 +79,12 @@ function SourceLabel({
   label,
   href,
   onPreview,
+  onReject,
 }: {
   label: string
   href: string | null
   onPreview?: () => void
+  onReject?: () => void
 }) {
   return (
     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
@@ -108,6 +111,25 @@ function SourceLabel({
         >
           <ExternalLink className="h-3 w-3" />
         </Link>
+      )}
+      {onReject && (
+        <>
+          <span
+            aria-hidden="true"
+            className="inline-block h-3 w-px bg-border mx-0.5"
+          />
+          <button
+            type="button"
+            className="inline-flex items-center text-muted-foreground/60 hover:text-destructive transition-colors"
+            title={`Reject this ${label.replace(/^from\s+/i, '').toLowerCase()} from the match`}
+            onClick={(e) => {
+              e.stopPropagation()
+              onReject()
+            }}
+          >
+            <Ban className="h-3 w-3" />
+          </button>
+        </>
       )}
     </p>
   )
@@ -236,13 +258,24 @@ function CopyableId({ id }: { id: string }) {
 
 interface MatchCardPanelsProps {
   data: MatchCardData
+  /**
+   * Surgical per-source reject. Provided only for merged items; when clicked,
+   * the parent opens the feedback toast scoped to that source and submits to
+   * the reject endpoint with `rejectSource` set.
+   */
+  onRejectSource?: (id: string, source: 'email' | 'statement' | 'slip') => void
 }
 
 /**
  * Two-panel comparison layout:
  * Left = statement data, Right = matched transaction (or empty placeholder)
  */
-export function MatchCardPanels({ data }: MatchCardPanelsProps) {
+export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) {
+  // Only merged items can have per-source rejection.
+  const isMerged = data.source === 'merged'
+  const rejectEmail = isMerged && onRejectSource ? () => onRejectSource(data.id, 'email') : undefined
+  const rejectStatement = isMerged && onRejectSource ? () => onRejectSource(data.id, 'statement') : undefined
+  const rejectSlip = isMerged && onRejectSource ? () => onRejectSource(data.id, 'slip') : undefined
   const [previewModal, setPreviewModal] = React.useState<
     | { type: "statement"; statementId: string; filename: string }
     | { type: "email"; emailId: string }
@@ -324,6 +357,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
               label="From Payment Slip"
               href={getSourceLink(data.id)}
               onPreview={openSlipPreview}
+              onReject={rejectSlip}
             />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(slip.date)}</span>
@@ -365,6 +399,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
                 label="From Email"
                 href={getMergedEmailLink(data.id)}
                 onPreview={openEmailPreview}
+                onReject={rejectEmail}
               />
             }
             emailId={parsed?.type === "merged_slip_email_stmt" ? parsed.emailId : undefined}
@@ -372,7 +407,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
 
           {/* Statement */}
           <div className="space-y-1.5 md:border-l md:pl-3">
-            <SourceLabel label="From Statement" href={null} onPreview={openStatementPreview} />
+            <SourceLabel label="From Statement" href={null} onPreview={openStatementPreview} onReject={rejectStatement} />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(data.statementTransaction.date)}</span>
             </TransactionDetailRow>
@@ -450,6 +485,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
                 label="From Email"
                 href={getMergedEmailLink(data.id)}
                 onPreview={openEmailPreview}
+                onReject={rejectEmail}
               />
             }
             emailId={parsed?.type === "merged" ? parsed.emailId : undefined}
@@ -457,7 +493,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
 
           {/* Right panel: Statement data */}
           <div className="space-y-1.5 md:border-l md:pl-3">
-            <SourceLabel label="From Statement" href={getSourceLink(data.id)} onPreview={openStatementPreview} />
+            <SourceLabel label="From Statement" href={getSourceLink(data.id)} onPreview={openStatementPreview} onReject={rejectStatement} />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(data.statementTransaction.date)}</span>
             </TransactionDetailRow>
@@ -553,6 +589,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
               label="From Payment Slip"
               href={getSourceLink(data.id)}
               onPreview={openSlipPreview}
+              onReject={rejectSlip}
             />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(slip.date)}</span>
@@ -588,7 +625,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
 
           {/* Right panel: Statement data */}
           <div className="space-y-1.5 md:border-l md:pl-3">
-            <SourceLabel label="From Statement" href={null} onPreview={openStatementPreview} />
+            <SourceLabel label="From Statement" href={null} onPreview={openStatementPreview} onReject={rejectStatement} />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(data.statementTransaction.date)}</span>
             </TransactionDetailRow>

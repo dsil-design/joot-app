@@ -47,7 +47,7 @@ import {
   type PaymentContext,
 } from './classifier';
 import { normalizeICloudRelay } from './icloud-relay';
-import { rankMatches, canAutoApprove } from '../matching/match-ranker';
+import { rankMatches } from '../matching/match-ranker';
 import type { SourceTransaction, TargetTransaction } from '../matching/match-scorer';
 import { classifyEmail as aiClassifyEmail, classifyAndExtractEmail } from './ai-classifier';
 import { consolidateEmail } from './email-consolidation';
@@ -432,33 +432,14 @@ export class EmailExtractionService {
       // Rank matches — pass supabase for cross-currency conversion
       const ranked = await rankMatches(source, targets, { supabase });
 
-      if (canAutoApprove(ranked) && ranked.bestMatch) {
-        // High confidence single winner — auto-link
+      // Auto-approval intentionally disabled: every match (including HIGH
+      // confidence) now requires manual review. Store the suggestion as a
+      // hint on the email so the user can review and approve in the queue.
+      if (ranked.bestMatch && ranked.bestMatch.score >= 55) {
         await supabase
           .from('email_transactions')
           .update({
             matched_transaction_id: ranked.bestMatch.targetId,
-            status: EMAIL_TRANSACTION_STATUS.MATCHED,
-            match_method: 'auto',
-            match_confidence: ranked.bestMatch.score,
-            matched_at: new Date().toISOString(),
-          })
-          .eq('id', emailTransactionId);
-
-        // Set source reference on the matched transaction
-        await supabase
-          .from('transactions')
-          .update({ source_email_transaction_id: emailTransactionId })
-          .eq('id', ranked.bestMatch.targetId);
-
-        console.log(
-          `Auto-matched email transaction ${emailTransactionId} → ${ranked.bestMatch.targetId} (score: ${ranked.bestMatch.score})`
-        );
-      } else if (ranked.bestMatch && ranked.bestMatch.score >= 55) {
-        // Medium confidence — store hint but don't change status
-        await supabase
-          .from('email_transactions')
-          .update({
             match_confidence: ranked.bestMatch.score,
           })
           .eq('id', emailTransactionId);

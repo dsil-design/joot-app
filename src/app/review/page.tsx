@@ -234,7 +234,12 @@ export default function ReviewQueuePage() {
   })
 
   // submitRejectFeedback is defined below (after handleRefreshProposal) — use a ref to avoid circular deps
-  const submitRejectFeedbackRef = React.useRef<(ids: string[], reason: string, nextStatus: string) => void>(() => {})
+  const submitRejectFeedbackRef = React.useRef<(
+    ids: string[],
+    reason: string,
+    nextStatus: string,
+    rejectSource?: 'email' | 'statement' | 'slip',
+  ) => void>(() => {})
 
   const {
     approve,
@@ -425,6 +430,13 @@ export default function ReviewQueuePage() {
         body: JSON.stringify({ compositeId: id }),
       })
       const data = await res.json()
+      if (res.status === 404) {
+        // The item's composite id no longer exists in the aggregated queue —
+        // most likely it got paired into a merged item after re-queueing.
+        // Refetch the whole queue so the new merged item shows up.
+        refresh()
+        return
+      }
       if (!res.ok) throw new Error(data.detail || data.error || 'Failed to generate proposal')
       const { proposal } = data
 
@@ -450,7 +462,12 @@ export default function ReviewQueuePage() {
 
   // Reject feedback: submit reason to ai_feedback table, then optionally re-propose
   const submitRejectFeedback = React.useCallback(
-    async (compositeIds: string[], reason: string, nextStatus: string) => {
+    async (
+      compositeIds: string[],
+      reason: string,
+      nextStatus: string,
+      rejectSource?: 'email' | 'statement' | 'slip',
+    ) => {
       const firstItem = items.find((i) => compositeIds.includes(i.id))
       try {
         // Save feedback
@@ -460,6 +477,7 @@ export default function ReviewQueuePage() {
           body: JSON.stringify({
             compositeIds,
             reason,
+            sourceContext: rejectSource,
             context: firstItem
               ? {
                   description: firstItem.statementTransaction.description,
@@ -472,8 +490,10 @@ export default function ReviewQueuePage() {
           }),
         })
 
-        // Update status if not already skipped (the initial reject call set it to 'skipped')
-        if (nextStatus !== "skipped") {
+        // Surgical rejects always make the server call (the initial top-level
+        // reject didn't run for this path). Top-level rejects with nextStatus
+        // other than 'skipped' make the call to apply the new status.
+        if (rejectSource || nextStatus !== "skipped") {
           await fetch("/api/imports/reject", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -481,12 +501,20 @@ export default function ReviewQueuePage() {
               emailIds: compositeIds,
               reason,
               nextStatus,
+              rejectSource,
             }),
           })
         }
 
         // Brief delay so the "Feedback submitted" confirmation is visible
         await new Promise((r) => setTimeout(r, 1500))
+
+        // Surgical reject: always refresh the whole queue since the merged
+        // composite id may no longer exist after the split.
+        if (rejectSource) {
+          refresh()
+          return
+        }
 
         // Handle next status
         if (nextStatus === "pending_review") {
@@ -508,7 +536,7 @@ export default function ReviewQueuePage() {
         console.error("Failed to submit rejection feedback:", e)
       }
     },
-    [items, updateItemByKey, removeItemByKey, handleRefreshProposal]
+    [items, updateItemByKey, removeItemByKey, handleRefreshProposal, refresh]
   )
 
   // Keep the ref in sync
@@ -685,6 +713,26 @@ export default function ReviewQueuePage() {
     handleFocusItemRemove(id)
   }, [reject, handleFocusItemRemove])
 
+  const handleRejectSource = React.useCallback(
+    (id: string, source: 'email' | 'statement' | 'slip') => {
+      toast.custom(
+        (t) => (
+          <RejectFeedbackToast
+            compositeIds={[id]}
+            count={1}
+            sourceContext={source}
+            onSubmitFeedback={(cIds, reason, nextStatus) => {
+              submitRejectFeedbackRef.current(cIds, reason, nextStatus, source)
+            }}
+            onDismiss={() => toast.dismiss(t)}
+          />
+        ),
+        { duration: 20000 },
+      )
+    },
+    [],
+  )
+
   const renderMatchCard = (item: MatchCardData) => (
     <MatchCard
       key={item.id}
@@ -693,6 +741,7 @@ export default function ReviewQueuePage() {
       loading={isProcessing(item.id) || generatingProposalIds.has(item.id)}
       onApprove={(id) => approve(id)}
       onReject={(id) => reject(id)}
+      onRejectSource={handleRejectSource}
       onLinkManually={handleLinkManually}
       onImport={handleImport}
       onCreateAsNew={handleCreateAsNew}
