@@ -104,6 +104,42 @@ import {
 } from "@/components/ui/tooltip"
 import { PARSER_PAYMENT_METHOD_MAP } from "@/lib/proposals/payment-method-mapper"
 import type { TransactionProposal } from "@/lib/proposals/types"
+import { parseImportId } from "@/lib/utils/import-id"
+
+/**
+ * Derive the list of source types present in a composite import ID.
+ * Returned in display order: payment slip → email → statement.
+ */
+function getSourceLabels(compositeId: string): string[] {
+  const parsed = parseImportId(compositeId)
+  if (!parsed) return ["statement"]
+  switch (parsed.type) {
+    case "merged_slip_email_stmt":
+      return ["payment slip", "email", "statement"]
+    case "merged_slip_email":
+      return ["payment slip", "email"]
+    case "merged_slip_stmt":
+      return ["payment slip", "statement"]
+    case "merged":
+      return ["email", "statement"]
+    case "payment_slip":
+      return ["payment slip"]
+    case "email":
+      return ["email"]
+    case "self_transfer":
+      return ["statement", "statement"]
+    case "statement":
+    default:
+      return ["statement"]
+  }
+}
+
+function formatSourceList(labels: string[]): string {
+  if (labels.length === 0) return "source"
+  if (labels.length === 1) return labels[0]
+  if (labels.length === 2) return `${labels[0]} & ${labels[1]}`
+  return `${labels.slice(0, -1).join(", ")} & ${labels[labels.length - 1]}`
+}
 
 /**
  * Zap icon with optional reasoning tooltip
@@ -466,6 +502,9 @@ export function CreateFromImportDialog({
 
   const isValid = description.trim() && amount && parseFloat(amount) > 0
   const hasAnyPrefill = aiPrefilled.size > 0
+  const sourceLabels = data ? getSourceLabels(data.compositeId) : []
+  const sourceListText = formatSourceList(sourceLabels)
+  const isMultiSource = sourceLabels.length > 1
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -476,7 +515,9 @@ export function CreateFromImportDialog({
             Create as New Transaction
           </DialogTitle>
           <DialogDescription>
-            Create a new transaction from this statement entry.
+            {isMultiSource
+              ? `Create a new transaction. It will be linked to all ${sourceLabels.length} sources (${sourceListText}).`
+              : `Create a new transaction from this ${sourceListText} entry.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -498,8 +539,17 @@ export function CreateFromImportDialog({
         {data && (
           <div className="bg-muted/50 rounded-lg p-3 space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              From statement:
+              {isMultiSource ? `From ${sourceListText}:` : `From ${sourceListText}:`}
             </p>
+            {isMultiSource && (
+              <div className="flex flex-wrap gap-1 pb-1">
+                {sourceLabels.map((label) => (
+                  <Badge key={label} variant="secondary" className="text-[10px] capitalize">
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm font-medium truncate">
