@@ -4,8 +4,10 @@ import { fetchStatementQueueItems } from '@/lib/imports/statement-queue-builder'
 import { fetchEmailQueueItems } from '@/lib/imports/email-queue-builder'
 import { fetchPaymentSlipQueueItems } from '@/lib/imports/payment-slip-queue-builder'
 import { aggregateQueueItems } from '@/lib/imports/queue-aggregator'
-import { getProposalsForItems, transformProposalRow } from '@/lib/proposals/proposal-service'
-import type { QueueFilters } from '@/lib/imports/queue-types'
+import { backfillSlipTransactionMatches } from '@/lib/imports/slip-transaction-backfill'
+import { getProposalsForItems, markStaleProposals, transformProposalRow } from '@/lib/proposals/proposal-service'
+import { parseImportId } from '@/lib/utils/import-id'
+import type { QueueFilters, QueueItem } from '@/lib/imports/queue-types'
 
 /**
  * GET /api/imports/queue
@@ -70,8 +72,23 @@ export async function GET(request: NextRequest) {
         : Promise.resolve([]),
     ])
 
+    // Backfill: auto-link unmatched email/statement items to existing
+    // transactions that were created from a payment slip. Mutates items in place
+    // so the aggregator's existing dedup-by-matched-transaction pass will
+    // consolidate them into a single merged card.
+    await backfillSlipTransactionMatches(supabase, user.id, emailItems, statementItems)
+
     // Aggregate, pair, filter, sort
     const result = await aggregateQueueItems(supabase, statementItems, emailItems, filters, paymentSlipItems)
+
+    // Reconcile previously-generated proposals against the latest grouping.
+    // If a pending proposal's underlying source(s) have been re-grouped into a
+    // different composite_id by this aggregation pass (e.g., a slip-only proposal
+    // is now part of a 3-way slip+email+statement group), mark the old proposal
+    // 'stale' so it stops surfacing as a separate card. Fire-and-forget.
+    void reconcileStaleProposals(supabase, user.id, result.items).catch((err) => {
+      console.error('Failed to reconcile stale proposals:', err)
+    })
 
     // Paginate
     const startIndex = (page - 1) * limit
@@ -131,5 +148,95 @@ export async function GET(request: NextRequest) {
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     )
+  }
+}
+
+/**
+ * Mark stale any pending proposals whose underlying source IDs are now part of
+ * a different composite_id in the latest aggregated queue. This handles the
+ * temporal race where a slip is reviewed (and proposal generated) before its
+ * matching email/statement arrived — once they arrive and the aggregator
+ * regroups, the old proposal becomes stale.
+ */
+async function reconcileStaleProposals(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  currentItems: QueueItem[]
+): Promise<void> {
+  // Build maps from each source identifier → current composite_id that owns it.
+  const stmtToComposite = new Map<string, string>()
+  const emailToComposite = new Map<string, string>()
+  const slipToComposite = new Map<string, string>()
+
+  for (const item of currentItems) {
+    const parsed = parseImportId(item.id)
+    if (!parsed) continue
+    switch (parsed.type) {
+      case 'statement':
+        stmtToComposite.set(`${parsed.statementId}:${parsed.index}`, item.id)
+        break
+      case 'email':
+        emailToComposite.set(parsed.emailId, item.id)
+        break
+      case 'payment_slip':
+        slipToComposite.set(parsed.slipId, item.id)
+        break
+      case 'merged':
+        stmtToComposite.set(`${parsed.statementId}:${parsed.index}`, item.id)
+        emailToComposite.set(parsed.emailId, item.id)
+        break
+      case 'merged_slip_email':
+        slipToComposite.set(parsed.slipId, item.id)
+        emailToComposite.set(parsed.emailId, item.id)
+        break
+      case 'merged_slip_stmt':
+        slipToComposite.set(parsed.slipId, item.id)
+        stmtToComposite.set(`${parsed.statementId}:${parsed.index}`, item.id)
+        break
+      case 'merged_slip_email_stmt':
+        slipToComposite.set(parsed.slipId, item.id)
+        emailToComposite.set(parsed.emailId, item.id)
+        stmtToComposite.set(`${parsed.statementId}:${parsed.index}`, item.id)
+        break
+      case 'self_transfer':
+        stmtToComposite.set(`${parsed.debitStatementId}:${parsed.debitIndex}`, item.id)
+        stmtToComposite.set(`${parsed.creditStatementId}:${parsed.creditIndex}`, item.id)
+        break
+    }
+  }
+
+  // Fetch all pending proposals for this user with their source refs.
+  const { data: pending, error } = await supabase
+    .from('transaction_proposals')
+    .select('composite_id, statement_upload_id, suggestion_index, email_transaction_id, payment_slip_upload_id')
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+
+  if (error || !pending || pending.length === 0) return
+
+  const staleIds: string[] = []
+  for (const p of pending) {
+    // For each source the proposal owns, check whether it's now in a current
+    // item with a DIFFERENT composite_id. If any source has moved, mark stale.
+    let regrouped = false
+
+    if (p.statement_upload_id && p.suggestion_index !== null && p.suggestion_index !== undefined) {
+      const owner = stmtToComposite.get(`${p.statement_upload_id}:${p.suggestion_index}`)
+      if (owner && owner !== p.composite_id) regrouped = true
+    }
+    if (!regrouped && p.email_transaction_id) {
+      const owner = emailToComposite.get(p.email_transaction_id)
+      if (owner && owner !== p.composite_id) regrouped = true
+    }
+    if (!regrouped && p.payment_slip_upload_id) {
+      const owner = slipToComposite.get(p.payment_slip_upload_id)
+      if (owner && owner !== p.composite_id) regrouped = true
+    }
+
+    if (regrouped) staleIds.push(p.composite_id)
+  }
+
+  if (staleIds.length > 0) {
+    await markStaleProposals(supabase, userId, staleIds)
   }
 }
