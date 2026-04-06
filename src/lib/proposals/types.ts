@@ -281,4 +281,27 @@ export interface ProposalInput {
 
   // Prior rejection feedback (for re-queued items)
   rejectionFeedback?: string[]
+
+  // Multi-source enrichment: additional email/slip context attached to this
+  // queue item via "Attach a source". Pre-loaded by the route handler so the
+  // LLM engine stays pure (no DB access). Used for cases like multi-item
+  // Lazada orders where each item has its own email receipt but the credit
+  // card aggregates them into a single charge.
+  extraEmailContext?: Array<{
+    subject?: string
+    fromName?: string
+    fromAddress?: string
+    description?: string
+    amount?: number
+    currency?: string
+    date?: string
+  }>
+  extraSlipContext?: Array<{
+    senderName?: string
+    recipientName?: string
+    memo?: string
+    amount?: number
+    currency?: string
+    date?: string
+  }>
 }

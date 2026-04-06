@@ -663,6 +663,9 @@ CREATE TABLE public.email_transactions (
   match_method TEXT CHECK (match_method IS NULL OR match_method IN ('auto', 'manual', 'cross_source')),
   rejected_transaction_ids UUID[] NOT NULL DEFAULT '{}',
   rejected_pair_keys TEXT[] NOT NULL DEFAULT '{}',
+  -- Counterpart composite keys this email has been manually paired with via
+  -- the "Attach a source" affordance on the Review Queue.
+  manual_pair_keys TEXT[] NOT NULL DEFAULT '{}',
 
   -- Status tracking
   status TEXT NOT NULL DEFAULT 'pending_review' CHECK (status IN (
@@ -1015,6 +1018,9 @@ CREATE TABLE public.payment_slip_uploads (
   -- Rejected match tracking (parity with email_transactions)
   rejected_transaction_ids UUID[] NOT NULL DEFAULT '{}',
   rejected_pair_keys TEXT[] NOT NULL DEFAULT '{}',
+  -- Counterpart composite keys this slip has been manually paired with via
+  -- the "Attach a source" affordance on the Review Queue.
+  manual_pair_keys TEXT[] NOT NULL DEFAULT '{}',
 
   -- Review status (for queue)
   review_status TEXT NOT NULL DEFAULT 'pending' CHECK (review_status IN ('pending', 'approved', 'rejected')),

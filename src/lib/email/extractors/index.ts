@@ -12,4 +12,5 @@ export { kasikornParser } from './kasikorn';
 export { lazadaParser } from './lazada';
 export { appleParser } from './apple';
 export { stripeParser } from './stripe';
+export { citizensBankParser } from './citizens-bank';
 export { aiFallbackParser } from './ai-fallback';

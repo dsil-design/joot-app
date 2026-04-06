@@ -63,6 +63,7 @@ import { kasikornParser } from './extractors/kasikorn';
 import { lazadaParser } from './extractors/lazada';
 import { appleParser } from './extractors/apple';
 import { stripeParser } from './extractors/stripe';
+import { citizensBankParser } from './extractors/citizens-bank';
 import { aiFallbackParser } from './extractors/ai-fallback';
 
 /**
@@ -1016,6 +1017,7 @@ extractionService.registerParser(kasikornParser);
 extractionService.registerParser(lazadaParser);
 extractionService.registerParser(appleParser);
 extractionService.registerParser(stripeParser);
+extractionService.registerParser(citizensBankParser);
 
 // AI fallback parser — must be registered LAST so it only runs
 // when no regex parser matches

@@ -1,7 +1,7 @@
 "use client"
 
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll"
-import type { ReviewQueueFilters } from "@/components/page-specific/review-queue-filter-bar"
+import type { PaymentSlipFilters } from "@/hooks/use-payment-slips-filters"
 
 export interface PaymentSlip {
   id: string
@@ -21,27 +21,16 @@ export interface PaymentSlip {
   uploaded_at: string
 }
 
-async function fetchPaymentSlips(
-  page: number,
-  limit: number,
-  filters: ReviewQueueFilters
-): Promise<{
-  items: PaymentSlip[]
-  hasMore: boolean
-  total: number
-}> {
+function buildQueryParams(filters: PaymentSlipFilters): URLSearchParams {
   const params = new URLSearchParams()
-  params.set("page", page.toString())
-  params.set("limit", limit.toString())
 
   if (filters.search) params.set("search", filters.search)
-  if (filters.direction && filters.direction !== "all") params.set("direction", filters.direction)
-  if (filters.processingStatus && filters.processingStatus !== "all") params.set("status", filters.processingStatus)
-  if (filters.status !== "all") params.set("reviewStatus", filters.status)
-  if (filters.bank && filters.bank !== "all") params.set("bank", filters.bank)
+  if (filters.direction !== "all") params.set("direction", filters.direction)
+  if (filters.slipState !== "all") params.set("slipState", filters.slipState)
+  if (filters.bank !== "all") params.set("bank", filters.bank)
   if (filters.confidence !== "all") params.set("confidence", filters.confidence)
-  if (filters.sortField) params.set("sortField", filters.sortField)
-  if (filters.sortOrder) params.set("sortOrder", filters.sortOrder)
+  params.set("sortField", filters.sortField)
+  params.set("sortOrder", filters.sortOrder)
 
   if (filters.dateRange?.from) {
     const d = filters.dateRange.from
@@ -51,6 +40,22 @@ async function fetchPaymentSlips(
     const d = filters.dateRange.to
     params.set("dateTo", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
   }
+
+  return params
+}
+
+async function fetchPaymentSlips(
+  page: number,
+  limit: number,
+  filters: PaymentSlipFilters
+): Promise<{
+  items: PaymentSlip[]
+  hasMore: boolean
+  total: number
+}> {
+  const params = buildQueryParams(filters)
+  params.set("page", page.toString())
+  params.set("limit", limit.toString())
 
   const response = await fetch(`/api/payment-slips?${params.toString()}`)
   if (!response.ok) {
@@ -66,7 +71,7 @@ async function fetchPaymentSlips(
   }
 }
 
-export function usePaymentSlips(filters: ReviewQueueFilters) {
+export function usePaymentSlips(filters: PaymentSlipFilters) {
   return useInfiniteScroll<PaymentSlip>({
     fetchFn: async (page, limit) => {
       return fetchPaymentSlips(page, limit, filters)
@@ -75,8 +80,7 @@ export function usePaymentSlips(filters: ReviewQueueFilters) {
     deps: [
       filters.search,
       filters.direction,
-      filters.processingStatus,
-      filters.status,
+      filters.slipState,
       filters.bank,
       filters.confidence,
       filters.sortField,
@@ -89,26 +93,10 @@ export function usePaymentSlips(filters: ReviewQueueFilters) {
 }
 
 export async function fetchAllFilteredSlipIds(
-  filters: ReviewQueueFilters
+  filters: PaymentSlipFilters
 ): Promise<string[]> {
-  const params = new URLSearchParams()
+  const params = buildQueryParams(filters)
   params.set("fields", "ids")
-
-  if (filters.search) params.set("search", filters.search)
-  if (filters.direction && filters.direction !== "all") params.set("direction", filters.direction)
-  if (filters.processingStatus && filters.processingStatus !== "all") params.set("status", filters.processingStatus)
-  if (filters.status !== "all") params.set("reviewStatus", filters.status)
-  if (filters.bank && filters.bank !== "all") params.set("bank", filters.bank)
-  if (filters.confidence !== "all") params.set("confidence", filters.confidence)
-
-  if (filters.dateRange?.from) {
-    const d = filters.dateRange.from
-    params.set("dateFrom", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
-  }
-  if (filters.dateRange?.to) {
-    const d = filters.dateRange.to
-    params.set("dateTo", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
-  }
 
   const response = await fetch(`/api/payment-slips?${params.toString()}`)
   if (!response.ok) {

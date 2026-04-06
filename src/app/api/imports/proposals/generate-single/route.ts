@@ -122,6 +122,44 @@ export async function POST(request: NextRequest) {
       }),
     }
 
+    // Multi-source enrichment: load any extra emails / slips the user has
+    // manually attached to this queue item so the LLM gets full context.
+    if (targetItem.extraEmailIds && targetItem.extraEmailIds.length > 0) {
+      const { data: extras } = await supabase
+        .from('email_transactions')
+        .select('subject, from_name, from_address, description, amount, currency, transaction_date')
+        .in('id', targetItem.extraEmailIds)
+        .eq('user_id', user.id)
+      if (extras && extras.length > 0) {
+        proposalInput.extraEmailContext = extras.map((e) => ({
+          subject: e.subject ?? undefined,
+          fromName: e.from_name ?? undefined,
+          fromAddress: e.from_address ?? undefined,
+          description: e.description ?? undefined,
+          amount: e.amount != null ? Number(e.amount) : undefined,
+          currency: e.currency ?? undefined,
+          date: e.transaction_date ?? undefined,
+        }))
+      }
+    }
+    if (targetItem.extraSlipIds && targetItem.extraSlipIds.length > 0) {
+      const { data: extras } = await supabase
+        .from('payment_slip_uploads')
+        .select('sender_name, recipient_name, memo, amount, currency, transaction_date')
+        .in('id', targetItem.extraSlipIds)
+        .eq('user_id', user.id)
+      if (extras && extras.length > 0) {
+        proposalInput.extraSlipContext = extras.map((s) => ({
+          senderName: s.sender_name ?? undefined,
+          recipientName: s.recipient_name ?? undefined,
+          memo: s.memo ?? undefined,
+          amount: s.amount != null ? Number(s.amount) : undefined,
+          currency: s.currency ?? undefined,
+          date: s.transaction_date ?? undefined,
+        }))
+      }
+    }
+
     // Fetch prior rejection feedback for this item (stored in ai_feedback with compositeId in email_subject)
     const { data: priorFeedback } = await supabase
       .from('ai_feedback')

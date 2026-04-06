@@ -185,6 +185,40 @@ function buildPrompt(
   if (item.bankDetected) parts.push(`- Bank: ${item.bankDetected}`)
   if (item.detectedDirection) parts.push(`- Detected direction: ${item.detectedDirection} (based on bank account matching)`)
 
+  // Multi-source enrichment: additional email/slip receipts the user has
+  // manually attached to this queue item. They all describe the same
+  // underlying transaction (e.g. multi-item Lazada order → multiple per-item
+  // receipts → one credit card charge). Treat them as supporting context.
+  if (item.extraEmailContext && item.extraEmailContext.length > 0) {
+    parts.push('')
+    parts.push(`## Additional Email Receipts (${item.extraEmailContext.length})`)
+    parts.push(`The user has manually attached these additional email receipts. They describe the same transaction as the main item above (e.g. each line item from a multi-item order). Use them to better understand the vendor, what was purchased, and to write a more descriptive summary.`)
+    for (const e of item.extraEmailContext) {
+      const bits: string[] = []
+      if (e.subject) bits.push(`subject: "${e.subject}"`)
+      if (e.fromName) bits.push(`from: ${e.fromName}${e.fromAddress ? ` <${e.fromAddress}>` : ''}`)
+      if (e.description) bits.push(`desc: "${e.description}"`)
+      if (e.amount != null && e.currency) bits.push(`amount: ${e.amount} ${e.currency}`)
+      if (e.date) bits.push(`date: ${e.date}`)
+      parts.push(`- ${bits.join(' | ')}`)
+    }
+  }
+
+  if (item.extraSlipContext && item.extraSlipContext.length > 0) {
+    parts.push('')
+    parts.push(`## Additional Payment Slips (${item.extraSlipContext.length})`)
+    parts.push(`The user has manually attached these additional payment slips related to the same transaction.`)
+    for (const s of item.extraSlipContext) {
+      const bits: string[] = []
+      if (s.senderName) bits.push(`from: ${s.senderName}`)
+      if (s.recipientName) bits.push(`to: ${s.recipientName}`)
+      if (s.memo) bits.push(`memo: "${s.memo}"`)
+      if (s.amount != null && s.currency) bits.push(`amount: ${s.amount} ${s.currency}`)
+      if (s.date) bits.push(`date: ${s.date}`)
+      parts.push(`- ${bits.join(' | ')}`)
+    }
+  }
+
   if (similarTxns.length > 0) {
     parts.push('')
     parts.push(`## Similar Historical Transactions`)

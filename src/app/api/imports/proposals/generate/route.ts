@@ -152,6 +152,66 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Multi-source enrichment: bulk-load extra email/slip context for any
+    // items that have manually-attached extras, then attach to their inputs.
+    const allExtraEmailIds = Array.from(
+      new Set(targetItems.flatMap((i) => i.extraEmailIds ?? []))
+    )
+    const allExtraSlipIds = Array.from(
+      new Set(targetItems.flatMap((i) => i.extraSlipIds ?? []))
+    )
+    if (allExtraEmailIds.length > 0 || allExtraSlipIds.length > 0) {
+      const [emailRes, slipRes] = await Promise.all([
+        allExtraEmailIds.length > 0
+          ? supabase
+              .from('email_transactions')
+              .select('id, subject, from_name, from_address, description, amount, currency, transaction_date')
+              .in('id', allExtraEmailIds)
+              .eq('user_id', user.id)
+          : Promise.resolve({ data: [] as any[] }),
+        allExtraSlipIds.length > 0
+          ? supabase
+              .from('payment_slip_uploads')
+              .select('id, sender_name, recipient_name, memo, amount, currency, transaction_date')
+              .in('id', allExtraSlipIds)
+              .eq('user_id', user.id)
+          : Promise.resolve({ data: [] as any[] }),
+      ])
+      const emailById = new Map((emailRes.data || []).map((e) => [e.id, e]))
+      const slipById = new Map((slipRes.data || []).map((s) => [s.id, s]))
+
+      proposalInputs.forEach((input, i) => {
+        const item = targetItems[i]
+        if (item.extraEmailIds && item.extraEmailIds.length > 0) {
+          input.extraEmailContext = item.extraEmailIds
+            .map((id) => emailById.get(id))
+            .filter((e): e is NonNullable<typeof e> => !!e)
+            .map((e) => ({
+              subject: e.subject ?? undefined,
+              fromName: e.from_name ?? undefined,
+              fromAddress: e.from_address ?? undefined,
+              description: e.description ?? undefined,
+              amount: e.amount != null ? Number(e.amount) : undefined,
+              currency: e.currency ?? undefined,
+              date: e.transaction_date ?? undefined,
+            }))
+        }
+        if (item.extraSlipIds && item.extraSlipIds.length > 0) {
+          input.extraSlipContext = item.extraSlipIds
+            .map((id) => slipById.get(id))
+            .filter((s): s is NonNullable<typeof s> => !!s)
+            .map((s) => ({
+              senderName: s.sender_name ?? undefined,
+              recipientName: s.recipient_name ?? undefined,
+              memo: s.memo ?? undefined,
+              amount: s.amount != null ? Number(s.amount) : undefined,
+              currency: s.currency ?? undefined,
+              date: s.transaction_date ?? undefined,
+            }))
+        }
+      })
+    }
+
     const result = await generateAndStoreProposals(supabase, user.id, proposalInputs, { force })
 
     return NextResponse.json(result)

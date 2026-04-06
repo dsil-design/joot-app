@@ -13,6 +13,9 @@ import { MatchCardHeader } from "./match-card-header"
 import { MatchCardPanels, ProposalConfidenceBar } from "./match-card-panels"
 import { MatchCardReasons } from "./match-card-reasons"
 import { MatchCardActions } from "./match-card-actions"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Plus } from "lucide-react"
 
 /**
  * Derive variant from data when not explicitly provided
@@ -83,6 +86,7 @@ export function MatchCard({
   onQuickCreate,
   onRefreshProposal,
   onSelectionChange,
+  onAttachSource,
   className,
 }: MatchCardProps) {
   const variant = providedVariant || getVariant(data)
@@ -129,6 +133,30 @@ export function MatchCard({
           <ProposalConfidenceBar score={data.proposal.overallConfidence} />
         )}
         <MatchCardReasons reasons={data.reasons} isNew={data.isNew} />
+        {onAttachSource && data.isNew && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onAttachSource(data.id)}
+              className="h-7 gap-1.5 text-xs text-zinc-600"
+            >
+              <Plus className="size-3" />
+              Attach a source
+            </Button>
+            {(data.extraEmailIds?.length ?? 0) > 0 && (
+              <Badge className="bg-blue-100 text-blue-800 border-0 text-[11px]">
+                +{data.extraEmailIds!.length} email{data.extraEmailIds!.length === 1 ? '' : 's'}
+              </Badge>
+            )}
+            {(data.extraSlipIds?.length ?? 0) > 0 && (
+              <Badge className="bg-blue-100 text-blue-800 border-0 text-[11px]">
+                +{data.extraSlipIds!.length} slip{data.extraSlipIds!.length === 1 ? '' : 's'}
+              </Badge>
+            )}
+          </div>
+        )}
       </CardContent>
 
       <CardFooter className="pt-2 gap-2 flex-wrap [&>button]:min-h-[44px] [&>button]:sm:min-h-0">

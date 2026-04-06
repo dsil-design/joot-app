@@ -11,8 +11,10 @@ import { createClient } from '@/lib/supabase/server'
  *   limit (number, default 20) - Items per page
  *   search (string) - Search sender, recipient, memo, or amount
  *   direction (string) - Filter by detected_direction (income/expense)
- *   status (string) - Filter by processing status
- *   reviewStatus (string) - Filter by review_status
+ *   slipState (string) - Unified user-facing state bucket. One of:
+ *     processing | pending | failed | ready | approved | rejected
+ *     Translates to a (status, review_status) predicate matching the badge
+ *     precedence in the UI.
  *   bank (string) - Filter by bank_detected
  *   confidence (string) - Filter by confidence level (high/medium/low)
  *   dateFrom (string) - Filter transaction_date >= dateFrom
@@ -35,8 +37,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)))
     const search = searchParams.get('search') || ''
     const direction = searchParams.get('direction') || ''
-    const status = searchParams.get('status') || ''
-    const reviewStatus = searchParams.get('reviewStatus') || ''
+    const slipState = searchParams.get('slipState') || ''
     const bank = searchParams.get('bank') || ''
     const confidence = searchParams.get('confidence') || ''
     const dateFrom = searchParams.get('dateFrom') || ''
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
         .select('id')
         .eq('user_id', user.id)
 
-      query = applyFilters(query, { search, direction, status, reviewStatus, bank, confidence, dateFrom, dateTo })
+      query = applyFilters(query, { search, direction, slipState, bank, confidence, dateFrom, dateTo })
 
       const { data, error } = await query
       if (error) {
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
 
-    countQuery = applyFilters(countQuery, { search, direction, status, reviewStatus, bank, confidence, dateFrom, dateTo })
+    countQuery = applyFilters(countQuery, { search, direction, slipState, bank, confidence, dateFrom, dateTo })
 
     const { count, error: countError } = await countQuery
     if (countError) {
@@ -98,7 +99,7 @@ export async function GET(request: NextRequest) {
       .order(actualSortField, { ascending: sortOrder === 'asc' })
       .range(offset, offset + limit - 1)
 
-    dataQuery = applyFilters(dataQuery, { search, direction, status, reviewStatus, bank, confidence, dateFrom, dateTo })
+    dataQuery = applyFilters(dataQuery, { search, direction, slipState, bank, confidence, dateFrom, dateTo })
 
     const { data: slips, error: fetchError } = await dataQuery
 
@@ -124,13 +125,19 @@ export async function GET(request: NextRequest) {
 interface FilterParams {
   search: string
   direction: string
-  status: string
-  reviewStatus: string
+  slipState: string
   bank: string
   confidence: string
   dateFrom: string
   dateTo: string
 }
+
+/**
+ * Pipeline statuses that block review. Mirrors the precedence in
+ * `getSlipBadge` (see src/app/imports/payment-slips/page.tsx) so that
+ * the unified `slipState` filter agrees with the badge shown in the list.
+ */
+const BLOCKING_PIPELINE_STATUSES = ['failed', 'processing', 'pending']
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function applyFilters(query: any, filters: FilterParams) {
@@ -144,12 +151,32 @@ function applyFilters(query: any, filters: FilterParams) {
     query = query.eq('detected_direction', filters.direction)
   }
 
-  if (filters.status) {
-    query = query.eq('status', filters.status)
-  }
-
-  if (filters.reviewStatus) {
-    query = query.eq('review_status', filters.reviewStatus)
+  // Unified slip state — translate the user-facing bucket into the right
+  // (status, review_status) predicate. Matches getSlipBadge precedence:
+  //   failed -> processing -> pending  (block review, ignore review_status)
+  //   ready / approved / rejected      (extraction done, surface review_status)
+  switch (filters.slipState) {
+    case 'failed':
+    case 'processing':
+    case 'pending':
+      query = query.eq('status', filters.slipState)
+      break
+    case 'ready':
+      query = query
+        .not('status', 'in', `(${BLOCKING_PIPELINE_STATUSES.join(',')})`)
+        .eq('review_status', 'pending')
+      break
+    case 'approved':
+      query = query
+        .not('status', 'in', `(${BLOCKING_PIPELINE_STATUSES.join(',')})`)
+        .eq('review_status', 'approved')
+      break
+    case 'rejected':
+      query = query
+        .not('status', 'in', `(${BLOCKING_PIPELINE_STATUSES.join(',')})`)
+        .eq('review_status', 'rejected')
+      break
+    // 'all' or '' — no status filter
   }
 
   if (filters.bank) {

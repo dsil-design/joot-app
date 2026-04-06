@@ -7,11 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Upload, Receipt, ArrowRight, Eye, RefreshCw, X } from 'lucide-react'
 import { UploadPaymentSlipDialog } from '@/components/page-specific/upload-payment-slip-dialog'
 import { PaymentSlipViewerModal } from '@/components/page-specific/payment-slip-viewer-modal'
-import {
-  ReviewQueueFilterBar,
-  useReviewQueueFilters,
-  defaultPaymentSlipFilters,
-} from '@/components/page-specific/review-queue-filter-bar'
+import { PaymentSlipsFilterBar } from '@/components/page-specific/payment-slips-filter-bar'
+import { usePaymentSlipFilters } from '@/hooks/use-payment-slips-filters'
 import { LoadMoreTrigger } from '@/hooks/use-infinite-scroll'
 import { usePaymentSlips } from '@/hooks/use-payment-slips'
 import { cn } from '@/lib/utils'
@@ -60,7 +57,7 @@ function formatAmount(amount: number): string {
 export default function PaymentSlipsPage() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [previewSlip, setPreviewSlip] = useState<{ id: string; filename: string } | null>(null)
-  const [filters, setFilters] = useReviewQueueFilters(defaultPaymentSlipFilters)
+  const [filters, setFilters] = usePaymentSlipFilters()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isReprocessing, setIsReprocessing] = useState(false)
 
@@ -132,11 +129,10 @@ export default function PaymentSlipsPage() {
 
       {/* Filters */}
       {!isInitialLoading && (
-        <ReviewQueueFilterBar
+        <PaymentSlipsFilterBar
           filters={filters}
           onFiltersChange={setFilters}
-          mode="payment-slips"
-          syncWithUrl
+          totalMatches={total}
         />
       )}
 

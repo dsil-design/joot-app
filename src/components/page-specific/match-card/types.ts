@@ -128,6 +128,10 @@ export interface MatchCardData {
   proposal?: TransactionProposal
   proposalModified?: boolean
   waitingForStatement?: boolean
+  /** Additional same-type sources manually attached for enrichment (e.g.
+   * multi-item Lazada orders → multiple email receipts → one charge). */
+  extraEmailIds?: string[]
+  extraSlipIds?: string[]
 }
 
 /**
@@ -147,6 +151,11 @@ export interface MatchCardCallbacks {
   onQuickCreate?: (id: string) => void
   onRefreshProposal?: (id: string) => void
   onSelectionChange?: (id: string, selected: boolean) => void
+  /**
+   * Open the "Attach a source" dialog for this card. The page wires the
+   * dialog itself; the card just signals intent.
+   */
+  onAttachSource?: (id: string) => void
 }
 
 /**

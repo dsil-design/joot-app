@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DateRangePickerTrigger } from "@/components/ui/date-range-dialog"
-import { Search, X, SlidersHorizontal, Mail, FileText, GitMerge, Receipt, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Search, X, SlidersHorizontal, Mail, FileText, GitMerge, Receipt } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 
 export type FilterStatus = "all" | "pending" | "approved" | "rejected"
@@ -21,11 +21,6 @@ export type FilterCurrency = "all" | "USD" | "THB"
 export type FilterConfidence = "all" | "high" | "medium" | "low"
 export type FilterSource = "all" | "statement" | "email" | "payment_slip" | "merged"
 export type FilterPaymentMethodType = "all" | "credit_card" | "bank_account"
-export type FilterDirection = "all" | "income" | "expense"
-export type FilterBank = "all" | "kbank" | "bangkok_bank"
-export type FilterProcessingStatus = "all" | "pending" | "processing" | "ready_for_review" | "done" | "failed"
-export type FilterSortField = "uploaded_at" | "transaction_date" | "amount" | "confidence"
-export type FilterSortOrder = "desc" | "asc"
 
 export interface ReviewQueueFilters {
   status: FilterStatus
@@ -36,12 +31,6 @@ export interface ReviewQueueFilters {
   search: string
   statementUploadId: string
   paymentMethodType?: FilterPaymentMethodType
-  // Payment slip mode filters
-  direction?: FilterDirection
-  bank?: FilterBank
-  processingStatus?: FilterProcessingStatus
-  sortField?: FilterSortField
-  sortOrder?: FilterSortOrder
 }
 
 export const defaultFilters: ReviewQueueFilters = {
@@ -55,29 +44,11 @@ export const defaultFilters: ReviewQueueFilters = {
   paymentMethodType: "all",
 }
 
-export const defaultPaymentSlipFilters: ReviewQueueFilters = {
-  status: "all",
-  currency: "all",
-  confidence: "all",
-  source: "all",
-  dateRange: undefined,
-  search: "",
-  statementUploadId: "",
-  direction: "all",
-  bank: "all",
-  processingStatus: "all",
-  sortField: "transaction_date",
-  sortOrder: "desc",
-}
-
-export type FilterBarMode = "review-queue" | "payment-slips"
-
 export interface ReviewQueueFilterBarProps {
   filters: ReviewQueueFilters
   onFiltersChange: (filters: ReviewQueueFilters) => void
   syncWithUrl?: boolean
   className?: string
-  mode?: FilterBarMode
 }
 
 const statusOptions: Array<{ value: FilterStatus; label: string }> = [
@@ -104,34 +75,6 @@ const paymentMethodTypeOptions: Array<{ value: FilterPaymentMethodType; label: s
   { value: "all", label: "All Types" },
   { value: "credit_card", label: "Credit Card" },
   { value: "bank_account", label: "Bank Account" },
-]
-
-const directionButtons: Array<{ value: FilterDirection; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "expense", label: "Expense" },
-  { value: "income", label: "Income" },
-]
-
-const bankOptions: Array<{ value: FilterBank; label: string }> = [
-  { value: "all", label: "All Banks" },
-  { value: "kbank", label: "KBank" },
-  { value: "bangkok_bank", label: "Bangkok Bank" },
-]
-
-const processingStatusOptions: Array<{ value: FilterProcessingStatus; label: string }> = [
-  { value: "all", label: "All Statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "processing", label: "Processing" },
-  { value: "ready_for_review", label: "Ready for Review" },
-  { value: "done", label: "Done" },
-  { value: "failed", label: "Failed" },
-]
-
-const sortFieldOptions: Array<{ value: FilterSortField; label: string }> = [
-  { value: "uploaded_at", label: "Upload Date" },
-  { value: "transaction_date", label: "Transaction Date" },
-  { value: "amount", label: "Amount" },
-  { value: "confidence", label: "Confidence" },
 ]
 
 const sourceButtons: Array<{ value: FilterSource; label: string; icon?: React.ReactNode }> = [
@@ -185,31 +128,6 @@ function parseUrlParams(searchParams: URLSearchParams): Partial<ReviewQueueFilte
     filters.paymentMethodType = paymentMethodType as FilterPaymentMethodType
   }
 
-  const direction = searchParams.get("direction")
-  if (direction && ["all", "income", "expense"].includes(direction)) {
-    filters.direction = direction as FilterDirection
-  }
-
-  const bank = searchParams.get("bank")
-  if (bank && ["all", "kbank", "bangkok_bank"].includes(bank)) {
-    filters.bank = bank as FilterBank
-  }
-
-  const processingStatus = searchParams.get("processingStatus")
-  if (processingStatus && ["all", "pending", "processing", "ready_for_review", "done", "failed"].includes(processingStatus)) {
-    filters.processingStatus = processingStatus as FilterProcessingStatus
-  }
-
-  const sortField = searchParams.get("sortField")
-  if (sortField && ["uploaded_at", "transaction_date", "amount", "confidence"].includes(sortField)) {
-    filters.sortField = sortField as FilterSortField
-  }
-
-  const sortOrder = searchParams.get("sortOrder")
-  if (sortOrder && ["asc", "desc"].includes(sortOrder)) {
-    filters.sortOrder = sortOrder as FilterSortOrder
-  }
-
   return filters
 }
 
@@ -233,11 +151,6 @@ function filtersToUrlParams(filters: ReviewQueueFilters): URLSearchParams {
   if (filters.paymentMethodType && filters.paymentMethodType !== "all") {
     params.set("paymentMethodType", filters.paymentMethodType)
   }
-  if (filters.direction && filters.direction !== "all") params.set("direction", filters.direction)
-  if (filters.bank && filters.bank !== "all") params.set("bank", filters.bank)
-  if (filters.processingStatus && filters.processingStatus !== "all") params.set("processingStatus", filters.processingStatus)
-  if (filters.sortField && filters.sortField !== "uploaded_at") params.set("sortField", filters.sortField)
-  if (filters.sortOrder && filters.sortOrder !== "desc") params.set("sortOrder", filters.sortOrder)
 
   return params
 }
@@ -251,12 +164,7 @@ function hasActiveFilters(filters: ReviewQueueFilters): boolean {
     filters.search !== "" ||
     filters.dateRange !== undefined ||
     filters.statementUploadId !== "" ||
-    (filters.paymentMethodType !== undefined && filters.paymentMethodType !== "all") ||
-    (filters.direction !== undefined && filters.direction !== "all") ||
-    (filters.bank !== undefined && filters.bank !== "all") ||
-    (filters.processingStatus !== undefined && filters.processingStatus !== "all") ||
-    (filters.sortField !== undefined && filters.sortField !== "uploaded_at") ||
-    (filters.sortOrder !== undefined && filters.sortOrder !== "desc")
+    (filters.paymentMethodType !== undefined && filters.paymentMethodType !== "all")
   )
 }
 
@@ -270,9 +178,7 @@ export function ReviewQueueFilterBar({
   onFiltersChange,
   syncWithUrl = true,
   className,
-  mode = "review-queue",
 }: ReviewQueueFilterBarProps) {
-  const isPaymentSlips = mode === "payment-slips"
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -280,9 +186,8 @@ export function ReviewQueueFilterBar({
   const [statementOptions, setStatementOptions] = React.useState<StatementOption[]>([])
   const [showMoreFilters, setShowMoreFilters] = React.useState(false)
 
-  // Fetch statement options on mount (review-queue mode only)
+  // Fetch statement options on mount
   React.useEffect(() => {
-    if (isPaymentSlips) return
     const loadStatements = async () => {
       try {
         const { createClient } = await import("@/lib/supabase/client")
@@ -326,7 +231,7 @@ export function ReviewQueueFilterBar({
       }
     }
     loadStatements()
-  }, [isPaymentSlips])
+  }, [])
 
   // Debounced search
   React.useEffect(() => {
@@ -373,33 +278,22 @@ export function ReviewQueueFilterBar({
 
   const handleFilterChange = (
     key: keyof ReviewQueueFilters,
-    value: FilterStatus | FilterCurrency | FilterConfidence | FilterSource | FilterPaymentMethodType | FilterDirection | FilterBank | FilterProcessingStatus | FilterSortField | FilterSortOrder | DateRange | undefined | string
+    value: FilterStatus | FilterCurrency | FilterConfidence | FilterSource | FilterPaymentMethodType | DateRange | undefined | string
   ) => {
     onFiltersChange({ ...filters, [key]: value })
   }
 
   const handleClearAll = () => {
     setSearchInput("")
-    onFiltersChange(isPaymentSlips ? defaultPaymentSlipFilters : defaultFilters)
+    onFiltersChange(defaultFilters)
   }
 
-  // Check if any secondary filters are active
-  const hasActiveSecondary = isPaymentSlips
-    ? (
-        (filters.processingStatus !== undefined && filters.processingStatus !== "all") ||
-        (filters.bank !== undefined && filters.bank !== "all") ||
-        filters.status !== "all" ||
-        filters.confidence !== "all" ||
-        (filters.sortField !== undefined && filters.sortField !== "transaction_date") ||
-        (filters.sortOrder !== undefined && filters.sortOrder !== "desc")
-      )
-    : (
-        filters.status !== "all" ||
-        filters.currency !== "all" ||
-        filters.confidence !== "all" ||
-        filters.statementUploadId !== "" ||
-        (filters.paymentMethodType !== undefined && filters.paymentMethodType !== "all")
-      )
+  const hasActiveSecondary =
+    filters.status !== "all" ||
+    filters.currency !== "all" ||
+    filters.confidence !== "all" ||
+    filters.statementUploadId !== "" ||
+    (filters.paymentMethodType !== undefined && filters.paymentMethodType !== "all")
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -410,53 +304,31 @@ export function ReviewQueueFilterBar({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder={isPaymentSlips ? "Search sender, recipient, memo..." : "Search vendor, amount..."}
+            placeholder="Search vendor, amount..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="pl-9"
           />
         </div>
 
-        {/* Direction button group (payment slips mode) */}
-        {isPaymentSlips && (
-          <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
-            {directionButtons.map((btn) => (
-              <button
-                key={btn.value}
-                onClick={() => handleFilterChange("direction", btn.value)}
-                className={cn(
-                  "flex items-center gap-1 px-3 py-2.5 sm:py-1.5 text-xs font-medium rounded-md transition-colors",
-                  filters.direction === btn.value
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {btn.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Source button group (review-queue mode) */}
-        {!isPaymentSlips && (
-          <div className="flex items-center rounded-lg border bg-muted/30 p-0.5 overflow-x-auto">
-            {sourceButtons.map((btn) => (
-              <button
-                key={btn.value}
-                onClick={() => handleFilterChange("source", btn.value)}
-                className={cn(
-                  "flex items-center gap-1 px-3 py-2.5 sm:py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
-                  filters.source === btn.value
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {btn.icon}
-                {btn.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Source button group */}
+        <div className="flex items-center rounded-lg border bg-muted/30 p-0.5 overflow-x-auto">
+          {sourceButtons.map((btn) => (
+            <button
+              key={btn.value}
+              onClick={() => handleFilterChange("source", btn.value)}
+              className={cn(
+                "flex items-center gap-1 px-3 py-2.5 sm:py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
+                filters.source === btn.value
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {btn.icon}
+              {btn.label}
+            </button>
+          ))}
+        </div>
 
         {/* Date range picker */}
         <DateRangePickerTrigger
@@ -464,24 +336,22 @@ export function ReviewQueueFilterBar({
           onDateRangeChange={(range: DateRange | undefined) => handleFilterChange("dateRange", range)}
         />
 
-        {/* More Filters toggle (hidden in payment-slips mode) */}
-        {!isPaymentSlips && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowMoreFilters(!showMoreFilters)}
-            className={cn(
-              "relative",
-              hasActiveSecondary && "border-amber-300"
-            )}
-          >
-            <SlidersHorizontal className="h-4 w-4 mr-1" />
-            More Filters
-            {hasActiveSecondary && (
-              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-500" />
-            )}
-          </Button>
-        )}
+        {/* More Filters toggle */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowMoreFilters(!showMoreFilters)}
+          className={cn(
+            "relative",
+            hasActiveSecondary && "border-amber-300"
+          )}
+        >
+          <SlidersHorizontal className="h-4 w-4 mr-1" />
+          More Filters
+          {hasActiveSecondary && (
+            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-500" />
+          )}
+        </Button>
 
         {/* Clear all button */}
         {hasActiveFilters(filters) && (
@@ -497,214 +367,100 @@ export function ReviewQueueFilterBar({
         )}
       </div>
 
-      {/* Secondary row: always visible in payment-slips mode, collapsible otherwise */}
-      {(isPaymentSlips || showMoreFilters) && (
+      {/* Secondary row */}
+      {showMoreFilters && (
         <div className="flex flex-wrap items-center gap-3 pl-1">
-          {/* Payment slips mode secondary filters */}
-          {isPaymentSlips && (
-            <>
-              {/* Processing status */}
-              <Select
-                value={filters.processingStatus || "all"}
-                onValueChange={(value) => handleFilterChange("processingStatus", value as FilterProcessingStatus)}
-              >
-                <SelectTrigger className="w-full sm:w-[170px]">
-                  <SelectValue placeholder="Processing Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {processingStatusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Status filter */}
+          <Select
+            value={filters.status}
+            onValueChange={(value) => handleFilterChange("status", value as FilterStatus)}
+          >
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-              {/* Bank filter */}
-              <Select
-                value={filters.bank || "all"}
-                onValueChange={(value) => handleFilterChange("bank", value as FilterBank)}
-              >
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue placeholder="Bank" />
-                </SelectTrigger>
-                <SelectContent>
-                  {bankOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Currency filter */}
+          <Select
+            value={filters.currency}
+            onValueChange={(value) => handleFilterChange("currency", value as FilterCurrency)}
+          >
+            <SelectTrigger className="w-full sm:w-[140px]">
+              <SelectValue placeholder="Currency" />
+            </SelectTrigger>
+            <SelectContent>
+              {currencyOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-              {/* Review status (reuses existing status filter options) */}
-              <Select
-                value={filters.status}
-                onValueChange={(value) => handleFilterChange("status", value as FilterStatus)}
-              >
-                <SelectTrigger className="w-full sm:w-[160px]">
-                  <SelectValue placeholder="Review Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Confidence filter */}
+          <Select
+            value={filters.confidence}
+            onValueChange={(value) => handleFilterChange("confidence", value as FilterConfidence)}
+          >
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="Confidence" />
+            </SelectTrigger>
+            <SelectContent>
+              {confidenceOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-              {/* Confidence filter */}
-              <Select
-                value={filters.confidence}
-                onValueChange={(value) => handleFilterChange("confidence", value as FilterConfidence)}
-              >
-                <SelectTrigger className="w-full sm:w-[160px]">
-                  <SelectValue placeholder="Confidence" />
-                </SelectTrigger>
-                <SelectContent>
-                  {confidenceOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Sort field */}
-              <Select
-                value={filters.sortField || "uploaded_at"}
-                onValueChange={(value) => handleFilterChange("sortField", value as FilterSortField)}
-              >
-                <SelectTrigger className="w-full sm:w-[175px]">
-                  <ArrowUpDown className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sortFieldOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Sort order toggle */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  handleFilterChange("sortOrder", filters.sortOrder === "asc" ? "desc" : "asc")
-                }
-                className="gap-1.5"
-                title={filters.sortOrder === "asc" ? "Ascending" : "Descending"}
-              >
-                {(filters.sortOrder || "desc") === "asc" ? (
-                  <ArrowUp className="h-3.5 w-3.5" />
-                ) : (
-                  <ArrowDown className="h-3.5 w-3.5" />
-                )}
-                {(filters.sortOrder || "desc") === "asc" ? "Asc" : "Desc"}
-              </Button>
-            </>
+          {/* Statement filter */}
+          {statementOptions.length > 0 && (
+            <Select
+              value={filters.statementUploadId || "all"}
+              onValueChange={(value) =>
+                handleFilterChange("statementUploadId", value === "all" ? "" : value)
+              }
+            >
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="All Statements" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statements</SelectItem>
+                {statementOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
 
-          {/* Review queue mode secondary filters */}
-          {!isPaymentSlips && (
-            <>
-              {/* Status filter */}
-              <Select
-                value={filters.status}
-                onValueChange={(value) => handleFilterChange("status", value as FilterStatus)}
-              >
-                <SelectTrigger className="w-full sm:w-[160px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Currency filter */}
-              <Select
-                value={filters.currency}
-                onValueChange={(value) => handleFilterChange("currency", value as FilterCurrency)}
-              >
-                <SelectTrigger className="w-full sm:w-[140px]">
-                  <SelectValue placeholder="Currency" />
-                </SelectTrigger>
-                <SelectContent>
-                  {currencyOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Confidence filter */}
-              <Select
-                value={filters.confidence}
-                onValueChange={(value) => handleFilterChange("confidence", value as FilterConfidence)}
-              >
-                <SelectTrigger className="w-full sm:w-[160px]">
-                  <SelectValue placeholder="Confidence" />
-                </SelectTrigger>
-                <SelectContent>
-                  {confidenceOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Statement filter */}
-              {statementOptions.length > 0 && (
-                <Select
-                  value={filters.statementUploadId || "all"}
-                  onValueChange={(value) =>
-                    handleFilterChange("statementUploadId", value === "all" ? "" : value)
-                  }
-                >
-                  <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="All Statements" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statements</SelectItem>
-                    {statementOptions.map((option) => (
-                      <SelectItem key={option.id} value={option.id}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              {/* Payment method type filter */}
-              <Select
-                value={filters.paymentMethodType || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange("paymentMethodType", value as FilterPaymentMethodType)
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[160px]">
-                  <SelectValue placeholder="Payment Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {paymentMethodTypeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </>
-          )}
+          {/* Payment method type filter */}
+          <Select
+            value={filters.paymentMethodType || "all"}
+            onValueChange={(value) =>
+              handleFilterChange("paymentMethodType", value as FilterPaymentMethodType)
+            }
+          >
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="Payment Type" />
+            </SelectTrigger>
+            <SelectContent>
+              {paymentMethodTypeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
     </div>

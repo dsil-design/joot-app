@@ -25,7 +25,7 @@ export async function fetchPaymentSlipQueueItems(
       bank_detected, transaction_reference, memo,
       detected_direction, extraction_confidence,
       matched_transaction_id, match_confidence,
-      rejected_pair_keys,
+      rejected_pair_keys, manual_pair_keys,
       payment_method_id,
       extraction_completed_at,
       payment_methods (
@@ -128,6 +128,7 @@ export async function fetchPaymentSlipQueueItems(
       isNew: !slip.matched_transaction_id,
       status: slip.review_status as 'pending' | 'approved' | 'rejected',
       rejectedPairKeys: (slip.rejected_pair_keys as string[] | undefined) || undefined,
+      manualPairKeys: ((slip as { manual_pair_keys?: string[] }).manual_pair_keys) || undefined,
       source: 'payment_slip',
       paymentSlipMetadata: slipMeta,
     })

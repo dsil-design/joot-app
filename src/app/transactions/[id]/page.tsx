@@ -8,7 +8,7 @@
 
 import * as React from "react"
 import { useParams, useSearchParams } from "next/navigation"
-import { ArrowLeft, Edit, Eye, FileText, Copy, Check, Unlink, Trash2 } from "lucide-react"
+import { ArrowLeft, Edit, Eye, FileText, Copy, Check, Unlink, Trash2, Plus } from "lucide-react"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
 import type { TransactionWithVendorAndPayment, EmailSourceData, StatementSourceData } from "@/lib/supabase/types"
@@ -23,6 +23,7 @@ import { EmailSourceCard } from "@/components/page-specific/email-source-card"
 import { PaymentSlipSourceCard } from "@/components/page-specific/payment-slip-source-card"
 import { StatementViewerModal } from "@/components/page-specific/statement-viewer-modal"
 import { DeleteConfirmationDialog } from "@/components/page-specific/delete-confirmation-dialog"
+import { AttachSourceDialog, type SourceSearchResult, type AttachSourceType } from "@/components/page-specific/attach-source-dialog"
 import { toast } from "sonner"
 
 
@@ -230,6 +231,7 @@ function TransactionSources({
   onUnlinkPaymentSlip,
   onUnlinkStatement,
   onEmailReprocessed,
+  onAttachClick,
 }: {
   emailSources: any[]
   paymentSlipSources: any[]
@@ -238,6 +240,7 @@ function TransactionSources({
   onUnlinkPaymentSlip?: (paymentSlipId: string) => void
   onUnlinkStatement?: () => void
   onEmailReprocessed?: () => void
+  onAttachClick?: () => void
 }) {
   const hasNoSources =
     emailSources.length === 0 && paymentSlipSources.length === 0 && !statementSource
@@ -280,6 +283,17 @@ function TransactionSources({
           )}
         </div>
       )}
+      {onAttachClick && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onAttachClick}
+          className="mt-1 h-8 gap-1.5 text-xs text-zinc-600"
+        >
+          <Plus className="size-3.5" />
+          Attach a source
+        </Button>
+      )}
     </div>
   )
 }
@@ -294,6 +308,7 @@ export default function ViewTransactionPage() {
 
   const [transaction, setTransaction] = React.useState<TransactionWithVendorAndPayment | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
+  const [attachOpen, setAttachOpen] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [exchangeRate, setExchangeRate] = React.useState<number | null>(null)
   const [exchangeRateTimestamp, setExchangeRateTimestamp] = React.useState<string | null>(null)
@@ -468,6 +483,37 @@ export default function ViewTransactionPage() {
     }
   }
 
+  const handleAttachSource = async (result: SourceSearchResult) => {
+    if (!transaction) return
+    const res = await fetch(`/api/transactions/${transaction.id}/attach-source`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sourceType: result.type,
+        sourceId: result.sourceId,
+        suggestionIndex: result.suggestionIndex,
+      }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to attach source')
+    }
+    toast.success('Source attached')
+    const updated = await getTransactionById(transaction.id)
+    if (updated) setTransaction(updated)
+  }
+
+  const disabledAttachTypes = React.useMemo<AttachSourceType[]>(() => {
+    if (!transaction) return []
+    const t = transaction as any
+    const disabled: AttachSourceType[] = []
+    // Email and payment slip sources are many-to-one — multiple can attach to
+    // the same transaction (e.g. multi-item Lazada orders). Only statement
+    // sources remain 1:1 because the viewer needs a specific row tuple.
+    if (t.statementSource) disabled.push('statement')
+    return disabled
+  }, [transaction])
+
   const handleDelete = async () => {
     if (!transaction) return
     setIsDeleting(true)
@@ -620,6 +666,13 @@ export default function ViewTransactionPage() {
                 const updated = await getTransactionById(transaction.id)
                 if (updated) setTransaction(updated)
               }}
+              onAttachClick={() => setAttachOpen(true)}
+            />
+            <AttachSourceDialog
+              open={attachOpen}
+              onOpenChange={setAttachOpen}
+              onAttach={handleAttachSource}
+              disabledTypes={disabledAttachTypes}
             />
           </div>
           <div className="flex items-center justify-between w-full">

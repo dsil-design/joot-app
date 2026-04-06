@@ -34,6 +34,12 @@ import {
   type ProposalMeta,
 } from "@/components/page-specific/create-from-import-dialog"
 import {
+  AttachSourceDialog,
+  type AttachSourceType,
+  type SourceSearchResult,
+} from "@/components/page-specific/attach-source-dialog"
+import { parseImportId } from "@/lib/utils/import-id"
+import {
   useInfiniteScroll,
   LoadMoreTrigger,
 } from "@/hooks/use-infinite-scroll"
@@ -132,6 +138,8 @@ async function fetchMatches(
       crossCurrencyInfo?: CrossCurrencyInfo
       proposal?: TransactionProposal
       waitingForStatement?: boolean
+      extraEmailIds?: string[]
+      extraSlipIds?: string[]
     }) => ({
       id: item.id,
       statementTransaction: item.statementTransaction,
@@ -151,6 +159,8 @@ async function fetchMatches(
       crossCurrencyInfo: item.crossCurrencyInfo,
       proposal: item.proposal,
       waitingForStatement: item.waitingForStatement,
+      extraEmailIds: item.extraEmailIds,
+      extraSlipIds: item.extraSlipIds,
     }))
 
     return {
@@ -406,6 +416,10 @@ export default function ReviewQueuePage() {
     meta?: ProposalMeta
   ) => {
     const result = await createAndLink(compositeId, transactionData)
+    if (result) {
+      const item = items.find((i) => i.id === compositeId)
+      if (item) await linkExtraSources(result.id, item)
+    }
     // Update proposal status
     if (meta?.proposalId && result) {
       await acceptProposal(meta, result.id)
@@ -458,6 +472,70 @@ export default function ReviewQueuePage() {
         return next
       })
     }
+  }
+
+  // Manual "Attach a source" affordance — opens a dialog scoped to the
+  // currently-selected card; on confirm, writes a manual_pair_keys entry on
+  // the proposal's anchor source and marks the proposal stale.
+  const [attachTargetItem, setAttachTargetItem] = React.useState<MatchCardData | null>(null)
+  const [attachOpen, setAttachOpen] = React.useState(false)
+
+  const handleAttachSource = (id: string) => {
+    const item = items.find((i) => i.id === id)
+    if (!item) return
+    setAttachTargetItem(item)
+    setAttachOpen(true)
+  }
+
+  const attachDisabledTypes = React.useMemo<AttachSourceType[]>(() => {
+    if (!attachTargetItem) return []
+    const parsed = parseImportId(attachTargetItem.id)
+    if (!parsed) return []
+    const disabled: AttachSourceType[] = []
+    switch (parsed.type) {
+      case 'email':
+        disabled.push('email')
+        break
+      case 'statement':
+        disabled.push('statement')
+        break
+      case 'payment_slip':
+        disabled.push('payment_slip')
+        break
+      case 'merged':
+        disabled.push('email', 'statement')
+        break
+      case 'merged_slip_email':
+        disabled.push('email', 'payment_slip')
+        break
+      case 'merged_slip_stmt':
+        disabled.push('payment_slip', 'statement')
+        break
+      case 'merged_slip_email_stmt':
+        disabled.push('email', 'payment_slip', 'statement')
+        break
+    }
+    return disabled
+  }, [attachTargetItem])
+
+  const handleAttachConfirm = async (result: SourceSearchResult) => {
+    if (!attachTargetItem) throw new Error('No target item')
+    const res = await fetch('/api/imports/queue/attach-source', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        compositeId: attachTargetItem.id,
+        sourceType: result.type,
+        sourceId: result.sourceId,
+        suggestionIndex: result.suggestionIndex,
+      }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to attach source')
+    }
+    toast.success('Source attached — refreshing queue')
+    refresh()
   }
 
   // Reject feedback: submit reason to ai_feedback table, then optionally re-propose
@@ -544,6 +622,32 @@ export default function ReviewQueuePage() {
     submitRejectFeedbackRef.current = submitRejectFeedback
   }, [submitRejectFeedback])
 
+  // Link any same-type extras (multi-email / multi-slip) attached to a queue
+  // item to the newly-created transaction. Uses the existing transaction-detail
+  // attach-source endpoint which writes matched_transaction_id on each source.
+  const linkExtraSources = async (transactionId: string, item: MatchCardData) => {
+    const extras = [
+      ...(item.extraEmailIds || []).map((id) => ({
+        sourceType: 'email' as const,
+        sourceId: id,
+      })),
+      ...(item.extraSlipIds || []).map((id) => ({
+        sourceType: 'payment_slip' as const,
+        sourceId: id,
+      })),
+    ]
+    if (extras.length === 0) return
+    await Promise.all(
+      extras.map((e) =>
+        fetch(`/api/transactions/${transactionId}/attach-source`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(e),
+        }).catch((err) => console.error('Failed to link extra source:', err))
+      )
+    )
+  }
+
   const handleQuickCreate = async (id: string) => {
     const item = items.find((i) => i.id === id)
     if (!item?.proposal) return
@@ -561,8 +665,11 @@ export default function ReviewQueuePage() {
         transactionType: p.transactionType?.value || "expense",
       }
       const result = await createAndLink(id, txData)
-      if (result && p.id) {
-        await acceptProposal({ proposalId: p.id, proposalFieldsModified: false }, result.id)
+      if (result) {
+        await linkExtraSources(result.id, item)
+        if (p.id) {
+          await acceptProposal({ proposalId: p.id, proposalFieldsModified: false }, result.id)
+        }
       }
     } catch {
       // Error handled by createAndLink
@@ -748,6 +855,7 @@ export default function ReviewQueuePage() {
       onQuickCreate={handleQuickCreate}
       onRefreshProposal={handleRefreshProposal}
       onSelectionChange={handleSelectionChange}
+      onAttachSource={handleAttachSource}
     />
   )
 
@@ -1013,6 +1121,17 @@ export default function ReviewQueuePage() {
         }}
         item={linkingItem}
         onConfirm={handleLinkConfirm}
+      />
+
+      {/* Attach source dialog (Review Queue) */}
+      <AttachSourceDialog
+        open={attachOpen}
+        onOpenChange={(open) => {
+          setAttachOpen(open)
+          if (!open) setAttachTargetItem(null)
+        }}
+        onAttach={handleAttachConfirm}
+        disabledTypes={attachDisabledTypes}
       />
 
       {/* Create from import dialog */}

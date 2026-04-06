@@ -73,6 +73,14 @@ export interface QueueItem {
   waitingForStatement?: boolean
   /** For email items: statement-suggestion composite keys this email has been rejected from pairing with */
   rejectedPairKeys?: string[]
+  /** Counterpart composite keys this source has been manually paired with by the user */
+  manualPairKeys?: string[]
+  /** Additional email_transactions.id values attached to this queue item via the
+   * "Attach a source" affordance — used for many-to-one cases like multi-item
+   * Lazada orders where multiple email receipts describe the same charge. */
+  extraEmailIds?: string[]
+  /** Additional payment_slip_uploads.id values attached to this queue item. */
+  extraSlipIds?: string[]
   source: ImportSource
   emailMetadata?: EmailMetadata
   mergedEmailData?: MergedEmailData
