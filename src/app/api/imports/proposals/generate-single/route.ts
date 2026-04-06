@@ -104,6 +104,14 @@ export async function POST(request: NextRequest) {
       extractionConfidence: emailMeta?.extractionConfidence,
       paymentCardLastFour: emailMeta?.paymentCardLastFour,
       paymentCardType: emailMeta?.paymentCardType,
+      // Payment slip description — the sender's manually typed memo for this transaction.
+      // For standalone slips it lives on statementTransaction.description; for merged items
+      // (slip+statement, slip+email, slip+email+stmt) it's carried on mergedPaymentSlipData.
+      ...(hasSlipData && {
+        paymentSlipDescription: isSlip
+          ? targetItem.statementTransaction.description
+          : targetItem.mergedPaymentSlipData?.description,
+      }),
       // Payment slip-specific fields (present for both standalone slips and merged items containing a slip)
       ...(hasSlipData && slipMeta && {
         paymentSlipUploadId: slipMeta.slipUploadId,
