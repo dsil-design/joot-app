@@ -100,13 +100,20 @@ export async function POST(request: NextRequest) {
       // lookup, so it's possible for an email_transactions row to be matched to a
       // transaction while the transaction's source_email_transaction_id is null.
       if (!emailTxId) {
-        const { data: reverseMatch } = await serviceClient
+        const { data: reverseMatches, error: reverseErr } = await serviceClient
           .from('email_transactions')
-          .select('id')
+          .select('id, user_id, matched_transaction_id')
           .eq('matched_transaction_id', transaction.id)
-          .eq('user_id', user.id)
-          .maybeSingle()
-        emailTxId = reverseMatch?.id ?? null
+          .limit(5)
+        if (reverseErr) {
+          console.error('Error reverse-looking up email_transactions:', reverseErr)
+        }
+        console.log('[unlink] reverse email_transactions lookup', {
+          transactionId: transaction.id,
+          found: reverseMatches?.length ?? 0,
+          rows: reverseMatches,
+        })
+        emailTxId = reverseMatches?.[0]?.id ?? null
       }
 
       if (!emailTxId) {
