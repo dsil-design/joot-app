@@ -17,12 +17,24 @@ import { usePaymentSlips } from '@/hooks/use-payment-slips'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  pending: { label: 'Pending', className: 'bg-zinc-100 text-zinc-600' },
-  processing: { label: 'Processing', className: 'bg-blue-100 text-blue-700' },
-  ready_for_review: { label: 'Ready', className: 'bg-amber-100 text-amber-700' },
-  done: { label: 'Done', className: 'bg-green-100 text-green-700' },
-  failed: { label: 'Failed', className: 'bg-red-100 text-red-700' },
+/**
+ * Derive a single user-facing badge from the two independent status fields
+ * on a payment slip:
+ *   - `status`       — extraction pipeline state (pending/processing/ready_for_review/done/failed)
+ *   - `review_status` — user's review decision (pending/approved/rejected)
+ *
+ * Pipeline states that block review (processing, pending, failed) take
+ * precedence. Once extraction is done, we surface the review state so the
+ * list matches what the detail page shows.
+ */
+function getSlipBadge(slip: { status: string; review_status: string }): { label: string; className: string } {
+  if (slip.status === 'failed') return { label: 'Failed', className: 'bg-red-100 text-red-700' }
+  if (slip.status === 'processing') return { label: 'Processing', className: 'bg-blue-100 text-blue-700' }
+  if (slip.status === 'pending') return { label: 'Pending', className: 'bg-zinc-100 text-zinc-600' }
+  // Extraction done — show review state
+  if (slip.review_status === 'approved') return { label: 'Approved', className: 'bg-green-100 text-green-700' }
+  if (slip.review_status === 'rejected') return { label: 'Rejected', className: 'bg-zinc-100 text-zinc-600' }
+  return { label: 'Ready', className: 'bg-amber-100 text-amber-700' }
 }
 
 const bankNames: Record<string, string> = {
@@ -195,7 +207,7 @@ export default function PaymentSlipsPage() {
 
       {/* Slip list */}
       {!isInitialLoading && slips.map(slip => {
-        const status = statusConfig[slip.status] || statusConfig.pending
+        const status = getSlipBadge(slip)
         const bank = slip.bank_detected ? bankNames[slip.bank_detected] || slip.bank_detected : null
         const isIncome = slip.detected_direction === 'income'
         const counterparty = isIncome ? slip.sender_name : slip.recipient_name
