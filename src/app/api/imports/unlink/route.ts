@@ -93,7 +93,22 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const emailTxId = transaction.source_email_transaction_id
+      let emailTxId = transaction.source_email_transaction_id
+
+      // Fallback: look up via reverse FK (email_transactions.matched_transaction_id).
+      // The transaction detail page renders the email source card via this reverse
+      // lookup, so it's possible for an email_transactions row to be matched to a
+      // transaction while the transaction's source_email_transaction_id is null.
+      if (!emailTxId) {
+        const { data: reverseMatch } = await serviceClient
+          .from('email_transactions')
+          .select('id')
+          .eq('matched_transaction_id', transaction.id)
+          .eq('user_id', user.id)
+          .maybeSingle()
+        emailTxId = reverseMatch?.id ?? null
+      }
+
       if (!emailTxId) {
         return NextResponse.json(
           { error: 'Transaction has no linked email source' },
