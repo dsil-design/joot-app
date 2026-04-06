@@ -367,6 +367,20 @@ export function useTransactions() {
             match_method,
             status
           ),
+          payment_slip_uploads!payment_slip_uploads_matched_transaction_id_fkey(
+            id,
+            filename,
+            amount,
+            currency,
+            transaction_date,
+            sender_name,
+            recipient_name,
+            sender_bank,
+            recipient_bank,
+            extraction_confidence,
+            match_confidence,
+            status
+          ),
           statement_uploads!transactions_source_statement_upload_id_fkey (
             id,
             filename,
@@ -393,21 +407,45 @@ export function useTransactions() {
 
       // Transform the data to include tags array, rename joined tables, and extract source references
       const statementUpload = (data as any).statement_uploads
-      let emailSource = Array.isArray((data as any).email_transactions)
-        ? (data as any).email_transactions[0] ?? null
-        : (data as any).email_transactions ?? null
 
-      // Resolve the emails.id (hub ID) from email_transactions.message_id
-      if (emailSource?.message_id) {
-        const { data: emailRow } = await supabase
+      // Collect ALL matched email_transactions (a transaction can have multiple)
+      const rawEmailSources: any[] = Array.isArray((data as any).email_transactions)
+        ? (data as any).email_transactions
+        : (data as any).email_transactions
+          ? [(data as any).email_transactions]
+          : []
+
+      // Batch-resolve emails.id (hub IDs) from email_transactions.message_id
+      const messageIds = rawEmailSources
+        .map((e) => e?.message_id)
+        .filter((m): m is string => !!m)
+      const messageIdToEmailId = new Map<string, string>()
+      if (messageIds.length > 0) {
+        const { data: emailRows } = await supabase
           .from('emails')
-          .select('id')
-          .eq('message_id', emailSource.message_id)
-          .single()
-        if (emailRow) {
-          emailSource = { ...emailSource, id: emailRow.id }
+          .select('id, message_id')
+          .in('message_id', messageIds)
+        for (const row of emailRows ?? []) {
+          if (row?.message_id && row?.id) {
+            messageIdToEmailId.set(row.message_id, row.id)
+          }
         }
       }
+
+      const emailSources = rawEmailSources.map((e) => ({
+        ...e,
+        // Use the resolved hub ID if available, otherwise fall back to the
+        // email_transactions.id so components still have a stable key
+        id: (e?.message_id && messageIdToEmailId.get(e.message_id)) || e?.id,
+        email_transaction_id: e?.id,
+      }))
+
+      // Collect ALL matched payment_slip_uploads
+      const paymentSlipSources: any[] = Array.isArray((data as any).payment_slip_uploads)
+        ? (data as any).payment_slip_uploads
+        : (data as any).payment_slip_uploads
+          ? [(data as any).payment_slip_uploads]
+          : []
 
       // Extract amount/currency from statement suggestion if available
       let statementSourceAmount: number | null = null
@@ -426,7 +464,11 @@ export function useTransactions() {
         vendor: (data as any).vendors,
         payment_method: (data as any).payment_methods,
         tags: (data as any).transaction_tags?.map((tt: any) => tt.tags).filter(Boolean) || [],
-        emailSource,
+        emailSources,
+        paymentSlipSources,
+        // Backward-compat: keep `emailSource` as the first email source (some
+        // callers may still read it), but the detail page now uses the arrays.
+        emailSource: emailSources[0] ?? null,
         statementSource: statementUpload ? {
           ...statementUpload,
           extraction_log: undefined, // Don't pass raw extraction_log to UI

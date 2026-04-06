@@ -40,14 +40,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    let body: { transactionId?: string; sourceType?: string; statementUploadId?: string; suggestionIndex?: number }
+    let body: { transactionId?: string; sourceType?: string; statementUploadId?: string; suggestionIndex?: number; emailTransactionId?: string; paymentSlipId?: string }
     try {
       body = await request.json()
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const { transactionId, sourceType, statementUploadId, suggestionIndex } = body
+    const { transactionId, sourceType, statementUploadId, suggestionIndex, emailTransactionId, paymentSlipId } = body
 
     if (!sourceType) {
       return NextResponse.json(
@@ -93,26 +93,22 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      let emailTxId = transaction.source_email_transaction_id
+      // Prefer the explicit emailTransactionId from the caller so we unlink the
+      // exact row the user clicked. Fall back to the forward ref on the
+      // transaction, then to a reverse lookup (transactions can have multiple
+      // matched email_transactions rows, and source_email_transaction_id only
+      // tracks one slot).
+      let emailTxId: string | null = emailTransactionId ?? transaction.source_email_transaction_id
 
-      // Fallback: look up via reverse FK (email_transactions.matched_transaction_id).
-      // The transaction detail page renders the email source card via this reverse
-      // lookup, so it's possible for an email_transactions row to be matched to a
-      // transaction while the transaction's source_email_transaction_id is null.
       if (!emailTxId) {
         const { data: reverseMatches, error: reverseErr } = await serviceClient
           .from('email_transactions')
-          .select('id, user_id, matched_transaction_id')
+          .select('id')
           .eq('matched_transaction_id', transaction.id)
-          .limit(5)
+          .limit(1)
         if (reverseErr) {
           console.error('Error reverse-looking up email_transactions:', reverseErr)
         }
-        console.log('[unlink] reverse email_transactions lookup', {
-          transactionId: transaction.id,
-          found: reverseMatches?.length ?? 0,
-          rows: reverseMatches,
-        })
         emailTxId = reverseMatches?.[0]?.id ?? null
       }
 
@@ -123,20 +119,22 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Clear the email source reference on the transaction
-      const { error: txUpdateError } = await serviceClient
-        .from('transactions')
-        .update({ source_email_transaction_id: null })
-        .eq('id', transactionId!)
-
-      if (txUpdateError) {
-        console.error('Error clearing email source on transaction:', txUpdateError)
-        return NextResponse.json(
-          { error: 'Failed to unlink email source' },
-          { status: 500 }
-        )
+      // Clear the forward ref on the transaction only if it points at the row
+      // we're unlinking (there may be other matched email_transactions rows
+      // still referencing this transaction via matched_transaction_id).
+      if (transaction.source_email_transaction_id === emailTxId) {
+        const { error: txUpdateError } = await serviceClient
+          .from('transactions')
+          .update({ source_email_transaction_id: null })
+          .eq('id', transactionId!)
+        if (txUpdateError) {
+          console.error('Error clearing email source on transaction:', txUpdateError)
+          return NextResponse.json(
+            { error: 'Failed to unlink email source' },
+            { status: 500 }
+          )
+        }
       }
-
       // Reset the email_transactions row back to pending
       const { error: emailUpdateError } = await serviceClient
         .from('email_transactions')
@@ -224,7 +222,17 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const slipId = transaction.source_payment_slip_id
+      // Prefer the explicit paymentSlipId from the caller; fall back to the
+      // forward ref, then to a reverse lookup.
+      let slipId: string | null = paymentSlipId ?? transaction.source_payment_slip_id
+      if (!slipId) {
+        const { data: reverseSlips } = await serviceClient
+          .from('payment_slip_uploads')
+          .select('id')
+          .eq('matched_transaction_id', transaction.id)
+          .limit(1)
+        slipId = reverseSlips?.[0]?.id ?? null
+      }
       if (!slipId) {
         return NextResponse.json(
           { error: 'Transaction has no linked payment slip source' },
@@ -232,11 +240,16 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Clear the payment slip source reference on the transaction
-      const { error: txUpdateError } = await serviceClient
-        .from('transactions')
-        .update({ source_payment_slip_id: null })
-        .eq('id', transactionId!)
+      // Clear the forward ref on the transaction only if it points at the row
+      // we're unlinking (there may be other matched slips still linked).
+      let txUpdateError: { message: string } | null = null
+      if (transaction.source_payment_slip_id === slipId) {
+        const { error } = await serviceClient
+          .from('transactions')
+          .update({ source_payment_slip_id: null })
+          .eq('id', transactionId!)
+        txUpdateError = error
+      }
 
       if (txUpdateError) {
         console.error('Error clearing payment slip source on transaction:', txUpdateError)

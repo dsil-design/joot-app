@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
 import { formatCurrency } from "@/lib/utils"
 import { EmailSourceCard } from "@/components/page-specific/email-source-card"
+import { PaymentSlipSourceCard } from "@/components/page-specific/payment-slip-source-card"
 import { DeleteConfirmationDialog } from "@/components/page-specific/delete-confirmation-dialog"
 import { toast } from "sonner"
 
@@ -202,8 +203,23 @@ function TransactionId({ id }: { id: string }) {
   )
 }
 
-function TransactionSources({ emailSource, statementSource, onUnlinkEmail, onUnlinkStatement }: { emailSource: EmailSourceData | null; statementSource: StatementSourceData | null; onUnlinkEmail?: () => void; onUnlinkStatement?: () => void }) {
-  const hasNoSources = !emailSource && !statementSource
+function TransactionSources({
+  emailSources,
+  paymentSlipSources,
+  statementSource,
+  onUnlinkEmail,
+  onUnlinkPaymentSlip,
+  onUnlinkStatement,
+}: {
+  emailSources: any[]
+  paymentSlipSources: any[]
+  statementSource: StatementSourceData | null
+  onUnlinkEmail?: (emailTransactionId: string) => void
+  onUnlinkPaymentSlip?: (paymentSlipId: string) => void
+  onUnlinkStatement?: () => void
+}) {
+  const hasNoSources =
+    emailSources.length === 0 && paymentSlipSources.length === 0 && !statementSource
 
   return (
     <div className="content-stretch flex flex-col gap-2 items-start justify-start relative shrink-0 w-full">
@@ -217,8 +233,29 @@ function TransactionSources({ emailSource, statementSource, onUnlinkEmail, onUnl
         </div>
       ) : (
         <div className="flex flex-col gap-3 w-full">
-          {emailSource && <EmailSourceCard source={emailSource} onUnlink={onUnlinkEmail} />}
-          {statementSource && <StatementSourceCard source={statementSource} onUnlink={onUnlinkStatement} />}
+          {emailSources.map((source) => (
+            <EmailSourceCard
+              key={`email-${source.email_transaction_id ?? source.id}`}
+              source={source}
+              onUnlink={
+                onUnlinkEmail
+                  ? () => onUnlinkEmail(source.email_transaction_id ?? source.id)
+                  : undefined
+              }
+            />
+          ))}
+          {paymentSlipSources.map((source) => (
+            <PaymentSlipSourceCard
+              key={`slip-${source.id}`}
+              source={source}
+              onUnlink={
+                onUnlinkPaymentSlip ? () => onUnlinkPaymentSlip(source.id) : undefined
+              }
+            />
+          ))}
+          {statementSource && (
+            <StatementSourceCard source={statementSource} onUnlink={onUnlinkStatement} />
+          )}
         </div>
       )}
     </div>
@@ -372,19 +409,35 @@ export default function ViewTransactionPage() {
     }
   }
 
-  const handleUnlink = async (sourceType: 'email' | 'statement') => {
+  const handleUnlink = async (
+    sourceType: 'email' | 'statement' | 'payment_slip',
+    sourceId?: string,
+  ) => {
     if (!transaction) return
     try {
+      const body: Record<string, unknown> = {
+        transactionId: transaction.id,
+        sourceType,
+      }
+      if (sourceType === 'email' && sourceId) body.emailTransactionId = sourceId
+      if (sourceType === 'payment_slip' && sourceId) body.paymentSlipId = sourceId
+
       const res = await fetch('/api/imports/unlink', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionId: transaction.id, sourceType }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) {
         const data = await res.json()
         throw new Error(data.error || 'Failed to unlink')
       }
-      toast.success(`${sourceType === 'email' ? 'Email' : 'Statement'} source unlinked`)
+      const label =
+        sourceType === 'email'
+          ? 'Email'
+          : sourceType === 'payment_slip'
+            ? 'Payment slip'
+            : 'Statement'
+      toast.success(`${label} source unlinked`)
       // Re-fetch transaction to update UI
       const updated = await getTransactionById(transaction.id)
       if (updated) setTransaction(updated)
@@ -534,9 +587,11 @@ export default function ViewTransactionPage() {
               tags={transaction.tags}
             />
             <TransactionSources
-              emailSource={transaction.emailSource ?? null}
+              emailSources={(transaction as any).emailSources ?? []}
+              paymentSlipSources={(transaction as any).paymentSlipSources ?? []}
               statementSource={transaction.statementSource ?? null}
-              onUnlinkEmail={() => handleUnlink('email')}
+              onUnlinkEmail={(id) => handleUnlink('email', id)}
+              onUnlinkPaymentSlip={(id) => handleUnlink('payment_slip', id)}
               onUnlinkStatement={() => handleUnlink('statement')}
             />
           </div>
