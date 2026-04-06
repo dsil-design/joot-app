@@ -8,7 +8,7 @@ import { useInfiniteScroll, LoadMoreTrigger } from '@/hooks/use-infinite-scroll'
 import { cleanStatementDescription } from '@/lib/utils/statement-description'
 import { formatMatchAmount, formatMatchDate } from '@/lib/utils/match-formatting'
 import { cn } from '@/lib/utils'
-import { Link2, Plus, ArrowDownLeft, ArrowUpRight, ArrowRight, Check, EyeOff, Undo2 } from 'lucide-react'
+import { Link2, Plus, ArrowDownLeft, ArrowUpRight, ArrowRight, Check, EyeOff, Undo2, RefreshCw } from 'lucide-react'
 
 interface JootTransactionSummary {
   id: string
@@ -46,6 +46,7 @@ interface StatementTransactionListProps {
   onCreateClick?: (item: StatementTransaction) => void
   onIgnoreClick?: (item: StatementTransaction) => void
   onUnignoreClick?: (item: StatementTransaction) => void
+  onReopenClick?: (item: StatementTransaction) => void
   highlightedMatchId?: string | null
   onRowClick?: (item: StatementTransaction) => void
 }
@@ -111,6 +112,7 @@ export const StatementTransactionList = React.forwardRef<
   onCreateClick,
   onIgnoreClick,
   onUnignoreClick,
+  onReopenClick,
   highlightedMatchId,
   onRowClick,
 }, ref) {
@@ -177,7 +179,11 @@ export const StatementTransactionList = React.forwardRef<
         const isLinked = item.matchStatus === 'linked'
         const isMatched = item.matchStatus === 'matched'
         const isIgnored = item.matchStatus === 'ignored'
-        const isActionable = item.matchStatus === 'unmatched' || item.matchStatus === 'new'
+        // Rejected suggestions collapse to matchStatus='unmatched' in the API,
+        // but we distinguish them here via the raw suggestionStatus so the user
+        // can see which items were previously rejected and reopen them for rematch.
+        const isRejected = item.suggestionStatus === 'rejected'
+        const isActionable = !isRejected && (item.matchStatus === 'unmatched' || item.matchStatus === 'new')
 
         return (
           <div
@@ -238,6 +244,29 @@ export const StatementTransactionList = React.forwardRef<
                   </span>
                 )
               })()}
+
+              {/* Rejected badge + reopen */}
+              {isRejected && (
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Badge variant="outline" className="border-zinc-300 text-zinc-500 text-[9px] px-1 py-0">
+                    Rejected
+                  </Badge>
+                  {onReopenClick && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 sm:h-6 sm:w-6 text-zinc-400 hover:text-zinc-600"
+                      title="Reopen for review"
+                      onClick={e => {
+                        e.stopPropagation()
+                        onReopenClick(item)
+                      }}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
+                    </Button>
+                  )}
+                </div>
+              )}
 
               {/* Ignored badge + undo */}
               {isIgnored && (

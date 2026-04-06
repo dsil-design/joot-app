@@ -358,6 +358,24 @@ export default function StatementDetailPage() {
     txListRef.current?.refresh()
   }, [statementId])
 
+  // Reopen a previously-rejected suggestion so it re-enters rematch
+  const handleReopenClick = React.useCallback(async (item: StatementTransaction) => {
+    const compositeId = `stmt:${statementId}:${item.index}`
+    const response = await fetch('/api/imports/reopen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ compositeIds: [compositeId] }),
+    })
+    if (!response.ok) {
+      toast.error('Failed to reopen suggestion')
+      return
+    }
+    toast.success('Suggestion reopened for rematch')
+    const data = await fetchResults(statementId)
+    if (data) setResult(data)
+    txListRef.current?.refresh()
+  }, [statementId])
+
   // Reject a matched (pending) item from the detail modal
   const handleRejectMatch = React.useCallback(async (item: StatementTransaction) => {
     const compositeId = `stmt:${statementId}:${item.index}`
@@ -739,6 +757,7 @@ export default function StatementDetailPage() {
               onCreateClick={handleCreateClick}
               onIgnoreClick={handleIgnoreClick}
               onUnignoreClick={handleUnignoreClick}
+              onReopenClick={handleReopenClick}
               onRowClick={(item) => setDetailModalItem(item)}
             />
           </CardContent>

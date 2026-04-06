@@ -318,64 +318,66 @@ class SurgicalBackfillService {
       console.log(`   Processing ${currency}: ${dates.length} dates`);
 
       if (currency === 'VND') {
-        // Use ExchangeRate-API for VND
-        for (const date of dates) {
-          try {
-            let vndRate: number | undefined;
-
-            // Try historical rates first, fall back to latest if 404
-            try {
-              const historicalData = await exchangeRateAPIService.fetchHistoricalRates(date, 'USD');
-              vndRate = historicalData.rates.VND;
-            } catch (histError) {
-              // Historical endpoint may 404 for recent dates — fall back to latest
-              console.warn(`   VND historical fetch failed for ${date}, trying latest rates`);
-              const latestData = await exchangeRateAPIService.fetchLatestRates('USD');
-              vndRate = latestData.rates.VND;
-            }
-
-            if (!vndRate) {
-              result.errors.push({
-                currency,
-                date,
-                message: 'VND rate not found in API response',
-                retryable: false
-              });
-              continue;
-            }
-
-            // Add both directions
-            ratesToInsert.push({
-              from_currency: 'USD',
-              to_currency: 'VND',
-              rate: vndRate,
-              date,
-              source: 'EXCHANGERATE_API' as any,
-              is_interpolated: false,
-              interpolated_from_date: null
-            });
-
-            ratesToInsert.push({
-              from_currency: 'VND',
-              to_currency: 'USD',
-              rate: 1 / vndRate,
-              date,
-              source: 'EXCHANGERATE_API' as any,
-              is_interpolated: false,
-              interpolated_from_date: null
-            });
-
-            // Small delay to be respectful to free API
-            await new Promise(resolve => setTimeout(resolve, 300));
-
-          } catch (error) {
+        // The free open.er-api.com endpoint only exposes /latest — there is no
+        // historical endpoint on the free tier. For any gap date we reuse the
+        // latest rate and mark it interpolated, except when the gap date equals
+        // the API's own "last update" date (in which case it IS the rate for
+        // that day).
+        let latestRate: number | undefined;
+        let latestUpdateDate: string | undefined;
+        try {
+          const latestData = await exchangeRateAPIService.fetchLatestRates('USD');
+          latestRate = latestData.rates.VND;
+          // time_last_update_utc is an RFC 1123 string; convert to YYYY-MM-DD (UTC)
+          latestUpdateDate = new Date(latestData.time_last_update_utc)
+            .toISOString()
+            .split('T')[0];
+        } catch (fetchError) {
+          for (const date of dates) {
             result.errors.push({
               currency,
               date,
-              message: error instanceof Error ? error.message : String(error),
+              message: `Failed to fetch latest VND rate: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`,
               retryable: true
             });
           }
+          continue;
+        }
+
+        if (!latestRate || !latestUpdateDate) {
+          for (const date of dates) {
+            result.errors.push({
+              currency,
+              date,
+              message: 'VND rate not found in API response',
+              retryable: false
+            });
+          }
+          continue;
+        }
+
+        for (const date of dates) {
+          const isExactMatch = date === latestUpdateDate;
+
+          ratesToInsert.push({
+            from_currency: 'USD',
+            to_currency: 'VND',
+            rate: latestRate,
+            date,
+            source: 'EXCHANGERATE_API' as any,
+            is_interpolated: !isExactMatch,
+            interpolated_from_date: isExactMatch ? null : latestUpdateDate
+          });
+
+          ratesToInsert.push({
+            from_currency: 'VND',
+            to_currency: 'USD',
+            rate: 1 / latestRate,
+            date,
+            source: 'EXCHANGERATE_API' as any,
+            is_interpolated: !isExactMatch,
+            interpolated_from_date: isExactMatch ? null : latestUpdateDate
+          });
         }
       } else {
         // Unknown non-ECB currency

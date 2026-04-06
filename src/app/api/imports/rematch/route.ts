@@ -8,6 +8,8 @@ interface RematchStats {
   statementNewMatchesFound: number
   emailsChecked: number
   emailNewMatchesFound: number
+  slipsChecked: number
+  slipNewMatchesFound: number
 }
 
 /**
@@ -48,11 +50,14 @@ export async function POST(request: NextRequest) {
       statementNewMatchesFound: 0,
       emailsChecked: 0,
       emailNewMatchesFound: 0,
+      slipsChecked: 0,
+      slipNewMatchesFound: 0,
     }
 
     // Only rematch sources that match the active filter
     const shouldRematchStatements = !filters.source || filters.source === 'statement' || filters.source === 'merged'
     const shouldRematchEmails = !filters.source || filters.source === 'email' || filters.source === 'merged'
+    const shouldRematchSlips = !filters.source || filters.source === 'payment_slip' || filters.source === 'merged'
 
     // --- 1. Re-match statement suggestions ---
     if (shouldRematchStatements) {
@@ -62,6 +67,11 @@ export async function POST(request: NextRequest) {
     // --- 2. Re-match email transactions ---
     if (shouldRematchEmails) {
       await rematchEmailTransactions(supabase, user.id, stats, filters)
+    }
+
+    // --- 3. Re-match payment slips ---
+    if (shouldRematchSlips) {
+      await rematchPaymentSlips(supabase, user.id, stats, filters)
     }
 
     // After rematch, mark affected proposals as stale
@@ -262,6 +272,99 @@ async function rematchEmailTransactions(
           match_confidence: match.confidence,
         })
         .eq('id', email.id)
+        .eq('user_id', userId)
+    }
+  }
+}
+
+/**
+ * Re-match pending payment slips that are unmatched, honoring previously
+ * rejected transaction IDs so the same bad match isn't proposed again.
+ */
+async function rematchPaymentSlips(
+  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  userId: string,
+  stats: RematchStats,
+  filters: RematchFilters = {}
+) {
+  // Payment slips are THB-only — if a currency filter is set to anything else, skip.
+  if (filters.currency && filters.currency !== 'THB') return
+
+  let query = supabase
+    .from('payment_slip_uploads')
+    .select('id, amount, currency, transaction_date, sender_name, recipient_name, detected_direction, rejected_transaction_ids')
+    .eq('user_id', userId)
+    .eq('review_status', 'pending')
+    .in('status', ['ready_for_review', 'done'])
+    .is('matched_transaction_id', null)
+
+  if (filters.from) {
+    query = query.gte('transaction_date', filters.from)
+  }
+  if (filters.to) {
+    query = query.lte('transaction_date', filters.to)
+  }
+
+  const { data: slips, error } = await query
+
+  if (error || !slips || slips.length === 0) return
+
+  // Determine date range
+  const dates = slips
+    .map(s => s.transaction_date)
+    .filter(Boolean) as string[]
+  if (dates.length === 0) return
+
+  const sortedDates = [...dates].sort()
+  const startDate = shiftDate(sortedDates[0], -7)
+  const endDate = shiftDate(sortedDates[sortedDates.length - 1], 7)
+
+  // Fetch candidate transactions (THB only — matches initial slip matcher behavior)
+  const { data: candidates } = await supabase
+    .from('transactions')
+    .select('id, amount, original_currency, transaction_date, description, vendors(name)')
+    .eq('user_id', userId)
+    .eq('original_currency', 'THB')
+    .gte('transaction_date', startDate)
+    .lte('transaction_date', endDate)
+    .limit(300)
+
+  if (!candidates || candidates.length === 0) return
+
+  for (const slip of slips) {
+    if (!slip.amount || !slip.transaction_date) continue
+    stats.slipsChecked++
+
+    // Exclude transaction IDs the user previously rejected for this slip
+    const rejectedIds = new Set((slip.rejected_transaction_ids || []) as string[])
+    const eligibleCandidates = rejectedIds.size > 0
+      ? candidates.filter((c) => !rejectedIds.has(c.id))
+      : candidates
+
+    // Slip descriptions are built from sender/recipient depending on direction
+    const description = slip.detected_direction === 'income'
+      ? (slip.sender_name || '')
+      : (slip.recipient_name || '')
+
+    const match = findBestMatch(
+      {
+        amount: Number(slip.amount),
+        currency: slip.currency || 'THB',
+        date: slip.transaction_date,
+        description,
+      },
+      eligibleCandidates
+    )
+
+    if (match && match.confidence >= 55) {
+      stats.slipNewMatchesFound++
+      await supabase
+        .from('payment_slip_uploads')
+        .update({
+          matched_transaction_id: match.id,
+          match_confidence: match.confidence,
+        })
+        .eq('id', slip.id)
         .eq('user_id', userId)
     }
   }

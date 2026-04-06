@@ -77,6 +77,11 @@ export async function POST(request: NextRequest) {
     }
 
     const effectiveStatus = nextStatus || 'skipped'
+    // When re-queueing, items go back to pending for a fresh matching attempt
+    // rather than being hard-rejected. Proposals are marked stale (not rejected)
+    // so they regenerate — markStaleProposals only touches pending proposals,
+    // so rejected proposals would stay dead forever.
+    const isRequeue = effectiveStatus === 'pending_review'
 
     // Support both single and batch rejection
     const idsToReject: string[] = emailIds || (emailId ? [emailId] : [])
@@ -331,12 +336,13 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Mark associated proposals as rejected so they don't resurface
+      // Update associated proposals. On terminal rejection, hard-reject so they
+      // don't resurface. On re-queue, mark stale so they regenerate on next load.
       const compositeIds = emailItemIds.map((id) => `email:${id}`)
       if (compositeIds.length > 0) {
         await serviceClient
           .from('transaction_proposals')
-          .update({ status: 'rejected' })
+          .update({ status: isRequeue ? 'stale' : 'rejected' })
           .eq('user_id', user.id)
           .in('composite_id', compositeIds)
           .in('status', ['pending', 'stale'])
@@ -365,7 +371,7 @@ export async function POST(request: NextRequest) {
           await serviceClient
             .from('payment_slip_uploads')
             .update({
-              review_status: 'rejected',
+              review_status: isRequeue ? 'pending' : 'rejected',
               matched_transaction_id: null,
               match_confidence: null,
               rejected_transaction_ids: updatedRejected,
@@ -399,7 +405,7 @@ export async function POST(request: NextRequest) {
       if (slipsWithoutMatch.length > 0) {
         const { data: updated, error: slipUpdateError } = await serviceClient
           .from('payment_slip_uploads')
-          .update({ review_status: 'rejected' })
+          .update({ review_status: isRequeue ? 'pending' : 'rejected' })
           .in('id', slipsWithoutMatch)
           .eq('user_id', user.id)
           .select('id')
@@ -412,12 +418,13 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Mark associated proposals as rejected so they don't resurface
+      // Update associated proposals. On terminal rejection, hard-reject so they
+      // don't resurface. On re-queue, mark stale so they regenerate on next load.
       const slipCompositeIds = paymentSlipIds.map((id) => `slip:${id}`)
       if (slipCompositeIds.length > 0) {
         await serviceClient
           .from('transaction_proposals')
-          .update({ status: 'rejected' })
+          .update({ status: isRequeue ? 'stale' : 'rejected' })
           .eq('user_id', user.id)
           .in('composite_id', slipCompositeIds)
           .in('status', ['pending', 'stale'])

@@ -34,18 +34,22 @@ interface EmailDetailPanelProps {
   emailTransaction: EmailTransactionRow
   onProcess?: (emailId: string) => void
   onDelete?: () => void
+  onReopen?: (emailId: string) => void
   isProcessing: boolean
   isProcessingExtraction?: boolean
   isDeleting?: boolean
+  isReopening?: boolean
 }
 
 export function EmailDetailPanel({
   emailTransaction,
   onProcess,
   onDelete,
+  onReopen,
   isProcessing,
   isProcessingExtraction,
   isDeleting,
+  isReopening,
 }: EmailDetailPanelProps) {
   const [viewerOpen, setViewerOpen] = React.useState(false)
 
@@ -252,6 +256,19 @@ export function EmailDetailPanel({
           >
             <RefreshCw className={cn("h-3.5 w-3.5 mr-1", isProcessingExtraction && "animate-spin")} />
             {isProcessingExtraction ? "Processing..." : "Process Again"}
+          </Button>
+        )}
+
+        {/* Reopen button — only for rejected (skipped) emails */}
+        {onReopen && emailTransaction.status === "skipped" && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onReopen(emailTransaction.id)}
+            disabled={isReopening}
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5 mr-1", isReopening && "animate-spin")} />
+            {isReopening ? "Reopening..." : "Reopen for review"}
           </Button>
         )}
 

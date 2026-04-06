@@ -24,6 +24,7 @@ export default function EmailDetailPage({
   const [resolvedId, setResolvedId] = React.useState<string | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
+  const [isReopening, setIsReopening] = React.useState(false)
 
   // Actions
   const { processEmail, isProcessing, isExtracting } = useEmailHubActions({
@@ -57,6 +58,33 @@ export default function EmailDetailPage({
 
     fetchEmail()
   }, [resolvedId])
+
+  const handleReopen = async () => {
+    if (!resolvedId) return
+    setIsReopening(true)
+    try {
+      const res = await fetch('/api/imports/reopen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ compositeIds: [`email:${resolvedId}`] }),
+      })
+      if (res.ok) {
+        toast.success('Email transaction reopened for review')
+        // Refresh to pick up new status
+        const detailResponse = await fetch(`/api/emails/transactions/${resolvedId}/matches`)
+        if (detailResponse.ok) {
+          const data = await detailResponse.json()
+          setEmailTx(data.email_transaction)
+        }
+      } else {
+        toast.error('Failed to reopen email transaction')
+      }
+    } catch {
+      toast.error('Failed to reopen email transaction')
+    } finally {
+      setIsReopening(false)
+    }
+  }
 
   const handleDelete = async () => {
     if (!resolvedId) return
@@ -106,9 +134,11 @@ export default function EmailDetailPage({
             emailTransaction={emailTx}
             onProcess={(emailId) => processEmail(emailId)}
             onDelete={() => setDeleteConfirmOpen(true)}
+            onReopen={handleReopen}
             isProcessing={isProcessing(emailTx.id)}
             isProcessingExtraction={isExtracting(emailTx.id)}
             isDeleting={isDeleting}
+            isReopening={isReopening}
           />
           <DeleteConfirmationDialog
             open={deleteConfirmOpen}

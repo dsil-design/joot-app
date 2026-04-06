@@ -228,6 +228,28 @@ export default function PaymentSlipDetailPage() {
     }
   }
 
+  const [isReopening, setIsReopening] = useState(false)
+  const handleReopen = async () => {
+    setIsReopening(true)
+    try {
+      const res = await fetch('/api/imports/reopen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ compositeIds: [`slip:${slipId}`] }),
+      })
+      if (res.ok) {
+        toast.success('Payment slip reopened for review')
+        await fetchSlip()
+      } else {
+        toast.error('Failed to reopen payment slip')
+      }
+    } catch {
+      toast.error('Failed to reopen payment slip')
+    } finally {
+      setIsReopening(false)
+    }
+  }
+
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
@@ -584,6 +606,31 @@ export default function PaymentSlipDetailPage() {
                 <Link href="/review?source=payment_slip">
                   Go to Review Queue
                 </Link>
+              </Button>
+            </div>
+          )}
+
+          {/* Rejected — allow reopening back into the review queue */}
+          {!isEditing && slip.review_status === 'rejected' && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+              <div>
+                <p className="text-sm font-medium text-zinc-800">Rejected</p>
+                <p className="text-xs text-zinc-600 mt-0.5">
+                  Reopen to put this slip back in the pending queue. Previously rejected matches will still be excluded from rematch.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleReopen}
+                disabled={isReopening}
+                className="self-start sm:self-auto shrink-0"
+              >
+                {isReopening ? (
+                  <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Reopening...</>
+                ) : (
+                  <><RefreshCw className="h-3.5 w-3.5 mr-1" /> Reopen for review</>
+                )}
               </Button>
             </div>
           )}
