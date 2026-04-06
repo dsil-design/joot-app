@@ -229,6 +229,7 @@ function TransactionSources({
   onUnlinkEmail,
   onUnlinkPaymentSlip,
   onUnlinkStatement,
+  onEmailReprocessed,
 }: {
   emailSources: any[]
   paymentSlipSources: any[]
@@ -236,6 +237,7 @@ function TransactionSources({
   onUnlinkEmail?: (emailTransactionId: string) => void
   onUnlinkPaymentSlip?: (paymentSlipId: string) => void
   onUnlinkStatement?: () => void
+  onEmailReprocessed?: () => void
 }) {
   const hasNoSources =
     emailSources.length === 0 && paymentSlipSources.length === 0 && !statementSource
@@ -261,6 +263,7 @@ function TransactionSources({
                   ? () => onUnlinkEmail(source.email_transaction_id ?? source.id)
                   : undefined
               }
+              onReprocessed={onEmailReprocessed}
             />
           ))}
           {paymentSlipSources.map((source) => (
@@ -612,6 +615,11 @@ export default function ViewTransactionPage() {
               onUnlinkEmail={(id) => handleUnlink('email', id)}
               onUnlinkPaymentSlip={(id) => handleUnlink('payment_slip', id)}
               onUnlinkStatement={() => handleUnlink('statement')}
+              onEmailReprocessed={async () => {
+                if (!transaction) return
+                const updated = await getTransactionById(transaction.id)
+                if (updated) setTransaction(updated)
+              }}
             />
           </div>
           <div className="flex items-center justify-between w-full">

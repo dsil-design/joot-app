@@ -3,13 +3,16 @@
 import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Check, Copy, ExternalLink, Eye, Mail, Unlink } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Bot, Check, Copy, ExternalLink, Eye, Mail, Send, Unlink } from "lucide-react"
 import { format, parseISO } from "date-fns"
+import { toast } from "sonner"
 import { formatCurrency } from "@/lib/utils"
 import { EmailViewerModal } from "./email-viewer-modal"
 
 export interface EmailSourceCardData {
   id: string
+  email_transaction_id?: string | null
   subject: string | null
   from_address: string | null
   from_name: string | null
@@ -20,6 +23,8 @@ export interface EmailSourceCardData {
   match_confidence: number | null
   match_method: string | null
   status: string
+  ai_classification?: string | null
+  ai_suggested_skip?: boolean | null
 }
 
 function MatchMethodBadge({ method, status }: { method: string | null; status: string | null }) {
@@ -47,8 +52,61 @@ function MatchMethodBadge({ method, status }: { method: string | null; status: s
   return null
 }
 
-export function EmailSourceCard({ source, onUnlink }: { source: EmailSourceCardData; onUnlink?: () => void }) {
+export function EmailSourceCard({
+  source,
+  onUnlink,
+  onReprocessed,
+}: {
+  source: EmailSourceCardData
+  onUnlink?: () => void
+  onReprocessed?: () => void
+}) {
   const [viewerOpen, setViewerOpen] = React.useState(false)
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false)
+  const [feedbackText, setFeedbackText] = React.useState("")
+  const [isProcessing, setIsProcessing] = React.useState(false)
+
+  const canMessageAi = !!source.email_transaction_id
+
+  const sendFeedback = async () => {
+    const hint = feedbackText.trim()
+    if (!hint || !source.email_transaction_id) return
+    setIsProcessing(true)
+    try {
+      const res = await fetch(`/api/emails/${source.id}/extract`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          feedback: {
+            emailTransactionId: source.email_transaction_id,
+            originalClassification: source.ai_classification ?? null,
+            originalSkip: source.ai_suggested_skip ?? null,
+            subject: source.subject,
+            fromAddress: source.from_address,
+            userHint: hint,
+          },
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to reprocess")
+      }
+      const result = await res.json()
+      const et = result?.emailTransaction
+      toast.success("Email reprocessed with feedback", {
+        description: et?.amount
+          ? `Extracted ${et.currency} ${et.amount} from ${et.vendor_name_raw || "email"}`
+          : "Reprocessed but no transaction data found",
+      })
+      setFeedbackOpen(false)
+      setFeedbackText("")
+      onReprocessed?.()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reprocess")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
 
   const formattedDate = source.email_date
     ? format(parseISO(source.email_date), "MMM d, yyyy")
@@ -113,6 +171,22 @@ export function EmailSourceCard({ source, onUnlink }: { source: EmailSourceCardD
                   Open in Email Hub
                 </a>
               </Button>
+              {canMessageAi && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900"
+                  onClick={() => setFeedbackOpen((v) => !v)}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <Bot className="size-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <Bot className="size-3.5 mr-1" />
+                  )}
+                  {isProcessing ? "Processing..." : "Message AI"}
+                </Button>
+              )}
               {onUnlink && (
                 <Button
                   variant="ghost"
@@ -125,6 +199,41 @@ export function EmailSourceCard({ source, onUnlink }: { source: EmailSourceCardD
                 </Button>
               )}
             </div>
+            {feedbackOpen && canMessageAi && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <Input
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && feedbackText.trim()) {
+                      sendFeedback()
+                    }
+                    if (e.key === "Escape") {
+                      setFeedbackOpen(false)
+                      setFeedbackText("")
+                    }
+                  }}
+                  placeholder="e.g. this IS a transaction, extract THB 399"
+                  className="h-9 text-sm sm:h-7 sm:text-xs flex-1"
+                  style={{ fontSize: "16px" }}
+                  autoFocus
+                  disabled={isProcessing}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={sendFeedback}
+                  disabled={!feedbackText.trim() || isProcessing}
+                  className="h-9 w-9 sm:h-7 sm:w-auto sm:px-2 p-0"
+                >
+                  {isProcessing ? (
+                    <Bot className="size-3.5 animate-spin" />
+                  ) : (
+                    <Send className="size-3.5" />
+                  )}
+                </Button>
+              </div>
+            )}
             <CopyableEmailId id={source.id} />
           </div>
         </div>

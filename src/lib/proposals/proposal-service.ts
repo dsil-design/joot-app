@@ -358,6 +358,7 @@ async function fetchPastCorrections(
         fromName: emailCtx?.fromName,
         parserKey: emailCtx?.parserKey,
         sourceDescription: p.proposed_description || '',
+        vendorId: p.proposed_vendor_id || undefined,
         originalValue: change.from,
         correctedValue: change.to,
         correctedAt: p.accepted_at || '',

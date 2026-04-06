@@ -476,14 +476,23 @@ function proposeDescription(
   fields: ProposedFields,
   fc: FieldConfidenceMap
 ) {
-  // Strategy 0: Past corrections — user previously corrected description for same sender/vendor
+  // Strategy 0: Payment slip description — manually typed by the sender for THIS specific
+  // transaction. Always wins over learned patterns since it's an explicit, per-transaction memo.
+  if (item.paymentSlipDescription && item.paymentSlipDescription.trim()) {
+    fields.description = item.paymentSlipDescription.trim()
+    fc.description = { score: 88, reasoning: 'Payment slip description (manually entered by sender)' }
+    return
+  }
+
+  // Strategy 1: Past corrections — user previously corrected description for same sender/vendor
   // This is most useful for emails where the extracted description was poor (e.g. just the subject)
   const descCorrection = findBestCorrection(item, context, 'description')
   if (descCorrection && typeof descCorrection.correctedValue === 'string') {
-    // Only apply if the correction came from a strong match (same sender)
+    // Only apply if the correction came from a strong match (same sender or same matched vendor)
     const isSameSender = descCorrection.fromAddress && item.fromAddress
       && descCorrection.fromAddress === item.fromAddress
-    const isSameVendor = fields.vendorId && descCorrection.sourceDescription
+    const isSameVendor = fields.vendorId && descCorrection.vendorId
+      && descCorrection.vendorId === fields.vendorId
 
     if (isSameSender || isSameVendor) {
       fields.description = descCorrection.correctedValue
@@ -494,13 +503,6 @@ function proposeDescription(
       }
       return
     }
-  }
-
-  // Strategy 1: Payment slip description — manually typed by the sender, high confidence
-  if (item.paymentSlipDescription && item.paymentSlipDescription.trim()) {
-    fields.description = item.paymentSlipDescription.trim()
-    fc.description = { score: 88, reasoning: 'Payment slip description (manually entered by sender)' }
-    return
   }
 
   // Strategy 2: Email with dedicated parser + high confidence → use parser description

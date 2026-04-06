@@ -145,6 +145,8 @@ export interface PastCorrection {
   parserKey?: string
   /** Original import description (for similarity matching) */
   sourceDescription: string
+  /** Vendor that the proposal was associated with at the time of correction */
+  vendorId?: string
   /** What the system proposed */
   originalValue: unknown
   /** What the user corrected to */
