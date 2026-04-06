@@ -19,7 +19,7 @@ import { triggerBatchAnalysis } from '../email/ai-analysis-service'
 export interface DecisionEvent {
   userId: string
   decisionType: 'approve_match' | 'approve_create' | 'reject' | 'link'
-  sourceType: 'statement' | 'email' | 'payment_slip' | 'merged' | 'merged_slip_email' | 'merged_slip_stmt' | 'self_transfer'
+  sourceType: 'statement' | 'email' | 'payment_slip' | 'merged' | 'merged_slip_email' | 'merged_slip_stmt' | 'merged_slip_email_stmt' | 'self_transfer'
   compositeId: string
 
   // Source identifiers
@@ -100,6 +100,7 @@ export async function recordDecision(
       event.sourceType === 'statement' ||
       event.sourceType === 'merged' ||
       event.sourceType === 'merged_slip_stmt' ||
+      event.sourceType === 'merged_slip_email_stmt' ||
       event.sourceType === 'self_transfer'
     )) {
       await upsertStatementDescriptionMapping(
@@ -115,7 +116,8 @@ export async function recordDecision(
     if (event.emailTransactionId && event.transactionId && (
       event.sourceType === 'email' ||
       event.sourceType === 'merged' ||
-      event.sourceType === 'merged_slip_email'
+      event.sourceType === 'merged_slip_email' ||
+      event.sourceType === 'merged_slip_email_stmt'
     )) {
       await learnVendorRecipientMapping(
         supabase,
@@ -129,7 +131,8 @@ export async function recordDecision(
     if (event.paymentSlipId && event.transactionId && (
       event.sourceType === 'payment_slip' ||
       event.sourceType === 'merged_slip_email' ||
-      event.sourceType === 'merged_slip_stmt'
+      event.sourceType === 'merged_slip_stmt' ||
+      event.sourceType === 'merged_slip_email_stmt'
     )) {
       await learnPaymentSlipMapping(
         supabase,

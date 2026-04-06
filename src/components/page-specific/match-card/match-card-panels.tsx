@@ -60,12 +60,15 @@ function getSourceLink(id: string): string | null {
   if (parsed.type === "merged_slip_stmt") {
     return `/imports/payment-slips/${parsed.slipId}`
   }
+  if (parsed.type === "merged_slip_email_stmt") {
+    return `/imports/payment-slips/${parsed.slipId}`
+  }
   return null
 }
 
 function getMergedEmailLink(id: string): string | null {
   const parsed = parseImportId(id)
-  if (parsed?.type === "merged") {
+  if (parsed?.type === "merged" || parsed?.type === "merged_slip_email_stmt") {
     return `/imports/emails/${parsed.emailId}`
   }
   return null
@@ -250,7 +253,7 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
   const parsed = React.useMemo(() => parseImportId(data.id), [data.id])
 
   const openStatementPreview = React.useCallback(() => {
-    if (parsed && (parsed.type === "statement" || parsed.type === "merged")) {
+    if (parsed && (parsed.type === "statement" || parsed.type === "merged" || parsed.type === "merged_slip_stmt" || parsed.type === "merged_slip_email_stmt")) {
       setPreviewModal({
         type: "statement",
         statementId: parsed.statementId,
@@ -260,19 +263,13 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
   }, [parsed, data.statementTransaction.sourceFilename])
 
   const openEmailPreview = React.useCallback(() => {
-    if (parsed && (parsed.type === "email" || parsed.type === "merged")) {
+    if (parsed && (parsed.type === "email" || parsed.type === "merged" || parsed.type === "merged_slip_email" || parsed.type === "merged_slip_email_stmt")) {
       setPreviewModal({ type: "email", emailId: parsed.emailId })
     }
   }, [parsed])
 
   const openSlipPreview = React.useCallback(() => {
-    if (parsed && parsed.type === "payment_slip") {
-      setPreviewModal({
-        type: "payment_slip",
-        slipId: parsed.slipId,
-        filename: data.statementTransaction.sourceFilename || "Payment Slip",
-      })
-    } else if (parsed && (parsed.type === "merged_slip_email" || parsed.type === "merged_slip_stmt")) {
+    if (parsed && (parsed.type === "payment_slip" || parsed.type === "merged_slip_email" || parsed.type === "merged_slip_stmt" || parsed.type === "merged_slip_email_stmt")) {
       setPreviewModal({
         type: "payment_slip",
         slipId: parsed.slipId,
@@ -312,6 +309,121 @@ export function MatchCardPanels({ data }: MatchCardPanelsProps) {
       )}
     </>
   )
+
+  // Merged card layout — 3-way: payment slip + email + statement
+  if (data.source === "merged" && data.mergedEmailData && data.mergedPaymentSlipData) {
+    const slip = data.mergedPaymentSlipData
+    const email = data.mergedEmailData
+    return (
+      <div className="space-y-3">
+        {previewModals}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Payment slip */}
+          <div className="space-y-1.5">
+            <SourceLabel
+              label="From Payment Slip"
+              href={getSourceLink(data.id)}
+              onPreview={openSlipPreview}
+            />
+            <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+              <span>{formatMatchDate(slip.date)}</span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+              <span className="font-medium truncate" title={slip.description}>
+                {slip.description}
+              </span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+              <span className="font-medium">
+                {formatMatchAmount(slip.amount, slip.currency)}
+              </span>
+            </TransactionDetailRow>
+            {slip.metadata.senderName && (
+              <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+                <span className="text-muted-foreground truncate">
+                  {slip.metadata.senderName}
+                </span>
+              </TransactionDetailRow>
+            )}
+          </div>
+
+          {/* Email */}
+          <EmailSourcePanel
+            data={{
+              ...data,
+              statementTransaction: {
+                ...data.statementTransaction,
+                date: email.date,
+                description: email.description,
+                amount: email.amount,
+                currency: email.currency,
+              },
+            }}
+            meta={email.metadata}
+            sourceLabel={
+              <SourceLabel
+                label="From Email"
+                href={getMergedEmailLink(data.id)}
+                onPreview={openEmailPreview}
+              />
+            }
+            emailId={parsed?.type === "merged_slip_email_stmt" ? parsed.emailId : undefined}
+          />
+
+          {/* Statement */}
+          <div className="space-y-1.5 md:border-l md:pl-3">
+            <SourceLabel label="From Statement" href={null} onPreview={openStatementPreview} />
+            <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+              <span>{formatMatchDate(data.statementTransaction.date)}</span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+              <span
+                className="font-medium truncate"
+                title={data.statementTransaction.description}
+              >
+                {cleanStatementDescription(data.statementTransaction.description)}
+              </span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+              <span className="font-medium">
+                {formatMatchAmount(
+                  data.statementTransaction.amount,
+                  data.statementTransaction.currency
+                )}
+              </span>
+            </TransactionDetailRow>
+          </div>
+        </div>
+
+        {data.matchedTransaction && !data.isNew && (
+          <div className="border-t pt-3 space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Matched Joot Transaction
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-1.5">
+              <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+                <span>{formatMatchDate(data.matchedTransaction.date)}</span>
+              </TransactionDetailRow>
+              <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+                <span className="font-medium">
+                  {formatMatchAmount(
+                    data.matchedTransaction.amount,
+                    data.matchedTransaction.currency
+                  )}
+                </span>
+              </TransactionDetailRow>
+            </div>
+          </div>
+        )}
+
+        {data.isNew && data.proposal && (
+          <div className="border-t pt-3">
+            <ProposalPanel proposal={data.proposal} />
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // Merged card layout — email + statement side-by-side (with optional conversion bar)
   if (data.source === "merged" && data.mergedEmailData) {

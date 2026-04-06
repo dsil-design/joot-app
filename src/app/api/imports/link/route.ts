@@ -364,6 +364,83 @@ export async function POST(request: NextRequest) {
         .eq('id', parsed.slipId)
         .eq('user_id', user.id)
 
+    } else if (parsed.type === 'merged_slip_email_stmt') {
+      // --- MERGED SLIP+EMAIL+STATEMENT link (3-way) ---
+      const { data: statement, error: stmtFetchError } = await serviceClient
+        .from('statement_uploads')
+        .select('id, extraction_log')
+        .eq('id', parsed.statementId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (stmtFetchError || !statement) {
+        return NextResponse.json(
+          { error: 'Statement not found' },
+          { status: 404 }
+        )
+      }
+
+      const extractionLog = statement.extraction_log as ExtractionLog | null
+      const suggestions = extractionLog?.suggestions || []
+
+      if (parsed.index >= 0 && parsed.index < suggestions.length) {
+        suggestions[parsed.index] = {
+          ...suggestions[parsed.index],
+          matched_transaction_id: transactionId,
+          status: 'approved',
+          is_new: false,
+        }
+
+        await serviceClient
+          .from('statement_uploads')
+          .update({
+            extraction_log: { ...extractionLog, suggestions } as unknown as Json,
+          })
+          .eq('id', statement.id)
+
+        await updateStatementReviewStatus(serviceClient, parsed.statementId)
+      }
+
+      const { error: txUpdateError } = await serviceClient
+        .from('transactions')
+        .update({
+          source_payment_slip_id: parsed.slipId,
+          source_email_transaction_id: parsed.emailId,
+          source_statement_upload_id: parsed.statementId,
+          source_statement_suggestion_index: parsed.index,
+          source_statement_match_confidence: suggestions[parsed.index]?.confidence ?? null,
+        })
+        .eq('id', transactionId)
+
+      if (txUpdateError) {
+        console.error('Error setting slip+email+stmt source on transaction:', txUpdateError)
+        return NextResponse.json(
+          { error: 'Failed to save link' },
+          { status: 500 }
+        )
+      }
+
+      await serviceClient
+        .from('payment_slip_uploads')
+        .update({
+          review_status: 'approved',
+          status: 'done',
+          matched_transaction_id: transactionId,
+        })
+        .eq('id', parsed.slipId)
+        .eq('user_id', user.id)
+
+      await serviceClient
+        .from('email_transactions')
+        .update({
+          matched_transaction_id: transactionId,
+          status: 'matched',
+          match_method: 'cross_source',
+          matched_at: new Date().toISOString(),
+        })
+        .eq('id', parsed.emailId)
+        .eq('user_id', user.id)
+
     } else if (parsed.type === 'self_transfer') {
       // --- SELF-TRANSFER link: link both statement entries to the same transaction ---
       // Update the transaction to be a transfer type
@@ -504,7 +581,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     // Build source-specific fields
-    const stmtDescription = (parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt')
+    const stmtDescription = (parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt' || parsed.type === 'merged_slip_email_stmt')
       ? await getStatementDescription(serviceClient, user.id, parsed.statementId, parsed.index)
       : undefined
 

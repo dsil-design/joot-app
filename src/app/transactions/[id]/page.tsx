@@ -8,7 +8,7 @@
 
 import * as React from "react"
 import { useParams, useSearchParams } from "next/navigation"
-import { ArrowLeft, Edit, FileText, Copy, Check, Unlink, Trash2 } from "lucide-react"
+import { ArrowLeft, Edit, Eye, FileText, Copy, Check, Unlink, Trash2 } from "lucide-react"
 import { useTransactionFlow } from "@/hooks/useTransactionFlow"
 import { useTransactions } from "@/hooks/use-transactions"
 import type { TransactionWithVendorAndPayment, EmailSourceData, StatementSourceData } from "@/lib/supabase/types"
@@ -21,6 +21,7 @@ import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
 import { formatCurrency } from "@/lib/utils"
 import { EmailSourceCard } from "@/components/page-specific/email-source-card"
 import { PaymentSlipSourceCard } from "@/components/page-specific/payment-slip-source-card"
+import { StatementViewerModal } from "@/components/page-specific/statement-viewer-modal"
 import { DeleteConfirmationDialog } from "@/components/page-specific/delete-confirmation-dialog"
 import { toast } from "sonner"
 
@@ -127,6 +128,7 @@ function StatementMatchBadge({ method }: { method: string | null }) {
 }
 
 function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData; onUnlink?: () => void }) {
+  const [viewerOpen, setViewerOpen] = React.useState(false)
   const periodLabel = formatStatementPeriod(
     source.statement_period_start,
     source.statement_period_end
@@ -135,6 +137,7 @@ function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData
   const sourceCurrency = (source as any).source_currency as string | null
 
   return (
+    <>
     <div className="bg-zinc-50 rounded-lg border border-zinc-200 p-4 w-full">
       <div className="flex items-start gap-3">
         <FileText className="size-4 text-zinc-400 mt-0.5 shrink-0" strokeWidth={1.5} />
@@ -162,6 +165,15 @@ function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData
           )}
           <div className="flex items-center gap-2 mt-1">
             <StatementMatchBadge method={source.match_method} />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900"
+              onClick={() => setViewerOpen(true)}
+            >
+              <Eye className="size-3.5 mr-1" />
+              View statement
+            </Button>
             {onUnlink && (
               <Button
                 variant="ghost"
@@ -177,6 +189,13 @@ function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData
         </div>
       </div>
     </div>
+    <StatementViewerModal
+      open={viewerOpen}
+      onOpenChange={setViewerOpen}
+      statementId={(source as any).id}
+      filename={source.filename}
+    />
+    </>
   )
 }
 

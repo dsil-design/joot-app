@@ -64,10 +64,10 @@ export async function POST(request: NextRequest) {
       const parsed = parseImportId(id)
       if (!parsed || parsed.type === 'email') {
         invalidIds.push(id)
-      } else if (parsed.type === 'merged') {
+      } else if (parsed.type === 'merged' || parsed.type === 'merged_slip_stmt' || parsed.type === 'merged_slip_email_stmt' || parsed.type === 'statement') {
         statementIds.push({ statementId: parsed.statementId, index: parsed.index })
       } else {
-        statementIds.push({ statementId: parsed.statementId, index: parsed.index })
+        invalidIds.push(id)
       }
     }
 

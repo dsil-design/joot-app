@@ -8,6 +8,7 @@
 const UUID_PATTERN = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 
 const MERGED_PREFIX_REGEX = new RegExp(`^merged:(${UUID_PATTERN})\\+stmt:(${UUID_PATTERN}):(\\d+)$`, 'i')
+const MERGED_SLIP_EMAIL_STMT_REGEX = new RegExp(`^merged:slip:(${UUID_PATTERN})\\+email:(${UUID_PATTERN})\\+stmt:(${UUID_PATTERN}):(\\d+)$`, 'i')
 const MERGED_SLIP_EMAIL_REGEX = new RegExp(`^merged:slip:(${UUID_PATTERN})\\+email:(${UUID_PATTERN})$`, 'i')
 const MERGED_SLIP_STMT_REGEX = new RegExp(`^merged:slip:(${UUID_PATTERN})\\+stmt:(${UUID_PATTERN}):(\\d+)$`, 'i')
 const STMT_PREFIX_REGEX = new RegExp(`^stmt:(${UUID_PATTERN}):(\\d+)$`, 'i')
@@ -23,6 +24,7 @@ export type ParsedImportId =
   | { type: 'payment_slip'; slipId: string }
   | { type: 'merged_slip_email'; slipId: string; emailId: string }
   | { type: 'merged_slip_stmt'; slipId: string; statementId: string; index: number }
+  | { type: 'merged_slip_email_stmt'; slipId: string; emailId: string; statementId: string; index: number }
   | { type: 'self_transfer'; debitStatementId: string; debitIndex: number; creditStatementId: string; creditIndex: number }
 
 /**
@@ -47,6 +49,18 @@ export function parseImportId(id: string): ParsedImportId | null {
   }
 
   // Try merged: prefix (most specific after self-transfer)
+  // 3-way slip+email+stmt must be checked before 2-way slip+email (longer prefix)
+  const mergedSlipEmailStmtMatch = id.match(MERGED_SLIP_EMAIL_STMT_REGEX)
+  if (mergedSlipEmailStmtMatch) {
+    return {
+      type: 'merged_slip_email_stmt',
+      slipId: mergedSlipEmailStmtMatch[1],
+      emailId: mergedSlipEmailStmtMatch[2],
+      statementId: mergedSlipEmailStmtMatch[3],
+      index: parseInt(mergedSlipEmailStmtMatch[4], 10),
+    }
+  }
+
   const mergedSlipEmailMatch = id.match(MERGED_SLIP_EMAIL_REGEX)
   if (mergedSlipEmailMatch) {
     return { type: 'merged_slip_email', slipId: mergedSlipEmailMatch[1], emailId: mergedSlipEmailMatch[2] }
@@ -117,6 +131,13 @@ export function makeMergedSlipEmailId(slipId: string, emailId: string): string {
 /** Construct a merged ID for payment slip + statement pair */
 export function makeMergedSlipStmtId(slipId: string, statementId: string, index: number): string {
   return `merged:slip:${slipId}+stmt:${statementId}:${index}`
+}
+
+/** Construct a merged ID for payment slip + email + statement triple */
+export function makeMergedSlipEmailStmtId(
+  slipId: string, emailId: string, statementId: string, index: number
+): string {
+  return `merged:slip:${slipId}+email:${emailId}+stmt:${statementId}:${index}`
 }
 
 /** Construct a self-transfer ID from two statement entries */

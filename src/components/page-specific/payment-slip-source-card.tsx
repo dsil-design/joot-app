@@ -3,9 +3,10 @@
 import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Check, Copy, ExternalLink, Receipt, Unlink } from "lucide-react"
+import { Check, Copy, Eye, Receipt, Unlink } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { formatCurrency } from "@/lib/utils"
+import { PaymentSlipViewerModal } from "./payment-slip-viewer-modal"
 
 export interface PaymentSlipSourceCardData {
   id: string
@@ -29,6 +30,7 @@ export function PaymentSlipSourceCard({
   source: PaymentSlipSourceCardData
   onUnlink?: () => void
 }) {
+  const [viewerOpen, setViewerOpen] = React.useState(false)
   const formattedDate = source.transaction_date
     ? format(parseISO(source.transaction_date), "MMM d, yyyy")
     : null
@@ -41,6 +43,7 @@ export function PaymentSlipSourceCard({
     .join(" ")
 
   return (
+    <>
     <div className="bg-zinc-50 rounded-lg border border-zinc-200 p-4 w-full text-left">
       <div className="flex items-start gap-3">
         <Receipt className="size-4 text-zinc-400 mt-0.5 shrink-0" strokeWidth={1.5} />
@@ -74,16 +77,10 @@ export function PaymentSlipSourceCard({
               variant="ghost"
               size="sm"
               className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900"
-              asChild
+              onClick={() => setViewerOpen(true)}
             >
-              <a
-                href={`/imports/payment-slips/${source.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="size-3.5 mr-1" />
-                Open slip
-              </a>
+              <Eye className="size-3.5 mr-1" />
+              View slip
             </Button>
             {onUnlink && (
               <Button
@@ -101,6 +98,13 @@ export function PaymentSlipSourceCard({
         </div>
       </div>
     </div>
+    <PaymentSlipViewerModal
+      open={viewerOpen}
+      onOpenChange={setViewerOpen}
+      slipId={source.id}
+      filename={source.filename ?? "Payment slip"}
+    />
+    </>
   )
 }
 

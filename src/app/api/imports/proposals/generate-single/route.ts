@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch queue items — merged items only exist after aggregation
-    const statementUploadId = (parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt')
+    const statementUploadId = (parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt' || parsed.type === 'merged_slip_email_stmt')
       ? parsed.statementId : undefined
 
     const [statementItems, emailItems, slipItems] = await Promise.all([
@@ -74,10 +74,12 @@ export async function POST(request: NextRequest) {
     const slipMeta = targetItem.paymentSlipMetadata
     const isMerged = targetItem.source === 'merged'
     const isSlip = targetItem.source === 'payment_slip'
+    const hasSlipData = isSlip || (isMerged && !!targetItem.paymentSlipMetadata)
 
-    const hasStatementId = parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt'
-    const hasIndex = parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt'
-    const hasEmailId = parsed.type === 'email' || parsed.type === 'merged' || parsed.type === 'merged_slip_email'
+    const hasStatementId = parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt' || parsed.type === 'merged_slip_email_stmt'
+    const hasIndex = parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt' || parsed.type === 'merged_slip_email_stmt'
+    const hasEmailId = parsed.type === 'email' || parsed.type === 'merged' || parsed.type === 'merged_slip_email' || parsed.type === 'merged_slip_email_stmt'
+    const hasSlipId = parsed.type === 'payment_slip' || parsed.type === 'merged_slip_email' || parsed.type === 'merged_slip_stmt' || parsed.type === 'merged_slip_email_stmt'
 
     const proposalInput: ProposalInput = {
       compositeId,
@@ -102,8 +104,8 @@ export async function POST(request: NextRequest) {
       extractionConfidence: emailMeta?.extractionConfidence,
       paymentCardLastFour: emailMeta?.paymentCardLastFour,
       paymentCardType: emailMeta?.paymentCardType,
-      // Payment slip-specific fields
-      ...(isSlip && slipMeta && {
+      // Payment slip-specific fields (present for both standalone slips and merged items containing a slip)
+      ...(hasSlipData && slipMeta && {
         paymentSlipUploadId: slipMeta.slipUploadId,
         senderName: slipMeta.senderName,
         recipientName: slipMeta.recipientName,

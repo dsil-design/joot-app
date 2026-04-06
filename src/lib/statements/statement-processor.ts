@@ -17,6 +17,23 @@ import { processPDF, isValidPDF } from './pdf-extractor';
 import type { StatementParseResult, ParsedStatementTransaction } from './parsers/types';
 
 /**
+ * Format a Date's LOCAL calendar components as YYYY-MM-DD.
+ *
+ * Parsers in this module construct dates via `new Date(year, month, day)` —
+ * i.e., local-midnight on the intended calendar day. `.toISOString()` on such
+ * a Date shifts the day back when the runtime timezone is east of UTC
+ * (e.g. Asia/Bangkok yields `YYYY-MM-(D-1)T17:00:00.000Z`), and Postgres then
+ * casts that to the previous day. Using the Date's local components instead
+ * preserves the intended calendar day regardless of runtime TZ.
+ */
+function formatLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
  * Processing status values
  */
 export type ProcessingStatus = 'pending' | 'processing' | 'ready_for_review' | 'in_review' | 'done' | 'failed';
@@ -410,8 +427,8 @@ export class StatementProcessor {
       .eq('user_id', userId);
 
     if (period) {
-      const startDate = period.startDate.toISOString().split('T')[0];
-      const endDate = period.endDate.toISOString().split('T')[0];
+      const startDate = formatLocalDate(period.startDate);
+      const endDate = formatLocalDate(period.endDate);
       query = query.gte('transaction_date', startDate).lte('transaction_date', endDate);
     }
 
@@ -433,8 +450,9 @@ export class StatementProcessor {
     return transactions.map(statementTx => {
       let bestMatch: { id: string; confidence: number; reasons: string[] } | null = null;
 
-      // Get statement date as YYYY-MM-DD string
-      const statementDateStr = statementTx.transactionDate.toISOString().split('T')[0];
+      // Get statement date as YYYY-MM-DD string (local calendar day — parsers
+      // construct Dates with `new Date(y, m, d)`, i.e. local midnight)
+      const statementDateStr = formatLocalDate(statementTx.transactionDate);
       const statementDate = new Date(statementDateStr + 'T00:00:00Z');
 
       for (const dbTx of (existingTransactions || [])) {
@@ -498,12 +516,12 @@ export class StatementProcessor {
       parser_used: parseResult.parserKey,
       page_count: parseResult.pageCount,
       confidence: parseResult.confidence,
-      period_start: parseResult.period?.startDate?.toISOString(),
-      period_end: parseResult.period?.endDate?.toISOString(),
+      period_start: parseResult.period?.startDate ? formatLocalDate(parseResult.period.startDate) : undefined,
+      period_end: parseResult.period?.endDate ? formatLocalDate(parseResult.period.endDate) : undefined,
       summary: parseResult.summary,
       warnings: parseResult.warnings,
       transactions: parseResult.transactions.map(t => ({
-        date: t.transactionDate.toISOString(),
+        date: formatLocalDate(t.transactionDate),
         description: t.description,
         amount: t.amount,
         currency: t.currency,
@@ -512,7 +530,7 @@ export class StatementProcessor {
         foreign_transaction: t.foreignTransaction,
       })),
       suggestions: result.suggestions.map(s => ({
-        transaction_date: s.statementTransaction.transactionDate.toISOString(),
+        transaction_date: formatLocalDate(s.statementTransaction.transactionDate),
         description: s.statementTransaction.description,
         amount: s.statementTransaction.amount,
         currency: s.statementTransaction.currency,
@@ -538,10 +556,10 @@ export class StatementProcessor {
 
     // Update statement_period_start/end from parsed period (if extracted)
     if (parseResult.period?.startDate) {
-      updateData.statement_period_start = parseResult.period.startDate.toISOString().split('T')[0];
+      updateData.statement_period_start = formatLocalDate(parseResult.period.startDate);
     }
     if (parseResult.period?.endDate) {
-      updateData.statement_period_end = parseResult.period.endDate.toISOString().split('T')[0];
+      updateData.statement_period_end = formatLocalDate(parseResult.period.endDate);
     }
 
     const { error } = await this.supabase

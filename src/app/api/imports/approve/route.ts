@@ -125,6 +125,7 @@ export async function POST(request: NextRequest) {
     const paymentSlipIds: string[] = []
     const mergedSlipEmailIds: { id: string; slipId: string; emailId: string }[] = []
     const mergedSlipStmtIds: { id: string; slipId: string; statementId: string; index: number }[] = []
+    const mergedSlipEmailStmtIds: { id: string; slipId: string; emailId: string; statementId: string; index: number }[] = []
     const selfTransferIds: { id: string; debitStatementId: string; debitIndex: number; creditStatementId: string; creditIndex: number }[] = []
     const invalidIds: string[] = []
 
@@ -140,6 +141,8 @@ export async function POST(request: NextRequest) {
         mergedSlipEmailIds.push({ id, slipId: parsed.slipId, emailId: parsed.emailId })
       } else if (parsed.type === 'merged_slip_stmt') {
         mergedSlipStmtIds.push({ id, slipId: parsed.slipId, statementId: parsed.statementId, index: parsed.index })
+      } else if (parsed.type === 'merged_slip_email_stmt') {
+        mergedSlipEmailStmtIds.push({ id, slipId: parsed.slipId, emailId: parsed.emailId, statementId: parsed.statementId, index: parsed.index })
       } else if (parsed.type === 'statement') {
         statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
       } else if (parsed.type === 'payment_slip') {
@@ -947,6 +950,120 @@ export async function POST(request: NextRequest) {
           sourceType: 'merged_slip_stmt',
           compositeId: merged.id,
           paymentSlipId: merged.slipId,
+          statementUploadId: merged.statementId,
+          suggestionIndex: merged.index,
+          transactionId: newTx.id,
+          paymentMethodId: slip.payment_method_id || undefined,
+          slipCounterpartyName: counterparty || undefined,
+          statementDescription: mergedStmtDesc,
+          amount: Number(slip.amount),
+          currency: slip.currency,
+        }).catch((err) => console.error('Decision learning error:', err))
+
+        results.success++
+        results.transactionsCreated++
+        results.totalAmount += Math.abs(Number(slip.amount))
+      }
+    }
+
+    // --- Process MERGED SLIP+EMAIL+STATEMENT items (3-way) ---
+    if (mergedSlipEmailStmtIds.length > 0) {
+      for (const merged of mergedSlipEmailStmtIds) {
+        const { data: slip } = await serviceClient
+          .from('payment_slip_uploads')
+          .select('id, amount, currency, transaction_date, memo, sender_name, recipient_name, detected_direction, payment_method_id')
+          .eq('id', merged.slipId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (!slip || !slip.amount || !slip.transaction_date) {
+          results.failed++
+          results.errors.push(`Slip not found for merged ID ${merged.id}`)
+          continue
+        }
+
+        const transactionType = slip.detected_direction === 'income' ? 'income' : 'expense'
+        const direction = slip.detected_direction === 'income' ? 'From' : 'To'
+        const counterparty = slip.detected_direction === 'income' ? slip.sender_name : slip.recipient_name
+        const description = slip.memo || `${direction} ${counterparty || 'unknown'}`
+
+        const { data: newTx, error: txError } = await serviceClient
+          .from('transactions')
+          .insert({
+            user_id: user.id,
+            amount: slip.amount,
+            original_currency: (slip.currency || 'THB') as 'USD' | 'THB',
+            transaction_type: transactionType as 'expense' | 'income' | 'transfer',
+            transaction_date: slip.transaction_date,
+            description,
+            payment_method_id: slip.payment_method_id || null,
+            source_payment_slip_id: merged.slipId,
+            source_email_transaction_id: merged.emailId,
+            source_statement_upload_id: merged.statementId,
+            source_statement_suggestion_index: merged.index,
+          })
+          .select('id')
+          .single()
+
+        if (txError || !newTx) {
+          results.failed++
+          results.errors.push(`Failed to create transaction for ${merged.id}: ${txError?.message}`)
+          continue
+        }
+
+        // Update slip
+        await serviceClient
+          .from('payment_slip_uploads')
+          .update({ review_status: 'approved', status: 'done' })
+          .eq('id', merged.slipId)
+
+        // Update email
+        await serviceClient
+          .from('email_transactions')
+          .update({
+            status: 'imported',
+            matched_transaction_id: newTx.id,
+            match_method: 'cross_source',
+            matched_at: new Date().toISOString(),
+          })
+          .eq('id', merged.emailId)
+          .eq('user_id', user.id)
+
+        // Update statement suggestion status
+        const { data: statement } = await serviceClient
+          .from('statement_uploads')
+          .select('id, extraction_log')
+          .eq('id', merged.statementId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (statement) {
+          const extractionLog = statement.extraction_log as ExtractionLog | null
+          const suggestions = extractionLog?.suggestions || []
+          if (merged.index >= 0 && merged.index < suggestions.length) {
+            suggestions[merged.index] = {
+              ...suggestions[merged.index],
+              status: 'approved',
+              matched_transaction_id: newTx.id,
+            }
+            await serviceClient
+              .from('statement_uploads')
+              .update({ extraction_log: { ...extractionLog, suggestions } as unknown as Json })
+              .eq('id', statement.id)
+          }
+        }
+
+        // Learn from this decision (fire-and-forget)
+        const mergedStmtSuggestions = (statement?.extraction_log as ExtractionLog | null)?.suggestions
+        const mergedStmtDesc = mergedStmtSuggestions?.[merged.index]?.description
+
+        recordDecision(serviceClient, {
+          userId: user.id,
+          decisionType: 'approve_create',
+          sourceType: 'merged_slip_email_stmt',
+          compositeId: merged.id,
+          paymentSlipId: merged.slipId,
+          emailTransactionId: merged.emailId,
           statementUploadId: merged.statementId,
           suggestionIndex: merged.index,
           transactionId: newTx.id,

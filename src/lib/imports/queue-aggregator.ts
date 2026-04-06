@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js'
-import { makeMergedId, makeMergedSlipEmailId, makeMergedSlipStmtId, makeSelfTransferId } from '@/lib/utils/import-id'
+import { makeMergedId, makeMergedSlipEmailId, makeMergedSlipStmtId, makeMergedSlipEmailStmtId, makeSelfTransferId, parseImportId } from '@/lib/utils/import-id'
 import { findCrossSourcePairs, type PairCandidate } from '@/lib/matching/cross-source-pairer'
 import { findSelfTransferPairs } from '@/lib/matching/self-transfer-detector'
 import { calculateDaysDiff } from '@/lib/matching/date-matcher'
@@ -215,14 +215,20 @@ export async function aggregateQueueItems(
         const slipMeta = slip.paymentSlipMetadata
         const isExpense = slipMeta?.detectedDirection !== 'income'
 
-        // Expense slips → try matching with emails (same THB amount, close date)
+        // Expense slips → try matching with emails (same THB amount, close date).
+        // Also consider already-merged (email+statement) items from Phase 1 —
+        // if the slip matches one of those, emit a 3-way slip+email+statement group.
         if (isExpense) {
           const candidateEmails = allItems.filter(item =>
-            item.source === 'email' && item.status === 'pending' && !pairedItemIds.has(item.id)
+            (item.source === 'email' || item.source === 'merged') &&
+            item.status === 'pending' && !pairedItemIds.has(item.id)
           )
 
           let bestEmailMatch: { item: QueueItem; daysDiff: number } | null = null
           for (const email of candidateEmails) {
+            // For merged items, only consider those that actually carry email data
+            // (i.e., email+statement cross-source pairs — not self-transfers).
+            if (email.source === 'merged' && !email.mergedEmailData) continue
             if (email.statementTransaction.currency !== slip.statementTransaction.currency) continue
             const amountDiff = Math.abs(Math.abs(email.statementTransaction.amount) - Math.abs(slip.statementTransaction.amount))
             if (amountDiff > 0.01) continue
@@ -233,7 +239,53 @@ export async function aggregateQueueItems(
             }
           }
 
-          if (bestEmailMatch) {
+          // 3-way case: the best match is a pre-merged email+statement item
+          if (bestEmailMatch && bestEmailMatch.item.source === 'merged') {
+            const mergedParsed = parseImportId(bestEmailMatch.item.id)
+            if (mergedParsed?.type === 'merged') {
+              const emailId = mergedParsed.emailId
+              const stmtId = mergedParsed.statementId
+              const stmtIndex = mergedParsed.index
+              const mergedId = makeMergedSlipEmailStmtId(slipId, emailId, stmtId, stmtIndex)
+              const emailMeta: EmailMetadata = bestEmailMatch.item.emailMetadata ?? {}
+
+              pairedItemIds.add(slip.id)
+              pairedItemIds.add(bestEmailMatch.item.id)
+
+              mergedSlipItems.push({
+                id: mergedId,
+                statementUploadId: bestEmailMatch.item.statementUploadId,
+                statementFilename: bestEmailMatch.item.statementFilename,
+                paymentMethod: bestEmailMatch.item.paymentMethod ?? slip.paymentMethod,
+                paymentMethodType: bestEmailMatch.item.paymentMethodType,
+                statementTransaction: bestEmailMatch.item.statementTransaction,
+                matchedTransaction: bestEmailMatch.item.matchedTransaction ?? slip.matchedTransaction,
+                confidence: 97,
+                confidenceLevel: 'high',
+                reasons: [
+                  `Three-way match: payment slip + email receipt + bank statement`,
+                  `Same amount: ${slip.statementTransaction.amount} ${slip.statementTransaction.currency}`,
+                ],
+                isNew: !bestEmailMatch.item.matchedTransaction && !slip.matchedTransaction,
+                status: 'pending',
+                source: 'merged',
+                emailMetadata: emailMeta,
+                paymentSlipMetadata: slipMeta,
+                mergedEmailData: bestEmailMatch.item.mergedEmailData,
+                mergedPaymentSlipData: {
+                  date: slip.statementTransaction.date,
+                  description: slip.statementTransaction.description,
+                  amount: slip.statementTransaction.amount,
+                  currency: slip.statementTransaction.currency,
+                  metadata: slipMeta ?? {},
+                },
+                crossCurrencyInfo: bestEmailMatch.item.crossCurrencyInfo,
+              })
+              continue
+            }
+          }
+
+          if (bestEmailMatch && bestEmailMatch.item.source === 'email') {
             const emailId = bestEmailMatch.item.id.replace(/^email:/, '')
             const mergedId = makeMergedSlipEmailId(slipId, emailId)
             const emailMeta: EmailMetadata = bestEmailMatch.item.emailMetadata ?? {}

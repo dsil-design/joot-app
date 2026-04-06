@@ -136,6 +136,12 @@ export async function POST(request: NextRequest) {
         // Decompose: reject both the slip and the statement suggestion
         paymentSlipIds.push(parsed.slipId)
         statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
+      } else if (parsed.type === 'merged_slip_email_stmt') {
+        // Decompose: reject the slip, email, and the statement suggestion
+        paymentSlipIds.push(parsed.slipId)
+        emailItemIds.push(parsed.emailId)
+        statementIds.push({ id, statementId: parsed.statementId, index: parsed.index, fromMerged: true })
+        mergedStatementKeys.add(`${parsed.statementId}:${parsed.index}`)
       } else if (parsed.type === 'statement') {
         statementIds.push({ id, statementId: parsed.statementId, index: parsed.index })
       } else if (parsed.type === 'payment_slip') {

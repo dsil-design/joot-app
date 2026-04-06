@@ -127,12 +127,13 @@ function getSourceLink(id: string): string | null {
   if (parsed.type === "payment_slip") return `/imports/payment-slips/${parsed.slipId}`
   if (parsed.type === "merged_slip_email") return `/imports/payment-slips/${parsed.slipId}`
   if (parsed.type === "merged_slip_stmt") return `/imports/payment-slips/${parsed.slipId}`
+  if (parsed.type === "merged_slip_email_stmt") return `/imports/payment-slips/${parsed.slipId}`
   return null
 }
 
 function getMergedEmailLink(id: string): string | null {
   const parsed = parseImportId(id)
-  if (parsed?.type === "merged") return `/imports/emails/${parsed.emailId}`
+  if (parsed?.type === "merged" || parsed?.type === "merged_slip_email_stmt") return `/imports/emails/${parsed.emailId}`
   return null
 }
 
@@ -149,7 +150,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
   const parsed = React.useMemo(() => parseImportId(data.id), [data.id])
 
   const openStatementPreview = React.useCallback(() => {
-    if (parsed && (parsed.type === "statement" || parsed.type === "merged")) {
+    if (parsed && (parsed.type === "statement" || parsed.type === "merged" || parsed.type === "merged_slip_stmt" || parsed.type === "merged_slip_email_stmt")) {
       setPreviewModal({
         type: "statement",
         statementId: parsed.statementId,
@@ -159,13 +160,13 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
   }, [parsed, data.statementTransaction.sourceFilename])
 
   const openEmailPreview = React.useCallback(() => {
-    if (parsed && (parsed.type === "email" || parsed.type === "merged")) {
+    if (parsed && (parsed.type === "email" || parsed.type === "merged" || parsed.type === "merged_slip_email" || parsed.type === "merged_slip_email_stmt")) {
       setPreviewModal({ type: "email", emailId: parsed.emailId })
     }
   }, [parsed])
 
   const openSlipPreview = React.useCallback(() => {
-    if (parsed && (parsed.type === "payment_slip" || parsed.type === "merged_slip_email" || parsed.type === "merged_slip_stmt")) {
+    if (parsed && (parsed.type === "payment_slip" || parsed.type === "merged_slip_email" || parsed.type === "merged_slip_stmt" || parsed.type === "merged_slip_email_stmt")) {
       setPreviewModal({
         type: "payment_slip",
         slipId: parsed.slipId,
@@ -180,10 +181,42 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
     const meta = data.mergedEmailData.metadata
     const parserTag = getParserTag(meta.fromAddress, meta.parserKey)
 
+    const slipData = data.mergedPaymentSlipData
     return (
       <div className="space-y-4">
+        {/* Payment slip section (only present for 3-way slip+email+stmt groupings) */}
+        {slipData && (
+          <div className="space-y-2">
+            <SourceSectionLabel
+              label="From Payment Slip"
+              href={getSourceLink(data.id)}
+              onPreview={openSlipPreview}
+            />
+            <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+              <span>{formatMatchDate(slipData.date)}</span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+              <span className="font-medium truncate" title={slipData.description}>
+                {slipData.description}
+              </span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+              <span className="font-medium">
+                {formatMatchAmount(slipData.amount, slipData.currency)}
+              </span>
+            </TransactionDetailRow>
+            {slipData.metadata.senderName && (
+              <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+                <span className="text-muted-foreground truncate">
+                  {slipData.metadata.senderName}
+                </span>
+              </TransactionDetailRow>
+            )}
+          </div>
+        )}
+
         {/* Email section */}
-        <div className="space-y-2">
+        <div className={cn("space-y-2", slipData && "border-t pt-3")}>
           <SourceSectionLabel
             label="From Email"
             href={getMergedEmailLink(data.id)}
