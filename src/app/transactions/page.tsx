@@ -462,27 +462,27 @@ function TransactionsTable({
                       </Button>
                     </div>
                   </TableCell>
-                  <TableCell className="capitalize">
+                  <TableCell className="capitalize whitespace-nowrap">
                     {transaction.transaction_type}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {formatDate(transaction.transaction_date)}
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate">
+                  <TableCell className="max-w-[240px] whitespace-nowrap overflow-hidden text-ellipsis" title={transaction.description || undefined}>
                     {transaction.description || "No description"}
                   </TableCell>
-                  <TableCell className="max-w-[150px] truncate">
+                  <TableCell className="max-w-[160px] whitespace-nowrap overflow-hidden text-ellipsis" title={transaction.vendor?.name || undefined}>
                     {transaction.vendor?.name || "Unknown"}
                   </TableCell>
-                  <TableCell className="max-w-[150px] truncate">
+                  <TableCell className="max-w-[160px] whitespace-nowrap overflow-hidden text-ellipsis" title={transaction.payment_method?.name || undefined}>
                     {transaction.payment_method?.name || "Unknown"}
                   </TableCell>
                   <TableCell className="font-medium whitespace-nowrap">
                     {formatAmount(transaction)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {(transaction as any).source_email_transaction_id || (transaction as any).source_statement_upload_id || (transaction as any).source_payment_slip_id ? (
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-nowrap gap-1">
                         {(transaction as any).source_email_transaction_id && (
                           <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs">
                             Email
@@ -513,9 +513,12 @@ function TransactionsTable({
                       </TableCell>
                     </>
                   )}
-                  <TableCell>
+                  <TableCell className="max-w-[200px]">
                     {transaction.tags && transaction.tags.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
+                      <div
+                        className="flex flex-nowrap gap-1 overflow-hidden"
+                        title={transaction.tags.map(t => t.name).join(", ")}
+                      >
                         {transaction.tags.map((tag) => (
                           <Badge
                             key={tag.id}
@@ -524,7 +527,7 @@ function TransactionsTable({
                               backgroundColor: tag.color,
                               color: '#18181b',
                             }}
-                            className="text-xs"
+                            className="text-xs whitespace-nowrap shrink-0"
                           >
                             {tag.name}
                           </Badge>
