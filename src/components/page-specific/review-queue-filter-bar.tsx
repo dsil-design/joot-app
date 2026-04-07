@@ -17,6 +17,11 @@ import { Search, X, SlidersHorizontal } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 import { getMonthRange, isCurrentMonthRange } from "@/lib/utils/date-filters"
 
+// The review queue is, by definition, a "pending work" surface — items leave
+// the queue once they're approved or rejected. The status field is retained on
+// the filter object so downstream consumers (e.g. /review/page.tsx) can keep
+// passing it through, but it's hardwired to "pending" and no longer surfaced
+// in the UI.
 export type FilterStatus = "all" | "pending" | "approved" | "rejected"
 export type FilterCurrency = "all" | "USD" | "THB"
 export type FilterConfidence = "all" | "high" | "medium" | "low"
@@ -52,13 +57,6 @@ export interface ReviewQueueFilterBarProps {
   className?: string
 }
 
-const statusOptions: Array<{ value: FilterStatus; label: string }> = [
-  { value: "all", label: "All Statuses" },
-  { value: "pending", label: "Pending Review" },
-  { value: "approved", label: "Approved" },
-  { value: "rejected", label: "Rejected" },
-]
-
 const currencyOptions: Array<{ value: FilterCurrency; label: string }> = [
   { value: "all", label: "All Currencies" },
   { value: "USD", label: "USD" },
@@ -89,11 +87,6 @@ const sourceButtons: Array<{ value: FilterSource; label: string }> = [
 
 function parseUrlParams(searchParams: URLSearchParams): Partial<ReviewQueueFilters> {
   const filters: Partial<ReviewQueueFilters> = {}
-
-  const status = searchParams.get("status")
-  if (status && ["all", "pending", "approved", "rejected"].includes(status)) {
-    filters.status = status as FilterStatus
-  }
 
   const currency = searchParams.get("currency")
   if (currency && ["all", "USD", "THB"].includes(currency)) {
@@ -136,7 +129,6 @@ function parseUrlParams(searchParams: URLSearchParams): Partial<ReviewQueueFilte
 function filtersToUrlParams(filters: ReviewQueueFilters): URLSearchParams {
   const params = new URLSearchParams()
 
-  if (filters.status !== "all") params.set("status", filters.status)
   if (filters.currency !== "all") params.set("currency", filters.currency)
   if (filters.confidence !== "all") params.set("confidence", filters.confidence)
   if (filters.source !== "all") params.set("source", filters.source)
@@ -163,7 +155,6 @@ function filtersToUrlParams(filters: ReviewQueueFilters): URLSearchParams {
 
 function hasActiveFilters(filters: ReviewQueueFilters): boolean {
   return (
-    filters.status !== "all" ||
     filters.currency !== "all" ||
     filters.confidence !== "all" ||
     filters.source !== "all" ||
@@ -305,10 +296,8 @@ export function ReviewQueueFilterBar({
     (filters.paymentMethodType !== undefined && filters.paymentMethodType !== "all" ? 1 : 0) +
     (filters.source === "merged" ? 1 : 0)
 
-  // Show "Reset" only when something has been changed away from the defaults
-  // (status="pending" is the default, so it should not count).
+  // Show "Reset" only when something has been changed away from the defaults.
   const showReset =
-    filters.status !== defaultFilters.status ||
     filters.currency !== "all" ||
     filters.confidence !== "all" ||
     filters.source !== "all" ||
@@ -361,23 +350,6 @@ export function ReviewQueueFilterBar({
             </button>
           ))}
         </div>
-
-        {/* Status select — promoted from secondary row */}
-        <Select
-          value={filters.status}
-          onValueChange={(value) => handleFilterChange("status", value as FilterStatus)}
-        >
-          <SelectTrigger className="w-full sm:w-[160px] h-10 shrink-0">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {statusOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
 
         {/* Spacer pushes actions to the right on desktop */}
         <div className="hidden sm:block sm:flex-1" />

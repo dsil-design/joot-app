@@ -135,33 +135,33 @@ export function MonthStepperFilter({
   return (
     <div className={cn("flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3", className)}>
       <div className="flex items-center gap-1 rounded-lg border bg-background h-10 px-1 sm:w-[260px] shrink-0">
-        <button
-          type="button"
-          onClick={handlePrev}
-          className={cn(
-            "flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors shrink-0",
-            !isMonthMode && "opacity-40"
-          )}
-          aria-label="Previous month"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
+        {isMonthMode && (
+          <button
+            type="button"
+            onClick={handlePrev}
+            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors shrink-0"
+            aria-label="Previous month"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
         <div className="flex-1 min-w-[140px] text-center text-sm font-medium px-2 truncate">
           {label}
         </div>
-        <button
-          type="button"
-          onClick={handleNext}
-          disabled={nextDisabled}
-          className={cn(
-            "flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors shrink-0",
-            (!isMonthMode || !canStepForward) && "opacity-40",
-            nextDisabled && "cursor-not-allowed hover:bg-transparent"
-          )}
-          aria-label="Next month"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        {isMonthMode && (
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={nextDisabled}
+            className={cn(
+              "flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors shrink-0",
+              !canStepForward && "opacity-40 cursor-not-allowed hover:bg-transparent"
+            )}
+            aria-label="Next month"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
         {!isMonthMode && (
           <button
             type="button"
