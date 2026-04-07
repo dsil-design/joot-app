@@ -15,6 +15,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { createServiceRoleClient } from '../supabase/server';
+import { formatLocalDate } from '../utils/date-helpers';
 import { emailSyncService } from '../services/email-sync-service';
 import {
   EMAIL_TRANSACTION_STATUS,
@@ -615,7 +616,7 @@ export class EmailExtractionService {
             transactionData.vendor_id = extraction.data.vendor_id || null;
             transactionData.amount = extraction.data.amount;
             transactionData.currency = extraction.data.currency;
-            transactionData.transaction_date = extraction.data.transaction_date.toISOString().split('T')[0];
+            transactionData.transaction_date = formatLocalDate(extraction.data.transaction_date);
             transactionData.description = extraction.data.description || null;
             transactionData.order_id = extraction.data.order_id || null;
             transactionData.payment_card_last_four = extraction.data.payment_card_last_four || null;
@@ -888,7 +889,7 @@ export class EmailExtractionService {
       updateData.vendor_id = extraction.data.vendor_id || null;
       updateData.amount = extraction.data.amount;
       updateData.currency = extraction.data.currency;
-      updateData.transaction_date = extraction.data.transaction_date.toISOString().split('T')[0];
+      updateData.transaction_date = formatLocalDate(extraction.data.transaction_date);
       updateData.description = extraction.data.description || null;
       updateData.order_id = extraction.data.order_id || null;
       updateData.payment_card_last_four = extraction.data.payment_card_last_four || null;

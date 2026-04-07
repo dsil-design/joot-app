@@ -8,6 +8,7 @@ import { consolidateEmail } from '@/lib/email/email-consolidation';
 import { aiClassificationToCoarse } from '@/lib/types/email-imports';
 import type { AiClassification } from '@/lib/types/email-imports';
 import type { RawEmailData, EmailTransactionData } from '@/lib/email/types';
+import { formatLocalDate } from '@/lib/utils/date-helpers';
 
 /**
  * POST /api/emails/[id]/extract
@@ -193,7 +194,7 @@ export async function POST(
       transactionData.vendor_id = extraction.data.vendor_id || null;
       transactionData.amount = extraction.data.amount;
       transactionData.currency = extraction.data.currency;
-      transactionData.transaction_date = extraction.data.transaction_date.toISOString().split('T')[0];
+      transactionData.transaction_date = formatLocalDate(extraction.data.transaction_date);
       transactionData.description = extraction.data.description || null;
       transactionData.order_id = extraction.data.order_id || null;
       transactionData.payment_card_last_four = extraction.data.payment_card_last_four || null;

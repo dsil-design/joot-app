@@ -24,6 +24,7 @@ import {
   Calendar,
   Zap,
 } from "lucide-react"
+import { formatLocalDate } from "@/lib/utils/date-helpers"
 import { useVendorSearch } from "@/hooks/use-vendor-search"
 import { usePaymentMethodOptions, useTagOptions } from "@/hooks"
 import { toast } from "sonner"
@@ -484,7 +485,7 @@ export function CreateFromImportDialog({
           description: description.trim(),
           amount: parseFloat(amount),
           currency: data.currency,
-          date: date.toISOString().split("T")[0],
+          date: formatLocalDate(date),
           vendorId: vendor || undefined,
           paymentMethodId: paymentMethod || undefined,
           tagIds: tags.length > 0 ? tags : undefined,

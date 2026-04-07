@@ -13,6 +13,20 @@ export interface BusinessDayOptions {
   holidays?: string[]; // Array of YYYY-MM-DD holiday dates to exclude
 }
 
+/**
+ * Format a Date as YYYY-MM-DD using its LOCAL calendar components.
+ *
+ * `.toISOString().split('T')[0]` converts to UTC first, which shifts the date
+ * back by one day for timezones east of UTC (e.g. Asia/Bangkok). Use this
+ * helper whenever persisting a user-intended calendar day to a `date` column.
+ */
+export function formatLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export const dateHelpers = {
   /**
    * Generate business days between two dates (excluding weekends)

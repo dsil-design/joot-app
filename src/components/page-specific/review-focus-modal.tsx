@@ -37,6 +37,7 @@ import {
 import { cleanStatementDescription } from "@/lib/utils/statement-description"
 import { getParserTag } from "@/lib/utils/parser-tags"
 import { parseImportId } from "@/lib/utils/import-id"
+import { formatLocalDate } from "@/lib/utils/date-helpers"
 import { PARSER_PAYMENT_METHOD_MAP } from "@/lib/proposals/payment-method-mapper"
 import { getConfidenceLevel } from "@/components/ui/confidence-indicator"
 import Link from "next/link"
@@ -1044,7 +1045,7 @@ export function ReviewFocusModal({
           description: description.trim(),
           amount: parseFloat(amount),
           currency: item.statementTransaction.currency,
-          date: date.toISOString().split("T")[0],
+          date: formatLocalDate(date),
           vendorId: vendor || undefined,
           paymentMethodId: paymentMethod || undefined,
           tagIds: tags.length > 0 ? tags : undefined,
