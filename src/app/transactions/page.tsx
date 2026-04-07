@@ -70,9 +70,8 @@ import { toast } from "sonner"
 import { PageHeader } from "@/components/page-specific/page-header"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { createClient } from "@/lib/supabase/client"
-import { QuickFilterBar } from "@/components/page-specific/quick-filter-bar"
+import { TransactionsFilterBar } from "@/components/page-specific/transactions-filter-bar"
 import { ActiveFilterChips } from "@/components/page-specific/active-filter-chips"
-import { AdvancedFiltersPanel } from "@/components/page-specific/advanced-filters-panel"
 import { getPresetRange, type DatePresetKey } from "@/lib/utils/date-filters"
 
 type ViewMode = "recorded" | "all-usd" | "all-thb"
@@ -931,7 +930,6 @@ export default function AllTransactionsPage() {
     }
   }, [isLoading, allTransactions.length])
 
-  const [showAdvancedFilters, setShowAdvancedFilters] = React.useState(false)
   const [showCustomDateRange, setShowCustomDateRange] = React.useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false)
@@ -1112,20 +1110,6 @@ export default function AllTransactionsPage() {
     }
   }
 
-  // Quick filter handlers
-  const handlePresetChange = (preset: DatePresetKey) => {
-    const range = getPresetRange(preset)
-    setFilters({
-      ...filters,
-      dateRange: range,
-      datePreset: preset,
-    })
-  }
-
-  const handleTransactionTypeChange = (type: TransactionType) => {
-    setFilters({ ...filters, transactionType: type })
-  }
-
   const handleRemoveDateRange = () => {
     setFilters({
       ...filters,
@@ -1177,11 +1161,6 @@ export default function AllTransactionsPage() {
       amountMax: undefined,
       amountCurrency: undefined,
     })
-    setShowAdvancedFilters(false)
-  }
-
-  const handleApplyAdvancedFilters = (newFilters: Partial<TransactionFilters>) => {
-    setFilters({ ...filters, ...newFilters })
   }
 
   const handleCustomRangeClick = () => {
@@ -1557,14 +1536,12 @@ export default function AllTransactionsPage() {
         }
       />
 
-        {/* Quick Filter Bar - Always visible */}
-        <QuickFilterBar
-          activePreset={filters.datePreset || null}
-          activeTransactionType={filters.transactionType}
-          onPresetChange={handlePresetChange}
-          onTransactionTypeChange={handleTransactionTypeChange}
-          onMoreFiltersClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-          onCustomRangeClick={handleCustomRangeClick}
+        {/* Filter Bar — Row A (date) / Row B (search + type + actions) / Row C (expanded overflow) */}
+        <TransactionsFilterBar
+          filters={filters}
+          onFiltersChange={setFilters}
+          vendors={allVendors}
+          paymentMethods={allPaymentMethods}
         />
 
         {/* Active Filter Chips - Shows when filters are active */}
@@ -1594,17 +1571,7 @@ export default function AllTransactionsPage() {
           resultCount={allTransactions.length}
         />
 
-        {/* Advanced Filters Panel - Modal/Bottom Sheet */}
-        <AdvancedFiltersPanel
-          isOpen={showAdvancedFilters}
-          onClose={() => setShowAdvancedFilters(false)}
-          filters={filters}
-          onApplyFilters={handleApplyAdvancedFilters}
-          vendors={allVendors}
-          paymentMethods={allPaymentMethods}
-        />
-
-        {/* Custom Date Range Modal */}
+        {/* Custom Date Range Modal — still used from ActiveFilterChips date-range click */}
         <Dialog
           open={showCustomDateRange}
           onOpenChange={setShowCustomDateRange}

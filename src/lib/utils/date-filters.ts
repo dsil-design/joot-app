@@ -112,6 +112,35 @@ export function getPresetRange(preset: DatePresetKey): DateRange | undefined {
   return presetFn ? presetFn() : undefined
 }
 
+/**
+ * Returns a full calendar-month range anchored at the given date (defaults to today).
+ * Used by the month-stepper filter for review-queue and payment-slips pages.
+ */
+export function getMonthRange(anchor: Date = new Date()): DateRange {
+  return { from: startOfMonth(anchor), to: endOfMonth(anchor) }
+}
+
+/**
+ * If the range corresponds exactly to a full calendar month, returns the
+ * anchor (start-of-month Date). Otherwise returns null.
+ */
+export function detectMonthAnchor(range: DateRange | undefined): Date | null {
+  if (!range?.from || !range?.to) return null
+  const anchor = startOfMonth(range.from)
+  const expectedEnd = endOfMonth(anchor)
+  if (isSameDay(range.from, anchor) && isSameDay(range.to, expectedEnd)) {
+    return anchor
+  }
+  return null
+}
+
+/** True if the range is the current calendar month. */
+export function isCurrentMonthRange(range: DateRange | undefined): boolean {
+  const anchor = detectMonthAnchor(range)
+  if (!anchor) return false
+  return isSameMonth(anchor, new Date())
+}
+
 export function formatDateRangeChip(range: DateRange | undefined): string {
   if (!range?.from) return 'All Time'
 

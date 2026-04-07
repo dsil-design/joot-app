@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import type { DateRange } from "react-day-picker"
-import { getPresetRange } from "@/lib/utils/date-filters"
+import { getMonthRange } from "@/lib/utils/date-filters"
 
 /**
  * Email hub filter types
@@ -48,7 +48,7 @@ export const defaultEmailHubFilters: EmailHubFilters = {
   currency: "all",
   confidence: "all",
   search: "",
-  dateRange: getPresetRange("this-month"),
+  dateRange: getMonthRange(),
   sort: "email_date_desc",
 }
 

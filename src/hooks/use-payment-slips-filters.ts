@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import type { DateRange } from "react-day-picker"
+import { getMonthRange, isCurrentMonthRange } from "@/lib/utils/date-filters"
 
 /**
  * Payment slips filter types
@@ -124,13 +125,16 @@ export function filtersToUrlParams(filters: PaymentSlipFilters): URLSearchParams
   if (filters.sortOrder !== defaultPaymentSlipFilters.sortOrder) {
     params.set("sortOrder", filters.sortOrder)
   }
-  if (filters.dateRange?.from) {
-    const d = filters.dateRange.from
-    params.set("from", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
-  }
-  if (filters.dateRange?.to) {
-    const d = filters.dateRange.to
-    params.set("to", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
+  // Skip serializing the current calendar month — it's the default view.
+  if (filters.dateRange && !isCurrentMonthRange(filters.dateRange)) {
+    if (filters.dateRange.from) {
+      const d = filters.dateRange.from
+      params.set("from", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
+    }
+    if (filters.dateRange.to) {
+      const d = filters.dateRange.to
+      params.set("to", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
+    }
   }
 
   return params
@@ -143,7 +147,7 @@ export function hasActiveFilters(filters: PaymentSlipFilters): boolean {
     filters.slipState !== "all" ||
     filters.bank !== "all" ||
     filters.confidence !== "all" ||
-    filters.dateRange !== undefined ||
+    (filters.dateRange !== undefined && !isCurrentMonthRange(filters.dateRange)) ||
     filters.sortField !== defaultPaymentSlipFilters.sortField ||
     filters.sortOrder !== defaultPaymentSlipFilters.sortOrder
   )
@@ -159,7 +163,9 @@ export function usePaymentSlipFilters(): [
 
   const [filters, setFiltersState] = React.useState<PaymentSlipFilters>(() => {
     const urlFilters = searchParams ? parseUrlParams(searchParams) : {}
-    return { ...defaultPaymentSlipFilters, ...urlFilters }
+    // Default to the current calendar month when no date range is in the URL.
+    const dateRange = urlFilters.dateRange ?? getMonthRange()
+    return { ...defaultPaymentSlipFilters, ...urlFilters, dateRange }
   })
 
   React.useEffect(() => {

@@ -11,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DateRangePickerTrigger } from "@/components/ui/date-range-dialog"
-import { Search, X, Filter, Play, ArrowUpDown } from "lucide-react"
+import { MonthStepperFilter } from "@/components/ui/month-stepper-filter"
+import { Search, X, Filter, Play, ArrowUpDown, SlidersHorizontal } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 import {
   type EmailHubFilters,
@@ -20,16 +20,9 @@ import {
   type EmailHubClassification,
   type EmailHubCurrency,
   type EmailHubConfidence,
-  type EmailHubSort,
   defaultEmailHubFilters,
   hasActiveFilters,
 } from "@/hooks/use-email-hub-filters"
-import {
-  type DatePresetKey,
-  PRESET_LABELS,
-  getPresetRange,
-  detectPreset,
-} from "@/lib/utils/date-filters"
 
 interface EmailHubFilterBarProps {
   filters: EmailHubFilters
@@ -74,22 +67,6 @@ const confidenceOptions: Array<{ value: EmailHubConfidence; label: string }> = [
   { value: "low", label: "Low (<55%)" },
 ]
 
-const sortOptions: Array<{ value: EmailHubSort; label: string }> = [
-  { value: "email_date_desc", label: "Newest First" },
-  { value: "email_date_asc", label: "Oldest First" },
-  { value: "amount_desc", label: "Highest Amount" },
-  { value: "confidence_desc", label: "Highest Confidence" },
-]
-
-const DATE_PRESET_TOGGLES: Array<{ value: DatePresetKey; label: string }> = [
-  { value: "all-time", label: PRESET_LABELS["all-time"] },
-  { value: "this-month", label: PRESET_LABELS["this-month"] },
-  { value: "last-month", label: PRESET_LABELS["last-month"] },
-  { value: "last-30-days", label: PRESET_LABELS["last-30-days"] },
-  { value: "this-year", label: PRESET_LABELS["this-year"] },
-  { value: "last-year", label: PRESET_LABELS["last-year"] },
-]
-
 /** Check if two filter objects differ (excluding dateRange which uses deep compare) */
 function filtersChanged(a: EmailHubFilters, b: EmailHubFilters): boolean {
   return (
@@ -113,6 +90,11 @@ export function EmailHubFilterBar({
 }: EmailHubFilterBarProps) {
   // Draft state — changes don't take effect until Apply
   const [draft, setDraft] = React.useState<EmailHubFilters>(filters)
+  const [showMoreFilters, setShowMoreFilters] = React.useState(
+    () =>
+      filters.confidence !== "all" ||
+      filters.currency !== "all"
+  )
 
   // Sync draft when filters change externally (e.g. stat card click)
   React.useEffect(() => {
@@ -146,14 +128,26 @@ export function EmailHubFilterBar({
     filters.search !== "",
   ].filter(Boolean).length
 
-  const activePreset = detectPreset(draft.dateRange)
+  const secondaryFilterCount =
+    (draft.confidence !== "all" ? 1 : 0) +
+    (draft.currency !== "all" ? 1 : 0)
 
   return (
-    <div className={cn("space-y-4", className)} onKeyDown={handleKeyDown}>
-      {/* Main filters row */}
+    <div className={cn("space-y-3", className)} onKeyDown={handleKeyDown}>
+      {/* Row A — date navigation */}
+      <div className="pb-3 border-b">
+        <MonthStepperFilter
+          dateRange={draft.dateRange}
+          onDateRangeChange={(range: DateRange | undefined) =>
+            setDraft({ ...draft, dateRange: range })
+          }
+        />
+      </div>
+
+      {/* Row B — search, status, classification, actions */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
         {/* Search */}
-        <div className="relative flex-1 min-w-0 sm:min-w-[200px] max-w-sm">
+        <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
@@ -171,7 +165,7 @@ export function EmailHubFilterBar({
                 setDraft({ ...draft, search: value })
               }
             }}
-            className="pl-9"
+            className="pl-9 h-10"
           />
         </div>
 
@@ -180,7 +174,7 @@ export function EmailHubFilterBar({
           value={draft.status}
           onValueChange={(value) => setDraft({ ...draft, status: value as EmailHubStatus })}
         >
-          <SelectTrigger className="w-full sm:w-[160px]">
+          <SelectTrigger className="w-full sm:w-[180px] h-10 shrink-0">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -195,7 +189,7 @@ export function EmailHubFilterBar({
           value={draft.classification}
           onValueChange={(value) => setDraft({ ...draft, classification: value as EmailHubClassification })}
         >
-          <SelectTrigger className="w-full sm:w-[170px]">
+          <SelectTrigger className="w-full sm:w-[180px] h-10 shrink-0">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -205,72 +199,93 @@ export function EmailHubFilterBar({
           </SelectContent>
         </Select>
 
+        {/* Spacer pushes actions to the right on desktop */}
+        <div className="hidden sm:block sm:flex-1" />
 
-        {/* Confidence */}
-        <Select
-          value={draft.confidence}
-          onValueChange={(value) => setDraft({ ...draft, confidence: value as EmailHubConfidence })}
+        {/* More Filters toggle */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowMoreFilters(!showMoreFilters)}
+          className={cn("h-10 shrink-0", secondaryFilterCount > 0 && "border-amber-300")}
         >
-          <SelectTrigger className="w-full sm:w-[160px]">
-            <SelectValue placeholder="Confidence" />
-          </SelectTrigger>
-          <SelectContent>
-            {confidenceOptions.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-
-      </div>
-
-      {/* Date section */}
-      <div className="border-t pt-4 flex items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
-        {DATE_PRESET_TOGGLES.map((preset) => (
-          <Button
-            key={preset.value}
-            variant={activePreset === preset.value ? "default" : "outline"}
-            size="sm"
-            className="shrink-0"
-            onClick={() => {
-              const range = getPresetRange(preset.value)
-              setDraft({ ...draft, dateRange: range })
-            }}
-          >
-            {preset.label}
-          </Button>
-        ))}
-        <DateRangePickerTrigger
-          dateRange={draft.dateRange}
-          onDateRangeChange={(range: DateRange | undefined) => setDraft({ ...draft, dateRange: range })}
-          placeholder="Custom range..."
-        />
-      </div>
-
-      {/* Actions row */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div className="flex items-center gap-3">
-          <Button
-            size="sm"
-            onClick={handleApply}
-            disabled={!isDirty}
-          >
-            <Play className="h-3.5 w-3.5 mr-1.5" />
-            Apply
-          </Button>
-
-          {hasActiveFilters(filters) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClearAll}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4 mr-1" />
-              Clear All
-            </Button>
+          <SlidersHorizontal className="h-4 w-4 mr-1" />
+          More Filters
+          {secondaryFilterCount > 0 && (
+            <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-semibold">
+              {secondaryFilterCount}
+            </span>
           )}
+        </Button>
+
+        {hasActiveFilters(filters) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearAll}
+            className="h-10 shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Reset
+          </Button>
+        )}
+      </div>
+
+      {/* Row C — expanded secondary filters */}
+      {showMoreFilters && (
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t">
+          <Select
+            value={draft.confidence}
+            onValueChange={(value) => setDraft({ ...draft, confidence: value as EmailHubConfidence })}
+          >
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="Confidence" />
+            </SelectTrigger>
+            <SelectContent>
+              {confidenceOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={draft.currency}
+            onValueChange={(value) => setDraft({ ...draft, currency: value as EmailHubCurrency })}
+          >
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="Currency" />
+            </SelectTrigger>
+            <SelectContent>
+              {currencyOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="hidden sm:block h-6 w-px bg-border" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onSortToggle}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <ArrowUpDown className="h-4 w-4 mr-1.5" />
+            {filters.sort === "email_date_asc" ? "Oldest First" : "Newest First"}
+          </Button>
         </div>
+      )}
+
+      {/* Row D — Apply / status readout */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+        <Button
+          size="sm"
+          onClick={handleApply}
+          disabled={!isDirty}
+        >
+          <Play className="h-3.5 w-3.5 mr-1.5" />
+          Apply
+        </Button>
 
         {activeFilterCount > 0 && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -281,16 +296,6 @@ export function EmailHubFilterBar({
             </span>
           </div>
         )}
-
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onSortToggle}
-          className="sm:ml-auto text-muted-foreground hover:text-foreground"
-        >
-          <ArrowUpDown className="h-4 w-4 mr-1.5" />
-          {filters.sort === "email_date_asc" ? "Oldest First" : "Newest First"}
-        </Button>
       </div>
     </div>
   )

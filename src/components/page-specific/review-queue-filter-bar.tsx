@@ -12,9 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DateRangePickerTrigger } from "@/components/ui/date-range-dialog"
-import { Search, X, SlidersHorizontal, Mail, FileText, GitMerge, Receipt } from "lucide-react"
+import { MonthStepperFilter } from "@/components/ui/month-stepper-filter"
+import { Search, X, SlidersHorizontal } from "lucide-react"
 import type { DateRange } from "react-day-picker"
+import { getMonthRange, isCurrentMonthRange } from "@/lib/utils/date-filters"
 
 export type FilterStatus = "all" | "pending" | "approved" | "rejected"
 export type FilterCurrency = "all" | "USD" | "THB"
@@ -77,12 +78,13 @@ const paymentMethodTypeOptions: Array<{ value: FilterPaymentMethodType; label: s
   { value: "bank_account", label: "Bank Account" },
 ]
 
-const sourceButtons: Array<{ value: FilterSource; label: string; icon?: React.ReactNode }> = [
+// Primary source filter — mutually exclusive. "Cross-Source" lives in the
+// expanded panel as a separate toggle since it's a niche power-user filter.
+const sourceButtons: Array<{ value: FilterSource; label: string }> = [
   { value: "all", label: "All" },
-  { value: "email", label: "Email", icon: <Mail className="h-3 w-3" /> },
-  { value: "statement", label: "Statement", icon: <FileText className="h-3 w-3" /> },
-  { value: "payment_slip", label: "Slip", icon: <Receipt className="h-3 w-3" /> },
-  { value: "merged", label: "Cross-Source", icon: <GitMerge className="h-3 w-3" /> },
+  { value: "email", label: "Email" },
+  { value: "statement", label: "Statement" },
+  { value: "payment_slip", label: "Slip" },
 ]
 
 function parseUrlParams(searchParams: URLSearchParams): Partial<ReviewQueueFilters> {
@@ -139,13 +141,17 @@ function filtersToUrlParams(filters: ReviewQueueFilters): URLSearchParams {
   if (filters.confidence !== "all") params.set("confidence", filters.confidence)
   if (filters.source !== "all") params.set("source", filters.source)
   if (filters.search) params.set("search", filters.search)
-  if (filters.dateRange?.from) {
-    const d = filters.dateRange.from
-    params.set("from", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
-  }
-  if (filters.dateRange?.to) {
-    const d = filters.dateRange.to
-    params.set("to", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
+  // Skip serializing the date range when it equals the current calendar month —
+  // that's the default view, so we keep the URL clean.
+  if (filters.dateRange && !isCurrentMonthRange(filters.dateRange)) {
+    if (filters.dateRange.from) {
+      const d = filters.dateRange.from
+      params.set("from", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
+    }
+    if (filters.dateRange.to) {
+      const d = filters.dateRange.to
+      params.set("to", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
+    }
   }
   if (filters.statementUploadId) params.set("statementUploadId", filters.statementUploadId)
   if (filters.paymentMethodType && filters.paymentMethodType !== "all") {
@@ -162,7 +168,7 @@ function hasActiveFilters(filters: ReviewQueueFilters): boolean {
     filters.confidence !== "all" ||
     filters.source !== "all" ||
     filters.search !== "" ||
-    filters.dateRange !== undefined ||
+    (filters.dateRange !== undefined && !isCurrentMonthRange(filters.dateRange)) ||
     filters.statementUploadId !== "" ||
     (filters.paymentMethodType !== undefined && filters.paymentMethodType !== "all")
   )
@@ -248,15 +254,17 @@ export function ReviewQueueFilterBar({
     if (syncWithUrl && searchParams) {
       const urlFilters = parseUrlParams(searchParams)
       if (Object.keys(urlFilters).length > 0) {
-        onFiltersChange({ ...defaultFilters, ...urlFilters })
+        const dateRange = urlFilters.dateRange ?? getMonthRange()
+        onFiltersChange({ ...defaultFilters, ...urlFilters, dateRange })
         if (urlFilters.search) setSearchInput(urlFilters.search)
         // Auto-expand secondary row if secondary filters are active
+        // (Status is in the primary row, so it's not counted here.)
         if (
-          urlFilters.status !== undefined ||
           urlFilters.currency !== undefined ||
           urlFilters.confidence !== undefined ||
           urlFilters.paymentMethodType !== undefined ||
-          urlFilters.statementUploadId !== undefined
+          urlFilters.statementUploadId !== undefined ||
+          urlFilters.source === "merged"
         ) {
           setShowMoreFilters(true)
         }
@@ -285,109 +293,129 @@ export function ReviewQueueFilterBar({
 
   const handleClearAll = () => {
     setSearchInput("")
-    onFiltersChange(defaultFilters)
+    onFiltersChange({ ...defaultFilters, dateRange: getMonthRange() })
   }
 
-  const hasActiveSecondary =
-    filters.status !== "all" ||
+  // Secondary filters that live in the expanded "More Filters" panel.
+  // Note: Status is now promoted to the primary row, so it's NOT counted here.
+  const secondaryFilterCount =
+    (filters.currency !== "all" ? 1 : 0) +
+    (filters.confidence !== "all" ? 1 : 0) +
+    (filters.statementUploadId !== "" ? 1 : 0) +
+    (filters.paymentMethodType !== undefined && filters.paymentMethodType !== "all" ? 1 : 0) +
+    (filters.source === "merged" ? 1 : 0)
+
+  // Show "Reset" only when something has been changed away from the defaults
+  // (status="pending" is the default, so it should not count).
+  const showReset =
+    filters.status !== defaultFilters.status ||
     filters.currency !== "all" ||
     filters.confidence !== "all" ||
+    filters.source !== "all" ||
+    filters.search !== "" ||
+    (filters.dateRange !== undefined && !isCurrentMonthRange(filters.dateRange)) ||
     filters.statementUploadId !== "" ||
     (filters.paymentMethodType !== undefined && filters.paymentMethodType !== "all")
 
+  const isCrossSourceOnly = filters.source === "merged"
+
   return (
     <div className={cn("space-y-3", className)}>
-      {/* Primary row: Search + Source buttons + Date range */}
+      {/* Row A — date navigation */}
+      <div className="pb-3 border-b">
+        <MonthStepperFilter
+          dateRange={filters.dateRange}
+          onDateRangeChange={(range: DateRange | undefined) => handleFilterChange("dateRange", range)}
+        />
+      </div>
+
+      {/* Row B — search, source, status, actions */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
         {/* Search input */}
-        <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
+        <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Search vendor, amount..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-10"
           />
         </div>
 
-        {/* Source button group */}
-        <div className="flex items-center rounded-lg border bg-muted/30 p-0.5 overflow-x-auto">
+        {/* Source segmented control */}
+        <div className="flex items-center rounded-lg border bg-muted/30 p-0.5 h-10 overflow-x-auto shrink-0">
           {sourceButtons.map((btn) => (
             <button
               key={btn.value}
+              type="button"
               onClick={() => handleFilterChange("source", btn.value)}
               className={cn(
-                "flex items-center gap-1 px-3 py-2.5 sm:py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
+                "px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
                 filters.source === btn.value
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {btn.icon}
               {btn.label}
             </button>
           ))}
         </div>
 
-        {/* Date range picker */}
-        <DateRangePickerTrigger
-          dateRange={filters.dateRange}
-          onDateRangeChange={(range: DateRange | undefined) => handleFilterChange("dateRange", range)}
-        />
+        {/* Status select — promoted from secondary row */}
+        <Select
+          value={filters.status}
+          onValueChange={(value) => handleFilterChange("status", value as FilterStatus)}
+        >
+          <SelectTrigger className="w-full sm:w-[160px] h-10 shrink-0">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {statusOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Spacer pushes actions to the right on desktop */}
+        <div className="hidden sm:block sm:flex-1" />
 
         {/* More Filters toggle */}
         <Button
           variant="outline"
           size="sm"
           onClick={() => setShowMoreFilters(!showMoreFilters)}
-          className={cn(
-            "relative",
-            hasActiveSecondary && "border-amber-300"
-          )}
+          className={cn("h-10 shrink-0", secondaryFilterCount > 0 && "border-amber-300")}
         >
           <SlidersHorizontal className="h-4 w-4 mr-1" />
           More Filters
-          {hasActiveSecondary && (
-            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-500" />
+          {secondaryFilterCount > 0 && (
+            <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-semibold">
+              {secondaryFilterCount}
+            </span>
           )}
         </Button>
 
-        {/* Clear all button */}
-        {hasActiveFilters(filters) && (
+        {/* Reset button */}
+        {showReset && (
           <Button
             variant="ghost"
             size="sm"
             onClick={handleClearAll}
-            className="text-muted-foreground hover:text-foreground"
+            className="h-10 shrink-0 text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4 mr-1" />
-            Clear All
+            Reset
           </Button>
         )}
       </div>
 
-      {/* Secondary row */}
+      {/* Row C — expanded filters */}
       {showMoreFilters && (
-        <div className="flex flex-wrap items-center gap-3 pl-1">
-          {/* Status filter */}
-          <Select
-            value={filters.status}
-            onValueChange={(value) => handleFilterChange("status", value as FilterStatus)}
-          >
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              {statusOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Currency filter */}
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t">
+          {/* Group 1: data shape */}
           <Select
             value={filters.currency}
             onValueChange={(value) => handleFilterChange("currency", value as FilterCurrency)}
@@ -404,7 +432,28 @@ export function ReviewQueueFilterBar({
             </SelectContent>
           </Select>
 
-          {/* Confidence filter */}
+          <Select
+            value={filters.paymentMethodType || "all"}
+            onValueChange={(value) =>
+              handleFilterChange("paymentMethodType", value as FilterPaymentMethodType)
+            }
+          >
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="Payment Type" />
+            </SelectTrigger>
+            <SelectContent>
+              {paymentMethodTypeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Divider between filter groups */}
+          <div className="hidden sm:block h-6 w-px bg-border" />
+
+          {/* Group 2: review quality */}
           <Select
             value={filters.confidence}
             onValueChange={(value) => handleFilterChange("confidence", value as FilterConfidence)}
@@ -421,7 +470,6 @@ export function ReviewQueueFilterBar({
             </SelectContent>
           </Select>
 
-          {/* Statement filter */}
           {statementOptions.length > 0 && (
             <Select
               value={filters.statementUploadId || "all"}
@@ -443,24 +491,21 @@ export function ReviewQueueFilterBar({
             </Select>
           )}
 
-          {/* Payment method type filter */}
-          <Select
-            value={filters.paymentMethodType || "all"}
-            onValueChange={(value) =>
-              handleFilterChange("paymentMethodType", value as FilterPaymentMethodType)
+          {/* Cross-source toggle — niche power-user filter */}
+          <button
+            type="button"
+            onClick={() =>
+              handleFilterChange("source", isCrossSourceOnly ? "all" : "merged")
             }
+            className={cn(
+              "h-9 px-3 rounded-md border text-xs font-medium transition-colors",
+              isCrossSourceOnly
+                ? "border-foreground/40 bg-foreground/5 text-foreground"
+                : "border-border bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
           >
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="Payment Type" />
-            </SelectTrigger>
-            <SelectContent>
-              {paymentMethodTypeOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            Cross-source only
+          </button>
         </div>
       )}
     </div>
@@ -474,7 +519,9 @@ export function useReviewQueueFilters(
 
   const [filters, setFilters] = React.useState<ReviewQueueFilters>(() => {
     const urlFilters = searchParams ? parseUrlParams(searchParams) : {}
-    return { ...defaultFilters, ...initialFilters, ...urlFilters }
+    // Default to the current calendar month when no date range is in the URL.
+    const dateRange = urlFilters.dateRange ?? initialFilters.dateRange ?? getMonthRange()
+    return { ...defaultFilters, ...initialFilters, ...urlFilters, dateRange }
   })
 
   return [filters, setFilters]
