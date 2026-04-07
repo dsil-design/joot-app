@@ -303,7 +303,7 @@ export default function ViewTransactionPage() {
   const searchParams = useSearchParams()
   const id = params?.id as string
   const source = searchParams?.get('from') as 'home' | 'transactions' | null
-  const { navigateBack, isPending } = useTransactionFlow()
+  const { navigateBack, navigateToEditTransaction, isPending } = useTransactionFlow()
   const { getTransactionById, deleteTransaction } = useTransactions()
 
   const [transaction, setTransaction] = React.useState<TransactionWithVendorAndPayment | null>(null)
@@ -441,8 +441,7 @@ export default function ViewTransactionPage() {
 
   const handleEditClick = () => {
     if (transaction) {
-      const url = `/transactions/${transaction.id}/edit${source ? `?from=${source}` : ''}`
-      window.location.href = url // Use direct navigation to preserve source
+      navigateToEditTransaction(transaction.id, source || undefined)
     }
   }
 

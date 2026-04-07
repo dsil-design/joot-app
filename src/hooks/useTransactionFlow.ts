@@ -32,16 +32,38 @@ export function useTransactionFlow() {
     })
   }
   
-  const navigateToEditTransaction = (id: string) => {
+  const navigateToEditTransaction = (id: string, source?: 'home' | 'transactions') => {
+    // Mark that we entered edit from within the app, so that on save/cancel
+    // we can pop the edit entry off history instead of leaving it behind.
+    // This keeps the browser back button pointing to the page the user was
+    // on *before* the view page, skipping the edit round-trip entirely.
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('joot:editEntryFromApp', id)
+    }
     startTransition(() => {
-      router.push(`/transactions/${id}/edit`)
+      const url = `/transactions/${id}/edit${source ? `?from=${source}` : ''}`
+      router.push(url)
     })
   }
-  
+
   const navigateToViewTransactionFromEdit = (id: string, source?: 'home' | 'transactions') => {
+    const cameFromApp =
+      typeof window !== 'undefined' &&
+      window.sessionStorage.getItem('joot:editEntryFromApp') === id
+    if (cameFromApp) {
+      window.sessionStorage.removeItem('joot:editEntryFromApp')
+    }
     startTransition(() => {
-      const url = `/transactions/${id}${source ? `?from=${source}` : ''}`
-      router.replace(url) // Use replace instead of push to avoid adding to history
+      if (cameFromApp) {
+        // Pop the edit entry off history so back goes to the page the user
+        // was on before opening the transaction, not back to this same view.
+        router.back()
+        router.refresh()
+      } else {
+        // Deep link / hard refresh into /edit — no view entry to return to.
+        const url = `/transactions/${id}${source ? `?from=${source}` : ''}`
+        router.replace(url)
+      }
     })
   }
   

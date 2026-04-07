@@ -141,7 +141,7 @@ export default function EditTransactionPage() {
     paymentMethod: transaction.payment_method_id || undefined,
     tags: transaction.tags?.map(tag => tag.id) || [],
     description: transaction.description || "",
-    amount: String(transaction.amount),
+    amount: Number(transaction.amount).toFixed(2),
     transactionDate: parseISO(transaction.transaction_date)
   }
 
