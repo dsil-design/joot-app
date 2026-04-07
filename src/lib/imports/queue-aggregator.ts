@@ -251,6 +251,12 @@ export async function aggregateQueueItems(
           amount: item.statementTransaction.amount,
           currency: item.statementTransaction.currency,
           description: item.statementTransaction.description,
+          // If the parser captured the original foreign amount (e.g. Chase
+          // shows the THB/VND value next to a USD-settled charge), pass it
+          // through so the cross-source pairer can do a same-currency direct
+          // match against an email in that currency.
+          foreignAmount: item.statementTransaction.foreignAmount,
+          foreignCurrency: item.statementTransaction.foreignCurrency,
         }
       }
     })
@@ -287,10 +293,15 @@ export async function aggregateQueueItems(
         // Inherit matched transaction from either source (prefer statement)
         const inheritedMatch = stmtItem?.matchedTransaction ?? emailItem?.matchedTransaction
         const hasDbMatch = !!inheritedMatch
-        const crossSourceReasons = [
-          `Cross-source match: email (${pair.emailCandidate.currency}) + statement (${pair.statementCandidate.currency})`,
-          `Amount diff: ${pair.percentDiff.toFixed(1)}% after conversion`,
-        ]
+        const crossSourceReasons = pair.usedForeignAmountSignal
+          ? [
+              `Cross-source match: email (${pair.emailCandidate.currency}) ↔ statement original ${pair.statementCandidate.foreignCurrency} (${pair.statementCandidate.currency} settlement)`,
+              `Direct match against statement's printed foreign amount — diff ${pair.percentDiff.toFixed(2)}% (no FX lookup)`,
+            ]
+          : [
+              `Cross-source match: email (${pair.emailCandidate.currency}) + statement (${pair.statementCandidate.currency})`,
+              `Amount diff: ${pair.percentDiff.toFixed(1)}% after conversion`,
+            ]
         // If a DB transaction match exists, include the original match reasons
         if (hasDbMatch && stmtItem?.reasons?.length) {
           crossSourceReasons.push(...stmtItem.reasons)
@@ -308,9 +319,17 @@ export async function aggregateQueueItems(
             amount: pair.statementCandidate.amount,
             currency: pair.statementCandidate.currency,
             sourceFilename: stmtItem?.statementTransaction.sourceFilename ?? '',
+            foreignAmount: pair.statementCandidate.foreignAmount,
+            foreignCurrency: pair.statementCandidate.foreignCurrency,
+            foreignExchangeRate: stmtItem?.statementTransaction.foreignExchangeRate,
           },
           matchedTransaction: inheritedMatch,
-          confidence: hasDbMatch ? Math.max(stmtItem?.confidence ?? 0, 95) : 95,
+          // Foreign-amount-sourced matches are exact-match strength (the rate
+          // came straight from Visa, not our exchange_rates approximation), so
+          // promote them above the 95-cap used for FX-converted matches.
+          confidence: pair.usedForeignAmountSignal
+            ? (hasDbMatch ? Math.max(stmtItem?.confidence ?? 0, 99) : 99)
+            : (hasDbMatch ? Math.max(stmtItem?.confidence ?? 0, 95) : 95),
           confidenceLevel: 'high',
           reasons: crossSourceReasons,
           isNew: !hasDbMatch,

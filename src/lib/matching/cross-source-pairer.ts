@@ -25,6 +25,17 @@ export interface PairCandidate {
   description: string
   /** For email candidates: statement-suggestion composite keys (`${statementId}:${index}`) this email has been rejected from pairing with */
   rejectedPairKeys?: string[]
+  /**
+   * For statement candidates only: the original foreign-currency amount the
+   * merchant billed, when the statement settled in a different currency.
+   * Currently populated by the Chase parser, which prints the original
+   * THB/VND amount + Visa exchange rate next to each foreign charge.
+   * When present, the cross-source pairer treats `foreignAmount` in
+   * `foreignCurrency` as a same-currency direct-match signal against email
+   * candidates in that currency — much stronger than FX-converting the email.
+   */
+  foreignAmount?: number
+  foreignCurrency?: string
 }
 
 /**
@@ -37,6 +48,14 @@ export interface PairResult {
   rate: number
   rateDate: string
   percentDiff: number
+  /**
+   * True when the match was made by comparing the email amount directly
+   * against `statementCandidate.foreignAmount` (a parser-supplied original
+   * foreign-currency amount, e.g. from Chase). This is a stronger signal than
+   * an FX-converted match because the rate is the issuing network's actual
+   * rate at settlement, not a separately-sourced approximation.
+   */
+  usedForeignAmountSignal?: boolean
 }
 
 /**
@@ -146,6 +165,7 @@ export async function findCrossSourcePairs(
       rate: number
       rateDate: string
       percentDiff: number
+      usedForeignSignal: boolean
     } | null = null
 
     const rejectedKeys = email.rejectedPairKeys && email.rejectedPairKeys.length > 0
@@ -163,6 +183,7 @@ export async function findCrossSourcePairs(
       }
       const from = email.currency.toUpperCase()
       const to = stmt.currency.toUpperCase()
+      const stmtForeignCurrency = stmt.foreignCurrency?.toUpperCase()
 
       // Check date proximity
       const daysDiff = calculateDaysDiff(email.date, stmt.date)
@@ -171,6 +192,10 @@ export async function findCrossSourcePairs(
       let convertedAmount: number
       let rate: number
       let rateDate: string
+      // Track whether this match used the parser-supplied foreign amount
+      // (a much stronger signal than FX-converting through exchange_rates).
+      let usedForeignSignal = false
+      let comparisonStmtAmount = stmt.amount
 
       if (from === to) {
         // Same-currency: direct comparison, no exchange rate needed
@@ -181,8 +206,33 @@ export async function findCrossSourcePairs(
         const directPercentDiff = stmt.amount === 0 ? (email.amount === 0 ? 0 : 100)
           : (Math.abs(email.amount - stmt.amount) / Math.abs(stmt.amount)) * 100
         if (directPercentDiff > tolerance) continue
+      } else if (
+        stmt.foreignAmount !== undefined &&
+        stmtForeignCurrency === from
+      ) {
+        // The statement carries the original foreign-currency amount
+        // (e.g. Chase printed "1,250 THB X 0.032 EXCHG RATE" for this charge)
+        // and the email is in that same currency. Compare directly against
+        // the foreign amount instead of FX-converting through our own
+        // exchange_rates table — this avoids stale-rate noise and gives an
+        // exact-match signal sourced straight from Visa.
+        convertedAmount = email.amount
+        rate = stmt.foreignAmount === 0 ? 1 : stmt.amount / stmt.foreignAmount
+        rateDate = stmt.date
+        comparisonStmtAmount = stmt.foreignAmount
+        usedForeignSignal = true
+        const directPercentDiff =
+          stmt.foreignAmount === 0
+            ? email.amount === 0
+              ? 0
+              : 100
+            : (Math.abs(email.amount - stmt.foreignAmount) /
+                Math.abs(stmt.foreignAmount)) *
+              100
+        if (directPercentDiff > tolerance) continue
       } else {
-        // Cross-currency: look up pre-fetched rate
+        // Cross-currency fallback: look up pre-fetched rate from our own
+        // exchange_rates table and FX-convert the email.
         const cacheKey = `${from}:${to}:${email.date}`
         const cached = rateCache.get(cacheKey)
         if (!cached) continue
@@ -197,10 +247,29 @@ export async function findCrossSourcePairs(
         }
       }
 
-      const percentDiff = (Math.abs(convertedAmount - stmt.amount) / Math.abs(stmt.amount)) * 100
+      const percentDiff =
+        comparisonStmtAmount === 0
+          ? convertedAmount === 0
+            ? 0
+            : 100
+          : (Math.abs(convertedAmount - comparisonStmtAmount) /
+              Math.abs(comparisonStmtAmount)) *
+            100
 
-      // Pick tightest percentage diff
-      if (!bestMatch || percentDiff < bestMatch.percentDiff) {
+      // Bias selection toward foreign-amount-based matches when present:
+      // give them an effective tightness bonus so they win against a
+      // marginally-tighter FX-converted candidate. This reflects that the
+      // foreign-amount signal is more authoritative.
+      const _percentDiffForRanking = usedForeignSignal
+        ? percentDiff - 0.5
+        : percentDiff
+
+      // Pick tightest percentage diff (using ranking-adjusted value so that
+      // foreign-amount-sourced matches outrank marginally tighter FX matches).
+      const currentBestRanking = bestMatch
+        ? (bestMatch.usedForeignSignal ? bestMatch.percentDiff - 0.5 : bestMatch.percentDiff)
+        : Infinity
+      if (!bestMatch || _percentDiffForRanking < currentBestRanking) {
         bestMatch = {
           stmtIdx: si,
           stmt,
@@ -208,6 +277,7 @@ export async function findCrossSourcePairs(
           rate,
           rateDate,
           percentDiff,
+          usedForeignSignal,
         }
       }
     }
@@ -221,6 +291,7 @@ export async function findCrossSourcePairs(
         rate: bestMatch.rate,
         rateDate: bestMatch.rateDate,
         percentDiff: bestMatch.percentDiff,
+        usedForeignAmountSignal: bestMatch.usedForeignSignal,
       })
     }
   }

@@ -55,6 +55,16 @@ export interface QueueItem {
     amount: number
     currency: string
     sourceFilename: string
+    /**
+     * Optional foreign-currency reference info for transactions where the
+     * statement settlement currency differs from the currency the merchant
+     * actually billed in (e.g. a Chase USD charge that originated as a THB
+     * purchase). This is informational metadata — `amount`/`currency` above
+     * remain the settlement amount.
+     */
+    foreignAmount?: number
+    foreignCurrency?: string
+    foreignExchangeRate?: number
   }
   matchedTransaction?: {
     id: string
@@ -109,6 +119,16 @@ export interface Suggestion {
   reasons: string[]
   is_new: boolean
   status?: 'pending' | 'approved' | 'rejected'
+  /**
+   * Optional foreign-currency reference data extracted from the statement
+   * (e.g. Chase shows the original THB/VND amount + Visa rate). This is
+   * informational; `amount`/`currency` above are still the settlement values.
+   */
+  foreign_transaction?: {
+    originalAmount: number
+    originalCurrency: string
+    exchangeRate?: number
+  }
 }
 
 export interface QueueFilters {

@@ -539,6 +539,10 @@ export class StatementProcessor {
         confidence: s.confidence,
         reasons: s.reasons,
         is_new: s.isNew,
+        // Preserve Chase-style foreign currency reference info (e.g. the
+        // original THB/VND amount + Visa exchange rate) so the review queue
+        // and downstream cross-source matcher can use it.
+        foreign_transaction: s.statementTransaction.foreignTransaction,
       })),
       // Include progress log in the extraction data
       log: this.log,

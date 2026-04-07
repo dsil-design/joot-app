@@ -241,6 +241,11 @@ export async function POST(request: NextRequest) {
             }
 
             if (createTransactions && suggestion.amount && suggestion.transaction_date) {
+              // If the parser captured the original foreign-currency amount
+              // (e.g. Chase shows the original THB/VND value + Visa rate),
+              // persist it as informational reference data alongside the
+              // settlement amount.
+              const ft = (suggestion as { foreign_transaction?: { originalAmount: number; originalCurrency: string; exchangeRate?: number } }).foreign_transaction
               const { data: newStmtTx, error: insertError } = await serviceClient
                 .from('transactions')
                 .insert({
@@ -253,6 +258,9 @@ export async function POST(request: NextRequest) {
                   source_statement_upload_id: statement.id,
                   source_statement_suggestion_index: idx,
                   source_statement_match_confidence: suggestion.confidence ?? null,
+                  reference_amount: ft?.originalAmount,
+                  reference_currency: ft?.originalCurrency,
+                  reference_exchange_rate: ft?.exchangeRate,
                 })
                 .select('id')
                 .single()
@@ -502,7 +510,9 @@ export async function POST(request: NextRequest) {
               results.errors.push(`Failed to link existing transaction for merged ID ${merged.id}: ${fkError.message}`)
             }
           } else {
-            // Create ONE transaction from statement data
+            // Create ONE transaction from statement data. Carry through Chase
+            // foreign-currency reference info if present.
+            const ftMerged = (suggestion as { foreign_transaction?: { originalAmount: number; originalCurrency: string; exchangeRate?: number } }).foreign_transaction
             const { data: newTx, error: txError } = await serviceClient
               .from('transactions')
               .insert({
@@ -516,6 +526,9 @@ export async function POST(request: NextRequest) {
                 source_statement_upload_id: merged.statementId,
                 source_statement_suggestion_index: merged.index,
                 source_statement_match_confidence: suggestion.confidence ?? null,
+                reference_amount: ftMerged?.originalAmount,
+                reference_currency: ftMerged?.originalCurrency,
+                reference_exchange_rate: ftMerged?.exchangeRate,
               })
               .select('id')
               .single()

@@ -62,6 +62,15 @@ CREATE TABLE public.transactions (
   transfer_from_account TEXT,
   transfer_to_account TEXT,
 
+  -- Optional foreign-currency reference info (informational only).
+  -- For transactions where the settlement currency (amount/original_currency)
+  -- differs from the currency the merchant actually billed in, e.g. a Chase
+  -- USD charge that originated as THB or VND. Reporting/charts continue to
+  -- use amount + original_currency; these are display-only.
+  reference_amount NUMERIC,
+  reference_currency TEXT,
+  reference_exchange_rate NUMERIC,
+
   -- Constraints
   CONSTRAINT positive_amount CHECK (amount > 0)
 );

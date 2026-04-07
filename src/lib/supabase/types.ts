@@ -1767,6 +1767,9 @@ export type Database = {
           id: string
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id: string | null
+          reference_amount: number | null
+          reference_currency: string | null
+          reference_exchange_rate: number | null
           source_email_transaction_id: string | null
           source_payment_slip_id: string | null
           source_statement_match_confidence: number | null
@@ -1787,6 +1790,9 @@ export type Database = {
           id?: string
           original_currency: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
+          reference_amount?: number | null
+          reference_currency?: string | null
+          reference_exchange_rate?: number | null
           source_email_transaction_id?: string | null
           source_payment_slip_id?: string | null
           source_statement_match_confidence?: number | null
@@ -1807,6 +1813,9 @@ export type Database = {
           id?: string
           original_currency?: Database["public"]["Enums"]["currency_type"]
           payment_method_id?: string | null
+          reference_amount?: number | null
+          reference_currency?: string | null
+          reference_exchange_rate?: number | null
           source_email_transaction_id?: string | null
           source_payment_slip_id?: string | null
           source_statement_match_confidence?: number | null

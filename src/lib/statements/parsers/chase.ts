@@ -54,11 +54,53 @@ const TRANSACTION_PATTERN =
   /^(\d{1,2}\/\d{1,2})\s+(?:(\d{1,2}\/\d{1,2})\s+)?(.+?)\s+([-]?\$?[\d,]+\.\d{2})$/;
 
 // Foreign transaction patterns
-// Example: "FOREIGN TRANSACTION FEE on $36.35 purchase"
-// Example: "Foreign currency: 1,234.56 THB at exchange rate 0.02912"
+//
+// Chase prints foreign purchases as a 3-line block in extracted PDF text:
+//   <MM/DD>     <merchant description> <USD_amount>
+//   <MM/DD>    <CURRENCY_WORD>                      ← e.g. "BAHT", "DONG"
+//   <foreign_amount> X <rate> (EXCHG RATE)
+//
+// The currency word and the exchange-rate line are emitted on separate lines
+// after the merchant line. Domestic USD purchases also sometimes get an
+// `<amount> X 1.000000000 (EXCHG RATE)` line but with no preceding currency
+// word — those should be ignored.
 const FOREIGN_FEE_PATTERN = /foreign\s+transaction\s+fee\s+on\s+\$?([\d,]+\.\d{2})/i;
-const FOREIGN_CURRENCY_PATTERN =
-  /foreign\s+(?:currency|amount)[:\s]*([\d,]+\.\d{2})\s*([A-Z]{3})\s*(?:at\s+)?(?:exchange\s+)?rate[:\s]*([\d.]+)/i;
+
+// Matches the currency-name line that follows a foreign transaction line.
+// Captures the bare currency word (BAHT, DONG, etc). May be preceded by a
+// posting date (MM/DD) and surrounded by whitespace.
+const FOREIGN_CURRENCY_WORD_PATTERN =
+  /^(?:\d{1,2}\/\d{1,2}\s+)?([A-Z]{3,})\s*$/;
+
+// Matches the exchange-rate line, e.g. "5,643,000 X 0.000037997 (EXCHG RATE)"
+const FOREIGN_RATE_LINE_PATTERN =
+  /^([\d,]+(?:\.\d+)?)\s*X\s*([\d.]+)\s*\(EXCHG\s*RATE\)\s*$/i;
+
+// Map Chase currency words to ISO 4217 codes. Extend as new currencies are
+// encountered on real statements. Anything not in this map will fall back to
+// the raw Chase word (uppercased), so the data is still preserved even if it
+// hasn't been canonicalized yet.
+const CHASE_CURRENCY_WORD_TO_ISO: Record<string, string> = {
+  BAHT: 'THB',
+  DONG: 'VND',
+  YEN: 'JPY',
+  EURO: 'EUR',
+  EUROS: 'EUR',
+  POUND: 'GBP',
+  POUNDS: 'GBP',
+  PESO: 'MXN',
+  PESOS: 'MXN',
+  WON: 'KRW',
+  YUAN: 'CNY',
+  RUPEE: 'INR',
+  RUPEES: 'INR',
+  RUPIAH: 'IDR',
+  RINGGIT: 'MYR',
+  DOLLAR: 'USD',
+  DOLLARS: 'USD',
+  FRANC: 'CHF',
+  FRANCS: 'CHF',
+};
 
 // Amount patterns
 const AMOUNT_PATTERN = /[-]?\$?([\d,]+\.\d{2})/;
@@ -207,22 +249,85 @@ function determineTransactionType(
 }
 
 /**
- * Extract foreign transaction details from surrounding lines
+ * Extract foreign-transaction details from the lines that follow a Chase
+ * transaction line. Chase emits a 3-line block:
+ *
+ *   <txn line>                       (already matched by caller)
+ *   <posting MM/DD>  CURRENCY_WORD   ← currency name on its own line
+ *   <amount> X <rate> (EXCHG RATE)
+ *
+ * We scan up to 3 following non-blank lines so we can tolerate stray
+ * page-break artifacts in the extracted text. If we find an EXCHG-RATE line
+ * with rate ≈ 1.0 and no preceding currency word, it's a domestic charge that
+ * Chase decided to print rate info for — return undefined in that case.
  */
 function extractForeignDetails(
   lines: string[],
   currentIndex: number
 ): ParsedStatementTransaction['foreignTransaction'] | undefined {
-  // Look at the next few lines for foreign currency info
-  const searchLines = lines.slice(currentIndex + 1, currentIndex + 4).join(' ');
+  let currencyWord: string | undefined;
 
-  const currencyMatch = searchLines.match(FOREIGN_CURRENCY_PATTERN);
-  if (currencyMatch) {
-    return {
-      originalAmount: parseFloat(currencyMatch[1].replace(/,/g, '')),
-      originalCurrency: currencyMatch[2],
-      exchangeRate: parseFloat(currencyMatch[3]),
-    };
+  // Scan up to the next 3 non-empty lines for the currency word + rate line.
+  let scanned = 0;
+  for (let j = currentIndex + 1; j < lines.length && scanned < 3; j++) {
+    const line = lines[j].trim();
+    if (!line) continue;
+    scanned++;
+
+    // Currency word line (may include posting date prefix)
+    if (!currencyWord) {
+      const wordMatch = line.match(FOREIGN_CURRENCY_WORD_PATTERN);
+      if (wordMatch) {
+        const word = wordMatch[1].toUpperCase();
+        // Skip noise tokens that happen to match \w{3,} but aren't currencies.
+        // Heuristic: must be in our map OR be exactly 3-7 chars of uppercase
+        // letters and not one of the common section-header words.
+        const NOISE = new Set([
+          'THE',
+          'AND',
+          'FOR',
+          'YOUR',
+          'TOTAL',
+          'PURCHASE',
+          'PURCHASES',
+          'PAYMENTS',
+          'CREDITS',
+          'INTEREST',
+          'BALANCE',
+          'ACCOUNT',
+          'ACTIVITY',
+          'CONTINUED',
+        ]);
+        if (!NOISE.has(word)) {
+          currencyWord = word;
+          continue;
+        }
+      }
+    }
+
+    // Exchange rate line
+    const rateMatch = line.match(FOREIGN_RATE_LINE_PATTERN);
+    if (rateMatch) {
+      const originalAmount = parseFloat(rateMatch[1].replace(/,/g, ''));
+      const exchangeRate = parseFloat(rateMatch[2]);
+
+      if (isNaN(originalAmount) || isNaN(exchangeRate)) return undefined;
+
+      // Domestic-billed-in-USD: Chase still prints "<amount> X 1.0 (EXCHG RATE)"
+      // but with no currency word. Skip it — there's no foreign info to capture.
+      if (!currencyWord) return undefined;
+      if (Math.abs(exchangeRate - 1) < 1e-9 && currencyWord === 'USD') {
+        return undefined;
+      }
+
+      const iso = CHASE_CURRENCY_WORD_TO_ISO[currencyWord] || currencyWord;
+
+      return {
+        originalAmount,
+        originalCurrency: iso,
+        exchangeRate,
+      };
+    }
   }
 
   return undefined;
@@ -483,6 +588,12 @@ function parseTransactions(
 
             if (transaction.type === 'credit' || transaction.type === 'payment') {
               transaction.amount = -Math.abs(amount);
+            }
+
+            // Check for foreign transaction details on following lines
+            const foreignDetails = extractForeignDetails(lines, i);
+            if (foreignDetails) {
+              transaction.foreignTransaction = foreignDetails;
             }
 
             transaction.category = detectCategory(description);
