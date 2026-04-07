@@ -146,7 +146,10 @@ export async function aggregateQueueItems(
             !stmtItem.matchedTransaction &&
             !emailItem.matchedTransaction &&
             !slip.matchedTransaction,
-          status: 'pending',
+          status:
+            stmtItem.matchedTransaction ?? emailItem.matchedTransaction ?? slip.matchedTransaction
+              ? 'approved'
+              : 'pending',
           source: 'merged',
           emailMetadata: emailItem.emailMetadata ?? {},
           paymentSlipMetadata: slip.paymentSlipMetadata,
@@ -885,7 +888,7 @@ function buildManualEmailStmtMerged(emailItem: QueueItem, stmtItem: QueueItem): 
     confidenceLevel: 'high',
     reasons: ['Manually attached: email + bank statement'],
     isNew: !inheritedMatch,
-    status: 'pending',
+    status: inheritedMatch ? 'approved' : 'pending',
     source: 'merged',
     emailMetadata: emailMeta,
     mergedEmailData: {
@@ -917,7 +920,7 @@ function buildManualSlipEmailMerged(slipItem: QueueItem, emailItem: QueueItem): 
     confidenceLevel: 'high',
     reasons: ['Manually attached: payment slip + email receipt'],
     isNew: !inheritedMatch,
-    status: 'pending',
+    status: inheritedMatch ? 'approved' : 'pending',
     source: 'merged',
     emailMetadata: emailMeta,
     paymentSlipMetadata: slipItem.paymentSlipMetadata,
@@ -959,7 +962,7 @@ function buildManualSlipStmtMerged(slipItem: QueueItem, stmtItem: QueueItem): Qu
     confidenceLevel: 'high',
     reasons: ['Manually attached: payment slip + bank statement'],
     isNew: !inheritedMatch,
-    status: 'pending',
+    status: inheritedMatch ? 'approved' : 'pending',
     source: 'merged',
     paymentSlipMetadata: slipItem.paymentSlipMetadata,
     mergedPaymentSlipData: {
