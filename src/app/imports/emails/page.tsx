@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { LoadMoreTrigger } from "@/hooks/use-infinite-scroll"
 import { useEmailHubFilters, type EmailHubStatus } from "@/hooks/use-email-hub-filters"
 import { useEmailHubStats } from "@/hooks/use-email-hub-stats"
+import { useFilteredEmailStats } from "@/hooks/use-filtered-email-stats"
 import { useEmailTransactions, fetchAllFilteredIds } from "@/hooks/use-email-transactions"
 import { useEmailSync } from "@/hooks/use-email-sync"
 import { useEmailHubActions } from "@/hooks/use-email-hub-actions"
@@ -27,6 +28,7 @@ export default function EmailHubPage() {
 
   // Stats
   const { stats, isLoading: statsLoading, refetch: refetchStats } = useEmailHubStats()
+  const { stats: filteredStats, isLoading: filteredStatsLoading } = useFilteredEmailStats(filters)
 
   // Email sync & processing
   const { triggerSync, isSyncing } = useEmailSync()
@@ -215,11 +217,12 @@ export default function EmailHubPage() {
         </div>
       </div>
 
-      {/* Stats Bar (global totals, not affected by filters) */}
+      {/* Extraction pipeline banner (global progress) */}
       <EmailHubStatsBar
         stats={stats}
         isLoading={statsLoading}
         onFilterByStatus={handleFilterByStatus}
+        bannerOnly
       />
 
       {/* Filters Card */}
@@ -236,6 +239,15 @@ export default function EmailHubPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Stat cards — reflect the active search/filter results */}
+      <EmailHubStatsBar
+        stats={stats}
+        isLoading={filteredStatsLoading}
+        onFilterByStatus={handleFilterByStatus}
+        filteredCounts={filteredStats}
+        showBanner={false}
+      />
 
       {/* Batch Toolbar */}
       {selectedIds.size > 0 && (

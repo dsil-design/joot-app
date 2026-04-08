@@ -149,6 +149,80 @@ export async function GET(request: NextRequest) {
         break;
     }
 
+    // Stats mode: return counts grouped by status, applying all filters except `status`.
+    // This lets stat cards reflect the active search/date/etc filters while still
+    // acting as status sub-filters themselves.
+    if (fields === 'stats') {
+      const fullUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const partialUuidPattern = /^[0-9a-f]{8,}$/i;
+      const isFullUuid = !!search && fullUuidPattern.test(search);
+      const isPartialUuid = !!search && !isFullUuid && partialUuidPattern.test(search);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const applyBaseFilters = (q: any) => {
+        let query = q;
+        query = query.eq('user_id', user.id);
+        if (currency) query = query.eq('currency', currency.toUpperCase());
+        if (dateFrom) query = query.gte('effective_date', dateFrom);
+        if (dateTo) query = query.lte('effective_date', dateTo);
+        if (classification) query = query.eq('classification', classification);
+        if (confidence === 'high') query = query.gte('extraction_confidence', 90);
+        else if (confidence === 'medium') query = query.gte('extraction_confidence', 55).lt('extraction_confidence', 90);
+        else if (confidence === 'low') query = query.gt('extraction_confidence', 0).lt('extraction_confidence', 55);
+        if (aiClassification) query = query.eq('ai_classification', aiClassification);
+        if (aiSuggestedSkip === 'true') query = query.eq('ai_suggested_skip', true);
+        else if (aiSuggestedSkip === 'false') query = query.eq('ai_suggested_skip', false);
+        if (groupId) query = query.eq('email_group_id', groupId);
+        if (hasGroup === 'true') query = query.not('email_group_id', 'is', null);
+        else if (hasGroup === 'false') query = query.is('email_group_id', null);
+
+        if (isFullUuid) {
+          query = query.or(`id.eq.${search},email_transaction_id.eq.${search}`);
+        } else if (isPartialUuid) {
+          const lower = search!.padEnd(8, '0') + '-0000-0000-0000-000000000000';
+          const upper = search!.padEnd(8, 'f') + '-ffff-ffff-ffff-ffffffffffff';
+          query = query.or(`and(id.gte.${lower},id.lte.${upper}),and(email_transaction_id.gte.${lower},email_transaction_id.lte.${upper})`);
+        } else if (search) {
+          query = query.or(
+            `subject.ilike.%${search}%,description.ilike.%${search}%,vendor_name_raw.ilike.%${search}%,order_id.ilike.%${search}%,from_address.ilike.%${search}%,from_name.ilike.%${search}%`
+          );
+        }
+        return query;
+      };
+
+      const statusList = [
+        'unprocessed',
+        'pending_review',
+        'matched',
+        'waiting_for_statement',
+        'waiting_for_slip',
+        'imported',
+      ];
+
+      const makeCountQuery = (s?: string) => {
+        const base = supabase
+          .from('email_hub_unified')
+          .select('id', { count: 'exact', head: true });
+        const filtered = applyBaseFilters(base);
+        return s ? filtered.eq('status', s) : filtered;
+      };
+
+      const [totalRes, ...statusRes] = await Promise.all([
+        makeCountQuery(),
+        ...statusList.map((s) => makeCountQuery(s)),
+      ]);
+
+      const status_counts: Record<string, number> = {};
+      statusList.forEach((s, i) => {
+        status_counts[s] = statusRes[i].count || 0;
+      });
+
+      return NextResponse.json({
+        total: totalRes.count || 0,
+        status_counts,
+      });
+    }
+
     // Build query (uses email_hub_unified view which LEFT JOINs emails + email_transactions)
     const selectFields = fields === 'ids'
       ? 'id'
