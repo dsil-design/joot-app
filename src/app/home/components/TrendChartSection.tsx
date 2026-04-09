@@ -1,84 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
-import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
-import type { CurrencyType } from '@/lib/supabase/types'
 import { calculateTrendDataForPeriod } from '@/lib/utils/trend-data-helpers'
+import {
+  fetchExchangeRatesForTransactions,
+  applyUsdConversion,
+} from '@/lib/utils/convert-transactions-to-usd'
 import { TrendChartCard } from '@/components/ui/trend-chart-card'
-
-interface ExchangeRateCache {
-  [key: string]: number
-}
-
-/**
- * Fetch exchange rates for all non-USD currencies in the transactions
- * Server-side version that uses createClient from server
- */
-async function fetchExchangeRatesForTransactions(
-  transactions: Array<{ transaction_date: string; original_currency: string }>,
-  supabase: Awaited<ReturnType<typeof createClient>>
-): Promise<ExchangeRateCache> {
-  const rateCache: ExchangeRateCache = {}
-
-  // Find all unique currency-date combinations that need conversion
-  const conversionsNeeded = new Map<string, Set<string>>()
-
-  transactions.forEach(t => {
-    if (t.original_currency !== 'USD') {
-      if (!conversionsNeeded.has(t.original_currency)) {
-        conversionsNeeded.set(t.original_currency, new Set())
-      }
-      conversionsNeeded.get(t.original_currency)!.add(t.transaction_date)
-    }
-  })
-
-  // Fetch rates for each currency
-  for (const [currency, dates] of conversionsNeeded.entries()) {
-    const dateArray = Array.from(dates)
-
-    // Fetch all rates for this currency in one query
-    const { data: rates } = await supabase
-      .from('exchange_rates')
-      .select('date, rate')
-      .eq('from_currency', currency as CurrencyType)
-      .eq('to_currency', 'USD')
-      .in('date', dateArray)
-
-    // Store exact matches in cache
-    rates?.forEach(rate => {
-      const key = `${currency}_${rate.date}`
-      rateCache[key] = rate.rate
-    })
-
-    // For dates without exact matches, fetch the most recent rate
-    const missingDates = dateArray.filter(date => !rateCache[`${currency}_${date}`])
-
-    if (missingDates.length > 0) {
-      // Fetch the latest rate for this currency as fallback
-      const { data: fallbackRate } = await supabase
-        .from('exchange_rates')
-        .select('rate')
-        .eq('from_currency', currency as CurrencyType)
-        .eq('to_currency', 'USD')
-        .order('date', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (fallbackRate) {
-        missingDates.forEach(date => {
-          rateCache[`${currency}_${date}`] = fallbackRate.rate
-        })
-      }
-    }
-  }
-
-  return rateCache
-}
 
 interface TrendChartSectionProps {
   userId: string
-  exchangeRate: number
 }
 
-export async function TrendChartSection({ userId, exchangeRate }: TrendChartSectionProps) {
+export async function TrendChartSection({ userId }: TrendChartSectionProps) {
   const supabase = await createClient()
 
   // Helper function to fetch all transactions with automatic pagination
@@ -134,48 +66,17 @@ export async function TrendChartSection({ userId, exchangeRate }: TrendChartSect
     return null
   }
 
-  // Fetch exchange rates for all non-USD currencies
-  const exchangeRateCache = await fetchExchangeRatesForTransactions(transactions, supabase)
-
-  // Convert all transactions to USD for consistent calculations
-  const transactionsInUSD = transactions.map(t => {
-    if (t.original_currency === 'USD') {
-      // Already in USD, no conversion needed
-      return t
-    }
-
-    // Look up exchange rate in cache
-    const rateKey = `${t.original_currency}_${t.transaction_date}`
-    const rate = exchangeRateCache[rateKey]
-
-    if (rate) {
-      // Convert to USD
-      return {
-        ...t,
-        amount: t.amount * rate,
-        original_currency: 'USD' as const
-      }
-    }
-
-    // No rate found - log warning and exclude by setting amount to 0
-    console.warn(`No exchange rate found for ${t.original_currency} on ${t.transaction_date}`)
-    return {
-      ...t,
-      amount: 0,
-      original_currency: 'USD' as const
-    }
-  })
-
-  // Convert to the format expected by calculateTrendDataForPeriod
-  const transactionsForCalculation = transactionsInUSD as any[]
+  // Fetch exchange rates and convert all transactions to USD upfront
+  const rateCache = await fetchExchangeRatesForTransactions(transactions, supabase)
+  const transactionsForCalculation = applyUsdConversion(transactions, rateCache) as any[]
 
   // Calculate trend data for all time periods
-  const ytdData = calculateTrendDataForPeriod(transactionsForCalculation, 'ytd', exchangeRate)
-  const oneYearData = calculateTrendDataForPeriod(transactionsForCalculation, '1y', exchangeRate)
-  const twoYearData = calculateTrendDataForPeriod(transactionsForCalculation, '2y', exchangeRate)
-  const threeYearData = calculateTrendDataForPeriod(transactionsForCalculation, '3y', exchangeRate)
-  const fiveYearData = calculateTrendDataForPeriod(transactionsForCalculation, '5y', exchangeRate)
-  const allData = calculateTrendDataForPeriod(transactionsForCalculation, 'all', exchangeRate)
+  const ytdData = calculateTrendDataForPeriod(transactionsForCalculation, 'ytd')
+  const oneYearData = calculateTrendDataForPeriod(transactionsForCalculation, '1y')
+  const twoYearData = calculateTrendDataForPeriod(transactionsForCalculation, '2y')
+  const threeYearData = calculateTrendDataForPeriod(transactionsForCalculation, '3y')
+  const fiveYearData = calculateTrendDataForPeriod(transactionsForCalculation, '5y')
+  const allData = calculateTrendDataForPeriod(transactionsForCalculation, 'all')
 
   // Map data to match TrendDataPoint interface (month -> date)
   const mapToTrendDataPoints = (data: typeof ytdData) =>

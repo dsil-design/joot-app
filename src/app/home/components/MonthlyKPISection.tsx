@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
 import { calculateEnhancedMonthlySummary } from '@/lib/utils/monthly-summary'
+import { convertTransactionsToUSD } from '@/lib/utils/convert-transactions-to-usd'
 import { format } from 'date-fns'
 import { Card } from '@/components/ui/card'
 import { ComparisonMetric } from '@/components/ui/comparison-metric'
@@ -8,10 +9,9 @@ import { formatCurrency } from '@/lib/utils'
 
 interface MonthlyKPISectionProps {
   userId: string
-  exchangeRate: number
 }
 
-export async function MonthlyKPISection({ userId, exchangeRate }: MonthlyKPISectionProps) {
+export async function MonthlyKPISection({ userId }: MonthlyKPISectionProps) {
   const supabase = await createClient()
 
   // Fetch only current and previous month transactions for monthly KPIs
@@ -30,14 +30,16 @@ export async function MonthlyKPISection({ userId, exchangeRate }: MonthlyKPISect
     .order('transaction_date', { ascending: false })
 
   // Transform to match expected type (vendors -> vendor, payment_methods -> payment_method)
-  const transactions = (monthlyTransactions || []).map((tx: any) => ({
+  const rawTransactions = (monthlyTransactions || []).map((tx: any) => ({
     ...tx,
     vendor: tx.vendors,
     payment_method: tx.payment_methods
   })) as TransactionWithVendorAndPayment[]
 
+  const transactions = await convertTransactionsToUSD(rawTransactions, supabase)
+
   const monthlySummary = transactions.length > 0
-    ? calculateEnhancedMonthlySummary(transactions, today, exchangeRate)
+    ? calculateEnhancedMonthlySummary(transactions, today)
     : null
 
   const currentMonthName = format(today, 'MMMM yyyy')

@@ -35,24 +35,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const resolvedSearchParams = await searchParams
   const supabase = await createClient()
 
-  // Fetch auth and exchange rate in parallel — single source for all sections
-  const [{ data: { user } }, { data: latestExchangeRate }] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase
-      .from('exchange_rates')
-      .select('rate')
-      .eq('from_currency', 'USD')
-      .eq('to_currency', 'THB')
-      .order('date', { ascending: false })
-      .limit(1)
-      .single()
-  ])
+  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     redirect('/login')
   }
 
-  const exchangeRate = latestExchangeRate?.rate || 35
   const userId = user.id
 
   // Get user profile data (fast query)
@@ -99,14 +87,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 {/* Current Month KPIs - Priority 1 */}
                 <div className="lg:col-span-1 xl:col-span-3">
                   <Suspense fallback={<MonthlyKPISkeleton />}>
-                    <MonthlyKPISection userId={userId} exchangeRate={exchangeRate} />
+                    <MonthlyKPISection userId={userId} />
                   </Suspense>
                 </div>
 
                 {/* YTD KPIs - Priority 2 */}
                 <div className="lg:col-span-1 xl:col-span-3">
                   <Suspense fallback={<YTDKPISkeleton />}>
-                    <YTDKPISection userId={userId} exchangeRate={exchangeRate} />
+                    <YTDKPISection userId={userId} />
                   </Suspense>
                 </div>
               </div>
@@ -114,7 +102,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
             {/* Trend Chart - Priority 3 */}
             <Suspense fallback={<TrendChartSkeleton />}>
-              <TrendChartSection userId={userId} exchangeRate={exchangeRate} />
+              <TrendChartSection userId={userId} />
             </Suspense>
 
             {/* Bottom Widgets - Priority 4 */}
@@ -126,7 +114,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
               {/* Top Vendors */}
               <Suspense fallback={<TopVendorsSkeleton />}>
-                <TopVendorsSection userId={userId} exchangeRate={exchangeRate} />
+                <TopVendorsSection userId={userId} />
               </Suspense>
 
               {/* Recent Transactions */}

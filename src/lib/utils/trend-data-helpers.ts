@@ -5,15 +5,12 @@ import { format as formatDate, subYears, startOfYear, eachMonthOfInterval } from
 import type { TimePeriod } from '@/components/ui/time-period-toggle'
 
 /**
- * Calculate trend data for a specific time period
- * @param transactions - Array of all transactions
- * @param period - Time period to calculate ('all' | '5y' | '3y' | '2y' | '1y' | 'ytd')
- * @param exchangeRate - THB to USD exchange rate (defaults to 35)
+ * Calculate trend data for a specific time period.
+ * Transactions must already be in USD.
  */
 export function calculateTrendDataForPeriod(
   transactions: TransactionWithVendorAndPayment[],
-  period: TimePeriod = 'ytd',
-  exchangeRate: number = 35
+  period: TimePeriod = 'ytd'
 ): MonthlyTrendData[] {
   const today = new Date()
   let startDate: Date
@@ -56,7 +53,7 @@ export function calculateTrendDataForPeriod(
   const trendData: MonthlyTrendData[] = []
 
   for (const month of months) {
-    const summary = calculateMonthlySummary(transactions, month, exchangeRate)
+    const summary = calculateMonthlySummary(transactions, month)
 
     // Format month as "Jan '25" for shorter labels
     const monthLabel = formatDate(month, "MMM ''yy")
@@ -73,13 +70,11 @@ export function calculateTrendDataForPeriod(
 }
 
 /**
- * Get all available trend data (useful for initial data fetch)
- * @param transactions - Array of all transactions
- * @param exchangeRate - THB to USD exchange rate (defaults to 35)
+ * Get all available trend data (useful for initial data fetch).
+ * Transactions must already be in USD.
  */
 export function calculateAllTrendData(
-  transactions: TransactionWithVendorAndPayment[],
-  exchangeRate: number = 35
+  transactions: TransactionWithVendorAndPayment[]
 ): MonthlyTrendData[] {
-  return calculateTrendDataForPeriod(transactions, 'all', exchangeRate)
+  return calculateTrendDataForPeriod(transactions, 'all')
 }

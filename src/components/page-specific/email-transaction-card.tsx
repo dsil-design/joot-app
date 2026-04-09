@@ -5,8 +5,7 @@ import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Bot, ChevronDown, ChevronRight, Eye, RefreshCw, Send, SkipForward, Zap } from "lucide-react"
+import { Bot, ChevronDown, ChevronRight, Eye, RefreshCw, SkipForward, Zap } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { EmailViewerModal } from "./email-viewer-modal"
 import { getParserTag } from "@/lib/utils/parser-tags"
@@ -19,10 +18,8 @@ interface EmailTransactionCardProps {
   onToggleSelect: (selected: boolean) => void
   onProcess?: (emailId: string) => void
   onSkip?: (emailId: string) => void
-  onFeedbackReprocess?: (emailId: string, userHint: string) => void
   isProcessingExtraction?: boolean
   isSkipping?: boolean
-  isFeedbackProcessing?: boolean
   children?: React.ReactNode
 }
 
@@ -87,15 +84,11 @@ export function EmailTransactionCard({
   onToggleSelect,
   onProcess,
   onSkip,
-  onFeedbackReprocess,
   isProcessingExtraction,
   isSkipping,
-  isFeedbackProcessing,
   children,
 }: EmailTransactionCardProps) {
   const [viewerOpen, setViewerOpen] = React.useState(false)
-  const [feedbackOpen, setFeedbackOpen] = React.useState(false)
-  const [feedbackText, setFeedbackText] = React.useState("")
   const statusBadge = getStatusBadge(data.status)
   const parserTag = getParserTag(data.from_address)
   const vendorName = data.vendor_name_raw || data.from_name || "Unknown sender"
@@ -144,71 +137,6 @@ export function EmailTransactionCard({
               <Bot className="h-3 w-3 shrink-0" />
               <span className="truncate">{data.ai_reasoning}</span>
             </p>
-          )}
-          {data.is_processed && data.ai_classification && onFeedbackReprocess && (
-            <div className="mt-0.5 space-y-1">
-              {!feedbackOpen ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setFeedbackOpen(true)
-                  }}
-                  disabled={isFeedbackProcessing}
-                  className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
-                >
-                  {isFeedbackProcessing ? (
-                    <Bot className="h-3 w-3 mr-0.5 animate-spin" />
-                  ) : (
-                    <Bot className="h-3 w-3 mr-0.5" />
-                  )}
-                  {isFeedbackProcessing ? "Processing..." : "Message AI"}
-                </Button>
-              ) : (
-                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                  <Input
-                    value={feedbackText}
-                    onChange={(e) => setFeedbackText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && feedbackText.trim()) {
-                        onFeedbackReprocess(data.id, feedbackText.trim())
-                        setFeedbackOpen(false)
-                        setFeedbackText("")
-                      }
-                      if (e.key === "Escape") {
-                        setFeedbackOpen(false)
-                        setFeedbackText("")
-                      }
-                    }}
-                    placeholder="e.g. bank transfer for $50"
-                    className="h-9 text-sm sm:h-6 sm:text-xs flex-1"
-                    style={{ fontSize: '16px' }}
-                    autoFocus
-                    disabled={isFeedbackProcessing}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      if (feedbackText.trim()) {
-                        onFeedbackReprocess(data.id, feedbackText.trim())
-                        setFeedbackOpen(false)
-                        setFeedbackText("")
-                      }
-                    }}
-                    disabled={!feedbackText.trim() || isFeedbackProcessing}
-                    className="h-9 w-9 sm:h-6 sm:w-auto sm:px-1.5 p-0"
-                  >
-                    {isFeedbackProcessing ? (
-                      <Bot className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Send className="h-3 w-3" />
-                    )}
-                  </Button>
-                </div>
-              )}
-            </div>
           )}
         </div>
 

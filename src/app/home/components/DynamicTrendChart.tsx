@@ -65,9 +65,12 @@ export function DynamicTrendChart({ initialData, defaultPeriod = 'ytd' }: Dynami
     }
 
     if (allTransactions && allTransactions.length > 0) {
-      // Fetch exchange rate from initial data or use default
-      const exchangeRate = 35 // You might want to pass this as a prop
-      return calculateTrendDataForPeriod(allTransactions, selectedPeriod, exchangeRate)
+      // Transactions must be pre-converted to USD before calling this.
+      // This client-side branch currently does not pre-convert, so non-USD
+      // transactions will be excluded. DynamicTrendChart is not used on the
+      // home page (TrendChartSection is); if re-enabled, add conversion via
+      // convert-transactions-to-usd here.
+      return calculateTrendDataForPeriod(allTransactions, selectedPeriod)
     }
 
     return initialData

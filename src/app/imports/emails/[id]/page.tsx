@@ -27,11 +27,23 @@ export default function EmailDetailPage({
   const [isReopening, setIsReopening] = React.useState(false)
 
   // Actions
-  const { processEmail, isProcessing, isExtracting } = useEmailHubActions({
+  const { processEmail, processWithFeedback, isProcessing, isExtracting, isFeedbackProcessing } = useEmailHubActions({
     onItemUpdate: (_id, data) => {
       setEmailTx((prev) => prev ? { ...prev, ...data } as EmailTransactionRow : prev)
     },
   })
+
+  const handleFeedbackReprocess = (emailId: string, userHint: string) => {
+    if (!emailTx) return
+    processWithFeedback(emailId, {
+      emailTransactionId: emailTx.id,
+      originalClassification: emailTx.ai_classification,
+      originalSkip: emailTx.ai_suggested_skip,
+      subject: emailTx.subject,
+      fromAddress: emailTx.from_address,
+      userHint,
+    })
+  }
 
   // Resolve params
   React.useEffect(() => {
@@ -135,10 +147,12 @@ export default function EmailDetailPage({
             onProcess={(emailId) => processEmail(emailId)}
             onDelete={() => setDeleteConfirmOpen(true)}
             onReopen={handleReopen}
+            onFeedbackReprocess={handleFeedbackReprocess}
             isProcessing={isProcessing(emailTx.id)}
             isProcessingExtraction={isExtracting(emailTx.id)}
             isDeleting={isDeleting}
             isReopening={isReopening}
+            isFeedbackProcessing={isFeedbackProcessing(emailTx.id)}
           />
           <DeleteConfirmationDialog
             open={deleteConfirmOpen}

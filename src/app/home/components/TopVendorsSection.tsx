@@ -1,15 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
 import { calculateTopVendors } from '@/lib/utils/monthly-summary'
+import { convertTransactionsToUSD } from '@/lib/utils/convert-transactions-to-usd'
 import { Card } from '@/components/ui/card'
 import { TopVendorsWidget } from '@/components/ui/top-vendors-widget'
 
 interface TopVendorsSectionProps {
   userId: string
-  exchangeRate: number
 }
 
-export async function TopVendorsSection({ userId, exchangeRate }: TopVendorsSectionProps) {
+export async function TopVendorsSection({ userId }: TopVendorsSectionProps) {
   const supabase = await createClient()
 
   // Fetch only YTD transactions for top vendors
@@ -28,17 +28,18 @@ export async function TopVendorsSection({ userId, exchangeRate }: TopVendorsSect
     .gte('transaction_date', yearStart)
 
   // Transform to match expected type (vendors -> vendor, payment_methods -> payment_method)
-  const transactions = (vendorTransactions || []).map((tx: any) => ({
+  const rawTransactions = (vendorTransactions || []).map((tx: any) => ({
     ...tx,
     vendor: tx.vendors,
     payment_method: tx.payment_methods
   })) as TransactionWithVendorAndPayment[]
 
-  if (transactions.length === 0) {
+  if (rawTransactions.length === 0) {
     return null
   }
 
-  const topVendors = calculateTopVendors(transactions, exchangeRate, 5, 'ytd')
+  const transactions = await convertTransactionsToUSD(rawTransactions, supabase)
+  const topVendors = calculateTopVendors(transactions, 5, 'ytd')
 
   if (topVendors.length === 0) {
     return null

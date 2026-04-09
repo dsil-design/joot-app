@@ -111,8 +111,7 @@ function calculateComparison(current: number, previous: number): MonthComparison
  */
 function calculateDailySpendTrend(
   transactions: TransactionWithVendorAndPayment[],
-  month: Date,
-  exchangeRate: number
+  month: Date
 ): DailySpend[] {
   const monthStart = startOfMonth(month)
   const monthEnd = endOfMonth(month)
@@ -134,7 +133,7 @@ function calculateDailySpendTrend(
     const dateKey = formatDate(transactionDate, 'yyyy-MM-dd')
 
     if (dailyTotals[dateKey] !== undefined && transaction.transaction_type === 'expense') {
-      const amountUSD = convertToUSD(transaction, exchangeRate)
+      const amountUSD = convertToUSD(transaction)
       dailyTotals[dateKey] += amountUSD
     }
   })
@@ -147,44 +146,34 @@ function calculateDailySpendTrend(
 }
 
 /**
- * Helper: Convert transaction amount to USD using exchange rate
- * Falls back to assuming USD if no exchange rate is available
- * @param transaction - The transaction to convert
- * @param exchangeRate - THB to USD exchange rate (for backwards compatibility)
- * @returns Amount in USD
+ * Helper: Return the transaction amount in USD.
+ *
+ * Callers are required to pre-convert transactions to USD before invoking
+ * the calculation functions in this module (see
+ * `src/lib/utils/convert-transactions-to-usd.ts`). If a transaction still
+ * has a non-USD currency at this point, that means rate lookup failed
+ * upstream and the transaction is excluded.
  */
-function convertToUSD(transaction: TransactionWithVendorAndPayment, exchangeRate: number): number {
-  const currency = transaction.original_currency
-  const amount = transaction.amount
-
-  // If already USD, return as-is
-  if (currency === 'USD') {
-    return amount
+function convertToUSD(transaction: TransactionWithVendorAndPayment): number {
+  if (transaction.original_currency === 'USD') {
+    return transaction.amount
   }
-
-  // For THB, use the provided exchange rate
-  if (currency === 'THB') {
-    return amount / exchangeRate
-  }
-
-  // For any other currency, we need to convert via the exchange rate database
-  // Since we don't have access to the database here, we'll need the caller to provide
-  // exchange rates. For now, log a warning and return 0 to make the issue visible.
-  console.warn(`Unable to convert ${currency} to USD - no exchange rate available for transaction ${transaction.id}. This transaction will be excluded from calculations.`)
+  console.warn(
+    `Transaction ${transaction.id} reached monthly-summary without USD conversion (currency=${transaction.original_currency}). Caller must pre-convert via convertTransactionsToUSD. Excluding from calculations.`
+  )
   return 0
 }
 
 /**
- * Calculate monthly summary from transactions
- * Converts all amounts to USD for consistent comparison
- * @param transactions - Array of transactions with vendor and payment info
- * @param month - Optional date to calculate for specific month (defaults to current month)
- * @param exchangeRate - THB to USD exchange rate (defaults to 35)
+ * Calculate monthly summary from transactions.
+ *
+ * IMPORTANT: `transactions` must already be in USD. Use
+ * `convertTransactionsToUSD` from `convert-transactions-to-usd.ts`
+ * before calling this function.
  */
 export function calculateMonthlySummary(
   transactions: TransactionWithVendorAndPayment[],
-  month?: Date,
-  exchangeRate: number = 35
+  month?: Date
 ): MonthlySummary {
   const targetDate = month || new Date()
   const monthStart = startOfMonth(targetDate)
@@ -208,8 +197,7 @@ export function calculateMonthlySummary(
       return // Transfers excluded from income/expense totals
     }
 
-    // Convert to USD using the helper function
-    const amountUSD = convertToUSD(transaction, exchangeRate)
+    const amountUSD = convertToUSD(transaction)
 
     if (transaction.transaction_type === 'income') {
       totalIncome += amountUSD
@@ -233,22 +221,19 @@ export function calculateMonthlySummary(
 }
 
 /**
- * Calculate enhanced monthly summary with comparisons and trends
- * @param transactions - Array of all transactions
- * @param month - Optional date to calculate for specific month (defaults to current month)
- * @param exchangeRate - THB to USD exchange rate (defaults to 35)
+ * Calculate enhanced monthly summary with comparisons and trends.
+ * Transactions must already be in USD.
  */
 export function calculateEnhancedMonthlySummary(
   transactions: TransactionWithVendorAndPayment[],
-  month?: Date,
-  exchangeRate: number = 35
+  month?: Date
 ): EnhancedMonthlySummary {
   const targetDate = month || new Date()
-  const currentMonth = calculateMonthlySummary(transactions, targetDate, exchangeRate)
+  const currentMonth = calculateMonthlySummary(transactions, targetDate)
 
   // Calculate previous month
   const previousMonthDate = subMonths(targetDate, 1)
-  const previousMonth = calculateMonthlySummary(transactions, previousMonthDate, exchangeRate)
+  const previousMonth = calculateMonthlySummary(transactions, previousMonthDate)
 
   // Calculate 12-month average
   const monthlyAverages = { income: 0, expenses: 0, net: 0 }
@@ -256,7 +241,7 @@ export function calculateEnhancedMonthlySummary(
 
   for (let i = 1; i <= 12; i++) {
     const pastMonth = subMonths(targetDate, i)
-    const summary = calculateMonthlySummary(transactions, pastMonth, exchangeRate)
+    const summary = calculateMonthlySummary(transactions, pastMonth)
     monthlyAverages.income += summary.income
     monthlyAverages.expenses += summary.expenses
     monthlyAverages.net += summary.net
@@ -270,7 +255,7 @@ export function calculateEnhancedMonthlySummary(
   }
 
   // Calculate daily spend trend for current month only
-  const dailySpendTrend = calculateDailySpendTrend(transactions, targetDate, exchangeRate)
+  const dailySpendTrend = calculateDailySpendTrend(transactions, targetDate)
 
   // Calculate days elapsed
   const today = new Date()
@@ -298,13 +283,10 @@ export function calculateEnhancedMonthlySummary(
 }
 
 /**
- * Calculate year-to-date summary
- * @param transactions - Array of all transactions
- * @param exchangeRate - THB to USD exchange rate (defaults to 35)
+ * Calculate year-to-date summary. Transactions must already be in USD.
  */
 export function calculateYTDSummary(
-  transactions: TransactionWithVendorAndPayment[],
-  exchangeRate: number = 35
+  transactions: TransactionWithVendorAndPayment[]
 ): YTDSummary {
   const today = new Date()
   const yearStart = new Date(today.getFullYear(), 0, 1) // January 1st of current year
@@ -328,7 +310,7 @@ export function calculateYTDSummary(
       return // Transfers excluded from income/expense totals
     }
 
-    const amountUSD = convertToUSD(transaction, exchangeRate)
+    const amountUSD = convertToUSD(transaction)
 
     if (transaction.transaction_type === 'income') {
       totalIncome += amountUSD
@@ -367,13 +349,10 @@ export function calculateYTDSummary(
 }
 
 /**
- * Calculate 12-month trend data for charts
- * @param transactions - Array of all transactions
- * @param exchangeRate - THB to USD exchange rate (defaults to 35)
+ * Calculate 12-month trend data for charts. Transactions must already be in USD.
  */
 export function calculate12MonthTrend(
-  transactions: TransactionWithVendorAndPayment[],
-  exchangeRate: number = 35
+  transactions: TransactionWithVendorAndPayment[]
 ): MonthlyTrendData[] {
   const today = new Date()
   const trendData: MonthlyTrendData[] = []
@@ -381,7 +360,7 @@ export function calculate12MonthTrend(
   // Generate data for the past 12 months (including current month)
   for (let i = 11; i >= 0; i--) {
     const targetDate = new Date(today.getFullYear(), today.getMonth() - i, 1)
-    const summary = calculateMonthlySummary(transactions, targetDate, exchangeRate)
+    const summary = calculateMonthlySummary(transactions, targetDate)
 
     // Format month as "Jan 2025"
     const monthLabel = formatDate(targetDate, 'MMM yyyy')
@@ -398,15 +377,10 @@ export function calculate12MonthTrend(
 }
 
 /**
- * Calculate top vendors by total spending
- * @param transactions - Array of all transactions
- * @param exchangeRate - THB to USD exchange rate (defaults to 35)
- * @param limit - Number of top vendors to return (defaults to 5)
- * @param timeframe - Optional timeframe ('ytd' | 'month' | 'all', defaults to 'ytd')
+ * Calculate top vendors by total spending. Transactions must already be in USD.
  */
 export function calculateTopVendors(
   transactions: TransactionWithVendorAndPayment[],
-  exchangeRate: number = 35,
   limit: number = 5,
   timeframe: 'ytd' | 'month' | 'all' = 'ytd'
 ): TopVendor[] {
@@ -441,7 +415,7 @@ export function calculateTopVendors(
     const vendorId = transaction.vendor_id || 'no-vendor'
     const vendorName = transaction.vendor?.name || 'Uncategorized'
 
-    const amountUSD = convertToUSD(transaction, exchangeRate)
+    const amountUSD = convertToUSD(transaction)
 
     if (vendorMap.has(vendorId)) {
       const existing = vendorMap.get(vendorId)!

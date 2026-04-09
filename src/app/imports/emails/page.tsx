@@ -314,16 +314,16 @@ export default function EmailHubPage() {
               onToggleSelect={(selected) => handleToggleSelect(item.id, selected)}
               onProcess={handleProcess}
               onSkip={handleSkip}
-              onFeedbackReprocess={handleFeedbackReprocess}
               isProcessingExtraction={isExtracting(item.id)}
               isSkipping={isProcessing(item.id)}
-              isFeedbackProcessing={isFeedbackProcessing(item.id)}
             >
               <EmailDetailPanel
                 emailTransaction={item}
                 onProcess={handleProcess}
+                onFeedbackReprocess={handleFeedbackReprocess}
                 isProcessing={isProcessing(item.id)}
                 isProcessingExtraction={isExtracting(item.id)}
+                isFeedbackProcessing={isFeedbackProcessing(item.id)}
               />
             </EmailTransactionCard>
           ))

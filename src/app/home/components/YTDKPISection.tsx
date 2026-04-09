@@ -1,15 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import type { TransactionWithVendorAndPayment } from '@/lib/supabase/types'
 import { calculateYTDSummary } from '@/lib/utils/monthly-summary'
+import { convertTransactionsToUSD } from '@/lib/utils/convert-transactions-to-usd'
 import { Card } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
 
 interface YTDKPISectionProps {
   userId: string
-  exchangeRate: number
 }
 
-export async function YTDKPISection({ userId, exchangeRate }: YTDKPISectionProps) {
+export async function YTDKPISection({ userId }: YTDKPISectionProps) {
   const supabase = await createClient()
 
   // Fetch only current year transactions for YTD
@@ -28,14 +28,16 @@ export async function YTDKPISection({ userId, exchangeRate }: YTDKPISectionProps
     .order('transaction_date', { ascending: false })
 
   // Transform to match expected type (vendors -> vendor, payment_methods -> payment_method)
-  const transactions = (ytdTransactions || []).map((tx: any) => ({
+  const rawTransactions = (ytdTransactions || []).map((tx: any) => ({
     ...tx,
     vendor: tx.vendors,
     payment_method: tx.payment_methods
   })) as TransactionWithVendorAndPayment[]
 
+  const transactions = await convertTransactionsToUSD(rawTransactions, supabase)
+
   const ytdSummary = transactions.length > 0
-    ? calculateYTDSummary(transactions, exchangeRate)
+    ? calculateYTDSummary(transactions)
     : null
 
   if (!ytdSummary) {

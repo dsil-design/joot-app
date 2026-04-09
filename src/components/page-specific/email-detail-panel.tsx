@@ -4,6 +4,7 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Input } from "@/components/ui/input"
 import { ConfidenceIndicator } from "@/components/ui/confidence-indicator"
 import { cn } from "@/lib/utils"
 import {
@@ -16,7 +17,6 @@ import {
   Eye,
   Copy,
   Check,
-  Info,
   AlertTriangle,
   Bot,
   Store,
@@ -24,6 +24,7 @@ import {
   FileText,
   ArrowRight,
   Trash2,
+  Send,
 } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { EmailViewerModal } from "./email-viewer-modal"
@@ -35,10 +36,12 @@ interface EmailDetailPanelProps {
   onProcess?: (emailId: string) => void
   onDelete?: () => void
   onReopen?: (emailId: string) => void
+  onFeedbackReprocess?: (emailId: string, userHint: string) => void
   isProcessing: boolean
   isProcessingExtraction?: boolean
   isDeleting?: boolean
   isReopening?: boolean
+  isFeedbackProcessing?: boolean
 }
 
 export function EmailDetailPanel({
@@ -46,10 +49,12 @@ export function EmailDetailPanel({
   onProcess,
   onDelete,
   onReopen,
+  onFeedbackReprocess,
   isProcessing,
   isProcessingExtraction,
   isDeleting,
   isReopening,
+  isFeedbackProcessing,
 }: EmailDetailPanelProps) {
   const [viewerOpen, setViewerOpen] = React.useState(false)
 
@@ -289,15 +294,28 @@ export function EmailDetailPanel({
         </div>
       </div>
 
-      {/* Right: Transaction Preview */}
-      <div className="space-y-4">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Transaction Preview
-        </h4>
+      {/* Right: Transaction Preview + AI Analysis */}
+      <div className="space-y-6">
+        <section className="space-y-4">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Transaction Preview
+          </h4>
+          <TransactionPreview emailTransaction={emailTransaction} />
+        </section>
 
-        <AiReasoningCallout emailTransaction={emailTransaction} />
-
-        <TransactionPreview emailTransaction={emailTransaction} />
+        <section className="space-y-3">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            AI Analysis
+          </h4>
+          <AiAnalysisBody emailTransaction={emailTransaction} />
+          {onFeedbackReprocess && (
+            <MessageAiControl
+              emailId={emailTransaction.id}
+              isProcessing={isFeedbackProcessing}
+              onSubmit={onFeedbackReprocess}
+            />
+          )}
+        </section>
       </div>
 
       <EmailViewerModal
@@ -543,19 +561,22 @@ function isAiError(reasoning: string | null | undefined): boolean {
   )
 }
 
-function AiReasoningCallout({
+function AiAnalysisBody({
   emailTransaction,
 }: {
   emailTransaction: EmailTransactionRow
 }) {
   const reasoning = emailTransaction.ai_reasoning
-  if (!reasoning) return null
 
-  const hasError = isAiError(reasoning)
-  const hasExtractionData = emailTransaction.amount != null
+  if (!reasoning) {
+    return (
+      <p className="text-sm text-muted-foreground italic">
+        No AI analysis available yet.
+      </p>
+    )
+  }
 
-  // AI error: show destructive alert
-  if (hasError) {
+  if (isAiError(reasoning)) {
     return (
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
@@ -565,26 +586,80 @@ function AiReasoningCallout({
     )
   }
 
-  // No extraction data: show prominent info callout with AI reasoning
-  if (!hasExtractionData) {
+  return (
+    <div className="flex items-start gap-2 text-sm text-muted-foreground">
+      <Bot className="h-4 w-4 shrink-0 mt-0.5" />
+      <p className="leading-relaxed">{reasoning}</p>
+    </div>
+  )
+}
+
+function MessageAiControl({
+  emailId,
+  isProcessing,
+  onSubmit,
+}: {
+  emailId: string
+  isProcessing?: boolean
+  onSubmit: (emailId: string, hint: string) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [text, setText] = React.useState("")
+
+  const submit = () => {
+    const hint = text.trim()
+    if (!hint) return
+    onSubmit(emailId, hint)
+    setOpen(false)
+    setText("")
+  }
+
+  if (!open) {
     return (
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>AI Analysis</AlertTitle>
-        <AlertDescription>{reasoning}</AlertDescription>
-      </Alert>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+        disabled={isProcessing}
+      >
+        <Bot className={cn("h-3.5 w-3.5 mr-1", isProcessing && "animate-spin")} />
+        {isProcessing ? "Processing..." : "Message AI"}
+      </Button>
     )
   }
 
-  // Has extraction data: show collapsible details
   return (
-    <details className="text-xs text-muted-foreground">
-      <summary className="cursor-pointer flex items-center gap-1 hover:text-foreground transition-colors">
-        <Bot className="h-3.5 w-3.5" />
-        AI Analysis
-      </summary>
-      <p className="mt-1 pl-5">{reasoning}</p>
-    </details>
+    <div className="flex items-center gap-1.5">
+      <Input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") submit()
+          if (e.key === "Escape") {
+            setOpen(false)
+            setText("")
+          }
+        }}
+        placeholder="e.g. bank transfer for $50"
+        className="h-8 text-sm flex-1"
+        style={{ fontSize: "16px" }}
+        autoFocus
+        disabled={isProcessing}
+      />
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={submit}
+        disabled={!text.trim() || isProcessing}
+        className="h-8 w-8 p-0"
+      >
+        {isProcessing ? (
+          <Bot className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Send className="h-3.5 w-3.5" />
+        )}
+      </Button>
+    </div>
   )
 }
 
