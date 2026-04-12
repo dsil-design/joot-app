@@ -166,7 +166,7 @@ export function RejectFeedbackToast({
   }
 
   return (
-    <div className="w-[380px] bg-card border rounded-lg shadow-lg p-3 space-y-2.5">
+    <div className="w-[380px] max-h-[85vh] overflow-y-auto bg-card border rounded-lg shadow-lg p-3 space-y-2.5">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-medium">
