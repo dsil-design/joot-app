@@ -171,9 +171,29 @@ export async function POST(request: NextRequest) {
       .limit(5)
 
     if (priorFeedback && priorFeedback.length > 0) {
-      proposalInput.rejectionFeedback = priorFeedback
+      const feedbackStrings = priorFeedback
         .map((f) => f.email_body_preview)
         .filter((p): p is string => !!p)
+      proposalInput.rejectionFeedback = feedbackStrings
+
+      // Extract user-specified corrected date from the most recent feedback
+      const dateOverride = feedbackStrings
+        .map((p) => {
+          const match = p.match(/(?:^|\| )CorrectedDate: (\d{4}-\d{2}-\d{2})/)
+          return match?.[1] ?? null
+        })
+        .find((d) => d !== null)
+      if (dateOverride) {
+        proposalInput.correctedDate = dateOverride
+      }
+    }
+
+    // Populate secondary source dates for per-bank date preference learning
+    if (isMerged && mergedEmail?.date) {
+      proposalInput.emailDate = mergedEmail.date
+    }
+    if (isMerged && targetItem.mergedPaymentSlipData?.date) {
+      proposalInput.slipDate = targetItem.mergedPaymentSlipData.date
     }
 
     // Generate proposal directly (not through batch function, for better error reporting)

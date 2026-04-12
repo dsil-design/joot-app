@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     let body: {
       compositeIds?: string[]
       reason?: string
+      correctedDate?: string
       context?: {
         description?: string
         amount?: number
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const { compositeIds, reason, context } = body
+    const { compositeIds, reason, correctedDate, context } = body
 
     if (!compositeIds || compositeIds.length === 0) {
       return NextResponse.json(
@@ -55,10 +56,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate correctedDate format if provided
+    if (correctedDate && !/^\d{4}-\d{2}-\d{2}$/.test(correctedDate)) {
+      return NextResponse.json(
+        { error: 'correctedDate must be in YYYY-MM-DD format' },
+        { status: 400 }
+      )
+    }
+
     const serviceClient = createServiceRoleClient()
 
     // Build context summary for the email_body_preview field
     const contextParts: string[] = [`Reason: ${reason.trim()}`]
+    if (correctedDate) contextParts.unshift(`CorrectedDate: ${correctedDate}`)
     if (context?.description) contextParts.push(`Description: ${context.description}`)
     if (context?.amount != null && context?.currency) {
       contextParts.push(`Amount: ${context.currency} ${context.amount}`)

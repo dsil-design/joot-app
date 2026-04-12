@@ -67,9 +67,15 @@ export async function backfillSlipTransactionMatches(
 
   const txns = slipTxns as unknown as SlipTxn[]
 
+  // Enforce 1:1 matching: each slip-derived transaction can only be claimed by
+  // one queue item. Without this, the same transaction could be backfilled onto
+  // multiple items, causing duplicate cards in the review queue.
+  const usedTransactionIds = new Set<string>()
+
   for (const item of candidates) {
     let best: { tx: SlipTxn; daysDiff: number } | null = null
     for (const tx of txns) {
+      if (usedTransactionIds.has(tx.id)) continue
       if (tx.original_currency !== item.statementTransaction.currency) continue
       const amountDiff = Math.abs(
         Math.abs(tx.amount) - Math.abs(item.statementTransaction.amount)
@@ -83,6 +89,7 @@ export async function backfillSlipTransactionMatches(
     }
 
     if (best) {
+      usedTransactionIds.add(best.tx.id)
       item.matchedTransaction = {
         id: best.tx.id,
         date: best.tx.transaction_date,

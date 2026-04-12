@@ -260,6 +260,8 @@ function buildPrompt(
         parts.push(`- Corrected tags for "${c.sourceDescription}": ${JSON.stringify(c.correctedValue)}`)
       } else if (c.field === 'payment_method_id') {
         parts.push(`- Corrected payment method for "${c.sourceDescription}": ${c.correctedValue}`)
+      } else if (c.field === 'date') {
+        parts.push(`- Corrected date from "${c.originalValue}" to "${c.correctedValue}"${c.parserKey ? ` (parser: ${c.parserKey})` : ''}`)
       }
     }
   }

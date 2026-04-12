@@ -2,7 +2,9 @@
 
 import * as React from "react"
 import { Ban, RotateCcw, Hourglass, Trash2, Mail, Receipt } from "lucide-react"
+import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
+import { DateInput } from "@/components/ui/date-picker"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
@@ -11,6 +13,7 @@ const REJECT_REASONS = [
   { key: "needs_statement", label: "Needs statement pairing" },
   { key: "needs_email_receipt", label: "Needs email receipt" },
   { key: "needs_payment_slip", label: "Needs payment slip" },
+  { key: "wrong_date", label: "Wrong date" },
   { key: "wrong_vendor", label: "Wrong vendor" },
   { key: "wrong_classification", label: "Wrong classification" },
   { key: "parser_error", label: "Parser error" },
@@ -26,9 +29,9 @@ type RejectReasonKey = typeof REJECT_REASONS[number]["key"]
  * the list to what makes sense for that source.
  */
 const SOURCE_REASON_KEYS: Record<'email' | 'statement' | 'slip', RejectReasonKey[]> = {
-  email: ["wrong_amount", "needs_statement", "needs_payment_slip", "wrong_vendor", "parser_error", "duplicate", "not_transaction"],
-  statement: ["wrong_amount", "needs_email_receipt", "needs_payment_slip", "wrong_vendor", "wrong_classification", "parser_error", "duplicate"],
-  slip: ["wrong_amount", "needs_statement", "needs_email_receipt", "wrong_vendor", "parser_error", "duplicate"],
+  email: ["wrong_amount", "wrong_date", "needs_statement", "needs_payment_slip", "wrong_vendor", "parser_error", "duplicate", "not_transaction"],
+  statement: ["wrong_amount", "wrong_date", "needs_email_receipt", "needs_payment_slip", "wrong_vendor", "wrong_classification", "parser_error", "duplicate"],
+  slip: ["wrong_amount", "wrong_date", "needs_statement", "needs_email_receipt", "wrong_vendor", "parser_error", "duplicate"],
 }
 
 type NextStatus = "pending_review" | "waiting_for_statement" | "waiting_for_email" | "waiting_for_slip" | "skipped"
@@ -83,7 +86,7 @@ interface RejectFeedbackToastProps {
    */
   sourceContext?: 'email' | 'statement' | 'slip'
   /** Callback to submit feedback with next status */
-  onSubmitFeedback: (ids: string[], reason: string, nextStatus: NextStatus) => void
+  onSubmitFeedback: (ids: string[], reason: string, nextStatus: NextStatus, correctedDate?: string) => void
   /** Undo callback */
   onUndo?: () => void
   /** Dismiss callback */
@@ -107,6 +110,7 @@ export function RejectFeedbackToast({
   const [notes, setNotes] = React.useState("")
   const [nextStatus, setNextStatus] = React.useState<NextStatus>("skipped")
   const [submitted, setSubmitted] = React.useState(false)
+  const [correctedDate, setCorrectedDate] = React.useState<Date | undefined>(undefined)
 
   // Auto-select next status based on chip
   React.useEffect(() => {
@@ -118,11 +122,15 @@ export function RejectFeedbackToast({
       setNextStatus("waiting_for_slip")
     } else if (selectedChip === "Not a transaction") {
       setNextStatus("skipped")
+    } else if (selectedChip === "Wrong date") {
+      setNextStatus("pending_review")
     }
   }, [selectedChip])
 
   const handleChipClick = (label: string) => {
-    setSelectedChip(selectedChip === label ? null : label)
+    const newChip = selectedChip === label ? null : label
+    setSelectedChip(newChip)
+    if (newChip !== "Wrong date") setCorrectedDate(undefined)
   }
 
   const handleSubmit = () => {
@@ -132,7 +140,8 @@ export function RejectFeedbackToast({
     if (parts.length === 0) return
 
     setSubmitted(true)
-    onSubmitFeedback(compositeIds, parts.join(" — "), nextStatus)
+    const dateStr = correctedDate ? format(correctedDate, "yyyy-MM-dd") : undefined
+    onSubmitFeedback(compositeIds, parts.join(" — "), nextStatus, dateStr)
     setTimeout(onDismiss, 1500)
   }
 
@@ -192,6 +201,20 @@ export function RejectFeedbackToast({
           </button>
         ))}
       </div>
+
+      {/* Optional date correction (shown when "Wrong date" is selected) */}
+      {selectedChip === "Wrong date" && (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Correct date (optional):</p>
+          <DateInput
+            date={correctedDate}
+            onDateChange={setCorrectedDate}
+            placeholder="e.g. 2025-04-10"
+            formatStr="yyyy-MM-dd"
+            className="h-8 text-xs"
+          />
+        </div>
+      )}
 
       {/* Free-text feedback */}
       <Textarea

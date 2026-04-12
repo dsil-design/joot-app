@@ -349,7 +349,7 @@ async function fetchPastCorrections(
       : undefined
 
     for (const [field, change] of Object.entries(mods)) {
-      const validFields = ['vendor_id', 'description', 'tag_ids', 'payment_method_id', 'transaction_type']
+      const validFields = ['vendor_id', 'description', 'tag_ids', 'payment_method_id', 'transaction_type', 'date']
       if (!validFields.includes(field)) continue
 
       const correction: PastCorrection = {

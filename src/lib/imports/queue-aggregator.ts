@@ -712,8 +712,6 @@ export async function aggregateQueueItems(
 
     for (const [, group] of byMatchedTxn) {
       if (group.length < 2) continue
-      // Already-merged items don't need re-merging
-      if (group.every(item => item.source === 'merged')) continue
 
       // Pick the best item as the base (prefer statement, then email, then others)
       const stmtItem = group.find(i => i.source === 'statement')

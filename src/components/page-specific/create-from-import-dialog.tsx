@@ -306,6 +306,11 @@ export function CreateFromImportDialog({
           originalValues.tags = p.tags.value.map((t) => t.id)
         }
 
+        // Track proposed date for modification detection (date comes from data.date, not proposal)
+        if (p.date) {
+          originalValues.date = p.date.value
+        }
+
         if (prefilledFields.size > 0) {
           setAiPrefilled(prefilledFields)
           setFieldReasoning(reasoning)
@@ -469,6 +474,12 @@ export function CreateFromImportDialog({
           const newTags = [...tags].sort().join(',')
           if (origTags !== newTags) {
             modifiedFields.tag_ids = { from: original.tags, to: tags }
+          }
+        }
+        if (original.date !== undefined) {
+          const currentDate = formatLocalDate(date)
+          if (original.date !== currentDate) {
+            modifiedFields.date = { from: original.date, to: currentDate }
           }
         }
 

@@ -18,6 +18,7 @@ import { matchVendor, suggestVendorName } from './vendor-matcher'
 import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour, findPaymentMethodByBankDetected } from './payment-method-mapper'
 import { findMappingMatch, isBankParser } from '@/lib/services/vendor-recipient-mapping'
 import { findStatementDescriptionMatch } from '@/lib/services/statement-description-learning'
+import { calculateDaysDiff } from '@/lib/matching/date-matcher'
 
 /**
  * Generate a rule-based proposal for a single queue item.
@@ -37,7 +38,7 @@ export function generateRuleProposal(
   proposeCurrency(item, fields, fieldConfidence)
 
   // 3. Date
-  proposeDate(item, fields, fieldConfidence)
+  proposeDate(item, fields, fieldConfidence, context)
 
   // 4. Transaction Type
   proposeTransactionType(item, context, fields, fieldConfidence)
@@ -92,14 +93,76 @@ function proposeCurrency(
 function proposeDate(
   item: ProposalInput,
   fields: ProposedFields,
-  fc: FieldConfidenceMap
+  fc: FieldConfidenceMap,
+  context: RuleEngineContext
 ) {
+  // Priority 1: User-specified correct date from rejection feedback
+  if (item.correctedDate) {
+    fields.date = item.correctedDate
+    fc.date = { score: 100, reasoning: 'User-corrected date from rejection feedback' }
+    return
+  }
+
+  // Priority 2: Per-bank learned date preference (email vs statement)
+  const pref = findDatePreference(item, context)
+  if (pref?.preferEmail && item.emailDate) {
+    fields.date = item.emailDate
+    fc.date = { score: pref.confidence, reasoning: `Learned: ${item.parserKey} email dates preferred (${pref.confidence}% confidence)` }
+    return
+  }
+
+  // Priority 3: Statement date authoritative (existing behavior)
   fields.date = item.date
   if (item.sourceType === 'statement' || item.sourceType === 'merged') {
     fc.date = { score: 100, reasoning: 'Statement date (authoritative)' }
   } else {
     fc.date = { score: 90, reasoning: 'Email-only date (may vary by timezone)' }
   }
+}
+
+/**
+ * Analyze past date corrections to learn whether a specific parser/bank's
+ * email dates are more authoritative than statement dates.
+ * Requires at least 3 corrections per parserKey before activating.
+ */
+function findDatePreference(
+  item: ProposalInput,
+  context: RuleEngineContext
+): { preferEmail: boolean; confidence: number } | null {
+  const key = item.parserKey || item.bankDetected
+  if (!key || !item.emailDate) return null
+  if (item.sourceType !== 'merged') return null
+
+  const dateCorrections = context.pastCorrections.filter(
+    (c) => c.field === 'date' && (c.parserKey === key)
+  )
+  if (dateCorrections.length < 3) return null
+
+  // Count how often the user corrected away from the statement date
+  // toward what would have been the email date
+  let emailPreferred = 0
+  let statementPreferred = 0
+
+  for (const c of dateCorrections) {
+    const corrected = c.correctedValue as string
+    const original = c.originalValue as string // was statement date
+    const diff = calculateDaysDiff(corrected, original)
+    if (diff >= 1 && diff <= 2) {
+      emailPreferred++
+    } else {
+      statementPreferred++
+    }
+  }
+
+  const total = emailPreferred + statementPreferred
+  if (total === 0) return null
+  const emailRatio = emailPreferred / total
+
+  if (emailRatio >= 0.7 && emailPreferred >= 3) {
+    return { preferEmail: true, confidence: Math.min(90, 70 + emailPreferred * 3) }
+  }
+
+  return null
 }
 
 function proposeTransactionType(

@@ -136,7 +136,7 @@ export interface ProposalGenerateResponse {
 
 export interface PastCorrection {
   /** Which field was corrected */
-  field: 'vendor_id' | 'description' | 'tag_ids' | 'payment_method_id' | 'transaction_type'
+  field: 'vendor_id' | 'description' | 'tag_ids' | 'payment_method_id' | 'transaction_type' | 'date'
   /** Matching context: email sender address */
   fromAddress?: string
   /** Matching context: email sender name */
@@ -281,6 +281,12 @@ export interface ProposalInput {
 
   // Prior rejection feedback (for re-queued items)
   rejectionFeedback?: string[]
+  /** User-specified correct date from rejection feedback (overrides source date) */
+  correctedDate?: string
+  /** Secondary date from the paired email (for merged items) */
+  emailDate?: string
+  /** Secondary date from the paired payment slip (for merged items with slip) */
+  slipDate?: string
 
   // Multi-source enrichment: additional email/slip context attached to this
   // queue item via "Attach a source". Pre-loaded by the route handler so the

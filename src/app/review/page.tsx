@@ -249,6 +249,7 @@ export default function ReviewQueuePage() {
     reason: string,
     nextStatus: string,
     rejectSource?: 'email' | 'statement' | 'slip',
+    correctedDate?: string,
   ) => void>(() => {})
 
   const {
@@ -278,8 +279,8 @@ export default function ReviewQueuePage() {
           <RejectFeedbackToast
             compositeIds={ids}
             count={ids.length}
-            onSubmitFeedback={(cIds, reason, nextStatus) =>
-              submitRejectFeedbackRef.current(cIds, reason, nextStatus)
+            onSubmitFeedback={(cIds, reason, nextStatus, correctedDate) =>
+              submitRejectFeedbackRef.current(cIds, reason, nextStatus, undefined, correctedDate)
             }
             onUndo={() => {
               undo()
@@ -545,6 +546,7 @@ export default function ReviewQueuePage() {
       reason: string,
       nextStatus: string,
       rejectSource?: 'email' | 'statement' | 'slip',
+      correctedDate?: string,
     ) => {
       const firstItem = items.find((i) => compositeIds.includes(i.id))
       try {
@@ -556,6 +558,7 @@ export default function ReviewQueuePage() {
             compositeIds,
             reason,
             sourceContext: rejectSource,
+            correctedDate,
             context: firstItem
               ? {
                   description: firstItem.statementTransaction.description,
@@ -828,8 +831,8 @@ export default function ReviewQueuePage() {
             compositeIds={[id]}
             count={1}
             sourceContext={source}
-            onSubmitFeedback={(cIds, reason, nextStatus) => {
-              submitRejectFeedbackRef.current(cIds, reason, nextStatus, source)
+            onSubmitFeedback={(cIds, reason, nextStatus, correctedDate) => {
+              submitRejectFeedbackRef.current(cIds, reason, nextStatus, source, correctedDate)
             }}
             onDismiss={() => toast.dismiss(t)}
           />
