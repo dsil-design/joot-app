@@ -21,6 +21,9 @@ export interface ParsedStatementTransaction {
   /** Transaction date (when the purchase was made) */
   transactionDate: Date;
 
+  /** Transaction time in HH:MM format (24hr), if available from the statement */
+  transactionTime?: string;
+
   /** Posting date (when it appeared on the statement) */
   postingDate?: Date;
 

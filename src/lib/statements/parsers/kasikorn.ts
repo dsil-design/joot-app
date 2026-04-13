@@ -553,10 +553,12 @@ function parseTransactions(
     const transactionDate = parseThaiDate(dateMatch[1]);
     if (!transactionDate) continue;
 
-    // After date, try to extract time
+    // After date, try to extract time (HH:MM)
     let rest = block.slice(8); // after DD-MM-YY
     const timeMatch = rest.match(/^(\d{2}:\d{2})/);
+    let transactionTime: string | undefined;
     if (timeMatch) {
+      transactionTime = timeMatch[1];
       rest = rest.slice(5); // after HH:MM
     }
 
@@ -592,6 +594,7 @@ function parseTransactions(
 
     const transaction: ParsedStatementTransaction = {
       transactionDate,
+      transactionTime,
       description: description || channel,
       amount: isWithdrawal ? Math.abs(amount) : -Math.abs(amount),
       currency: 'THB',

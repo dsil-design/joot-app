@@ -379,6 +379,7 @@ Issued by K PLUS
       expect(transactions[0].type).toBe('charge');
       expect(transactions[0].currency).toBe('THB');
       expect(transactions[0].description).toBe('บริษัท เอส จี จี 2023 จํากัด');
+      expect(transactions[0].transactionTime).toBe('10:23');
     });
 
     it('should parse transfer deposits (negative amounts)', () => {
@@ -390,6 +391,7 @@ Issued by K PLUS
       expect(transactions).toHaveLength(1);
       expect(transactions[0].amount).toBe(-45000);
       expect(transactions[0].type).toBe('credit');
+      expect(transactions[0].transactionTime).toBe('13:42');
     });
 
     it('should parse transfer withdrawals (positive amounts)', () => {
@@ -401,6 +403,7 @@ Issued by K PLUS
       expect(transactions).toHaveLength(1);
       expect(transactions[0].amount).toBe(100);
       expect(transactions[0].type).toBe('charge');
+      expect(transactions[0].transactionTime).toBe('20:14');
     });
 
     it('should parse ATM cash withdrawals', () => {
