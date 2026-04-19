@@ -121,7 +121,7 @@ async function fetchMatches(
 
     const items: MatchCardData[] = data.items.map((item: {
       id: string
-      statementTransaction: { date: string; description: string; amount: number; currency: string; sourceFilename?: string }
+      statementTransaction: { date: string; description: string; amount: number; currency: string; sourceFilename?: string; foreignAmount?: number; foreignCurrency?: string; foreignExchangeRate?: number }
       statementFilename: string
       paymentMethod: { id: string; name: string } | null
       paymentMethodType?: string

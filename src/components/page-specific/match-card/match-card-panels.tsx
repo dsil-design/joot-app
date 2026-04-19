@@ -427,6 +427,17 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
                 )}
               </span>
             </TransactionDetailRow>
+            {data.statementTransaction.foreignAmount != null && data.statementTransaction.foreignCurrency && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 rounded px-2 py-1">
+                <ArrowLeftRight className="h-3 w-3 text-blue-500 shrink-0" />
+                <span>
+                  Originally {formatMatchAmount(data.statementTransaction.foreignAmount, data.statementTransaction.foreignCurrency)}
+                  {data.statementTransaction.foreignExchangeRate != null && (
+                    <> at {data.statementTransaction.foreignExchangeRate.toFixed(6)} rate</>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -513,6 +524,17 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
                 )}
               </span>
             </TransactionDetailRow>
+            {data.statementTransaction.foreignAmount != null && data.statementTransaction.foreignCurrency && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 rounded px-2 py-1">
+                <ArrowLeftRight className="h-3 w-3 text-blue-500 shrink-0" />
+                <span>
+                  Originally {formatMatchAmount(data.statementTransaction.foreignAmount, data.statementTransaction.foreignCurrency)}
+                  {data.statementTransaction.foreignExchangeRate != null && (
+                    <> at {data.statementTransaction.foreignExchangeRate.toFixed(6)} rate</>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -645,6 +667,17 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
                 )}
               </span>
             </TransactionDetailRow>
+            {data.statementTransaction.foreignAmount != null && data.statementTransaction.foreignCurrency && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 rounded px-2 py-1">
+                <ArrowLeftRight className="h-3 w-3 text-blue-500 shrink-0" />
+                <span>
+                  Originally {formatMatchAmount(data.statementTransaction.foreignAmount, data.statementTransaction.foreignCurrency)}
+                  {data.statementTransaction.foreignExchangeRate != null && (
+                    <> at {data.statementTransaction.foreignExchangeRate.toFixed(6)} rate</>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -758,6 +791,17 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
               )}
             </span>
           </TransactionDetailRow>
+          {data.statementTransaction.foreignAmount != null && data.statementTransaction.foreignCurrency && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 rounded px-2 py-1">
+              <ArrowLeftRight className="h-3 w-3 text-blue-500 shrink-0" />
+              <span>
+                Originally {formatMatchAmount(data.statementTransaction.foreignAmount, data.statementTransaction.foreignCurrency)}
+                {data.statementTransaction.foreignExchangeRate != null && (
+                  <> at {data.statementTransaction.foreignExchangeRate.toFixed(6)} rate</>
+                )}
+              </span>
+            </div>
+          )}
         </div>
       )}
 

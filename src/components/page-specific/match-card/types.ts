@@ -44,6 +44,9 @@ export interface StatementTransaction {
   amount: number
   currency: string
   sourceFilename?: string
+  foreignAmount?: number
+  foreignCurrency?: string
+  foreignExchangeRate?: number
 }
 
 /**
