@@ -16,9 +16,12 @@ const STRIPE_SENDER_PATTERNS = [
   'receipts@stripe.com',
 ];
 
+// Anchored to the start of the subject so we match Stripe-template forks
+// (e.g. "Receipt from FlightBooker") without catching vendor-branded subjects
+// like "Your E-receipt From Avis" that just happen to contain "receipt from".
 const STRIPE_SUBJECT_PATTERNS = [
-  'receipt from',
-  'payment to',
+  /^receipt\s+from\b/i,
+  /^payment\s+to\b/i,
 ];
 
 // USD amount patterns
@@ -105,12 +108,12 @@ export const stripeParser: EmailParser = {
 
   canParse(email: RawEmailData): boolean {
     const fromAddress = email.from_address?.toLowerCase() || '';
-    const subject = email.subject?.toLowerCase() || '';
+    const subject = email.subject || '';
 
     const isFromStripe = STRIPE_SENDER_PATTERNS.some(p => fromAddress.includes(p));
     if (isFromStripe) return true;
 
-    return STRIPE_SUBJECT_PATTERNS.some(p => subject.includes(p));
+    return STRIPE_SUBJECT_PATTERNS.some(p => p.test(subject));
   },
 
   extract(email: RawEmailData): ExtractionResult {

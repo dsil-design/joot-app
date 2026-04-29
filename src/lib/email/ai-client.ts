@@ -114,6 +114,19 @@ function htmlToPlainText(html: string): string {
 }
 
 /**
+ * Count substantive words in text after removing URLs and bracketed wrappers.
+ * Used to detect text bodies that are just tracking pixels / link-only stubs
+ * (e.g. Avis e-receipts whose text part is a single click-tracking URL while
+ * the actual receipt content lives in HTML).
+ */
+function substantiveWordCount(text: string): number {
+  const withoutUrls = text
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/[\[\]()]/g, ' ');
+  return (withoutUrls.match(/\b[a-zA-Z]{3,}\b/g) || []).length;
+}
+
+/**
  * Truncate email body to max length for API calls.
  *
  * Prefers text_body when it contains meaningful content. Falls back to
@@ -121,10 +134,12 @@ function htmlToPlainText(html: string): string {
  * wastes the token budget and hides the actual email content.
  */
 export function truncateBody(textBody: string | null, htmlBody: string | null): string {
-  // Check if text body has meaningful content (not just "enable HTML" boilerplate)
+  // Check if text body has meaningful content (not just "enable HTML" boilerplate
+  // or a bare tracking-pixel link with no real text).
   const textUsable = textBody
     && textBody.length > 50
-    && !/please enable html/i.test(textBody);
+    && !/please enable html/i.test(textBody)
+    && substantiveWordCount(textBody) >= 5;
 
   if (textUsable) {
     return textBody!.slice(0, MAX_BODY_LENGTH);
