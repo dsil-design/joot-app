@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
       emailTransactionIds,
       source,
       currency,
+      status,
+      confidence,
       from: fromDate,
       to: toDate,
       force = false,
@@ -38,6 +40,8 @@ export async function POST(request: NextRequest) {
       emailTransactionIds?: string[]
       source?: string
       currency?: string
+      status?: string
+      confidence?: string
       from?: string
       to?: string
       force?: boolean
@@ -81,6 +85,15 @@ export async function POST(request: NextRequest) {
 
     // Filter to only new (unmatched) items
     let targetItems = allItems.filter((item) => item.isNew)
+
+    // Honor the same status/confidence filters the review queue UI applies, so
+    // bulk generate only targets the items currently visible to the user.
+    if (status && status !== 'all') {
+      targetItems = targetItems.filter((item) => item.status === status)
+    }
+    if (confidence && confidence !== 'all') {
+      targetItems = targetItems.filter((item) => item.confidenceLevel === confidence)
+    }
 
     // Apply filters
     if (compositeIds && compositeIds.length > 0) {

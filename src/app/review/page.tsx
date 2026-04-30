@@ -331,6 +331,8 @@ export default function ReviewQueuePage() {
     const filterBody: Record<string, unknown> = {}
     if (filters.source !== "all") filterBody.source = filters.source
     if (filters.currency !== "all") filterBody.currency = filters.currency
+    if (filters.status !== "all") filterBody.status = filters.status
+    if (filters.confidence !== "all") filterBody.confidence = filters.confidence
     if (filters.statementUploadId) filterBody.statementUploadId = filters.statementUploadId
     if (filters.dateRange?.from) {
       const d = filters.dateRange.from
