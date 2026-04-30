@@ -67,6 +67,33 @@ import Link from "next/link"
 import { getConfidenceLevel } from "@/components/ui/confidence-indicator"
 import { RejectFeedbackToast } from "@/components/page-specific/reject-feedback-toast"
 import { ReviewFocusModal } from "@/components/page-specific/review-focus-modal"
+import {
+  ProposalGenerationModal,
+  type ProgressItem,
+} from "@/components/page-specific/proposal-generation-modal"
+import { cleanStatementDescription } from "@/lib/utils/statement-description"
+import { formatMatchAmount, formatMatchDate } from "@/lib/utils/match-formatting"
+
+function toProgressItem(item: MatchCardData): ProgressItem {
+  const desc = cleanStatementDescription(item.statementTransaction.description)
+  let badge: string | undefined
+  switch (item.source) {
+    case "email": badge = "Email"; break
+    case "statement": badge = "Statement"; break
+    case "payment_slip": badge = "Slip"; break
+    case "merged": badge = "Multi-source"; break
+  }
+  return {
+    id: item.id,
+    label: desc || item.statementTransaction.description || "(no description)",
+    sublabel: formatMatchDate(item.statementTransaction.date),
+    badge,
+    amount: formatMatchAmount(
+      item.statementTransaction.amount,
+      item.statementTransaction.currency,
+    ),
+  }
+}
 
 interface QueueStats {
   total: number
@@ -325,7 +352,8 @@ export default function ReviewQueuePage() {
     setLinkingItemId(null)
   }
 
-  const [isGeneratingProposals, setIsGeneratingProposals] = React.useState(false)
+  const [generationItems, setGenerationItems] = React.useState<ProgressItem[]>([])
+  const [generationModalOpen, setGenerationModalOpen] = React.useState(false)
 
   const buildFilterBody = React.useCallback(() => {
     const filterBody: Record<string, unknown> = {}
@@ -371,30 +399,14 @@ export default function ReviewQueuePage() {
     refresh()
   }, [refresh, buildFilterBody])
 
-  const handleGenerateProposals = React.useCallback(async () => {
-    setIsGeneratingProposals(true)
-    try {
-      const res = await fetch('/api/imports/proposals/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildFilterBody()),
-      })
-      if (res.ok) {
-        const result = await res.json()
-        if (result.generated > 0) {
-          toast.success(`Generated ${result.generated} proposal${result.generated === 1 ? '' : 's'}`)
-        } else {
-          toast.info('No new proposals to generate')
-        }
-      }
-    } catch (e) {
-      console.error('Proposal generation failed:', e)
-      toast.error('Failed to generate proposals')
-    } finally {
-      setIsGeneratingProposals(false)
+  const openGenerationModal = React.useCallback((progressItems: ProgressItem[]) => {
+    if (progressItems.length === 0) {
+      toast.info("Nothing to generate")
+      return
     }
-    refresh()
-  }, [refresh, buildFilterBody])
+    setGenerationItems(progressItems)
+    setGenerationModalOpen(true)
+  }, [])
 
   const { createAndLink } = useCreateAndLink(linkToExisting)
   const { acceptProposal } = useProposalAccept()
@@ -438,29 +450,51 @@ export default function ReviewQueuePage() {
 
   const [generatingProposalIds, setGeneratingProposalIds] = React.useState<Set<string>>(new Set())
 
-  const handleRefreshProposal = async (id: string) => {
-    setGeneratingProposalIds((prev) => new Set(prev).add(id))
-    try {
+  // Shared fetch+apply for /api/imports/proposals/generate-single. The 'merged'
+  // outcome means the composite id no longer exists (re-paired after upstream
+  // changes) and the queue should be refreshed by the caller.
+  const fetchAndApplyProposal = React.useCallback(
+    async (
+      compositeId: string,
+      signal?: AbortSignal,
+    ): Promise<
+      | { outcome: 'ready'; proposal: TransactionProposal }
+      | { outcome: 'unchanged' }
+      | { outcome: 'merged' }
+    > => {
       const res = await fetch('/api/imports/proposals/generate-single', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ compositeId: id }),
+        body: JSON.stringify({ compositeId }),
+        signal,
       })
+      if (res.status === 404) return { outcome: 'merged' }
       const data = await res.json()
-      if (res.status === 404) {
-        // The item's composite id no longer exists in the aggregated queue —
-        // most likely it got paired into a merged item after re-queueing.
-        // Refetch the whole queue so the new merged item shows up.
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || 'Failed to generate proposal')
+      }
+      const proposal = data.proposal as TransactionProposal | undefined
+      if (!proposal) return { outcome: 'unchanged' }
+      updateItemByKey(compositeId, (item) => ({ ...item, proposal }))
+      return { outcome: 'ready', proposal }
+    },
+    [updateItemByKey],
+  )
+
+  // Silent (toast-based) refresh used by chained flows like submitRejectFeedback.
+  // Card-driven manual refreshes go through the modal instead — see
+  // handleManualRefreshProposal below.
+  const handleRefreshProposal = React.useCallback(async (id: string) => {
+    setGeneratingProposalIds((prev) => new Set(prev).add(id))
+    try {
+      const result = await fetchAndApplyProposal(id)
+      if (result.outcome === 'merged') {
         refresh()
         return
       }
-      if (!res.ok) throw new Error(data.detail || data.error || 'Failed to generate proposal')
-      const { proposal } = data
-
-      if (proposal) {
-        updateItemByKey(id, (item) => ({ ...item, proposal }))
+      if (result.outcome === 'ready') {
         toast.success('Proposal generated', {
-          description: `${proposal.overallConfidence}% confidence`,
+          description: `${result.proposal.overallConfidence}% confidence`,
         })
       } else {
         toast.info('No proposal could be generated')
@@ -475,7 +509,30 @@ export default function ReviewQueuePage() {
         return next
       })
     }
-  }
+  }, [fetchAndApplyProposal, refresh])
+
+  const processGenerationItem = React.useCallback(
+    async (item: ProgressItem, signal: AbortSignal): Promise<'ready' | 'unchanged'> => {
+      setGeneratingProposalIds((prev) => new Set(prev).add(item.id))
+      try {
+        const result = await fetchAndApplyProposal(item.id, signal)
+        return result.outcome === 'ready' ? 'ready' : 'unchanged'
+      } finally {
+        setGeneratingProposalIds((prev) => {
+          const next = new Set(prev)
+          next.delete(item.id)
+          return next
+        })
+      }
+    },
+    [fetchAndApplyProposal],
+  )
+
+  const handleManualRefreshProposal = React.useCallback((id: string) => {
+    const item = items.find((i) => i.id === id)
+    if (!item) return
+    openGenerationModal([toProgressItem(item)])
+  }, [items, openGenerationModal])
 
   // Manual "Attach a source" affordance — opens a dialog scoped to the
   // currently-selected card; on confirm, writes a manual_pair_keys entry on
@@ -858,7 +915,7 @@ export default function ReviewQueuePage() {
       onImport={handleImport}
       onCreateAsNew={handleCreateAsNew}
       onQuickCreate={handleQuickCreate}
-      onRefreshProposal={handleRefreshProposal}
+      onRefreshProposal={handleManualRefreshProposal}
       onSelectionChange={handleSelectionChange}
       onAttachSource={handleAttachSource}
     />
@@ -886,14 +943,14 @@ export default function ReviewQueuePage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleGenerateProposals}
-            disabled={isLoading || isGeneratingProposals}
-            title="Generate AI proposals for unmatched items"
+            onClick={() => openGenerationModal(newItems.map(toProgressItem))}
+            disabled={isLoading || generationModalOpen || newItems.length === 0}
+            title="Generate AI proposals for unmatched items currently in view"
             className="text-muted-foreground hover:text-foreground"
           >
-            <Sparkles className={`h-4 w-4 sm:mr-1.5 ${isGeneratingProposals ? "animate-pulse" : ""}`} />
+            <Sparkles className={`h-4 w-4 sm:mr-1.5 ${generationModalOpen ? "animate-pulse" : ""}`} />
             <span className="hidden sm:inline text-xs">
-              {isGeneratingProposals ? "Generating..." : "Proposals"}
+              {generationModalOpen ? "Generating..." : "Proposals"}
             </span>
           </Button>
           <Button
@@ -1166,6 +1223,14 @@ export default function ReviewQueuePage() {
           handleFocusItemRemove(compositeId)
         }}
         isProcessing={isProcessing}
+      />
+
+      {/* Proposal generation progress modal */}
+      <ProposalGenerationModal
+        open={generationModalOpen}
+        onOpenChange={setGenerationModalOpen}
+        items={generationItems}
+        processItem={processGenerationItem}
       />
     </div>
   )
