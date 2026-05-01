@@ -101,11 +101,11 @@ export default function EditTransactionPage() {
   if (loading) {
     return (
       <div className="flex flex-col gap-6 w-full">
-          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-2xl sm:text-[26px] md:text-[30px] text-nowrap text-zinc-950">
+          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-2xl sm:text-[26px] md:text-[30px] text-nowrap text-foreground">
             <p className="leading-tight whitespace-pre">Edit transaction</p>
           </div>
           <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-zinc-200 border-t-zinc-950 rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-2 border-border border-t-zinc-950 rounded-full animate-spin"></div>
           </div>
     </div>
     )
@@ -114,11 +114,11 @@ export default function EditTransactionPage() {
   if (error || !transaction) {
     return (
       <div className="flex flex-col gap-6 w-full">
-          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-2xl sm:text-[26px] md:text-[30px] text-nowrap text-zinc-950">
+          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-2xl sm:text-[26px] md:text-[30px] text-nowrap text-foreground">
             <p className="leading-tight whitespace-pre">Edit transaction</p>
           </div>
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-sm text-zinc-500">{error || "Transaction not found"}</p>
+            <p className="text-sm text-muted-foreground">{error || "Transaction not found"}</p>
             <Button
               onClick={navigateBack}
               variant="outline"
@@ -147,7 +147,7 @@ export default function EditTransactionPage() {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-        <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
+        <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-foreground">
           <p className="leading-[36px] whitespace-pre">Edit transaction</p>
         </div>
 

@@ -152,7 +152,7 @@ export function BatchApproveDialog({
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <Check className="h-5 w-5 text-green-500" />
+            <Check className="h-5 w-5 text-green-500 dark:text-green-400" />
             {title}
           </AlertDialogTitle>
           <AlertDialogDescription>
@@ -249,7 +249,7 @@ export function BatchApproveDialog({
             }}
             disabled={isProcessing || items.length === 0}
             className={cn(
-              "bg-green-600 hover:bg-green-700",
+              "bg-green-600 hover:bg-green-700 dark:hover:bg-green-500 dark:hover:bg-green-600",
               isProcessing && "opacity-50"
             )}
           >

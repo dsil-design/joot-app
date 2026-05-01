@@ -113,8 +113,8 @@ export default function CoveragePage() {
 
       {/* Pending uploads banner */}
       {coverage && coverage.pendingUploads?.length > 0 && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <p className="text-sm font-medium text-blue-900 mb-2">
+        <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 p-4">
+          <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
             {coverage.pendingUploads.length === 1
               ? 'You have an uploaded statement ready to process'
               : `You have ${coverage.pendingUploads.length} uploaded statements ready to process`}
@@ -124,32 +124,32 @@ export default function CoveragePage() {
               <Link
                 key={upload.id}
                 href={`/imports/statements/${upload.id}`}
-                className="flex items-center gap-3 rounded-md bg-white/70 p-3 hover:bg-white transition-colors"
+                className="flex items-center gap-3 rounded-md bg-card/70 p-3 hover:bg-card transition-colors"
               >
                 {upload.status === 'processing' ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-600 shrink-0" />
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400 shrink-0" />
                 ) : (
-                  <FileText className="h-4 w-4 text-blue-600 shrink-0" />
+                  <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-medium text-blue-900">
+                    <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
                       {upload.paymentMethodName}
                     </span>
                     {formatUploadDate(upload.filename, upload.createdAt) && (
-                      <span className="text-sm text-blue-700">
+                      <span className="text-sm text-blue-700 dark:text-blue-300">
                         &middot; {formatUploadDate(upload.filename, upload.createdAt)}
                       </span>
                     )}
-                    <span className="text-xs text-blue-600">
+                    <span className="text-xs text-blue-600 dark:text-blue-400">
                       {upload.status === 'processing' ? 'Processing...' : 'Pending'}
                     </span>
                   </div>
-                  <p className="text-xs text-blue-500 truncate">
+                  <p className="text-xs text-blue-500 dark:text-blue-400 truncate">
                     {upload.filename}
                   </p>
                 </div>
-                <span className="text-xs text-blue-500">
+                <span className="text-xs text-blue-500 dark:text-blue-400">
                   View &rarr;
                 </span>
               </Link>

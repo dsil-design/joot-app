@@ -22,9 +22,9 @@ function getReasonIcon(reason: string): "good" | "partial" | "bad" {
 }
 
 const REASON_ICONS = {
-  good: { symbol: "\u2713", color: "text-green-600" },
-  partial: { symbol: "~", color: "text-amber-600" },
-  bad: { symbol: "\u2717", color: "text-red-500" },
+  good: { symbol: "\u2713", color: "text-green-600 dark:text-green-400" },
+  partial: { symbol: "~", color: "text-amber-600 dark:text-amber-400" },
+  bad: { symbol: "\u2717", color: "text-red-500 dark:text-red-400" },
 }
 
 interface MatchCardReasonsProps {

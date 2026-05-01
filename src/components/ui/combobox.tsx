@@ -146,7 +146,7 @@ const ComboBox = React.forwardRef<HTMLButtonElement, ComboBoxProps>(
                 <>
                   {selectedOption.label}
                   {selectedOption.labelSuffix && (
-                    <span className="text-zinc-500"> ({selectedOption.labelSuffix})</span>
+                    <span className="text-muted-foreground"> ({selectedOption.labelSuffix})</span>
                   )}
                 </>
               ) : (
@@ -197,7 +197,7 @@ const ComboBox = React.forwardRef<HTMLButtonElement, ComboBoxProps>(
                       <span className="truncate flex-1">
                         {option.label}
                         {option.labelSuffix && (
-                          <span className="text-zinc-500"> ({option.labelSuffix})</span>
+                          <span className="text-muted-foreground"> ({option.labelSuffix})</span>
                         )}
                       </span>
                     </CommandItem>

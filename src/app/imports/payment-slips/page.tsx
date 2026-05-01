@@ -25,13 +25,13 @@ import Link from 'next/link'
  * list matches what the detail page shows.
  */
 function getSlipBadge(slip: { status: string; review_status: string }): { label: string; className: string } {
-  if (slip.status === 'failed') return { label: 'Failed', className: 'bg-red-100 text-red-700' }
-  if (slip.status === 'processing') return { label: 'Processing', className: 'bg-blue-100 text-blue-700' }
-  if (slip.status === 'pending') return { label: 'Pending', className: 'bg-zinc-100 text-zinc-600' }
+  if (slip.status === 'failed') return { label: 'Failed', className: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' }
+  if (slip.status === 'processing') return { label: 'Processing', className: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' }
+  if (slip.status === 'pending') return { label: 'Pending', className: 'bg-muted text-muted-foreground' }
   // Extraction done — show review state
-  if (slip.review_status === 'approved') return { label: 'Approved', className: 'bg-green-100 text-green-700' }
-  if (slip.review_status === 'rejected') return { label: 'Rejected', className: 'bg-zinc-100 text-zinc-600' }
-  return { label: 'Ready', className: 'bg-amber-100 text-amber-700' }
+  if (slip.review_status === 'approved') return { label: 'Approved', className: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300' }
+  if (slip.review_status === 'rejected') return { label: 'Rejected', className: 'bg-muted text-muted-foreground' }
+  return { label: 'Ready', className: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' }
 }
 
 const bankNames: Record<string, string> = {
@@ -170,7 +170,7 @@ export default function PaymentSlipsPage() {
 
       {/* Selection action bar */}
       {selectedIds.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-3 rounded-lg border bg-zinc-50 sticky top-0 z-10">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-3 rounded-lg border bg-muted sticky top-0 z-10">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <Button
             size="sm"
@@ -212,7 +212,7 @@ export default function PaymentSlipsPage() {
         return (
           <div
             key={slip.id}
-            className="flex items-center gap-3 p-4 rounded-lg border hover:bg-zinc-50 transition-colors group"
+            className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted transition-colors group"
           >
             <Checkbox
               checked={selectedIds.has(slip.id)}
@@ -239,7 +239,7 @@ export default function PaymentSlipsPage() {
                   {slip.detected_direction && (
                     <>
                       <span>&middot;</span>
-                      <span className={isIncome ? 'text-green-600' : 'text-zinc-600'}>
+                      <span className={isIncome ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}>
                         {isIncome ? 'Income' : 'Expense'}
                       </span>
                     </>
@@ -247,7 +247,7 @@ export default function PaymentSlipsPage() {
                   {slip.extraction_error && (
                     <>
                       <span>&middot;</span>
-                      <span className="text-red-500 truncate max-w-[200px]">{slip.extraction_error}</span>
+                      <span className="text-red-500 dark:text-red-400 truncate max-w-[200px]">{slip.extraction_error}</span>
                     </>
                   )}
                 </div>
@@ -261,13 +261,13 @@ export default function PaymentSlipsPage() {
                   e.stopPropagation()
                   setPreviewSlip({ id: slip.id, filename: slip.filename })
                 }}
-                className="p-2.5 sm:p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-zinc-100 transition-colors cursor-pointer min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
+                className="p-2.5 sm:p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
                 title="Preview slip"
               >
                 <Eye className="h-4 w-4" />
               </button>
               {slip.amount && (
-                <span className={cn("text-sm font-medium", isIncome ? "text-green-600" : "")}>
+                <span className={cn("text-sm font-medium", isIncome ? "text-green-600 dark:text-green-400" : "")}>
                   {isIncome ? '+' : ''}{formatAmount(slip.amount)} {slip.currency || 'THB'}
                 </span>
               )}

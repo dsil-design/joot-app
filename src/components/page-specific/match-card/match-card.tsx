@@ -30,38 +30,38 @@ export function getVariant(data: { isNew: boolean; confidence: number; source?: 
 
 const VARIANT_CONFIG: Record<MatchCardVariant, VariantConfig> = {
   "high-confidence": {
-    borderColor: "border-green-400",
-    bgColor: "bg-green-50",
+    borderColor: "border-green-400 dark:border-green-500/60",
+    bgColor: "bg-green-50 dark:bg-green-950/20",
     label: "High Confidence Match",
-    labelColor: "text-green-700",
+    labelColor: "text-green-700 dark:text-green-300",
     dotColor: "bg-green-500",
   },
   "review-needed": {
-    borderColor: "border-amber-400",
-    bgColor: "bg-amber-50",
+    borderColor: "border-amber-400 dark:border-amber-500/60",
+    bgColor: "bg-amber-50 dark:bg-amber-950/20",
     label: "Possible Match",
-    labelColor: "text-amber-700",
-    dotColor: "bg-amber-500",
+    labelColor: "text-amber-700 dark:text-amber-300",
+    dotColor: "bg-amber-500 dark:bg-amber-400 dark:bg-amber-500",
   },
   "low-confidence": {
-    borderColor: "border-orange-400",
-    bgColor: "bg-orange-50",
+    borderColor: "border-orange-400 dark:border-orange-500/60",
+    bgColor: "bg-orange-50 dark:bg-orange-950/20",
     label: "Low Confidence",
-    labelColor: "text-orange-700",
+    labelColor: "text-orange-700 dark:text-orange-300",
     dotColor: "bg-orange-500",
   },
   "new-transaction": {
-    borderColor: "border-purple-400",
-    bgColor: "bg-purple-50",
+    borderColor: "border-purple-400 dark:border-purple-500/60",
+    bgColor: "bg-purple-50 dark:bg-purple-950/20",
     label: "New Transaction",
-    labelColor: "text-purple-700",
+    labelColor: "text-purple-700 dark:text-purple-300",
     dotColor: "bg-purple-500",
   },
   "merged-match": {
-    borderColor: "border-blue-400",
-    bgColor: "bg-blue-50",
+    borderColor: "border-blue-400 dark:border-blue-500/60",
+    bgColor: "bg-blue-50 dark:bg-blue-950/20",
     label: "Cross-Source Match",
-    labelColor: "text-blue-700",
+    labelColor: "text-blue-700 dark:text-blue-300",
     dotColor: "bg-blue-500",
   },
 }
@@ -140,18 +140,18 @@ export function MatchCard({
               variant="outline"
               size="sm"
               onClick={() => onAttachSource(data.id)}
-              className="h-7 gap-1.5 text-xs text-zinc-600"
+              className="h-7 gap-1.5 text-xs text-muted-foreground"
             >
               <Plus className="size-3" />
               Attach a source
             </Button>
             {(data.extraEmailIds?.length ?? 0) > 0 && (
-              <Badge className="bg-blue-100 text-blue-800 border-0 text-[11px]">
+              <Badge className="bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border-0 text-[11px]">
                 +{data.extraEmailIds!.length} email{data.extraEmailIds!.length === 1 ? '' : 's'}
               </Badge>
             )}
             {(data.extraSlipIds?.length ?? 0) > 0 && (
-              <Badge className="bg-blue-100 text-blue-800 border-0 text-[11px]">
+              <Badge className="bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border-0 text-[11px]">
                 +{data.extraSlipIds!.length} slip{data.extraSlipIds!.length === 1 ? '' : 's'}
               </Badge>
             )}

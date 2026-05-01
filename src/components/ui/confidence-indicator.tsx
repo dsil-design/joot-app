@@ -97,20 +97,20 @@ export function ConfidenceIndicator({
   const levelConfig = {
     high: {
       barColor: "bg-green-500",
-      barBgColor: "bg-green-100",
-      badgeColor: "bg-green-100 text-green-800 border-green-200",
+      barBgColor: "bg-green-100 dark:bg-green-950/40",
+      badgeColor: "bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800",
       label: "HIGH",
     },
     medium: {
-      barColor: "bg-amber-500",
-      barBgColor: "bg-amber-100",
-      badgeColor: "bg-amber-100 text-amber-800 border-amber-200",
+      barColor: "bg-amber-500 dark:bg-amber-400 dark:bg-amber-500",
+      barBgColor: "bg-amber-100 dark:bg-amber-950/40",
+      badgeColor: "bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800",
       label: "MEDIUM",
     },
     low: {
       barColor: "bg-red-500",
-      barBgColor: "bg-red-100",
-      badgeColor: "bg-red-100 text-red-800 border-red-200",
+      barBgColor: "bg-red-100 dark:bg-red-950/40",
+      badgeColor: "bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800",
       label: "LOW",
     },
   }
@@ -182,9 +182,9 @@ export function ConfidenceIndicator({
         <span
           className={cn(
             sizes.percentage,
-            level === "high" && "text-green-700",
-            level === "medium" && "text-amber-700",
-            level === "low" && "text-red-700"
+            level === "high" && "text-green-700 dark:text-green-300",
+            level === "medium" && "text-amber-700 dark:text-amber-300",
+            level === "low" && "text-red-700 dark:text-red-400"
           )}
         >
           {clampedScore}%

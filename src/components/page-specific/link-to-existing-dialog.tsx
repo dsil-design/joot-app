@@ -97,13 +97,13 @@ function SourceBadges({ transaction }: {
   return (
     <>
       {hasEmail && (
-        <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] px-1.5 py-0">
+        <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 text-[10px] px-1.5 py-0">
           <Mail className="h-2.5 w-2.5 mr-0.5" />
           Email
         </Badge>
       )}
       {hasStatement && (
-        <Badge variant="secondary" className="bg-slate-100 text-slate-800 border border-slate-200 text-[10px] px-1.5 py-0">
+        <Badge variant="secondary" className="bg-muted text-slate-800 border border-slate-200 text-[10px] px-1.5 py-0">
           <FileText className="h-2.5 w-2.5 mr-0.5" />
           Statement
         </Badge>
@@ -248,7 +248,7 @@ export function LinkToExistingDialog({
       <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-blue-500" />
+            <Search className="h-5 w-5 text-blue-500 dark:text-blue-400" />
             Search &amp; Link Transaction
           </DialogTitle>
           <DialogDescription>
@@ -461,7 +461,7 @@ export function LinkToExistingDialog({
             <Button
               onClick={handleConfirm}
               disabled={selectedIds.size === 0 || isLinking}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 dark:hover:bg-blue-600"
             >
               {isLinking ? (
                 <>

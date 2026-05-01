@@ -199,18 +199,18 @@ export function AttachSourceDialog({
                   disabled={disabled}
                   onClick={() => handlePickType(t)}
                   className={cn(
-                    "flex items-start gap-3 rounded-lg border border-zinc-200 p-3 text-left transition-colors",
+                    "flex items-start gap-3 rounded-lg border border-border p-3 text-left transition-colors",
                     disabled
                       ? "cursor-not-allowed opacity-50"
-                      : "hover:border-zinc-400 hover:bg-zinc-50"
+                      : "hover:border-input hover:bg-muted"
                   )}
                 >
-                  <div className="rounded-md bg-zinc-100 p-2">
-                    <Icon className="size-4 text-zinc-700" />
+                  <div className="rounded-md bg-muted p-2">
+                    <Icon className="size-4 text-foreground" />
                   </div>
                   <div className="flex flex-col">
-                    <div className="text-sm font-medium text-zinc-950">{meta.label}</div>
-                    <div className="text-xs text-zinc-500">
+                    <div className="text-sm font-medium text-foreground">{meta.label}</div>
+                    <div className="text-xs text-muted-foreground">
                       {disabled ? "Already attached — unlink first to replace" : meta.description}
                     </div>
                   </div>
@@ -223,7 +223,7 @@ export function AttachSourceDialog({
         {step === "lookup" && (
           <div className="flex flex-col gap-3 min-h-0 flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 autoFocus
                 value={query}
@@ -232,7 +232,7 @@ export function AttachSourceDialog({
                 className="pl-9"
               />
             </div>
-            <label className="flex items-center gap-2 text-xs text-zinc-600">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <Checkbox
                 checked={includeMatched}
                 onCheckedChange={(v) => setIncludeMatched(v === true)}
@@ -242,12 +242,12 @@ export function AttachSourceDialog({
 
             <div className="flex-1 overflow-y-auto -mx-1 px-1">
               {loading && (
-                <div className="flex items-center justify-center py-8 text-zinc-400">
+                <div className="flex items-center justify-center py-8 text-muted-foreground">
                   <Loader2 className="size-4 animate-spin" />
                 </div>
               )}
               {!loading && results.length === 0 && (
-                <div className="py-8 text-center text-sm text-zinc-500">
+                <div className="py-8 text-center text-sm text-muted-foreground">
                   {error || "No sources found"}
                 </div>
               )}
@@ -259,7 +259,7 @@ export function AttachSourceDialog({
                       <li
                         key={r.compositeId}
                         className={cn(
-                          "rounded-lg border border-zinc-200 p-3 transition-colors hover:border-zinc-400 hover:bg-zinc-50",
+                          "rounded-lg border border-border p-3 transition-colors hover:border-input hover:bg-muted",
                           (isAttaching || !!attachingId) && "opacity-60"
                         )}
                       >
@@ -270,13 +270,13 @@ export function AttachSourceDialog({
                             onClick={() => handleAttach(r)}
                             className="min-w-0 flex-1 text-left"
                           >
-                            <div className="text-sm font-medium text-zinc-950 truncate">
+                            <div className="text-sm font-medium text-foreground truncate">
                               {r.title}
                             </div>
                             {r.subtitle && (
-                              <div className="text-xs text-zinc-500 truncate">{r.subtitle}</div>
+                              <div className="text-xs text-muted-foreground truncate">{r.subtitle}</div>
                             )}
-                            <div className="flex items-center gap-2 mt-1 text-xs text-zinc-600">
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                               {r.amount != null && r.currency && (
                                 <span>{formatCurrency(r.amount, r.currency)} {r.currency}</span>
                               )}
@@ -289,7 +289,7 @@ export function AttachSourceDialog({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="size-7 text-zinc-500 hover:text-zinc-900"
+                                className="size-7 text-muted-foreground hover:text-foreground"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   setPreviewTarget(r)
@@ -300,15 +300,15 @@ export function AttachSourceDialog({
                               </Button>
                             </div>
                             {r.isMatched ? (
-                              <Badge className="bg-amber-100 text-amber-800 border-0 text-[11px]">
+                              <Badge className="bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-0 text-[11px]">
                                 Already linked
                               </Badge>
                             ) : (
-                              <Badge className="bg-emerald-100 text-emerald-800 border-0 text-[11px]">
+                              <Badge className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-0 text-[11px]">
                                 Unmatched
                               </Badge>
                             )}
-                            {isAttaching && <Loader2 className="size-3 animate-spin text-zinc-400" />}
+                            {isAttaching && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
                           </div>
                         </div>
                       </li>
@@ -319,7 +319,7 @@ export function AttachSourceDialog({
             </div>
 
             {error && results.length > 0 && (
-              <div className="text-xs text-red-600">{error}</div>
+              <div className="text-xs text-red-600 dark:text-red-400">{error}</div>
             )}
           </div>
         )}

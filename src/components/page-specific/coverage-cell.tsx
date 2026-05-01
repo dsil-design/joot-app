@@ -42,7 +42,7 @@ export function CoverageCell({ month, cell, onMissingClick }: CoverageCellProps)
             href={`/imports/statements/${cell.statementId}`}
             className={cn(
               'flex items-center justify-center w-11 h-11 rounded-lg',
-              'bg-green-100 border border-green-300 text-green-600',
+              'bg-green-100 dark:bg-green-950/40 border border-green-300 dark:border-green-700 text-green-600 dark:text-green-400',
               'hover:bg-green-200 transition-colors'
             )}
           >
@@ -56,7 +56,7 @@ export function CoverageCell({ month, cell, onMissingClick }: CoverageCellProps)
             href={`/review?statementUploadId=${cell.statementId}`}
             className={cn(
               'flex items-center justify-center w-11 h-11 rounded-lg',
-              'bg-amber-100 border border-amber-300 text-amber-700',
+              'bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300',
               'hover:bg-amber-200 transition-colors text-xs font-semibold'
             )}
           >
@@ -70,8 +70,8 @@ export function CoverageCell({ month, cell, onMissingClick }: CoverageCellProps)
             href={`/imports/statements/${cell.statementId}`}
             className={cn(
               'flex items-center justify-center w-11 h-11 rounded-lg',
-              'bg-blue-100 border border-blue-300 text-blue-600',
-              'hover:bg-blue-200 transition-colors'
+              'bg-blue-100 dark:bg-blue-950/40 border border-blue-300 text-blue-600 dark:text-blue-400',
+              'hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors'
             )}
           >
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -84,8 +84,8 @@ export function CoverageCell({ month, cell, onMissingClick }: CoverageCellProps)
             onClick={onMissingClick}
             className={cn(
               'flex items-center justify-center w-11 h-11 rounded-lg',
-              'bg-red-50 border-2 border-dashed border-red-300 text-red-400',
-              'hover:bg-red-100 hover:border-red-400 hover:text-red-500 transition-colors'
+              'bg-red-50 dark:bg-red-950/40 border-2 border-dashed border-red-300 dark:border-red-700 text-red-400',
+              'hover:bg-red-100 dark:hover:bg-red-950/40 hover:border-red-400 hover:text-red-500 dark:hover:text-red-400 transition-colors'
             )}
           >
             <Upload className="h-3.5 w-3.5" />

@@ -66,13 +66,13 @@ export function BulkEditVendorModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-medium text-zinc-950">
+          <DialogTitle className="text-xl font-medium text-foreground">
             Edit Vendor for Selected Transactions
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="bulk-vendor" className="text-sm font-medium text-zinc-950">
+            <Label htmlFor="bulk-vendor" className="text-sm font-medium text-foreground">
               Vendor
             </Label>
             <SearchableComboBox
@@ -133,13 +133,13 @@ export function BulkEditDateModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-medium text-zinc-950">
+          <DialogTitle className="text-xl font-medium text-foreground">
             Edit Date for Selected Transactions
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="bulk-date" className="text-sm font-medium text-zinc-950">
+            <Label htmlFor="bulk-date" className="text-sm font-medium text-foreground">
               Date
             </Label>
             <DatePicker
@@ -208,13 +208,13 @@ export function BulkEditPaymentMethodModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-medium text-zinc-950">
+          <DialogTitle className="text-xl font-medium text-foreground">
             Edit Payment Method for Selected Transactions
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="bulk-payment-method" className="text-sm font-medium text-zinc-950">
+            <Label htmlFor="bulk-payment-method" className="text-sm font-medium text-foreground">
               Payment Method
             </Label>
             <ComboBox
@@ -278,13 +278,13 @@ export function BulkEditDescriptionModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-medium text-zinc-950">
+          <DialogTitle className="text-xl font-medium text-foreground">
             Edit Description for Selected Transactions
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
           <div className="flex flex-col gap-2">
-            <Label className="text-sm font-medium text-zinc-950">
+            <Label className="text-sm font-medium text-foreground">
               Edit Mode
             </Label>
             <RadioGroup
@@ -314,7 +314,7 @@ export function BulkEditDescriptionModal({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="bulk-description" className="text-sm font-medium text-zinc-950">
+            <Label htmlFor="bulk-description" className="text-sm font-medium text-foreground">
               Text
             </Label>
             <Input

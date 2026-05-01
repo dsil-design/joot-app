@@ -115,7 +115,7 @@ export function EmailDetailPanel({
                 size="sm"
                 onClick={onDelete}
                 disabled={isDeleting}
-                className="text-muted-foreground hover:text-red-600 hover:bg-red-50 gap-1.5"
+                className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1.5"
               >
                 <Trash2 className="size-3.5" />
                 {isDeleting ? "Deleting..." : "Delete"}
@@ -285,7 +285,7 @@ export function EmailDetailPanel({
               size="sm"
               onClick={onDelete}
               disabled={isDeleting}
-              className="text-muted-foreground hover:text-red-600 hover:bg-red-50 gap-1.5"
+              className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1.5"
             >
               <Trash2 className="size-3.5" />
               {isDeleting ? "Deleting..." : "Delete"}
@@ -491,7 +491,7 @@ function TransactionPreview({
               </>
             )}
             {!vendorName && hasVendorRaw && !isLoading && (
-              <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">
+              <Badge variant="outline" className="text-[10px] text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800">
                 Unmapped
               </Badge>
             )}
@@ -511,7 +511,7 @@ function TransactionPreview({
                   <span className="text-muted-foreground">
                     {emailTransaction.payment_card_type || "Card"} •••• {emailTransaction.payment_card_last_four}
                   </span>
-                  <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">
+                  <Badge variant="outline" className="text-[10px] text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800">
                     Unmapped
                   </Badge>
                 </span>

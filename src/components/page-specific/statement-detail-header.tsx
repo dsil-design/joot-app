@@ -36,17 +36,17 @@ function formatPeriod(start: string | null, end: string | null): string {
 function getStatusBadge(status: string) {
   switch (status) {
     case 'ready_for_review':
-      return <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">Ready for Review</Badge>
+      return <Badge variant="outline" className="border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300">Ready for Review</Badge>
     case 'in_review':
-      return <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700">In Review</Badge>
+      return <Badge variant="outline" className="border-blue-300 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">In Review</Badge>
     case 'done':
-      return <Badge variant="outline" className="border-green-300 bg-green-50 text-green-700">Done</Badge>
+      return <Badge variant="outline" className="border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300">Done</Badge>
     case 'processing':
-      return <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700">Processing</Badge>
+      return <Badge variant="outline" className="border-blue-300 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">Processing</Badge>
     case 'pending':
-      return <Badge variant="outline" className="border-zinc-300 bg-zinc-50 text-zinc-700">Pending</Badge>
+      return <Badge variant="outline" className="border-border bg-muted text-muted-foreground">Pending</Badge>
     case 'failed':
-      return <Badge variant="outline" className="border-red-300 bg-red-50 text-red-700">Failed</Badge>
+      return <Badge variant="outline" className="border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400">Failed</Badge>
     default:
       return <Badge variant="outline">{status}</Badge>
   }
@@ -122,8 +122,8 @@ export function StatementDetailHeader({
               onClick={onDelete}
               disabled={isDeleting}
               className={isUnprocessed
-                ? 'border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700'
-                : 'text-muted-foreground hover:text-red-600'
+                ? 'border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700 dark:hover:text-red-400'
+                : 'text-muted-foreground hover:text-red-600 dark:hover:text-red-400'
               }
             >
               <Trash2 className="h-4 w-4 mr-1.5" />
@@ -154,8 +154,8 @@ export function StatementDetailHeader({
             onClick={onDelete}
             disabled={isDeleting}
             className={isUnprocessed
-              ? 'border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700'
-              : 'text-muted-foreground hover:text-red-600'
+              ? 'border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700 dark:hover:text-red-400'
+              : 'text-muted-foreground hover:text-red-600 dark:hover:text-red-400'
             }
           >
             <Trash2 className="h-4 w-4 mr-1.5" />
@@ -173,11 +173,11 @@ export function StatementDetailHeader({
               <p className="text-xs text-muted-foreground">Extracted</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-green-600">{stats.matched}</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.matched}</p>
               <p className="text-xs text-muted-foreground">Linked</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-amber-600">{stats.unmatched}</p>
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.unmatched}</p>
               <p className="text-xs text-muted-foreground">Unlinked</p>
             </div>
           </div>

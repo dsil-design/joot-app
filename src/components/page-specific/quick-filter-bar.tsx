@@ -53,12 +53,12 @@ export function QuickFilterBar({
       </div>
 
       {/* Desktop: Traditional filter bar with updated priority */}
-      <div className="hidden md:block w-full bg-zinc-50 rounded-lg border border-zinc-200 px-4 py-3">
+      <div className="hidden md:block w-full bg-muted rounded-lg border border-border px-4 py-3">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
 
           {/* Date Filters - Priority: Today, Yesterday, Last 7 days, This Month */}
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-sm font-medium text-zinc-700">Time Period:</span>
+            <span className="text-sm font-medium text-foreground">Time Period:</span>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -177,7 +177,7 @@ export function QuickFilterBar({
           {/* Type Filters */}
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-zinc-700">Type:</span>
+              <span className="text-sm font-medium text-foreground">Type:</span>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -234,7 +234,7 @@ export function QuickFilterBar({
               variant="ghost"
               size="sm"
               onClick={onMoreFiltersClick}
-              className="text-zinc-600 hover:text-zinc-900"
+              className="text-muted-foreground hover:text-foreground"
             >
               More filters
             </Button>

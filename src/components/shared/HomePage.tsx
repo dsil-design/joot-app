@@ -230,7 +230,7 @@ function ExchangeRateCard({ rate }: { rate: number }) {
             </p>
           </div>
           <div className="text-right space-y-1">
-            <div className="flex items-center text-green-600 text-sm">
+            <div className="flex items-center text-green-600 dark:text-green-400 text-sm">
               <TrendingUp className="h-3 w-3 mr-1" />
               +0.15%
             </div>
@@ -262,7 +262,7 @@ function RecentTransactionsCard({ transactions }: { transactions: Transaction[] 
                 {transaction.currency === 'USD' ? (
                   <ArrowUpRight className="h-4 w-4 text-destructive" />
                 ) : (
-                  <ArrowDownRight className="h-4 w-4 text-green-600" />
+                  <ArrowDownRight className="h-4 w-4 text-green-600 dark:text-green-400" />
                 )}
               </div>
               <div>

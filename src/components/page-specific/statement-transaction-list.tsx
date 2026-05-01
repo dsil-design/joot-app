@@ -59,7 +59,7 @@ function TransactionTypeIndicator({ type }: { type: string }) {
   return (
     <span className={cn(
       "flex items-center gap-0.5 text-[10px] font-medium",
-      isTransfer ? "text-zinc-400" : isCredit ? "text-green-600" : "text-zinc-500"
+      isTransfer ? "text-muted-foreground" : isCredit ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
     )}>
       <Icon className="h-3 w-3" />
     </span>
@@ -69,15 +69,15 @@ function TransactionTypeIndicator({ type }: { type: string }) {
 function LinkedJootCell({ joot, autoLinked }: { joot: JootTransactionSummary; autoLinked: boolean }) {
   return (
     <div className="flex items-center gap-2 min-w-0">
-      <Check className="h-3 w-3 text-green-600 shrink-0" />
-      <span className="truncate text-xs text-zinc-700">
+      <Check className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />
+      <span className="truncate text-xs text-muted-foreground">
         {joot.vendor_name || joot.description || 'Transaction'}
       </span>
-      <span className="text-xs font-medium text-zinc-500 shrink-0">
+      <span className="text-xs font-medium text-muted-foreground shrink-0">
         {formatMatchAmount(joot.amount, joot.original_currency)}
       </span>
       {autoLinked && (
-        <Badge variant="outline" className="border-green-200 bg-green-50 text-green-600 text-[9px] px-1 py-0 shrink-0">
+        <Badge variant="outline" className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20 text-green-600 dark:text-green-400 text-[9px] px-1 py-0 shrink-0">
           Auto
         </Badge>
       )}
@@ -88,14 +88,14 @@ function LinkedJootCell({ joot, autoLinked }: { joot: JootTransactionSummary; au
 function MatchedJootCell({ joot, confidence }: { joot: JootTransactionSummary; confidence: number }) {
   return (
     <div className="flex items-center gap-2 min-w-0">
-      <ArrowRight className="h-3 w-3 text-amber-500 shrink-0" />
-      <span className="truncate text-xs text-zinc-500">
+      <ArrowRight className="h-3 w-3 text-amber-500 dark:text-amber-400 shrink-0" />
+      <span className="truncate text-xs text-muted-foreground">
         {joot.vendor_name || joot.description || 'Transaction'}
       </span>
-      <span className="text-xs font-medium text-zinc-400 shrink-0">
+      <span className="text-xs font-medium text-muted-foreground shrink-0">
         {formatMatchAmount(joot.amount, joot.original_currency)}
       </span>
-      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-600 text-[9px] px-1 py-0 shrink-0">
+      <Badge variant="outline" className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 text-[9px] px-1 py-0 shrink-0">
         {confidence}%
       </Badge>
     </div>
@@ -192,9 +192,9 @@ export const StatementTransactionList = React.forwardRef<
             className={cn(
               'rounded-lg px-3 py-2.5 text-sm transition-colors',
               isHighlighted && 'ring-1 ring-blue-200',
-              isLinked && 'bg-green-50/50 hover:bg-green-50',
+              isLinked && 'bg-green-50/50 hover:bg-green-50 dark:hover:bg-green-950/20',
               isMatched && 'bg-amber-50/40 hover:bg-amber-50/70 cursor-pointer',
-              isIgnored && 'opacity-50 bg-zinc-50',
+              isIgnored && 'opacity-50 bg-muted',
               isActionable && 'hover:bg-muted/50',
               !isLinked && !isMatched && !isActionable && !isIgnored && 'hover:bg-muted/30',
               (isLinked || isMatched) && 'cursor-pointer',
@@ -238,7 +238,7 @@ export const StatementTransactionList = React.forwardRef<
                   <span className={cn(
                     "text-sm font-medium flex-shrink-0",
                     isIgnored && "line-through text-muted-foreground",
-                    !isIgnored && isCredit && "text-green-600"
+                    !isIgnored && isCredit && "text-green-600 dark:text-green-400"
                   )}>
                     {prefix}{formatMatchAmount(item.amount, item.currency)}
                   </span>
@@ -248,14 +248,14 @@ export const StatementTransactionList = React.forwardRef<
               {/* Rejected badge + reopen */}
               {isRejected && (
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <Badge variant="outline" className="border-zinc-300 text-zinc-500 text-[9px] px-1 py-0">
+                  <Badge variant="outline" className="border-border text-muted-foreground text-[9px] px-1 py-0">
                     Rejected
                   </Badge>
                   {onReopenClick && (
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 sm:h-6 sm:w-6 text-zinc-400 hover:text-zinc-600"
+                      className="h-8 w-8 sm:h-6 sm:w-6 text-muted-foreground hover:text-muted-foreground"
                       title="Reopen for review"
                       onClick={e => {
                         e.stopPropagation()
@@ -271,13 +271,13 @@ export const StatementTransactionList = React.forwardRef<
               {/* Ignored badge + undo */}
               {isIgnored && (
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <Badge variant="outline" className="border-zinc-300 text-zinc-500 text-[9px] px-1 py-0">
+                  <Badge variant="outline" className="border-border text-muted-foreground text-[9px] px-1 py-0">
                     Ignored
                   </Badge>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 sm:h-6 sm:w-6 text-zinc-400 hover:text-zinc-600"
+                    className="h-8 w-8 sm:h-6 sm:w-6 text-muted-foreground hover:text-muted-foreground"
                     title="Restore"
                     onClick={e => {
                       e.stopPropagation()
@@ -317,7 +317,7 @@ export const StatementTransactionList = React.forwardRef<
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 sm:h-6 sm:w-6 text-zinc-400 hover:text-zinc-600"
+                    className="h-8 w-8 sm:h-6 sm:w-6 text-muted-foreground hover:text-muted-foreground"
                     title="Ignore"
                     onClick={e => {
                       e.stopPropagation()
@@ -332,7 +332,7 @@ export const StatementTransactionList = React.forwardRef<
 
             {/* Bottom row: linked/matched Joot transaction */}
             {isLinked && item.jootTransaction && (
-              <div className="mt-1 ml-[calc(5rem+0.75rem)] border-l-2 border-green-300 pl-3">
+              <div className="mt-1 ml-[calc(5rem+0.75rem)] border-l-2 border-green-300 dark:border-green-700 pl-3">
                 <LinkedJootCell
                   joot={item.jootTransaction}
                   autoLinked={item.confidence > 0 && item.matchedTransactionId === item.originalMatchedTransactionId}
@@ -340,7 +340,7 @@ export const StatementTransactionList = React.forwardRef<
               </div>
             )}
             {isMatched && item.jootTransaction && (
-              <div className="mt-1 ml-[calc(5rem+0.75rem)] border-l-2 border-amber-300 border-dashed pl-3">
+              <div className="mt-1 ml-[calc(5rem+0.75rem)] border-l-2 border-amber-300 dark:border-amber-700 border-dashed pl-3">
                 <MatchedJootCell joot={item.jootTransaction} confidence={item.confidence} />
               </div>
             )}

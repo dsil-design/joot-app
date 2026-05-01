@@ -46,7 +46,7 @@ export function CoverageStatsBar({
           {pendingCount > 0 && (
             <div className="flex items-center gap-3 border-l pl-6">
               <div>
-                <p className="text-sm font-medium text-amber-600">
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
                   {pendingCount} pending review
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -66,14 +66,14 @@ export function CoverageStatsBar({
           <div className="flex items-center gap-3 border-l pl-6">
             <div className="text-right">
               {syncError ? (
-                <p className="text-xs text-red-500">{syncError}</p>
+                <p className="text-xs text-red-500 dark:text-red-400">{syncError}</p>
               ) : (
                 <p className="text-xs text-muted-foreground">
                   Last sync: {formatSyncTime(lastEmailSync)}
                 </p>
               )}
               {emailsPendingReview > 0 && (
-                <Link href="/imports/emails?status=pending_review" className="text-xs text-amber-600 hover:underline">
+                <Link href="/imports/emails?status=pending_review" className="text-xs text-amber-600 dark:text-amber-400 hover:underline">
                   {emailsPendingReview} emails pending
                 </Link>
               )}
@@ -119,7 +119,7 @@ export function CoverageStatsBar({
             </Button>
           </div>
           {syncError && (
-            <p className="text-xs text-red-500">{syncError}</p>
+            <p className="text-xs text-red-500 dark:text-red-400">{syncError}</p>
           )}
           {pendingCount > 0 && (
             <Button asChild size="sm" variant="outline" className="w-full">

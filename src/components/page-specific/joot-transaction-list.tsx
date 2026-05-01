@@ -108,7 +108,7 @@ export function JootTransactionList({
             ref={isHighlighted ? highlightRef : undefined}
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm cursor-pointer transition-colors',
-              isHighlighted ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-muted/50'
+              isHighlighted ? 'bg-blue-50 dark:bg-blue-950/40 ring-1 ring-blue-200' : 'hover:bg-muted/50'
             )}
             onClick={() => onRowClick?.(item.id)}
           >
@@ -131,11 +131,11 @@ export function JootTransactionList({
             {item.onStatement !== undefined && (
               <div className="flex-shrink-0">
                 {item.onStatement ? (
-                  <Badge variant="outline" className="border-green-300 bg-green-50 text-green-700 text-[10px]">
+                  <Badge variant="outline" className="border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 text-[10px]">
                     On statement
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="border-red-300 bg-red-50 text-red-700 text-[10px]">
+                  <Badge variant="outline" className="border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 text-[10px]">
                     Not on statement
                   </Badge>
                 )}

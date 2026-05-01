@@ -99,7 +99,7 @@ export function HomePageClientWrapper() {
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-medium text-zinc-950">
+            <DialogTitle className="text-2xl font-medium text-foreground">
               Add transaction
             </DialogTitle>
           </DialogHeader>

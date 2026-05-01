@@ -27,9 +27,9 @@ export function TopVendorsWidget({ vendors, height = 250, timeframeLabel = 'Year
     return (
       <div
         style={{ height }}
-        className="flex items-center justify-center bg-zinc-50 rounded-lg border border-zinc-200"
+        className="flex items-center justify-center bg-muted rounded-lg border border-border"
       >
-        <p className="text-sm text-zinc-400">No vendor data available</p>
+        <p className="text-sm text-muted-foreground">No vendor data available</p>
       </div>
     )
   }
@@ -37,7 +37,7 @@ export function TopVendorsWidget({ vendors, height = 250, timeframeLabel = 'Year
   return (
     <div className="w-full">
       {/* Summary Stats */}
-      <div className="mb-4 text-[12px] text-zinc-500">
+      <div className="mb-4 text-[12px] text-muted-foreground">
         Showing top {vendors.length} {vendors.length === 1 ? 'vendor' : 'vendors'} for {timeframeLabel.toLowerCase()}
       </div>
 
@@ -52,22 +52,22 @@ export function TopVendorsWidget({ vendors, height = 250, timeframeLabel = 'Year
                   className="w-3 h-3 rounded-sm"
                   style={{ backgroundColor: COLORS[index % COLORS.length] }}
                 />
-                <span className="text-[14px] font-medium text-zinc-950">
+                <span className="text-[14px] font-medium text-foreground">
                   {vendor.vendorName}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[14px] font-semibold text-zinc-950">
+                <span className="text-[14px] font-semibold text-foreground">
                   {formatCurrency(vendor.totalAmount, 'USD')}
                 </span>
-                <span className="text-[12px] text-zinc-400">
+                <span className="text-[12px] text-muted-foreground">
                   ({vendor.percentOfTotal.toFixed(1)}%)
                 </span>
               </div>
             </div>
 
             {/* Progress Bar */}
-            <div className="w-full bg-zinc-100 rounded-full h-2">
+            <div className="w-full bg-muted rounded-full h-2">
               <div
                 className="h-2 rounded-full transition-all duration-300"
                 style={{
@@ -78,7 +78,7 @@ export function TopVendorsWidget({ vendors, height = 250, timeframeLabel = 'Year
             </div>
 
             {/* Transaction Count */}
-            <div className="text-[12px] text-zinc-400">
+            <div className="text-[12px] text-muted-foreground">
               {vendor.transactionCount} {vendor.transactionCount === 1 ? 'transaction' : 'transactions'}
             </div>
           </div>

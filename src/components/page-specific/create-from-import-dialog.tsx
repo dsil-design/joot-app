@@ -148,7 +148,7 @@ function formatSourceList(labels: string[]): string {
 function ReasoningZap({ reasoning }: { reasoning?: string }) {
   if (!reasoning) {
     return (
-      <span className="text-purple-500">
+      <span className="text-purple-500 dark:text-purple-400">
         <Zap className="h-3.5 w-3.5" />
       </span>
     )
@@ -157,7 +157,7 @@ function ReasoningZap({ reasoning }: { reasoning?: string }) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="text-purple-500 cursor-help" tabIndex={0}>
+          <span className="text-purple-500 dark:text-purple-400 cursor-help" tabIndex={0}>
             <Zap className="h-3.5 w-3.5" />
           </span>
         </TooltipTrigger>
@@ -523,7 +523,7 @@ export function CreateFromImportDialog({
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-purple-500" />
+            <Plus className="h-5 w-5 text-purple-500 dark:text-purple-400" />
             Create as New Transaction
           </DialogTitle>
           <DialogDescription>
@@ -535,11 +535,11 @@ export function CreateFromImportDialog({
 
         {/* Smart pre-fill banner */}
         {hasAnyPrefill && (
-          <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 dark:border-purple-800 dark:bg-purple-950/30">
-            <Zap className="h-4 w-4 text-purple-500 shrink-0" />
+          <div className="flex items-center gap-2 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 px-3 py-2 dark:border-purple-800 dark:bg-purple-950/30">
+            <Zap className="h-4 w-4 text-purple-500 dark:text-purple-400 shrink-0" />
             <p className="text-xs text-purple-700 dark:text-purple-300">
               Some fields were auto-filled{data?.proposal ? " by AI proposal" : " from the email"}.{" "}
-              <span className="text-purple-500">
+              <span className="text-purple-500 dark:text-purple-400">
                 <Zap className="inline h-3 w-3" />
               </span>{" "}
               indicates a smart pre-fill.
@@ -591,7 +591,7 @@ export function CreateFromImportDialog({
                 type="button"
                 size="sm"
                 variant={transactionType === "expense" ? "default" : "outline"}
-                className={transactionType === "expense" ? "bg-purple-600 hover:bg-purple-700" : ""}
+                className={transactionType === "expense" ? "bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600" : ""}
                 aria-pressed={transactionType === "expense"}
                 onClick={() => { setTransactionType("expense"); clearAiFlag("transactionType") }}
               >
@@ -601,7 +601,7 @@ export function CreateFromImportDialog({
                 type="button"
                 size="sm"
                 variant={transactionType === "income" ? "default" : "outline"}
-                className={transactionType === "income" ? "bg-green-600 hover:bg-green-700" : ""}
+                className={transactionType === "income" ? "bg-green-600 hover:bg-green-700 dark:hover:bg-green-500 dark:hover:bg-green-600" : ""}
                 aria-pressed={transactionType === "income"}
                 onClick={() => { setTransactionType("income"); clearAiFlag("transactionType") }}
               >
@@ -611,7 +611,7 @@ export function CreateFromImportDialog({
                 type="button"
                 size="sm"
                 variant={transactionType === "transfer" ? "default" : "outline"}
-                className={transactionType === "transfer" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                className={transactionType === "transfer" ? "bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 dark:hover:bg-blue-600" : ""}
                 aria-pressed={transactionType === "transfer"}
                 onClick={() => { setTransactionType("transfer"); clearAiFlag("transactionType") }}
               >
@@ -826,7 +826,7 @@ export function CreateFromImportDialog({
           <Button
             onClick={handleConfirm}
             disabled={!isValid || isSaving}
-            className="bg-purple-600 hover:bg-purple-700"
+            className="bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600"
           >
             {isSaving ? (
               <>

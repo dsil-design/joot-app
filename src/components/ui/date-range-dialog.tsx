@@ -257,7 +257,7 @@ export function DateRangeDialogContent({
       <div className="grid grid-cols-2 gap-3">
         {/* From Date */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-zinc-700">
+          <label className="text-xs font-medium text-foreground">
             From
           </label>
           <div className="relative">
@@ -274,7 +274,7 @@ export function DateRangeDialogContent({
             <button
               type="button"
               onClick={handleFromCalendarClick}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground transition-colors"
               aria-label="Focus calendar on From date"
             >
               <CalendarIcon className="h-4 w-4" />
@@ -284,7 +284,7 @@ export function DateRangeDialogContent({
 
         {/* To Date */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-zinc-700">
+          <label className="text-xs font-medium text-foreground">
             To
           </label>
           <div className="relative">
@@ -301,7 +301,7 @@ export function DateRangeDialogContent({
             <button
               type="button"
               onClick={handleToCalendarClick}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground transition-colors"
               aria-label="Focus calendar on To date"
             >
               <CalendarIcon className="h-4 w-4" />
@@ -312,7 +312,7 @@ export function DateRangeDialogContent({
 
       {/* Validation Error */}
       {validationError && (
-        <p className="text-xs text-red-600" role="alert">
+        <p className="text-xs text-red-600 dark:text-red-400" role="alert">
           {validationError}
         </p>
       )}
@@ -347,7 +347,7 @@ export function DateRangeDialogContent({
       )}
 
       {/* Helper Text */}
-      <p className="text-xs text-zinc-500 -mt-2">
+      <p className="text-xs text-muted-foreground -mt-2">
         {selectedRange?.from && selectedRange?.to
           ? "Click Apply Filter to confirm your selection"
           : "Select a start date and end date, or use a quick preset above"}
@@ -419,7 +419,7 @@ export function DateRangePickerTrigger({
       </DialogTrigger>
       <DialogContent className="sm:max-w-fit">
         <DialogHeader>
-          <DialogTitle className="text-xl font-medium text-zinc-950">
+          <DialogTitle className="text-xl font-medium text-foreground">
             {dialogTitle}
           </DialogTitle>
         </DialogHeader>

@@ -170,27 +170,27 @@ export function UploadPaymentSlipDialog({
                 "flex min-h-[140px] flex-col items-center justify-center rounded-lg p-6 transition-all duration-200 cursor-pointer",
                 "border-2 border-dashed",
                 isDragActive
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100"
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40"
+                  : "border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-muted"
               )}
             >
               <input {...getInputProps()} />
-              <Upload className={cn("h-8 w-8 mb-2", isDragActive ? "text-blue-500" : "text-gray-400")} />
+              <Upload className={cn("h-8 w-8 mb-2", isDragActive ? "text-blue-500 dark:text-blue-400" : "text-muted-foreground")} />
               {isDragActive ? (
-                <p className="text-sm font-medium text-blue-700">Drop files here</p>
+                <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Drop files here</p>
               ) : (
                 <>
                   <p className="text-sm font-medium text-gray-700">
                     Drag & drop payment slip images here
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     or{' '}
                     <button type="button" onClick={(e) => { e.stopPropagation(); openPicker() }}
-                      className="text-blue-600 hover:text-blue-700 underline underline-offset-2">
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline underline-offset-2">
                       browse files
                     </button>
                   </p>
-                  <p className="text-xs text-gray-400 mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     PNG, JPG, HEIC (Max {MAX_FILE_SIZE_DISPLAY}) &middot; Multiple files supported
                   </p>
                 </>
@@ -210,7 +210,7 @@ export function UploadPaymentSlipDialog({
                     <p className="text-xs text-muted-foreground">
                       {formatFileSize(fileStatus.file.size)}
                       {fileStatus.error && (
-                        <span className="text-red-500 ml-2">{fileStatus.error}</span>
+                        <span className="text-red-500 dark:text-red-400 ml-2">{fileStatus.error}</span>
                       )}
                     </p>
                   </div>
@@ -222,16 +222,16 @@ export function UploadPaymentSlipDialog({
                       </button>
                     )}
                     {fileStatus.status === 'uploading' && (
-                      <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-500 dark:text-blue-400" />
                     )}
                     {fileStatus.status === 'processing' && (
-                      <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                      <Loader2 className="h-4 w-4 animate-spin text-amber-500 dark:text-amber-400" />
                     )}
                     {fileStatus.status === 'done' && (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <CheckCircle2 className="h-4 w-4 text-green-500 dark:text-green-400" />
                     )}
                     {fileStatus.status === 'error' && (
-                      <XCircle className="h-4 w-4 text-red-500" />
+                      <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" />
                     )}
                   </div>
                 </div>
@@ -257,7 +257,7 @@ export function UploadPaymentSlipDialog({
 
           {allDone && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-green-600 font-medium">
+              <p className="text-sm text-green-600 dark:text-green-400 font-medium">
                 {doneCount} slip{doneCount !== 1 ? 's' : ''} uploaded and processing
               </p>
               <div className="flex gap-2">

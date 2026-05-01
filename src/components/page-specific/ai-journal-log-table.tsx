@@ -23,17 +23,17 @@ interface AiJournalLogTableProps {
 }
 
 const invocationBadgeStyles: Record<string, string> = {
-  classification_only: 'bg-blue-100 text-blue-700',
-  combined_extraction: 'bg-purple-100 text-purple-700',
-  fallback_extraction: 'bg-amber-100 text-amber-700',
-  reprocess: 'bg-zinc-100 text-zinc-700',
+  classification_only: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',
+  combined_extraction: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300',
+  fallback_extraction: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',
+  reprocess: 'bg-muted text-muted-foreground',
 }
 
 function confidenceColor(confidence: number | null): string {
-  if (confidence === null) return 'text-zinc-400'
-  if (confidence >= 80) return 'text-green-600'
-  if (confidence >= 55) return 'text-amber-600'
-  return 'text-red-600'
+  if (confidence === null) return 'text-muted-foreground'
+  if (confidence >= 80) return 'text-green-600 dark:text-green-400'
+  if (confidence >= 55) return 'text-amber-600 dark:text-amber-400'
+  return 'text-red-600 dark:text-red-400'
 }
 
 function formatDuration(ms: number | null): string {
@@ -64,7 +64,7 @@ export function AiJournalLogTable({
 
   if (entries.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-zinc-400">
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <p className="text-sm">No journal entries yet. Process some emails to start logging.</p>
       </div>
     )
@@ -73,7 +73,7 @@ export function AiJournalLogTable({
   return (
     <div className="flex flex-col gap-2">
       {/* Table header */}
-      <div className="hidden md:grid md:grid-cols-[2rem_1fr_1fr_8rem_6rem_5rem_5rem] gap-2 px-3 py-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">
+      <div className="hidden md:grid md:grid-cols-[2rem_1fr_1fr_8rem_6rem_5rem_5rem] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
         <div />
         <div>Subject / Sender</div>
         <div>Classification</div>
@@ -88,13 +88,13 @@ export function AiJournalLogTable({
         const isExpanded = expandedId === entry.id
 
         return (
-          <div key={entry.id} className="border rounded-lg bg-white">
+          <div key={entry.id} className="border rounded-lg bg-card">
             {/* Row */}
             <button
-              className="w-full grid grid-cols-[2rem_1fr] md:grid-cols-[2rem_1fr_1fr_8rem_6rem_5rem_5rem] gap-2 items-center px-3 py-2.5 text-sm text-left hover:bg-zinc-50 transition-colors"
+              className="w-full grid grid-cols-[2rem_1fr] md:grid-cols-[2rem_1fr_1fr_8rem_6rem_5rem_5rem] gap-2 items-center px-3 py-2.5 text-sm text-left hover:bg-muted transition-colors"
               onClick={() => setExpandedId(isExpanded ? null : entry.id)}
             >
-              <div className="text-zinc-400">
+              <div className="text-muted-foreground">
                 {isExpanded ? (
                   <ChevronDown className="h-4 w-4" />
                 ) : (
@@ -104,14 +104,14 @@ export function AiJournalLogTable({
 
               {/* Subject / Sender */}
               <div className="min-w-0">
-                <p className="truncate font-medium text-zinc-900">
+                <p className="truncate font-medium text-foreground">
                   {entry.subject || '(no subject)'}
                 </p>
-                <p className="truncate text-xs text-zinc-500 md:hidden">
+                <p className="truncate text-xs text-muted-foreground md:hidden">
                   {entry.from_address || 'unknown'} &middot;{' '}
                   {new Date(entry.created_at).toLocaleString()}
                 </p>
-                <p className="hidden md:block truncate text-xs text-zinc-500">
+                <p className="hidden md:block truncate text-xs text-muted-foreground">
                   {entry.from_address || 'unknown'}
                 </p>
               </div>
@@ -123,7 +123,7 @@ export function AiJournalLogTable({
                     {entry.ai_classification.replace(/_/g, ' ')}
                   </Badge>
                 ) : (
-                  <span className="text-xs text-zinc-400">-</span>
+                  <span className="text-xs text-muted-foreground">-</span>
                 )}
               </div>
 
@@ -138,7 +138,7 @@ export function AiJournalLogTable({
               </div>
 
               {/* Parser */}
-              <div className="hidden md:block text-xs text-zinc-600 truncate">
+              <div className="hidden md:block text-xs text-muted-foreground truncate">
                 {entry.final_parser_key || '-'}
               </div>
 
@@ -148,14 +148,14 @@ export function AiJournalLogTable({
               </div>
 
               {/* Duration */}
-              <div className="hidden md:block text-xs text-zinc-500">
+              <div className="hidden md:block text-xs text-muted-foreground">
                 {formatDuration(entry.duration_ms)}
               </div>
             </button>
 
             {/* Expanded details */}
             {isExpanded && (
-              <div className="border-t px-4 py-3 bg-zinc-50 text-sm space-y-3">
+              <div className="border-t px-4 py-3 bg-muted text-sm space-y-3">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Detail label="Date" value={entry.email_date ? new Date(entry.email_date).toLocaleString() : '-'} />
                   <Detail label="Status" value={entry.final_status || '-'} />
@@ -181,8 +181,8 @@ export function AiJournalLogTable({
 
                 {entry.ai_reasoning && (
                   <div>
-                    <p className="text-xs font-medium text-zinc-500 mb-1">AI Reasoning</p>
-                    <p className="text-xs text-zinc-700 bg-white rounded p-2 border">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">AI Reasoning</p>
+                    <p className="text-xs text-foreground bg-card rounded p-2 border">
                       {entry.ai_reasoning}
                     </p>
                   </div>
@@ -196,7 +196,7 @@ export function AiJournalLogTable({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-muted-foreground">
             {total} entries
           </p>
           <div className="flex items-center gap-1">
@@ -218,7 +218,7 @@ export function AiJournalLogTable({
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-xs text-zinc-500 px-2">
+            <span className="text-xs text-muted-foreground px-2">
               {page} / {totalPages}
             </span>
             <Button
@@ -249,8 +249,8 @@ export function AiJournalLogTable({
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-medium text-zinc-500">{label}</p>
-      <p className="text-xs text-zinc-700">{value}</p>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground">{value}</p>
     </div>
   )
 }

@@ -34,15 +34,15 @@ const typeIcons: Record<string, typeof Code> = {
 
 const severityStyles: Record<string, { badge: string; border: string }> = {
   action_needed: {
-    badge: 'bg-red-100 text-red-700 hover:bg-red-100',
+    badge: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/40',
     border: 'border-l-red-500',
   },
   suggestion: {
-    badge: 'bg-amber-100 text-amber-700 hover:bg-amber-100',
+    badge: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/40',
     border: 'border-l-amber-500',
   },
   info: {
-    badge: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
+    badge: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-950/40',
     border: 'border-l-blue-500',
   },
 }
@@ -65,7 +65,7 @@ export function AiJournalInsightsList({
 
   if (insights.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-zinc-400">
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <Info className="h-8 w-8 mb-2" />
         <p className="text-sm">No active insights. Run an analysis to detect patterns.</p>
       </div>
@@ -81,23 +81,23 @@ export function AiJournalInsightsList({
         return (
           <div
             key={insight.id}
-            className={`flex items-start gap-4 rounded-lg border border-l-4 ${styles.border} bg-white p-4`}
+            className={`flex items-start gap-4 rounded-lg border border-l-4 ${styles.border} bg-card p-4`}
           >
             <div className="flex-shrink-0 mt-0.5">
-              <Icon className="h-5 w-5 text-zinc-500" />
+              <Icon className="h-5 w-5 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h4 className="text-sm font-medium text-zinc-900 truncate">
+                <h4 className="text-sm font-medium text-foreground truncate">
                   {insight.title}
                 </h4>
                 <Badge variant="outline" className={`text-xs ${styles.badge}`}>
                   {insight.severity.replace('_', ' ')}
                 </Badge>
               </div>
-              <p className="text-sm text-zinc-600 mb-2">{insight.description}</p>
+              <p className="text-sm text-muted-foreground mb-2">{insight.description}</p>
               {insight.evidence && (
-                <div className="flex flex-wrap gap-2 text-xs text-zinc-500">
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                   {insight.email_count && (
                     <span>{insight.email_count} emails</span>
                   )}
@@ -118,7 +118,7 @@ export function AiJournalInsightsList({
                 onClick={() => onImplement(insight.id)}
                 title="Mark as implemented"
               >
-                <Check className="h-4 w-4 text-green-600" />
+                <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
               </Button>
               <Button
                 variant="ghost"
@@ -127,7 +127,7 @@ export function AiJournalInsightsList({
                 onClick={() => onDismiss(insight.id)}
                 title="Dismiss"
               >
-                <X className="h-4 w-4 text-zinc-400" />
+                <X className="h-4 w-4 text-muted-foreground" />
               </Button>
             </div>
           </div>

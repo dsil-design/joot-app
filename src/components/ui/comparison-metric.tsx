@@ -16,14 +16,14 @@ export function ComparisonMetric({
   variant = 'default'
 }: ComparisonMetricProps) {
   // Determine color based on direction and variant
-  let colorClass = 'text-zinc-500'
+  let colorClass = 'text-muted-foreground'
   if (changeDirection !== 'neutral') {
     if (variant === 'default') {
       // Default: up is good (green), down is bad (red)
-      colorClass = changeDirection === 'up' ? 'text-green-600' : 'text-red-600'
+      colorClass = changeDirection === 'up' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
     } else {
       // Inverse: up is bad (red), down is good (green) - for expenses
-      colorClass = changeDirection === 'up' ? 'text-red-600' : 'text-green-600'
+      colorClass = changeDirection === 'up' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
     }
   }
 
@@ -35,7 +35,7 @@ export function ComparisonMetric({
         <Icon className="size-3" />
         {Math.abs(changePercent).toFixed(1)}%
       </span>
-      <span className="text-[12px] font-normal text-zinc-400">
+      <span className="text-[12px] font-normal text-muted-foreground">
         {label}
       </span>
     </div>

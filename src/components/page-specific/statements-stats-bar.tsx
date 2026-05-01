@@ -16,13 +16,13 @@ export function StatementsStatsBar({ stats }: StatementsStatsBarProps) {
           <p className="text-xs text-muted-foreground">Total Statements</p>
         </div>
         <div>
-          <p className="text-2xl font-bold text-amber-600">
+          <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
             {stats.pending + stats.processing}
           </p>
           <p className="text-xs text-muted-foreground">Pending</p>
         </div>
         <div>
-          <p className="text-2xl font-bold text-green-600">
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400">
             {stats.averageMatchRate}%
           </p>
           <p className="text-xs text-muted-foreground">Avg Match Rate</p>

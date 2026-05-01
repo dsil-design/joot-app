@@ -173,8 +173,8 @@ export function VendorsSettings({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-zinc-950">Vendors</h2>
-          <p className="text-sm text-zinc-500 mt-1">
+          <h2 className="text-2xl font-semibold text-foreground">Vendors</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Manage vendors and merchants where you make transactions
           </p>
         </div>
@@ -191,12 +191,12 @@ export function VendorsSettings({
 
       {/* All Vendors List */}
       <div>
-        <h3 className="text-lg font-semibold text-zinc-950 mb-3">All Vendors</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-3">All Vendors</h3>
       </div>
 
-      <Card className="bg-white border-zinc-200 rounded-lg shadow-sm overflow-hidden">
+      <Card className="bg-card border-border rounded-lg shadow-sm overflow-hidden">
         {initialVendors.length === 0 ? (
-          <div className="p-12 text-center text-zinc-500">
+          <div className="p-12 text-center text-muted-foreground">
             <p className="text-lg font-medium mb-2">No vendors yet</p>
             <p className="text-sm">Click &quot;Add Vendor&quot; to create your first one.</p>
           </div>
@@ -205,11 +205,11 @@ export function VendorsSettings({
             {initialVendors.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between p-4 hover:bg-zinc-50 transition-colors"
+                className="flex items-center justify-between p-4 hover:bg-muted transition-colors"
               >
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium text-zinc-950">{item.name}</span>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-sm font-medium text-foreground">{item.name}</span>
+                  <span className="text-xs text-muted-foreground">
                     {item.transactionCount} {item.transactionCount === 1 ? 'transaction' : 'transactions'}
                   </span>
                 </div>
@@ -236,7 +236,7 @@ export function VendorsSettings({
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDeleteClick(item)}
-                    className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="h-8 px-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
                     disabled={item.transactionCount > 0}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -335,7 +335,7 @@ export function VendorsSettings({
             <AlertDialogAction
               onClick={handleDelete}
               disabled={saving}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 dark:hover:bg-red-500 dark:hover:bg-red-600"
             >
               {saving ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>

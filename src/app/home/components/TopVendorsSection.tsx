@@ -50,7 +50,7 @@ export async function TopVendorsSection({ userId }: TopVendorsSectionProps) {
       <div className="text-[12px] font-medium text-muted-foreground leading-4">
         Top Spending
       </div>
-      <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+      <Card className="bg-card border-border rounded-lg shadow-sm p-0 w-full">
         <div className="p-6">
           <TopVendorsWidget vendors={topVendors} timeframeLabel="Year to Date" />
         </div>

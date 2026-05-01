@@ -76,11 +76,11 @@ const SKIP: ActionDescriptor = {
 
 const VARIANT_ACTIONS: Record<MatchCardVariant | "merged-match-with-link", ActionDescriptor[]> = {
   "high-confidence": [
-    { ...APPROVE, className: "bg-green-600 hover:bg-green-700" },
+    { ...APPROVE, className: "bg-green-600 hover:bg-green-700 dark:hover:bg-green-500 dark:hover:bg-green-600" },
     REJECT,
   ],
   "review-needed": [
-    { ...APPROVE, className: "bg-amber-600 hover:bg-amber-700" },
+    { ...APPROVE, className: "bg-amber-600 hover:bg-amber-700 dark:hover:bg-amber-500 dark:hover:bg-amber-600" },
     {
       ...CREATE_AS_NEW,
       buttonVariant: "outline",
@@ -90,22 +90,22 @@ const VARIANT_ACTIONS: Record<MatchCardVariant | "merged-match-with-link", Actio
     SKIP,
   ],
   "low-confidence": [
-    { ...CREATE_AS_NEW, className: "bg-orange-600 hover:bg-orange-700" },
+    { ...CREATE_AS_NEW, className: "bg-orange-600 hover:bg-orange-700 dark:hover:bg-orange-500 dark:hover:bg-orange-600" },
     LINK,
     SKIP,
   ],
   "new-transaction": [
-    { ...CREATE_AS_NEW, className: "bg-purple-600 hover:bg-purple-700" },
+    { ...CREATE_AS_NEW, className: "bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600" },
     LINK,
     SKIP,
   ],
   "merged-match": [
-    { ...CREATE_AS_NEW, label: "Link & Create", className: "bg-blue-600 hover:bg-blue-700" },
+    { ...CREATE_AS_NEW, label: "Link & Create", className: "bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 dark:hover:bg-blue-600" },
     LINK,
     SKIP,
   ],
   "merged-match-with-link": [
-    { ...APPROVE, label: "Link to Match", className: "bg-green-600 hover:bg-green-700" },
+    { ...APPROVE, label: "Link to Match", className: "bg-green-600 hover:bg-green-700 dark:hover:bg-green-500 dark:hover:bg-green-600" },
     { ...CREATE_AS_NEW, label: "Link & Create", buttonVariant: "outline", isPrimary: false },
     { ...LINK, label: "Link to Other" },
     SKIP,
@@ -154,7 +154,7 @@ export function MatchCardActions({
               variant="default"
               onClick={() => callbacks.onQuickCreate?.(id)}
               disabled={loading}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -170,7 +170,7 @@ export function MatchCardActions({
               variant={confidence >= 85 ? "outline" : "default"}
               onClick={() => callbacks.onCreateAsNew?.(id)}
               disabled={loading}
-              className={confidence >= 85 ? "" : "bg-purple-600 hover:bg-purple-700"}
+              className={confidence >= 85 ? "" : "bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600"}
             >
               <Zap className="h-4 w-4" aria-hidden="true" />
               Create as New
@@ -181,7 +181,7 @@ export function MatchCardActions({
               variant="default"
               onClick={() => callbacks.onCreateAsNew?.(id)}
               disabled={loading}
-              className="bg-orange-600 hover:bg-orange-700"
+              className="bg-orange-600 hover:bg-orange-700 dark:hover:bg-orange-500 dark:hover:bg-orange-600"
             >
               <Eye className="h-4 w-4" />
               Review & Create
@@ -236,7 +236,7 @@ export function MatchCardActions({
             variant="default"
             onClick={() => callbacks.onRefreshProposal?.(id)}
             disabled={loading}
-            className="bg-purple-600 hover:bg-purple-700"
+            className="bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -315,14 +315,14 @@ export function MatchCardActions({
     // Show "Created (modified)" for proposal items that were modified
     if (proposalModified) {
       return (
-        <span className="flex items-center gap-1 text-sm text-amber-600">
+        <span className="flex items-center gap-1 text-sm text-amber-600 dark:text-amber-400">
           <Check className="h-4 w-4" />
           Created (modified)
         </span>
       )
     }
     return (
-      <span className="flex items-center gap-1 text-sm text-green-600">
+      <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
         <Check className="h-4 w-4" />
         {status === "imported" ? "Imported" : "Linked"}
       </span>
@@ -335,7 +335,7 @@ export function MatchCardActions({
     if (hasFollowUpActions) {
       return (
         <>
-          <span className="flex items-center gap-1 text-sm text-gray-500 mr-auto">
+          <span className="flex items-center gap-1 text-sm text-muted-foreground mr-auto">
             <Ban className="h-4 w-4" />
             Match rejected
           </span>
@@ -345,7 +345,7 @@ export function MatchCardActions({
               variant="default"
               onClick={() => callbacks.onCreateAsNew?.(id)}
               disabled={loading}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600"
             >
               <Plus className="h-4 w-4" />
               Create as New
@@ -367,7 +367,7 @@ export function MatchCardActions({
     }
 
     return (
-      <span className="flex items-center gap-1 text-sm text-gray-500">
+      <span className="flex items-center gap-1 text-sm text-muted-foreground">
         <Ban className="h-4 w-4" />
         Rejected
       </span>

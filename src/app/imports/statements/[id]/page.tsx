@@ -83,10 +83,10 @@ function CopyableId({ id }: { id: string }) {
 
   return (
     <div className="flex items-center gap-1.5 pt-2">
-      <span className="text-[12px] text-zinc-400 font-mono">{id}</span>
+      <span className="text-[12px] text-muted-foreground font-mono">{id}</span>
       <button
         onClick={handleCopy}
-        className="text-zinc-400 hover:text-zinc-600 transition-colors p-0.5"
+        className="text-muted-foreground hover:text-muted-foreground transition-colors p-0.5"
         aria-label="Copy ID"
       >
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
@@ -540,25 +540,25 @@ export default function StatementDetailPage() {
             onDelete={() => setDeleteConfirmOpen(true)}
             isDeleting={isDeleting}
           />
-          <Card className="border-amber-200 bg-amber-50">
+          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40">
             <CardContent className="py-8">
               <div className="flex flex-col items-center gap-4 text-center">
                 {isProcessing ? (
                   <>
-                    <RefreshCw className="h-8 w-8 animate-spin text-amber-600" />
+                    <RefreshCw className="h-8 w-8 animate-spin text-amber-600 dark:text-amber-400" />
                     <div>
-                      <p className="font-medium text-amber-900">Starting processing...</p>
-                      <p className="text-sm text-amber-700 mt-1">
+                      <p className="font-medium text-amber-900 dark:text-amber-100">Starting processing...</p>
+                      <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                         This may take a moment
                       </p>
                     </div>
                   </>
                 ) : (
                   <>
-                    <FileText className="h-8 w-8 text-amber-600" />
+                    <FileText className="h-8 w-8 text-amber-600 dark:text-amber-400" />
                     <div>
-                      <p className="font-medium text-amber-900">Statement uploaded</p>
-                      <p className="text-sm text-amber-700 mt-1">
+                      <p className="font-medium text-amber-900 dark:text-amber-100">Statement uploaded</p>
+                      <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                         Ready to extract and link transactions
                       </p>
                     </div>
@@ -601,16 +601,16 @@ export default function StatementDetailPage() {
             matchRate={0}
             onViewStatement={() => setViewerOpen(true)}
           />
-          <Card className="border-blue-200 bg-blue-50">
+          <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40">
             <CardContent className="py-4 space-y-3">
               <div className="flex items-center gap-3">
-                <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
-                <span className="font-medium text-blue-900">Processing statement...</span>
+                <RefreshCw className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
+                <span className="font-medium text-blue-900 dark:text-blue-100">Processing statement...</span>
               </div>
               {result.progress && (
                 <>
                   <Progress value={result.progress.percent} className="h-2" />
-                  <p className="text-sm text-blue-700">{result.progress.message}</p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">{result.progress.message}</p>
                 </>
               )}
             </CardContent>
@@ -703,10 +703,10 @@ export default function StatementDetailPage() {
 
       {/* Review in Queue callout */}
       {['ready_for_review', 'in_review', 'done'].includes(status) && extracted > 0 && !calloutDismissed && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40">
           <CardContent className="py-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <p className="text-sm font-medium text-blue-900">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
                 {extracted} transaction{extracted !== 1 ? 's' : ''} extracted.
               </p>
               <div className="flex flex-wrap items-center gap-2">
@@ -724,7 +724,7 @@ export default function StatementDetailPage() {
                   variant="default"
                   size="sm"
                   asChild
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 dark:hover:bg-blue-600"
                 >
                   <Link href={`/review?statementUploadId=${statementId}`}>
                     Full review queue
@@ -735,7 +735,7 @@ export default function StatementDetailPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setCalloutDismissed(true)}
-                  className="text-blue-700 hover:text-blue-900"
+                  className="text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100"
                 >
                   Dismiss
                 </Button>

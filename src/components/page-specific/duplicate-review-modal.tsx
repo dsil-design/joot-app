@@ -151,7 +151,7 @@ export function DuplicateReviewModal({
             {/* Target Vendor */}
             <div className="border rounded-lg p-4 space-y-2 bg-green-50 dark:bg-green-950">
               <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                MERGE INTO (Target) <Check className="h-4 w-4 text-green-600" />
+                MERGE INTO (Target) <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
               </div>
               <div className="text-lg font-semibold">
                 {suggestion.targetVendor.name}

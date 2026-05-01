@@ -41,7 +41,7 @@ export function CoverageRing({ percentage, size = 'md' }: CoverageRingProps) {
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          className="text-green-500 transition-all duration-500"
+          className="text-green-500 dark:text-green-400 transition-all duration-500"
         />
       </svg>
       <span className={`absolute font-semibold ${fontSize}`}>

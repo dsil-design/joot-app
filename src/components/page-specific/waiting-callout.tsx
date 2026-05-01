@@ -40,14 +40,14 @@ export function WaitingCallout({ stats, onViewWaiting }: WaitingCalloutProps) {
     : null
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center gap-3">
-      <Clock className="h-5 w-5 text-blue-600 shrink-0" />
+    <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-3 flex items-center gap-3">
+      <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-blue-900">
+        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
           {waitingCount} email{waitingCount !== 1 ? "s" : ""} waiting for statement
         </p>
         {formattedAmount && (
-          <p className="text-xs text-blue-700">
+          <p className="text-xs text-blue-700 dark:text-blue-300">
             ~{formattedAmount} in {currency} transactions
           </p>
         )}
@@ -55,7 +55,7 @@ export function WaitingCallout({ stats, onViewWaiting }: WaitingCalloutProps) {
       <Button
         variant="outline"
         size="sm"
-        className="shrink-0 border-blue-300 text-blue-700 hover:bg-blue-100"
+        className="shrink-0 border-blue-300 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-950/40"
         onClick={onViewWaiting}
       >
         View Waiting
@@ -63,7 +63,7 @@ export function WaitingCallout({ stats, onViewWaiting }: WaitingCalloutProps) {
       </Button>
       <button
         onClick={handleDismiss}
-        className="text-blue-400 hover:text-blue-600 shrink-0"
+        className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-400 shrink-0"
         aria-label="Dismiss"
       >
         <X className="h-4 w-4" />

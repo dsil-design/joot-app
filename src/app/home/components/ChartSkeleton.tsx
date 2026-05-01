@@ -5,7 +5,7 @@ export function TrendChartSkeleton() {
   return (
     <div className="flex flex-col gap-2 items-start justify-start w-full">
       <Skeleton className="h-4 w-36" />
-      <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+      <Card className="bg-card border-border rounded-lg shadow-sm p-0 w-full">
         <div className="p-6">
           {/* Chart header with controls */}
           <div className="flex items-center justify-between mb-6">
@@ -24,7 +24,7 @@ export function TopVendorsSkeleton() {
   return (
     <div className="flex flex-col gap-2 items-start justify-start">
       <Skeleton className="h-4 w-24" />
-      <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+      <Card className="bg-card border-border rounded-lg shadow-sm p-0 w-full">
         <div className="p-6">
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
@@ -71,7 +71,7 @@ export function RecentTransactionsSkeleton() {
           </div>
         </div>
         {/* Footer button */}
-        <div className="sticky bottom-0 bg-background pt-4 mt-4 border-t border-zinc-200">
+        <div className="sticky bottom-0 bg-background pt-4 mt-4 border-t border-border">
           <Skeleton className="h-10 w-full" />
         </div>
       </div>

@@ -50,7 +50,7 @@ export function EmailHubStatsBar({
       {showBanner && !isLoading && totalSynced > 0 && unprocessedForBanner > 0 && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3 space-y-2">
           <div className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 text-amber-600 shrink-0 animate-spin" />
+            <Loader2 className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 animate-spin" />
             <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
               {(stats?.total || 0).toLocaleString()} of {totalSynced.toLocaleString()} synced emails have been processed
             </p>
@@ -85,7 +85,7 @@ export function EmailHubStatsBar({
           label="Pending Review"
           value={pendingCount}
           isLoading={isLoading}
-          className="text-amber-600"
+          className="text-amber-600 dark:text-amber-400"
           onClick={() => onFilterByStatus("pending_review")}
         />
         <StatCard
@@ -93,7 +93,7 @@ export function EmailHubStatsBar({
           label="Waiting"
           value={waitingCount}
           isLoading={isLoading}
-          className="text-blue-600"
+          className="text-blue-600 dark:text-blue-400"
           onClick={() => onFilterByStatus("waiting_for_statement")}
         />
         <StatCard
@@ -101,7 +101,7 @@ export function EmailHubStatsBar({
           label="Linked"
           value={matchedCount}
           isLoading={isLoading}
-          className="text-green-600"
+          className="text-green-600 dark:text-green-400"
           onClick={() => onFilterByStatus("matched")}
         />
         <StatCard

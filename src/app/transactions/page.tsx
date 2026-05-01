@@ -429,7 +429,7 @@ function TransactionsTable({
                 <TableRow
                   key={transaction.id}
                   className={`cursor-pointer hover:bg-accent/50 active:bg-accent transition-colors ${
-                    isSelected ? "bg-blue-50 hover:bg-blue-100 active:bg-blue-200" : ""
+                    isSelected ? "bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-950/40 active:bg-blue-200 dark:active:bg-blue-800" : ""
                   }`}
                   onClick={(e) => handleRowClick(transaction, e)}
                 >
@@ -484,17 +484,17 @@ function TransactionsTable({
                     {(transaction as any).source_email_transaction_id || (transaction as any).source_statement_upload_id || (transaction as any).source_payment_slip_id ? (
                       <div className="flex flex-nowrap gap-1">
                         {(transaction as any).source_email_transaction_id && (
-                          <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs">
+                          <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 text-xs">
                             Email
                           </Badge>
                         )}
                         {(transaction as any).source_statement_upload_id && (
-                          <Badge variant="secondary" className="bg-slate-100 text-slate-800 border border-slate-200 text-xs">
+                          <Badge variant="secondary" className="bg-muted text-slate-800 border border-slate-200 text-xs">
                             Statement
                           </Badge>
                         )}
                         {(transaction as any).source_payment_slip_id && (
-                          <Badge variant="secondary" className="bg-amber-100 text-amber-800 border border-amber-200 text-xs">
+                          <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs">
                             Slip
                           </Badge>
                         )}
@@ -679,14 +679,14 @@ function TotalsFooter({ totals, totalsCurrency, onTotalsCurrencyChange }: Totals
           <div className="flex items-center gap-6 flex-wrap">
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground font-medium">Total Expenses</span>
-              <span className="text-lg font-semibold text-red-600">
+              <span className="text-lg font-semibold text-red-600 dark:text-red-400">
                 {isCalculating ? "Calculating..." : formatTotal(convertedTotals.totalExpenses)}
               </span>
             </div>
 
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground font-medium">Total Income</span>
-              <span className="text-lg font-semibold text-green-600">
+              <span className="text-lg font-semibold text-green-600 dark:text-green-400">
                 {isCalculating ? "Calculating..." : formatTotal(convertedTotals.totalIncome)}
               </span>
             </div>
@@ -694,7 +694,7 @@ function TotalsFooter({ totals, totalsCurrency, onTotalsCurrencyChange }: Totals
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground font-medium">Net</span>
               <span className={`text-lg font-semibold ${
-                convertedTotals.totalIncome - convertedTotals.totalExpenses >= 0 ? "text-green-600" : "text-red-600"
+                convertedTotals.totalIncome - convertedTotals.totalExpenses >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
               }`}>
                 {isCalculating ? "Calculating..." : formatTotal(convertedTotals.totalIncome - convertedTotals.totalExpenses)}
               </span>
@@ -1509,7 +1509,7 @@ export default function AllTransactionsPage() {
           }
         />
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-sm text-zinc-500">Failed to load transactions: {paginationError?.message || 'Unknown error'}</p>
+          <p className="text-sm text-muted-foreground">Failed to load transactions: {paginationError?.message || 'Unknown error'}</p>
           <Button onClick={() => refetch()} className="mt-4">
             Retry
           </Button>
@@ -1581,7 +1581,7 @@ export default function AllTransactionsPage() {
         >
           <DialogContent className="sm:max-w-fit">
             <DialogHeader>
-              <DialogTitle className="text-xl font-medium text-zinc-950">
+              <DialogTitle className="text-xl font-medium text-foreground">
                 Select Custom Date Range
               </DialogTitle>
             </DialogHeader>
@@ -1614,7 +1614,7 @@ export default function AllTransactionsPage() {
           <div className="flex flex-col gap-6 w-full">
             {groupedTransactions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <p className="text-sm text-zinc-500">No transactions found matching the filters.</p>
+                <p className="text-sm text-muted-foreground">No transactions found matching the filters.</p>
               </div>
             ) : (
               <>
@@ -1732,7 +1732,7 @@ export default function AllTransactionsPage() {
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-medium text-zinc-950">
+            <DialogTitle className="text-2xl font-medium text-foreground">
               Add transaction
             </DialogTitle>
           </DialogHeader>
@@ -1752,7 +1752,7 @@ export default function AllTransactionsPage() {
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-medium text-zinc-950">
+            <DialogTitle className="text-2xl font-medium text-foreground">
               Edit transaction
             </DialogTitle>
           </DialogHeader>

@@ -64,7 +64,7 @@ export function MainLayout({
   }, [user])
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       {/* Sidebar Navigation - Desktop only */}
       {showSidebar && userProfile && (
         <SidebarNavigation user={userProfile} />

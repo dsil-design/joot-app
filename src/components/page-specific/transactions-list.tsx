@@ -43,7 +43,7 @@ interface TransactionGroupProps {
 export function TransactionGroup({ date, transactions, viewMode, isMobile, onEditTransaction, onBeforeNavigate }: TransactionGroupProps) {
   return (
     <>
-      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-black text-[20px] text-nowrap">
+      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-black dark:text-foreground text-[20px] text-nowrap">
         <p className="leading-[28px] whitespace-pre">{formatTransactionDateLabel(date)}</p>
       </div>
       <div className="content-stretch flex flex-col gap-3 items-start justify-start relative shrink-0 w-full">

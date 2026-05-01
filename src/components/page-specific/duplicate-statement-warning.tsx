@@ -40,9 +40,9 @@ export function DuplicateStatementWarning({
       className="border-amber-500 bg-amber-50 dark:bg-amber-950/30"
     >
       {isFileHashDuplicate ? (
-        <FileWarning className="h-5 w-5 text-amber-600" />
+        <FileWarning className="h-5 w-5 text-amber-600 dark:text-amber-400" />
       ) : (
-        <AlertTriangle className="h-5 w-5 text-amber-600" />
+        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
       )}
       <AlertTitle className="text-amber-800 dark:text-amber-200">
         {isFileHashDuplicate ? 'Duplicate File Detected' : 'Statement Period Overlap'}
@@ -85,7 +85,7 @@ export function DuplicateStatementWarning({
               variant="outline"
               size="sm"
               asChild
-              className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/50"
+              className="border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-950/40 dark:hover:border-amber-700 dark:hover:bg-amber-900/50"
             >
               <Link
                 href={`/imports/statements/${firstDuplicate.existingUpload.id}`}
@@ -103,7 +103,7 @@ export function DuplicateStatementWarning({
               size="sm"
               onClick={onForceUpload}
               disabled={isForcing}
-              className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/50"
+              className="border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-950/40 dark:hover:border-amber-700 dark:hover:bg-amber-900/50"
             >
               {isForcing ? 'Uploading...' : 'Upload Anyway'}
             </Button>
@@ -114,7 +114,7 @@ export function DuplicateStatementWarning({
               variant="ghost"
               size="sm"
               onClick={onCancel}
-              className="text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+              className="text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-300 dark:hover:text-amber-100"
             >
               Cancel
             </Button>
@@ -144,12 +144,12 @@ export function DuplicateWarningInline({
   uploadId: string
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+    <div className="flex items-center gap-2 rounded-md bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-300 dark:bg-amber-950/30 dark:text-amber-300">
       <AlertTriangle className="h-4 w-4 flex-shrink-0" />
       <span>{message}</span>
       <Link
         href={`/imports/statements/${uploadId}`}
-        className="ml-auto flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200"
+        className="ml-auto flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-400 dark:hover:text-amber-200"
       >
         View <ExternalLink className="h-3 w-3" />
       </Link>

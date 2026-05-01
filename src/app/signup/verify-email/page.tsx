@@ -32,7 +32,7 @@ function VerifyEmailContent() {
 
           <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
             <div className="flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+              <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400 mt-0.5" />
               <div className="text-left space-y-1">
                 <p className="font-medium text-foreground">Next steps:</p>
                 <ol className="list-decimal list-inside space-y-1">

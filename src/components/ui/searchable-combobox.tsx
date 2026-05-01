@@ -152,13 +152,13 @@ export function SearchableComboBox({
           <CommandList className="max-h-[min(300px,calc(100vh-200px))]">
             {loading && (
               <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
             )}
 
             {!loading && searchValue.length === 0 && (
               <CommandEmpty>
-                <div className="py-6 text-center text-sm text-zinc-500">
+                <div className="py-6 text-center text-sm text-muted-foreground">
                   Start typing to search...
                 </div>
               </CommandEmpty>

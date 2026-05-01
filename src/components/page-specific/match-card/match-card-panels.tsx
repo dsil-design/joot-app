@@ -496,8 +496,8 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
               </span>
             </TransactionDetailRow>
             {data.statementTransaction.foreignAmount != null && data.statementTransaction.foreignCurrency && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 rounded px-2 py-1">
-                <ArrowLeftRight className="h-3 w-3 text-blue-500 shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/40 rounded px-2 py-1">
+                <ArrowLeftRight className="h-3 w-3 text-blue-500 dark:text-blue-400 shrink-0" />
                 <span>
                   Originally {formatMatchAmount(data.statementTransaction.foreignAmount, data.statementTransaction.foreignCurrency)}
                   {data.statementTransaction.foreignExchangeRate != null && (
@@ -593,8 +593,8 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
               </span>
             </TransactionDetailRow>
             {data.statementTransaction.foreignAmount != null && data.statementTransaction.foreignCurrency && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 rounded px-2 py-1">
-                <ArrowLeftRight className="h-3 w-3 text-blue-500 shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/40 rounded px-2 py-1">
+                <ArrowLeftRight className="h-3 w-3 text-blue-500 dark:text-blue-400 shrink-0" />
                 <span>
                   Originally {formatMatchAmount(data.statementTransaction.foreignAmount, data.statementTransaction.foreignCurrency)}
                   {data.statementTransaction.foreignExchangeRate != null && (
@@ -608,8 +608,8 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
 
         {/* Cross-currency conversion info bar (only for cross-currency pairs) */}
         {cx && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 rounded px-3 py-1.5">
-            <ArrowLeftRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/40 rounded px-3 py-1.5">
+            <ArrowLeftRight className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
             <span>
               {cx.emailCurrency} {cx.emailAmount.toFixed(2)} ≈ {cx.statementCurrency} {cx.statementAmount.toFixed(2)}, rate: {cx.rate.toFixed(4)}, {cx.percentDiff.toFixed(1)}% diff
             </span>
@@ -736,8 +736,8 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
               </span>
             </TransactionDetailRow>
             {data.statementTransaction.foreignAmount != null && data.statementTransaction.foreignCurrency && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 rounded px-2 py-1">
-                <ArrowLeftRight className="h-3 w-3 text-blue-500 shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/40 rounded px-2 py-1">
+                <ArrowLeftRight className="h-3 w-3 text-blue-500 dark:text-blue-400 shrink-0" />
                 <span>
                   Originally {formatMatchAmount(data.statementTransaction.foreignAmount, data.statementTransaction.foreignCurrency)}
                   {data.statementTransaction.foreignExchangeRate != null && (
@@ -860,8 +860,8 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
             </span>
           </TransactionDetailRow>
           {data.statementTransaction.foreignAmount != null && data.statementTransaction.foreignCurrency && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 rounded px-2 py-1">
-              <ArrowLeftRight className="h-3 w-3 text-blue-500 shrink-0" />
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/40 rounded px-2 py-1">
+              <ArrowLeftRight className="h-3 w-3 text-blue-500 dark:text-blue-400 shrink-0" />
               <span>
                 Originally {formatMatchAmount(data.statementTransaction.foreignAmount, data.statementTransaction.foreignCurrency)}
                 {data.statementTransaction.foreignExchangeRate != null && (
@@ -944,7 +944,7 @@ function ConfidenceDot({ confidence }: { confidence?: number }) {
   return (
     <span
       className={`h-2 w-2 rounded-full inline-block ml-1.5 shrink-0 ${
-        isLow ? "bg-orange-400" : "bg-amber-400"
+        isLow ? "bg-orange-400 dark:bg-orange-500" : "bg-amber-400 dark:bg-amber-500"
       }`}
       role="img"
       aria-label={isLow ? "Low confidence" : "Medium confidence"}
@@ -962,7 +962,7 @@ function ProposalPanel({
     <div className="space-y-1.5">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
         Proposed Txn
-        <Zap className="h-3 w-3 text-purple-500" aria-hidden="true" />
+        <Zap className="h-3 w-3 text-purple-500 dark:text-purple-400" aria-hidden="true" />
       </p>
 
       {/* Type */}
@@ -1055,7 +1055,7 @@ export function ProposalConfidenceBar({
     score >= 85
       ? "[&>div]:bg-green-500"
       : score >= 55
-        ? "[&>div]:bg-amber-500"
+        ? "[&>div]:bg-amber-500 dark:bg-amber-400 dark:bg-amber-500"
         : "[&>div]:bg-orange-500"
 
   return (

@@ -142,7 +142,7 @@ export const TransactionCard = React.memo(function TransactionCard({
     <div 
       className={cn(
         // Direct div approach matching Figma exactly - no Card component padding conflicts
-        'w-full bg-white border border-zinc-200 rounded-lg shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] transition-shadow duration-200',
+        'w-full bg-card border border-border rounded-lg shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] transition-shadow duration-200',
         interactive && [
           'cursor-pointer hover:shadow-md',
           'focus:ring-2 focus:ring-primary/50',
@@ -162,13 +162,13 @@ export const TransactionCard = React.memo(function TransactionCard({
           <div className="flex flex-col justify-between min-w-0 flex-1 self-stretch" role="group" aria-labelledby="transaction-details">
             <p 
               id="transaction-details"
-              className="text-[14px] font-medium text-zinc-950 leading-[20px] truncate"
+              className="text-[14px] font-medium text-foreground leading-[20px] truncate"
               title={description}
             >
               {description}
             </p>
             <p 
-              className="text-[14px] font-normal text-zinc-500 leading-[20px] truncate"
+              className="text-[14px] font-normal text-muted-foreground leading-[20px] truncate"
               title={vendor}
               aria-label={`Vendor: ${vendor}`}
             >
@@ -179,7 +179,7 @@ export const TransactionCard = React.memo(function TransactionCard({
           {/* Right side: Amounts */}
           <div className="flex flex-col gap-1 items-end justify-start text-right shrink-0" role="group" aria-label="Transaction amounts">
             <p 
-              className="text-[20px] font-medium text-black leading-[28px]"
+              className="text-[20px] font-medium text-black dark:text-foreground leading-[28px]"
               title={amount}
               aria-label={`Primary amount: ${amount}`}
             >
@@ -187,7 +187,7 @@ export const TransactionCard = React.memo(function TransactionCard({
             </p>
             {calculatedAmount && (
               <p 
-                className="text-[14px] font-normal text-zinc-500 leading-[20px]"
+                className="text-[14px] font-normal text-muted-foreground leading-[20px]"
                 title={calculatedAmount}
                 aria-label={`Converted amount: ${calculatedAmount}`}
               >

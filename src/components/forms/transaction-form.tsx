@@ -546,7 +546,7 @@ export function TransactionForm({
                   onClick={() => setCurrency("THB")}
                   className={`h-12 md:h-10 px-3 md:px-2.5 rounded-md border transition-colors font-medium text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     currency === "THB"
-                      ? "bg-blue-50 border-blue-600 text-blue-700"
+                      ? "bg-blue-50 dark:bg-blue-950/40 border-blue-600 text-blue-700 dark:text-blue-300"
                       : "bg-background border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   }`}
                   aria-label="Select THB currency"
@@ -559,7 +559,7 @@ export function TransactionForm({
                   onClick={() => setCurrency("USD")}
                   className={`h-12 md:h-10 px-3 md:px-2.5 rounded-md border transition-colors font-medium text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     currency === "USD"
-                      ? "bg-blue-50 border-blue-600 text-blue-700"
+                      ? "bg-blue-50 dark:bg-blue-950/40 border-blue-600 text-blue-700 dark:text-blue-300"
                       : "bg-background border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   }`}
                   aria-label="Select USD currency"
@@ -646,7 +646,7 @@ export function TransactionForm({
       {/* Hide on desktop (md+) and on short forms */}
       {!isFormShort && (
         <div
-          className={`flex flex-col gap-2.5 items-start justify-start w-full md:hidden fixed bottom-0 left-0 right-0 bg-white pt-3 [padding-bottom:max(1rem,calc(1rem+env(safe-area-inset-bottom)))] border-t border-zinc-200 shadow-[0_-1px_3px_0_rgb(0_0_0_/0.05)] z-50 transaction-form-footer transition-opacity duration-200 ease-in-out ${
+          className={`flex flex-col gap-2.5 items-start justify-start w-full md:hidden fixed bottom-0 left-0 right-0 bg-background pt-3 [padding-bottom:max(1rem,calc(1rem+env(safe-area-inset-bottom)))] border-t border-border shadow-[0_-1px_3px_0_rgb(0_0_0_/0.05)] z-50 transaction-form-footer transition-opacity duration-200 ease-in-out ${
             showStickyFooter ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
           }`}
         >

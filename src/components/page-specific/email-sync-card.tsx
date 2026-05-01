@@ -117,7 +117,7 @@ export function EmailSyncCard({
                   Total synced: {totalSynced.toLocaleString()} emails
                 </p>
                 {syncError && (
-                  <p className="text-sm text-red-500" role="alert">
+                  <p className="text-sm text-red-500 dark:text-red-400" role="alert">
                     Error: {syncError}
                   </p>
                 )}

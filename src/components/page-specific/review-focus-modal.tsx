@@ -98,7 +98,7 @@ interface ReviewFocusModalProps {
 function ReasoningZap({ reasoning }: { reasoning?: string }) {
   if (!reasoning) {
     return (
-      <span className="text-purple-500">
+      <span className="text-purple-500 dark:text-purple-400">
         <Zap className="h-3.5 w-3.5" />
       </span>
     )
@@ -107,7 +107,7 @@ function ReasoningZap({ reasoning }: { reasoning?: string }) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="text-purple-500 cursor-help" tabIndex={0}>
+          <span className="text-purple-500 dark:text-purple-400 cursor-help" tabIndex={0}>
             <Zap className="h-3.5 w-3.5" />
           </span>
         </TooltipTrigger>
@@ -289,7 +289,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
         {/* Cross-currency bar */}
         {cx && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/30 rounded px-3 py-1.5">
-            <ArrowLeftRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+            <ArrowLeftRight className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
             <span>
               {cx.emailCurrency} {cx.emailAmount.toFixed(2)} ≈ {cx.statementCurrency}{" "}
               {cx.statementAmount.toFixed(2)}, rate: {cx.rate.toFixed(4)}, {cx.percentDiff.toFixed(1)}% diff
@@ -591,7 +591,7 @@ function MatchedTransactionPanel({
     confidenceLevel === "high"
       ? "[&>div]:bg-green-500"
       : confidenceLevel === "medium"
-        ? "[&>div]:bg-amber-500"
+        ? "[&>div]:bg-amber-500 dark:bg-amber-400 dark:bg-amber-500"
         : "[&>div]:bg-orange-500"
 
   return (
@@ -692,7 +692,7 @@ function MatchedTransactionPanel({
           size="sm"
           onClick={onApprove}
           disabled={isProcessing}
-          className="bg-green-600 hover:bg-green-700 px-5"
+          className="bg-green-600 hover:bg-green-700 dark:hover:bg-green-500 dark:hover:bg-green-600 px-5"
         >
           {isProcessing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
@@ -1093,7 +1093,7 @@ export function ReviewFocusModal({
         <DialogContent className="sm:max-w-md">
           <DialogTitle className="sr-only">Review complete</DialogTitle>
           <div className="text-center py-8">
-            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <CheckCircle2 className="h-12 w-12 text-green-500 dark:text-green-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-1">All caught up!</h3>
             <p className="text-sm text-muted-foreground">
               You&apos;ve reviewed all pending items.
@@ -1169,7 +1169,7 @@ export function ReviewFocusModal({
                   : "Statement"}
             </Badge>
             {item.isNew && (
-              <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-xs">
+              <Badge className="bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 dark:bg-purple-900/30 dark:text-purple-300 text-xs">
                 New
               </Badge>
             )}
@@ -1200,11 +1200,11 @@ export function ReviewFocusModal({
               <div className="space-y-4">
                 {/* AI pre-fill banner */}
                 {hasAnyPrefill && (
-                  <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 dark:border-purple-800 dark:bg-purple-950/30">
-                    <Zap className="h-4 w-4 text-purple-500 shrink-0" />
+                  <div className="flex items-center gap-2 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 px-3 py-2 dark:border-purple-800 dark:bg-purple-950/30">
+                    <Zap className="h-4 w-4 text-purple-500 dark:text-purple-400 shrink-0" />
                     <p className="text-xs text-purple-700 dark:text-purple-300">
                       Some fields were auto-filled{item.proposal ? " by AI proposal" : " from the email"}.{" "}
-                      <span className="text-purple-500">
+                      <span className="text-purple-500 dark:text-purple-400">
                         <Zap className="inline h-3 w-3" />
                       </span>{" "}
                       indicates a smart pre-fill.
@@ -1220,7 +1220,7 @@ export function ReviewFocusModal({
                       type="button"
                       size="sm"
                       variant={transactionType === "expense" ? "default" : "outline"}
-                      className={cn("h-8", transactionType === "expense" && "bg-purple-600 hover:bg-purple-700")}
+                      className={cn("h-8", transactionType === "expense" && "bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600")}
                       onClick={() => { setTransactionType("expense"); clearAiFlag("transactionType") }}
                     >
                       Expense
@@ -1229,7 +1229,7 @@ export function ReviewFocusModal({
                       type="button"
                       size="sm"
                       variant={transactionType === "income" ? "default" : "outline"}
-                      className={cn("h-8", transactionType === "income" && "bg-green-600 hover:bg-green-700")}
+                      className={cn("h-8", transactionType === "income" && "bg-green-600 hover:bg-green-700 dark:hover:bg-green-500 dark:hover:bg-green-600")}
                       onClick={() => { setTransactionType("income"); clearAiFlag("transactionType") }}
                     >
                       Income
@@ -1238,7 +1238,7 @@ export function ReviewFocusModal({
                       type="button"
                       size="sm"
                       variant={transactionType === "transfer" ? "default" : "outline"}
-                      className={cn("h-8", transactionType === "transfer" && "bg-blue-600 hover:bg-blue-700")}
+                      className={cn("h-8", transactionType === "transfer" && "bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 dark:hover:bg-blue-600")}
                       onClick={() => { setTransactionType("transfer"); clearAiFlag("transactionType") }}
                     >
                       Transfer
@@ -1466,7 +1466,7 @@ export function ReviewFocusModal({
                       size="sm"
                       onClick={() => handleCreate(false)}
                       disabled={!isValid || isSaving}
-                      className="bg-purple-600 hover:bg-purple-700 px-5"
+                      className="bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600 px-5"
                     >
                       {isSaving ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />

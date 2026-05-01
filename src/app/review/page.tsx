@@ -979,7 +979,7 @@ export default function ReviewQueuePage() {
           {isInitialLoading ? (
             <Skeleton className="h-5 w-8 mb-1" />
           ) : (
-            <span className="text-lg font-bold text-amber-600 leading-none tabular-nums">{stats.pending}</span>
+            <span className="text-lg font-bold text-amber-600 dark:text-amber-400 leading-none tabular-nums">{stats.pending}</span>
           )}
           <span className="text-[11px] text-muted-foreground mt-1 leading-none">Pending</span>
         </button>
@@ -991,7 +991,7 @@ export default function ReviewQueuePage() {
           {isInitialLoading ? (
             <Skeleton className="h-5 w-8 mb-1" />
           ) : (
-            <span className="text-lg font-bold text-green-600 leading-none tabular-nums">{readyToApprove}</span>
+            <span className="text-lg font-bold text-green-600 dark:text-green-400 leading-none tabular-nums">{readyToApprove}</span>
           )}
           <span className="text-[11px] text-muted-foreground mt-1 leading-none">Ready</span>
         </button>
@@ -1007,7 +1007,7 @@ export default function ReviewQueuePage() {
           {isInitialLoading ? (
             <Skeleton className="h-5 w-8 mb-1" />
           ) : (
-            <span className="text-lg font-bold text-zinc-500 leading-none tabular-nums">{stats.resolvedCount ?? 0}</span>
+            <span className="text-lg font-bold text-muted-foreground leading-none tabular-nums">{stats.resolvedCount ?? 0}</span>
           )}
           <span className="text-[11px] text-muted-foreground mt-1 leading-none">Resolved</span>
         </div>
@@ -1085,7 +1085,7 @@ export default function ReviewQueuePage() {
                       variant="default"
                       size="sm"
                       onClick={() => setBatchDialogOpen(true)}
-                      className="bg-green-600 hover:bg-green-700 self-start sm:self-auto"
+                      className="bg-green-600 hover:bg-green-700 dark:hover:bg-green-500 dark:hover:bg-green-600 self-start sm:self-auto"
                     >
                       <CheckCircle2 className="h-4 w-4 mr-2" />
                       Link All High ({highConfidenceItems.length})
@@ -1112,7 +1112,7 @@ export default function ReviewQueuePage() {
                       variant="default"
                       size="sm"
                       onClick={() => handleBatchQuickCreate(quickCreateItems.map((i) => i.id))}
-                      className="bg-purple-600 hover:bg-purple-700 self-start sm:self-auto"
+                      className="bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600 self-start sm:self-auto"
                     >
                       <Zap className="h-4 w-4 mr-2" aria-hidden="true" />
                       Quick Create All ({quickCreateItems.length})

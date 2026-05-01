@@ -3,8 +3,8 @@ import { Card } from '@/components/ui/card'
 
 export default function TransactionsLoadingSkeleton() {
   return (
-    <div className="min-h-screen bg-white">
-      <div className="w-full max-w-md md:max-w-none mx-auto bg-white flex flex-col gap-6 min-h-screen pb-32 pt-6 md:pt-12 px-6 md:px-8">
+    <div className="min-h-screen bg-background">
+      <div className="w-full max-w-md md:max-w-none mx-auto bg-background flex flex-col gap-6 min-h-screen pb-32 pt-6 md:pt-12 px-6 md:px-8">
         {/* Header */}
         <div className="flex items-center justify-between w-full">
           <Skeleton className="h-10 w-48" />
@@ -25,7 +25,7 @@ export default function TransactionsLoadingSkeleton() {
         {/* Transaction Cards/Table */}
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map((i) => (
-            <Card key={i} className="bg-white border-zinc-200 p-4">
+            <Card key={i} className="bg-card border-border p-4">
               <div className="flex items-center justify-between mb-3">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-6 w-24" />

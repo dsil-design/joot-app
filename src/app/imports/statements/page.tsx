@@ -68,8 +68,8 @@ export default function StatementsPage() {
               className={cn(
                 "px-3 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium rounded-lg transition-colors",
                 typeFilter === tab.value
-                  ? "bg-zinc-900 text-white"
-                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                  ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
+                  : "bg-muted text-muted-foreground hover:bg-accent"
               )}
             >
               {tab.label}

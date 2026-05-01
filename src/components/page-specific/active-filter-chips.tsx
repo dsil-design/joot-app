@@ -71,16 +71,16 @@ export function ActiveFilterChips({
   if (!hasFilters) return null
 
   return (
-    <div className="w-full bg-blue-50/50 border border-blue-100 rounded-lg px-4 py-3">
+    <div className="w-full bg-blue-50/50 border border-blue-100 dark:border-blue-900 rounded-lg px-4 py-3">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-medium text-zinc-600 mr-1">Active:</span>
+          <span className="text-xs font-medium text-muted-foreground mr-1">Active:</span>
 
           {/* Date Range Chip */}
           {dateRange && (
             <Badge
               variant="secondary"
-              className="bg-blue-100 text-blue-900 border border-blue-200 pr-1 flex items-center gap-0"
+              className="bg-blue-100 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800 pr-1 flex items-center gap-0"
             >
               <button
                 onClick={onDateRangeClick}
@@ -91,7 +91,7 @@ export function ActiveFilterChips({
               </button>
               <button
                 onClick={onRemoveDateRange}
-                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                className="ml-1 hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5"
                 aria-label="Remove date filter"
               >
                 <X className="h-3 w-3" />
@@ -103,12 +103,12 @@ export function ActiveFilterChips({
           {transactionType !== 'all' && (
             <Badge
               variant="secondary"
-              className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
+              className="bg-blue-100 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 pr-1"
             >
               {transactionType === 'expense' ? 'Expenses only' : transactionType === 'income' ? 'Income only' : 'Transfers only'}
               <button
                 onClick={onRemoveTransactionType}
-                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                className="ml-1 hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5"
                 aria-label="Remove type filter"
               >
                 <X className="h-3 w-3" />
@@ -120,12 +120,12 @@ export function ActiveFilterChips({
           {searchKeyword && (
             <Badge
               variant="secondary"
-              className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
+              className="bg-blue-100 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 pr-1"
             >
               Search: {searchKeyword}
               <button
                 onClick={onRemoveSearchKeyword}
-                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                className="ml-1 hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5"
                 aria-label="Remove search filter"
               >
                 <X className="h-3 w-3" />
@@ -137,12 +137,12 @@ export function ActiveFilterChips({
           {vendorIds.length === 1 && (
             <Badge
               variant="secondary"
-              className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
+              className="bg-blue-100 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 pr-1"
             >
               Vendor: {vendors.find(v => v.id === vendorIds[0])?.name || 'Unknown'}
               <button
                 onClick={() => onRemoveVendor?.(vendorIds[0])}
-                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                className="ml-1 hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5"
                 aria-label="Remove vendor filter"
               >
                 <X className="h-3 w-3" />
@@ -152,12 +152,12 @@ export function ActiveFilterChips({
           {vendorIds.length > 1 && (
             <Badge
               variant="secondary"
-              className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
+              className="bg-blue-100 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 pr-1"
             >
               {vendorIds.length} vendors
               <button
                 onClick={onRemoveAllVendors}
-                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                className="ml-1 hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5"
                 aria-label="Remove all vendor filters"
               >
                 <X className="h-3 w-3" />
@@ -169,12 +169,12 @@ export function ActiveFilterChips({
           {paymentMethodIds.length === 1 && (
             <Badge
               variant="secondary"
-              className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
+              className="bg-blue-100 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 pr-1"
             >
               Payment: {paymentMethods.find(pm => pm.id === paymentMethodIds[0])?.name || 'Unknown'}
               <button
                 onClick={() => onRemovePaymentMethod?.(paymentMethodIds[0])}
-                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                className="ml-1 hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5"
                 aria-label="Remove payment method filter"
               >
                 <X className="h-3 w-3" />
@@ -184,12 +184,12 @@ export function ActiveFilterChips({
           {paymentMethodIds.length > 1 && (
             <Badge
               variant="secondary"
-              className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
+              className="bg-blue-100 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 pr-1"
             >
               {paymentMethodIds.length} payment methods
               <button
                 onClick={onRemoveAllPaymentMethods}
-                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                className="ml-1 hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5"
                 aria-label="Remove all payment method filters"
               >
                 <X className="h-3 w-3" />
@@ -201,7 +201,7 @@ export function ActiveFilterChips({
           {sourceType && (
             <Badge
               variant="secondary"
-              className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
+              className="bg-blue-100 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 pr-1"
             >
               {sourceType === 'any' && 'Source: Any'}
               {sourceType === 'email' && 'Source: Email'}
@@ -210,7 +210,7 @@ export function ActiveFilterChips({
               {sourceType === 'none' && 'Unlinked'}
               <button
                 onClick={onRemoveSourceType}
-                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                className="ml-1 hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5"
                 aria-label="Remove source filter"
               >
                 <X className="h-3 w-3" />
@@ -222,7 +222,7 @@ export function ActiveFilterChips({
           {hasAmountFilter && (
             <Badge
               variant="secondary"
-              className="bg-blue-100 text-blue-900 border border-blue-200 hover:bg-blue-200 pr-1"
+              className="bg-blue-100 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 pr-1"
             >
               Amount: {amountMin !== undefined && amountMax !== undefined
                 ? `${amountMin}–${amountMax}`
@@ -234,7 +234,7 @@ export function ActiveFilterChips({
               }{amountCurrency ? ` ${amountCurrency}` : ''}
               <button
                 onClick={onRemoveAmountRange}
-                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                className="ml-1 hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5"
                 aria-label="Remove amount filter"
               >
                 <X className="h-3 w-3" />
@@ -244,14 +244,14 @@ export function ActiveFilterChips({
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-sm text-zinc-600">
+          <span className="text-sm text-muted-foreground">
             {resultCount} {resultCount === 1 ? 'transaction' : 'transactions'}
           </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClearAll}
-            className="text-zinc-600 hover:text-zinc-900 h-7 text-xs"
+            className="text-muted-foreground hover:text-foreground h-7 text-xs"
           >
             Clear all
           </Button>

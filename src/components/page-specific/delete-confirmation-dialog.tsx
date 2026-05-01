@@ -42,10 +42,10 @@ export function DeleteConfirmationDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-xl font-medium text-zinc-950">
+          <AlertDialogTitle className="text-xl font-medium text-foreground">
             {title}
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-sm text-zinc-600">
+          <AlertDialogDescription className="text-sm text-muted-foreground">
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -56,7 +56,7 @@ export function DeleteConfirmationDialog({
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isDeleting}
-            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            className="bg-red-600 hover:bg-red-700 dark:hover:bg-red-500 dark:hover:bg-red-600 focus:ring-red-600"
           >
             {isDeleting ? "Deleting..." : confirmLabel}
           </AlertDialogAction>

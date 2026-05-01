@@ -211,7 +211,7 @@ export function MonthStepperFilter({
       <Dialog open={customOpen} onOpenChange={setCustomOpen}>
         <DialogContent className="sm:max-w-fit">
           <DialogHeader>
-            <DialogTitle className="text-xl font-medium text-zinc-950">
+            <DialogTitle className="text-xl font-medium text-foreground">
               Custom Date Range
             </DialogTitle>
           </DialogHeader>

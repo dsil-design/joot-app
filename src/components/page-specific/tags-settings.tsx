@@ -173,8 +173,8 @@ export function TagsSettings({ tags: initialTags }: TagsSettingsProps) {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-zinc-950">Transaction Tags</h2>
-          <p className="text-sm text-zinc-500 mt-1">
+          <h2 className="text-2xl font-semibold text-foreground">Transaction Tags</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Organize your transactions with custom tags and colors
           </p>
         </div>
@@ -184,9 +184,9 @@ export function TagsSettings({ tags: initialTags }: TagsSettingsProps) {
         </Button>
       </div>
 
-      <Card className="bg-white border-zinc-200 rounded-lg shadow-sm overflow-hidden">
+      <Card className="bg-card border-border rounded-lg shadow-sm overflow-hidden">
         {initialTags.length === 0 ? (
-          <div className="p-12 text-center text-zinc-500">
+          <div className="p-12 text-center text-muted-foreground">
             <p className="text-lg font-medium mb-2">No tags yet</p>
             <p className="text-sm">Click &quot;Add Tag&quot; to create your first one.</p>
           </div>
@@ -195,7 +195,7 @@ export function TagsSettings({ tags: initialTags }: TagsSettingsProps) {
             {initialTags.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between p-4 hover:bg-zinc-50 transition-colors"
+                className="flex items-center justify-between p-4 hover:bg-muted transition-colors"
               >
                 <div className="flex items-center gap-3 flex-1">
                   <div
@@ -203,8 +203,8 @@ export function TagsSettings({ tags: initialTags }: TagsSettingsProps) {
                     style={{ backgroundColor: item.color }}
                   />
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-zinc-950">{item.name}</span>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-sm font-medium text-foreground">{item.name}</span>
+                    <span className="text-xs text-muted-foreground">
                       {item.transactionCount} {item.transactionCount === 1 ? 'transaction' : 'transactions'}
                     </span>
                   </div>
@@ -232,7 +232,7 @@ export function TagsSettings({ tags: initialTags }: TagsSettingsProps) {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDeleteClick(item)}
-                    className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="h-8 px-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
                     disabled={item.transactionCount > 0}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -357,7 +357,7 @@ export function TagsSettings({ tags: initialTags }: TagsSettingsProps) {
             <AlertDialogAction
               onClick={handleDelete}
               disabled={saving}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 dark:hover:bg-red-500 dark:hover:bg-red-600"
             >
               {saving ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>

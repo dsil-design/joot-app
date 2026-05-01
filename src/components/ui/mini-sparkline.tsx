@@ -11,7 +11,7 @@ interface MiniSparklineProps {
 
 export function MiniSparkline({ data, color = '#ef4444', height = 32 }: MiniSparklineProps) {
   if (!data || data.length === 0) {
-    return <div style={{ height }} className="bg-zinc-100 rounded" />
+    return <div style={{ height }} className="bg-muted rounded" />
   }
 
   return (

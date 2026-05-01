@@ -117,8 +117,8 @@ function SortableItem({ item, index, totalItems, onRename, onMerge, onDelete, on
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 p-4 border-b border-zinc-200 last:border-b-0 transition-colors ${
-        isNoneItem ? 'bg-zinc-50' : 'bg-white hover:bg-zinc-50'
+      className={`flex items-center gap-3 p-4 border-b border-border last:border-b-0 transition-colors ${
+        isNoneItem ? 'bg-muted' : 'bg-card hover:bg-muted'
       }`}
     >
       {/* Drag Handle - empty space for None item alignment */}
@@ -126,7 +126,7 @@ function SortableItem({ item, index, totalItems, onRename, onMerge, onDelete, on
         <div className="w-5 h-5" />
       ) : (
         <button
-          className="cursor-grab active:cursor-grabbing text-zinc-400 hover:text-zinc-600 touch-none"
+          className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-muted-foreground touch-none"
           {...attributes}
           {...listeners}
         >
@@ -136,21 +136,21 @@ function SortableItem({ item, index, totalItems, onRename, onMerge, onDelete, on
 
       {/* Content */}
       <div className="flex flex-col flex-1">
-        <span className="text-sm font-medium text-zinc-950">
+        <span className="text-sm font-medium text-foreground">
           {item.name}
           {item.preferred_currency && (
-            <span className="text-zinc-500 font-normal"> ({item.preferred_currency})</span>
+            <span className="text-muted-foreground font-normal"> ({item.preferred_currency})</span>
           )}
           {item.card_last_four && (
-            <span className="text-zinc-400 font-normal"> •••• {item.card_last_four}</span>
+            <span className="text-muted-foreground font-normal"> •••• {item.card_last_four}</span>
           )}
         </span>
-        <span className="text-xs text-zinc-500 flex items-center gap-2">
+        <span className="text-xs text-muted-foreground flex items-center gap-2">
           {paymentMethodTypeOptions.find(o => o.value === item.type)?.label ?? 'Credit Card'}
           {' · '}
           {item.transactionCount} {item.transactionCount === 1 ? 'transaction' : 'transactions'}
           {item.is_import_source !== false && (
-            <span className="inline-flex items-center gap-1 text-zinc-400">
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
               <Upload className="h-3 w-3" />
             </span>
           )}
@@ -207,7 +207,7 @@ function SortableItem({ item, index, totalItems, onRename, onMerge, onDelete, on
               variant="ghost"
               size="sm"
               onClick={() => onDelete(item)}
-              className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="h-8 px-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
               disabled={item.transactionCount > 0}
             >
               <Trash2 className="h-4 w-4" />
@@ -215,7 +215,7 @@ function SortableItem({ item, index, totalItems, onRename, onMerge, onDelete, on
           </>
         )}
         {isNoneItem && (
-          <span className="text-xs text-zinc-500 italic px-2">
+          <span className="text-xs text-muted-foreground italic px-2">
             Transactions without payment method
           </span>
         )}
@@ -447,8 +447,8 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-zinc-950">Payment Methods</h2>
-          <p className="text-sm text-zinc-500 mt-1">
+          <h2 className="text-2xl font-semibold text-foreground">Payment Methods</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Manage your payment methods and how they appear in transactions
           </p>
         </div>
@@ -458,9 +458,9 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
         </Button>
       </div>
 
-      <Card className="bg-white border-zinc-200 rounded-lg shadow-sm overflow-hidden">
+      <Card className="bg-card border-border rounded-lg shadow-sm overflow-hidden">
         {paymentMethods.length === 0 ? (
-          <div className="p-12 text-center text-zinc-500">
+          <div className="p-12 text-center text-muted-foreground">
             <p className="text-lg font-medium mb-2">No payment methods yet</p>
             <p className="text-sm">Click &quot;Add Payment Method&quot; to create your first one.</p>
           </div>
@@ -559,8 +559,8 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
                     inputMode="numeric"
                   />
                   <div className="flex items-start gap-2 mt-1">
-                    <Info className="h-3.5 w-3.5 text-zinc-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-xs text-zinc-500 leading-relaxed">
+                    <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <span className="text-xs text-muted-foreground leading-relaxed">
                       Used to auto-match this payment method from email receipts that show card digits
                     </span>
                   </div>
@@ -587,19 +587,19 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
                     </SelectContent>
                   </Select>
                   <div className="flex items-start gap-2 mt-1">
-                    <Info className="h-3.5 w-3.5 text-zinc-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-xs text-zinc-500 leading-relaxed">
+                    <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <span className="text-xs text-muted-foreground leading-relaxed">
                       Auto-selects this currency when adding transactions with this payment method
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-4 rounded-lg border border-zinc-200 p-3">
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
                   <div className="flex flex-col gap-0.5">
                     <Label htmlFor="hide-from-imports" className="text-sm font-medium">
                       Hide from Import Sources
                     </Label>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-muted-foreground">
                       Don&apos;t show this payment method when uploading statements
                     </span>
                   </div>
@@ -669,7 +669,7 @@ export function PaymentMethodsSettings({ paymentMethods: initialPaymentMethods, 
             <AlertDialogAction
               onClick={handleDelete}
               disabled={saving}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 dark:hover:bg-red-500 dark:hover:bg-red-600"
             >
               {saving ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>

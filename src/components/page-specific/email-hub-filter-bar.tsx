@@ -207,12 +207,12 @@ export function EmailHubFilterBar({
           variant="outline"
           size="sm"
           onClick={() => setShowMoreFilters(!showMoreFilters)}
-          className={cn("h-10 shrink-0", secondaryFilterCount > 0 && "border-amber-300")}
+          className={cn("h-10 shrink-0", secondaryFilterCount > 0 && "border-amber-300 dark:border-amber-700")}
         >
           <SlidersHorizontal className="h-4 w-4 mr-1" />
           More Filters
           {secondaryFilterCount > 0 && (
-            <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-semibold">
+            <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 dark:bg-amber-400 dark:bg-amber-500 text-white text-[10px] font-semibold">
               {secondaryFilterCount}
             </span>
           )}

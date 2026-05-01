@@ -130,7 +130,7 @@ export function EmailsSettings({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-amber-500" />
+            <AlertCircle className="h-5 w-5 text-amber-500 dark:text-amber-400" />
             Email Integration Not Configured
           </CardTitle>
           <CardDescription>
@@ -138,18 +138,18 @@ export function EmailsSettings({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="bg-zinc-100 rounded-lg p-4 font-mono text-sm space-y-1">
+          <div className="bg-muted rounded-lg p-4 font-mono text-sm space-y-1">
             <p>ICLOUD_EMAIL=your-email@icloud.com</p>
             <p>ICLOUD_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx</p>
             <p>ICLOUD_FOLDER=Transactions</p>
           </div>
-          <p className="mt-4 text-sm text-zinc-600">
+          <p className="mt-4 text-sm text-muted-foreground">
             You&apos;ll need to generate an app-specific password from{' '}
             <a
               href="https://appleid.apple.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
+              className="text-blue-600 dark:text-blue-400 hover:underline"
             >
               appleid.apple.com
             </a>
@@ -183,25 +183,25 @@ export function EmailsSettings({
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="space-y-1">
-              <p className="text-sm text-zinc-500">Total Emails</p>
+              <p className="text-sm text-muted-foreground">Total Emails</p>
               <p className="text-2xl font-semibold">{totalEmails}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-zinc-500">Last Sync</p>
+              <p className="text-sm text-muted-foreground">Last Sync</p>
               <p className="text-lg font-medium flex items-center gap-1">
-                <Clock className="h-4 w-4 text-zinc-400" />
+                <Clock className="h-4 w-4 text-muted-foreground" />
                 {formatRelativeTime(lastSyncAt)}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-zinc-500">Folders</p>
+              <p className="text-sm text-muted-foreground">Folders</p>
               <div className="flex flex-wrap gap-1">
                 {folders.length > 0 ? (
                   folders.map(folder => (
                     <Badge key={folder} variant="secondary">{folder}</Badge>
                   ))
                 ) : (
-                  <span className="text-sm text-zinc-400">None synced</span>
+                  <span className="text-sm text-muted-foreground">None synced</span>
                 )}
               </div>
             </div>
@@ -216,7 +216,7 @@ export function EmailsSettings({
             <CardTitle>Synced Emails</CardTitle>
             <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search emails..."
                   value={searchQuery}
@@ -230,7 +230,7 @@ export function EmailsSettings({
         </CardHeader>
         <CardContent>
           {emails.length === 0 ? (
-            <div className="text-center py-8 text-zinc-500">
+            <div className="text-center py-8 text-muted-foreground">
               <Mail className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p>No emails fetched yet</p>
               <p className="text-sm">Click &quot;Fetch New&quot; to pull emails from iCloud</p>
@@ -242,28 +242,28 @@ export function EmailsSettings({
                   key={email.id}
                   className={cn(
                     "flex items-start gap-3 p-3 rounded-lg border transition-colors",
-                    !email.seen && "bg-blue-50/50 border-blue-200",
-                    email.seen && "bg-white hover:bg-zinc-50"
+                    !email.seen && "bg-blue-50/50 border-blue-200 dark:border-blue-800",
+                    email.seen && "bg-card hover:bg-muted"
                   )}
                 >
                   <Mail className={cn(
                     "h-5 w-5 mt-0.5 flex-shrink-0",
-                    !email.seen ? "text-blue-500" : "text-zinc-400"
+                    !email.seen ? "text-blue-500 dark:text-blue-400" : "text-muted-foreground"
                   )} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <p className={cn(
                         "font-medium truncate",
-                        !email.seen && "text-blue-900",
-                        !email.subject && !email.from_address && "text-zinc-400 italic"
+                        !email.seen && "text-blue-900 dark:text-blue-100",
+                        !email.subject && !email.from_address && "text-muted-foreground italic"
                       )}>
                         {email.subject || (email.from_address ? '(No subject)' : `(Unable to fetch - UID ${email.uid})`)}
                       </p>
-                      <span className="text-xs text-zinc-400 whitespace-nowrap flex-shrink-0">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
                         {formatDate(email.date)}
                       </span>
                     </div>
-                    <p className="text-sm text-zinc-500 truncate">
+                    <p className="text-sm text-muted-foreground truncate">
                       {email.from_name || email.from_address || 'Unknown sender'}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
@@ -283,7 +283,7 @@ export function EmailsSettings({
           )}
 
           {totalEmails > emails.length && (
-            <p className="text-center text-sm text-zinc-500 mt-4">
+            <p className="text-center text-sm text-muted-foreground mt-4">
               Showing {emails.length} of {totalEmails} emails
             </p>
           )}

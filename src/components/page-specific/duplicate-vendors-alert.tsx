@@ -42,10 +42,10 @@ export function DuplicateVendorsAlert({
         "grid grid-cols-[auto_1fr_auto] gap-x-4 items-start px-4 py-3.5",
 
         // Colors - Default state
-        "bg-amber-50 border-amber-200",
+        "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800",
 
         // Hover state
-        "hover:bg-amber-100 hover:border-amber-300 hover:shadow-sm",
+        "hover:bg-amber-100 dark:hover:bg-amber-950/40 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-sm",
 
         // Active state
         "active:scale-[0.995]",
@@ -57,11 +57,11 @@ export function DuplicateVendorsAlert({
       )}
     >
       {/* Icon */}
-      <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+      <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
 
       {/* Content */}
       <div className="flex flex-col gap-1 min-w-0">
-        <div className="font-semibold text-sm text-amber-900 leading-tight">
+        <div className="font-semibold text-sm text-amber-900 dark:text-amber-100 leading-tight">
           Duplicate vendors detected
         </div>
         <div className="font-normal text-sm text-amber-800/90 leading-relaxed">
@@ -72,10 +72,10 @@ export function DuplicateVendorsAlert({
 
       {/* CTA */}
       <div className="flex items-center gap-1.5 self-center shrink-0">
-        <span className="font-medium text-sm text-amber-700 group-hover:text-amber-900 whitespace-nowrap transition-colors underline underline-offset-2">
+        <span className="font-medium text-sm text-amber-700 dark:text-amber-300 group-hover:text-amber-900 dark:group-hover:text-amber-100 whitespace-nowrap transition-colors underline underline-offset-2">
           Review and manage duplicates
         </span>
-        <ArrowRight className="h-4 w-4 text-amber-700 group-hover:text-amber-900 group-hover:translate-x-0.5 transition-all" />
+        <ArrowRight className="h-4 w-4 text-amber-700 dark:text-amber-300 group-hover:text-amber-900 dark:group-hover:text-amber-100 group-hover:translate-x-0.5 transition-all" />
       </div>
     </div>
   )

@@ -30,7 +30,7 @@ import { toast } from "sonner"
 function EditIcon() {
   return (
     <div className="relative size-full flex items-center justify-center">
-      <Edit className="w-full h-full text-zinc-800" strokeWidth={1.5} />
+      <Edit className="w-full h-full text-foreground" strokeWidth={1.5} />
     </div>
   )
 }
@@ -46,11 +46,11 @@ function FieldValuePair({ label, value, secondaryText, showAsterisk }: FieldValu
   return (
     <div className="content-stretch flex flex-col gap-1 items-start justify-start relative shrink-0">
       <div className="content-stretch flex gap-2 items-center justify-start relative shrink-0">
-        <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-950">
+        <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-foreground">
           <p className="leading-[20px] whitespace-pre">{label}{showAsterisk ? '*' : ''}</p>
         </div>
       </div>
-      <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-950">
+      <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-foreground">
         <p className="leading-[20px] whitespace-pre">{value}</p>
       </div>
       {secondaryText && (
@@ -70,7 +70,7 @@ interface FieldTagsProps {
 function FieldTags({ label, tags }: FieldTagsProps) {
   return (
     <div className="content-stretch flex flex-col gap-2 items-start justify-start relative shrink-0">
-      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-950">
+      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-foreground">
         <p className="leading-[20px] whitespace-pre">{label}</p>
       </div>
       {tags && tags.length > 0 ? (
@@ -89,7 +89,7 @@ function FieldTags({ label, tags }: FieldTagsProps) {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-500">
+        <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-muted-foreground">
           <p className="leading-[20px] whitespace-pre">No tags</p>
         </div>
       )}
@@ -113,14 +113,14 @@ function formatStatementPeriod(start: string | null, end: string | null): string
 function StatementMatchBadge({ method }: { method: string | null }) {
   if (method === "auto") {
     return (
-      <Badge className="bg-green-100 text-green-700 border-0 text-[12px] font-normal">
+      <Badge className="bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-0 text-[12px] font-normal">
         Auto-matched
       </Badge>
     )
   }
   if (method === "manual") {
     return (
-      <Badge className="bg-gray-100 text-gray-500 border-0 text-[12px] font-normal">
+      <Badge className="bg-muted text-muted-foreground border-0 text-[12px] font-normal">
         Manually linked
       </Badge>
     )
@@ -139,28 +139,28 @@ function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData
 
   return (
     <>
-    <div className="bg-zinc-50 rounded-lg border border-zinc-200 p-4 w-full">
+    <div className="bg-muted rounded-lg border border-border p-4 w-full">
       <div className="flex items-start gap-3">
-        <FileText className="size-4 text-zinc-400 mt-0.5 shrink-0" strokeWidth={1.5} />
+        <FileText className="size-4 text-muted-foreground mt-0.5 shrink-0" strokeWidth={1.5} />
         <div className="flex flex-col gap-1 min-w-0">
-          <p className="text-[14px] font-normal text-zinc-950 truncate">
+          <p className="text-[14px] font-normal text-foreground truncate">
             {source.filename}
           </p>
           {periodLabel && (
-            <p className="text-[14px] font-normal text-zinc-500">{periodLabel}</p>
+            <p className="text-[14px] font-normal text-muted-foreground">{periodLabel}</p>
           )}
           {source.payment_method_name && (
-            <p className="text-[14px] font-normal text-zinc-500">
+            <p className="text-[14px] font-normal text-muted-foreground">
               {source.payment_method_name}
             </p>
           )}
           {sourceAmount != null && sourceCurrency && (
-            <p className="text-[14px] font-normal text-zinc-950">
+            <p className="text-[14px] font-normal text-foreground">
               {formatCurrency(sourceAmount, sourceCurrency)} {sourceCurrency}
             </p>
           )}
           {source.match_confidence !== null && (
-            <p className="text-[14px] font-normal text-zinc-500">
+            <p className="text-[14px] font-normal text-muted-foreground">
               {source.match_confidence}% match confidence
             </p>
           )}
@@ -169,7 +169,7 @@ function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => setViewerOpen(true)}
             >
               <Eye className="size-3.5 mr-1" />
@@ -179,7 +179,7 @@ function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-2 text-xs text-zinc-500 hover:text-destructive"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
                 onClick={onUnlink}
               >
                 <Unlink className="size-3.5 mr-1" />
@@ -211,10 +211,10 @@ function TransactionId({ id }: { id: string }) {
 
   return (
     <div className="flex items-center gap-1.5 pt-2">
-      <span className="text-[12px] text-zinc-400 font-mono">{id}</span>
+      <span className="text-[12px] text-muted-foreground font-mono">{id}</span>
       <button
         onClick={handleCopy}
-        className="text-zinc-400 hover:text-zinc-600 transition-colors p-0.5"
+        className="text-muted-foreground hover:text-muted-foreground transition-colors p-0.5"
         aria-label="Copy transaction ID"
       >
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
@@ -247,12 +247,12 @@ function TransactionSources({
 
   return (
     <div className="content-stretch flex flex-col gap-2 items-start justify-start relative shrink-0 w-full">
-      <div className="w-full border-t border-zinc-200 mb-2" />
-      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-950">
+      <div className="w-full border-t border-border mb-2" />
+      <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-foreground">
         <p className="leading-[20px] whitespace-pre">Sources</p>
       </div>
       {hasNoSources ? (
-        <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-zinc-500">
+        <div className="flex flex-col font-normal justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-center text-nowrap text-muted-foreground">
           <p className="leading-[20px] whitespace-pre">Manually entered</p>
         </div>
       ) : (
@@ -288,7 +288,7 @@ function TransactionSources({
           variant="outline"
           size="sm"
           onClick={onAttachClick}
-          className="mt-1 h-8 gap-1.5 text-xs text-zinc-600"
+          className="mt-1 h-8 gap-1.5 text-xs text-muted-foreground"
         >
           <Plus className="size-3.5" />
           Attach a source
@@ -534,23 +534,23 @@ export default function ViewTransactionPage() {
   if (loading) {
     return (
       <MainLayout showSidebar={true} showMobileNav={false}>
-        <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
+        <div className="bg-background box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
           <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
             <Button
               onClick={handleBackClick}
               disabled={isPending}
               variant="outline"
               size="icon"
-              className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
+              className="bg-card size-10 rounded-lg border-border shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-muted"
             >
-              <ArrowLeft className="size-5 text-zinc-800" strokeWidth={1.5} />
+              <ArrowLeft className="size-5 text-foreground" strokeWidth={1.5} />
             </Button>
           </div>
-          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
+          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-foreground">
             <p className="leading-[36px] whitespace-pre">View transaction</p>
           </div>
           <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-zinc-200 border-t-zinc-950 rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-2 border-border border-t-zinc-950 rounded-full animate-spin"></div>
           </div>
         </div>
       </MainLayout>
@@ -560,23 +560,23 @@ export default function ViewTransactionPage() {
   if (error || !transaction) {
     return (
       <MainLayout showSidebar={true} showMobileNav={false}>
-        <div className="bg-white box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
+        <div className="bg-background box-border content-stretch flex flex-col gap-6 items-start justify-start pb-0 pt-20 px-10 relative min-h-screen w-full">
           <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
             <Button
               onClick={handleBackClick}
               disabled={isPending}
               variant="outline"
               size="icon"
-              className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
+              className="bg-card size-10 rounded-lg border-border shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-muted"
             >
-              <ArrowLeft className="size-5 text-zinc-800" strokeWidth={1.5} />
+              <ArrowLeft className="size-5 text-foreground" strokeWidth={1.5} />
             </Button>
           </div>
-          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
+          <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-foreground">
             <p className="leading-[36px] whitespace-pre">View transaction</p>
           </div>
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-sm text-zinc-500">{error || "Transaction not found"}</p>
+            <p className="text-sm text-muted-foreground">{error || "Transaction not found"}</p>
           </div>
         </div>
       </MainLayout>
@@ -591,16 +591,16 @@ export default function ViewTransactionPage() {
             disabled={isPending}
             variant="outline"
             size="icon"
-            className="bg-white size-10 rounded-lg border-zinc-200 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-zinc-50"
+            className="bg-card size-10 rounded-lg border-border shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] hover:bg-muted"
           >
-            <ArrowLeft className="size-5 text-zinc-800" strokeWidth={1.5} />
+            <ArrowLeft className="size-5 text-foreground" strokeWidth={1.5} />
           </Button>
           <Button
             onClick={handleEditClick}
             disabled={isPending}
             variant="secondary"
             size="sm"
-            className="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 gap-1.5 items-center"
+            className="bg-muted hover:bg-accent text-foreground gap-1.5 items-center"
           >
             <div className="relative shrink-0 size-4 flex items-center justify-center">
               <EditIcon />
@@ -608,7 +608,7 @@ export default function ViewTransactionPage() {
             Edit
           </Button>
         </div>
-        <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-zinc-950">
+        <div className="flex flex-col font-medium justify-center leading-[0] not-italic relative shrink-0 text-[30px] text-nowrap text-foreground">
           <p className="leading-[36px] whitespace-pre">View transaction</p>
         </div>
         <div className="content-stretch flex flex-col gap-8 items-start justify-start relative shrink-0 w-full">
@@ -680,7 +680,7 @@ export default function ViewTransactionPage() {
               variant="ghost"
               size="sm"
               onClick={() => setDeleteConfirmOpen(true)}
-              className="text-zinc-400 hover:text-red-600 hover:bg-red-50 gap-1.5"
+              className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1.5"
             >
               <Trash2 className="size-3.5" />
               Delete

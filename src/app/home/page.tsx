@@ -81,7 +81,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-6 gap-4 w-full relative">
                 {/* Vertical Divider - Only visible on XL screens between columns 3 and 4 */}
                 <div className="hidden xl:flex absolute left-1/2 top-0 bottom-0 items-center justify-center w-4 -ml-2 pointer-events-none">
-                  <div className="w-px h-full bg-zinc-200" />
+                  <div className="w-px h-full bg-border" />
                 </div>
 
                 {/* Current Month KPIs - Priority 1 */}
@@ -109,7 +109,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full relative">
               {/* Vertical Divider */}
               <div className="hidden lg:flex absolute left-1/2 top-0 bottom-0 items-center justify-center w-4 -ml-2 pointer-events-none">
-                <div className="w-px h-full bg-zinc-200" />
+                <div className="w-px h-full bg-border" />
               </div>
 
               {/* Top Vendors */}

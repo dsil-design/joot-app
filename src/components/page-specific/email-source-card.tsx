@@ -30,21 +30,21 @@ export interface EmailSourceCardData {
 function MatchMethodBadge({ method, status }: { method: string | null; status: string | null }) {
   if (status === "imported") {
     return (
-      <Badge className="bg-blue-100 text-blue-700 border-0 text-[12px] font-normal">
+      <Badge className="bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-0 text-[12px] font-normal">
         Created from email
       </Badge>
     )
   }
   if (method === "auto") {
     return (
-      <Badge className="bg-green-100 text-green-700 border-0 text-[12px] font-normal">
+      <Badge className="bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-0 text-[12px] font-normal">
         Auto-linked
       </Badge>
     )
   }
   if (method === "manual") {
     return (
-      <Badge className="bg-gray-100 text-gray-500 border-0 text-[12px] font-normal">
+      <Badge className="bg-muted text-muted-foreground border-0 text-[12px] font-normal">
         Manually linked
       </Badge>
     )
@@ -118,30 +118,30 @@ export function EmailSourceCard({
 
   return (
     <>
-      <div className="bg-zinc-50 rounded-lg border border-zinc-200 p-4 w-full text-left">
+      <div className="bg-muted rounded-lg border border-border p-4 w-full text-left">
         <div className="flex items-start gap-3">
-          <Mail className="size-4 text-zinc-400 mt-0.5 shrink-0" strokeWidth={1.5} />
+          <Mail className="size-4 text-muted-foreground mt-0.5 shrink-0" strokeWidth={1.5} />
           <div className="flex flex-col gap-1 min-w-0 flex-1">
-            <p className="text-[14px] font-normal text-zinc-950 truncate">
+            <p className="text-[14px] font-normal text-foreground truncate">
               {source.subject || "No subject"}
             </p>
             {fromLine && (
-              <p className="text-[14px] font-normal text-zinc-500 truncate">
+              <p className="text-[14px] font-normal text-muted-foreground truncate">
                 {fromLine}
               </p>
             )}
             {formattedDate && (
-              <p className="text-[14px] font-normal text-zinc-500">
+              <p className="text-[14px] font-normal text-muted-foreground">
                 {formattedDate}
               </p>
             )}
             {source.amount != null && source.currency && (
-              <p className="text-[14px] font-normal text-zinc-950">
+              <p className="text-[14px] font-normal text-foreground">
                 {formatCurrency(source.amount, source.currency)} {source.currency}
               </p>
             )}
             {source.extraction_confidence !== null && (
-              <p className="text-[14px] font-normal text-zinc-500">
+              <p className="text-[14px] font-normal text-muted-foreground">
                 {source.extraction_confidence}% extraction confidence
               </p>
             )}
@@ -150,7 +150,7 @@ export function EmailSourceCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => setViewerOpen(true)}
               >
                 <Eye className="size-3.5 mr-1" />
@@ -159,7 +159,7 @@ export function EmailSourceCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                 asChild
               >
                 <a
@@ -175,7 +175,7 @@ export function EmailSourceCard({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-xs text-zinc-500 hover:text-zinc-900"
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => setFeedbackOpen((v) => !v)}
                   disabled={isProcessing}
                 >
@@ -191,7 +191,7 @@ export function EmailSourceCard({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-xs text-zinc-500 hover:text-destructive"
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
                   onClick={onUnlink}
                 >
                   <Unlink className="size-3.5 mr-1" />
@@ -263,10 +263,10 @@ function CopyableEmailId({ id }: { id: string }) {
 
   return (
     <div className="flex items-center gap-1.5 mt-1">
-      <span className="text-[12px] text-zinc-400 font-mono truncate">{id}</span>
+      <span className="text-[12px] text-muted-foreground font-mono truncate">{id}</span>
       <button
         onClick={handleCopy}
-        className="text-zinc-400 hover:text-zinc-700 transition-colors p-0.5 shrink-0"
+        className="text-muted-foreground hover:text-foreground transition-colors p-0.5 shrink-0"
         aria-label="Copy email ID"
       >
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}

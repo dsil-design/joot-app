@@ -384,7 +384,7 @@ function StatusIcon({ status }: { status: ItemStatus }) {
     case "active":
       return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
     case "ready":
-      return <Check className="h-4 w-4 text-green-600" />
+      return <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
     case "unchanged":
       return <Minus className="h-4 w-4 text-muted-foreground" />
     case "failed":
@@ -420,7 +420,7 @@ function DoneBody({
     }
     return (
       <div className="flex items-center gap-3 py-2">
-        <Check className="h-5 w-5 text-green-600 shrink-0" />
+        <Check className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
         <span className="text-sm">Proposal generated</span>
       </div>
     )
@@ -441,7 +441,7 @@ function DoneBody({
     <ul className="space-y-1.5 py-2 text-sm">
       {summary.ready > 0 && (
         <li className="flex items-center gap-2">
-          <Check className="h-4 w-4 text-green-600 shrink-0" />
+          <Check className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
           <span>
             {summary.ready} proposal{summary.ready === 1 ? "" : "s"} ready
           </span>

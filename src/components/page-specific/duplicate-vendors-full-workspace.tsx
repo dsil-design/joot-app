@@ -355,9 +355,9 @@ export function DuplicateVendorsWorkspace({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-50">
+      <div className="min-h-screen bg-muted">
         {/* Header Skeleton */}
-        <header className="sticky top-0 z-10 bg-white border-b border-zinc-200 shadow-sm">
+        <header className="sticky top-0 z-10 bg-background border-b border-border shadow-sm">
           <div className="max-w-[1400px] mx-auto px-8 py-6">
             <Skeleton className="h-10 w-96 mb-2" />
             <Skeleton className="h-4 w-full max-w-2xl" />
@@ -389,9 +389,9 @@ export function DuplicateVendorsWorkspace({
 
   if (totalSuggestions === 0) {
     return (
-      <div className="min-h-screen bg-zinc-50">
+      <div className="min-h-screen bg-muted">
         {/* Header */}
-        <header className="sticky top-0 z-10 bg-white border-b border-zinc-200 shadow-sm">
+        <header className="sticky top-0 z-10 bg-background border-b border-border shadow-sm">
           <div className="max-w-[1400px] mx-auto px-8 py-6">
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -399,11 +399,11 @@ export function DuplicateVendorsWorkspace({
                   <Button variant="ghost" size="sm" onClick={navigateBack}>
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
-                  <h1 className="text-3xl font-semibold text-zinc-950">
+                  <h1 className="text-3xl font-semibold text-foreground">
                     Manage Duplicate Vendors
                   </h1>
                 </div>
-                <p className="text-base text-zinc-500 ml-11">
+                <p className="text-base text-muted-foreground ml-11">
                   Review potential duplicate vendors detected by our fuzzy
                   matching algorithm. Consolidate duplicates to keep your data
                   clean and accurate.
@@ -415,15 +415,15 @@ export function DuplicateVendorsWorkspace({
 
         {/* Empty State */}
         <div className="max-w-[1400px] mx-auto px-8 py-16">
-          <Card className="border-dashed border-2 border-zinc-300">
+          <Card className="border-dashed border-2 border-border">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="rounded-full bg-green-100 p-4 mb-4">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+              <div className="rounded-full bg-green-100 dark:bg-green-950/40 p-4 mb-4">
+                <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="text-xl font-semibold text-zinc-950 mb-2">
+              <h3 className="text-xl font-semibold text-foreground mb-2">
                 No Duplicate Vendors Found
               </h3>
-              <p className="text-base text-zinc-600 max-w-md mb-6">
+              <p className="text-base text-muted-foreground max-w-md mb-6">
                 Your vendor list looks clean! Our analysis didn&apos;t find any
                 potential duplicates. You can refresh the analysis anytime to
                 check again.
@@ -447,9 +447,9 @@ export function DuplicateVendorsWorkspace({
 
   return (
     <>
-      <div className="min-h-screen bg-zinc-50">
+      <div className="min-h-screen bg-muted">
         {/* Header */}
-        <header className="sticky top-0 z-10 bg-white border-b border-zinc-200 shadow-sm">
+        <header className="sticky top-0 z-10 bg-background border-b border-border shadow-sm">
           <div className="max-w-[1400px] mx-auto px-8 py-6">
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -457,11 +457,11 @@ export function DuplicateVendorsWorkspace({
                   <Button variant="ghost" size="sm" onClick={navigateBack}>
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
-                  <h1 className="text-3xl font-semibold text-zinc-950">
+                  <h1 className="text-3xl font-semibold text-foreground">
                     Manage Duplicate Vendors
                   </h1>
                 </div>
-                <p className="text-base text-zinc-500 ml-11">
+                <p className="text-base text-muted-foreground ml-11">
                   Review potential duplicate vendors detected by our fuzzy
                   matching algorithm. Consolidate duplicates to keep your data
                   clean and accurate.
@@ -485,17 +485,17 @@ export function DuplicateVendorsWorkspace({
             <div className="flex items-center gap-6 ml-11">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-blue-500" />
-                <span className="text-sm text-zinc-600">
-                  <span className="font-semibold text-zinc-950">
+                <span className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">
                     {pendingCount}
                   </span>{" "}
                   Pending Review
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-zinc-400" />
-                <span className="text-sm text-zinc-600">
-                  <span className="font-semibold text-zinc-950">
+                <div className="h-2 w-2 rounded-full bg-zinc-400 dark:bg-zinc-500" />
+                <span className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">
                     {ignoredCount}
                   </span>{" "}
                   Ignored
@@ -503,8 +503,8 @@ export function DuplicateVendorsWorkspace({
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-green-500" />
-                <span className="text-sm text-zinc-600">
-                  <span className="font-semibold text-zinc-950">
+                <span className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">
                     {totalSuggestions}
                   </span>{" "}
                   Total Suggestions
@@ -515,17 +515,17 @@ export function DuplicateVendorsWorkspace({
         </header>
 
         {/* Filter Bar */}
-        <div className="sticky top-[calc(theme(spacing.6)*2+theme(spacing.16))] z-10 bg-zinc-50 border-b border-zinc-200">
+        <div className="sticky top-[calc(theme(spacing.6)*2+theme(spacing.16))] z-10 bg-muted border-b border-border">
           <div className="max-w-[1400px] mx-auto px-8 py-4">
             <div className="flex items-center gap-3 mb-3">
-              <Filter className="h-5 w-5 text-zinc-600" />
-              <span className="text-sm font-medium text-zinc-900">Filters</span>
+              <Filter className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Filters</span>
               {hasActiveFilters && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={clearAllFilters}
-                  className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  className="h-7 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40"
                 >
                   Clear All
                 </Button>
@@ -542,14 +542,14 @@ export function DuplicateVendorsWorkspace({
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="h-9 border-zinc-300 bg-white hover:bg-zinc-50"
+                    className="h-9 border-input bg-background hover:bg-muted"
                   >
                     <Users className="h-4 w-4 mr-2" />
                     Vendor Names
                     {selectedVendors.length > 0 && (
                       <Badge
                         variant="secondary"
-                        className="ml-2 h-5 px-1.5 bg-blue-100 text-blue-800"
+                        className="ml-2 h-5 px-1.5 bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200"
                       >
                         {selectedVendors.length}
                       </Badge>
@@ -588,7 +588,7 @@ export function DuplicateVendorsWorkspace({
                   setConfidenceFilter(value as ConfidenceFilter)
                 }
               >
-                <SelectTrigger className="h-9 w-[200px] border-zinc-300 bg-white">
+                <SelectTrigger className="h-9 w-[200px] border-input bg-background">
                   <div className="flex items-center gap-2 overflow-hidden min-w-0">
                     <Target className="h-4 w-4 shrink-0" />
                     <SelectValue placeholder="All Confidence Levels" />
@@ -609,7 +609,7 @@ export function DuplicateVendorsWorkspace({
                   setStatusFilter(value as StatusFilter)
                 }
               >
-                <SelectTrigger className="h-9 w-[160px] border-zinc-300 bg-white">
+                <SelectTrigger className="h-9 w-[160px] border-input bg-background">
                   <div className="flex items-center gap-2 overflow-hidden min-w-0">
                     <ListFilter className="h-4 w-4 shrink-0" />
                     <SelectValue placeholder="All Statuses" />
@@ -623,8 +623,8 @@ export function DuplicateVendorsWorkspace({
               </Select>
 
               {/* Results Count */}
-              <div className="ml-auto text-sm text-zinc-600">
-                <span className="font-medium text-zinc-950">
+              <div className="ml-auto text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">
                   {filteredCount}
                 </span>{" "}
                 results
@@ -642,12 +642,12 @@ export function DuplicateVendorsWorkspace({
                     <Badge
                       key={vendorId}
                       variant="secondary"
-                      className="h-6 pl-2 pr-1 bg-blue-100 text-blue-800 hover:bg-blue-100"
+                      className="h-6 pl-2 pr-1 bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-950/40"
                     >
                       {vendor?.name}
                       <button
                         onClick={() => removeVendorFilter(vendorId)}
-                        className="ml-1 rounded-full hover:bg-blue-200 p-0.5"
+                        className="ml-1 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 p-0.5"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -657,12 +657,12 @@ export function DuplicateVendorsWorkspace({
                 {confidenceFilter !== "all" && (
                   <Badge
                     variant="secondary"
-                    className="h-6 pl-2 pr-1 bg-zinc-200 text-zinc-800"
+                    className="h-6 pl-2 pr-1 bg-muted text-muted-foreground"
                   >
                     {confidenceFilter} confidence
                     <button
                       onClick={() => setConfidenceFilter("all")}
-                      className="ml-1 rounded-full hover:bg-zinc-300 p-0.5"
+                      className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -671,12 +671,12 @@ export function DuplicateVendorsWorkspace({
                 {statusFilter !== "all" && (
                   <Badge
                     variant="secondary"
-                    className="h-6 pl-2 pr-1 bg-zinc-200 text-zinc-800"
+                    className="h-6 pl-2 pr-1 bg-muted text-muted-foreground"
                   >
                     {statusFilter}
                     <button
                       onClick={() => setStatusFilter("all")}
-                      className="ml-1 rounded-full hover:bg-zinc-300 p-0.5"
+                      className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -692,19 +692,19 @@ export function DuplicateVendorsWorkspace({
           {filteredCount === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="rounded-full bg-zinc-100 p-4 mb-4">
-                  <Search className="h-8 w-8 text-zinc-400" />
+                <div className="rounded-full bg-muted p-4 mb-4">
+                  <Search className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold text-zinc-950 mb-2">
+                <h3 className="text-lg font-semibold text-foreground mb-2">
                   No matches found
                 </h3>
-                <p className="text-sm text-zinc-600 max-w-md mb-4">
+                <p className="text-sm text-muted-foreground max-w-md mb-4">
                   Try adjusting your filters to see more results.
                 </p>
                 <Button
                   variant="ghost"
                   onClick={clearAllFilters}
-                  className="text-blue-600"
+                  className="text-blue-600 dark:text-blue-400"
                 >
                   Clear all filters
                 </Button>

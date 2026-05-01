@@ -93,10 +93,10 @@ function CopyableId({ id }: { id: string }) {
 
   return (
     <div className="flex items-center gap-1.5 pt-2">
-      <span className="text-[12px] text-zinc-400 font-mono">{id}</span>
+      <span className="text-[12px] text-muted-foreground font-mono">{id}</span>
       <button
         onClick={handleCopy}
-        className="text-zinc-400 hover:text-zinc-600 transition-colors p-0.5"
+        className="text-muted-foreground hover:text-muted-foreground transition-colors p-0.5"
         aria-label="Copy ID"
       >
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
@@ -108,7 +108,7 @@ function CopyableId({ id }: { id: string }) {
 function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null
   return (
-    <div className="flex justify-between gap-4 py-2 border-b border-zinc-100 last:border-0">
+    <div className="flex justify-between gap-4 py-2 border-b border-border last:border-0">
       <span className="text-sm text-muted-foreground shrink-0">{label}</span>
       <span className="text-sm font-medium text-right break-words min-w-0">{value}</span>
     </div>
@@ -129,7 +129,7 @@ function EditableRow({
   placeholder?: string
 }) {
   return (
-    <div className="flex justify-between items-center gap-4 py-2 border-b border-zinc-100 last:border-0">
+    <div className="flex justify-between items-center gap-4 py-2 border-b border-border last:border-0">
       <span className="text-sm text-muted-foreground shrink-0">{label}</span>
       <Input
         type={type}
@@ -430,7 +430,7 @@ export default function PaymentSlipDetailPage() {
             <CardContent className="py-8 flex flex-col items-center gap-4">
               {isStuck ? (
                 <>
-                  <XCircle className="h-8 w-8 text-amber-500" />
+                  <XCircle className="h-8 w-8 text-amber-500 dark:text-amber-400" />
                   <div className="text-center">
                     <p className="text-sm font-medium">Processing appears stuck</p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -444,7 +444,7 @@ export default function PaymentSlipDetailPage() {
                 </>
               ) : (
                 <>
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-500 dark:text-blue-400" />
                   <div className="text-center">
                     <p className="text-sm font-medium">Processing payment slip...</p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -461,13 +461,13 @@ export default function PaymentSlipDetailPage() {
 
       {/* Failed state */}
       {slip.status === 'failed' && (
-        <Card className="border-red-200">
+        <Card className="border-red-200 dark:border-red-800">
           <CardContent className="py-6">
             <div className="flex items-start gap-3">
-              <XCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+              <XCircle className="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-red-700">Processing Failed</p>
-                <p className="text-sm text-red-600 mt-1">{slip.extraction_error || 'Unknown error'}</p>
+                <p className="text-sm font-medium text-red-700 dark:text-red-400">Processing Failed</p>
+                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{slip.extraction_error || 'Unknown error'}</p>
               </div>
             </div>
           </CardContent>
@@ -483,12 +483,12 @@ export default function PaymentSlipDetailPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   {isIncome ? (
-                    <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                      <ArrowDownLeft className="h-5 w-5 text-green-600" />
+                    <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-950/40 flex items-center justify-center shrink-0">
+                      <ArrowDownLeft className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
                   ) : (
-                    <div className="h-10 w-10 rounded-full bg-zinc-100 flex items-center justify-center shrink-0">
-                      <ArrowUpRight className="h-5 w-5 text-zinc-600" />
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <ArrowUpRight className="h-5 w-5 text-muted-foreground" />
                     </div>
                   )}
                   <div>
@@ -533,16 +533,16 @@ export default function PaymentSlipDetailPage() {
                       </span>
                     )}
                     {slip.review_status === 'approved' ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300">
                         <CheckCircle2 className="h-3 w-3" />
                         Approved
                       </span>
                     ) : slip.review_status === 'rejected' ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-zinc-100 text-zinc-600">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-muted text-muted-foreground">
                         Rejected
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300">
                         <Clock className="h-3 w-3" />
                         Pending Review
                       </span>
@@ -595,10 +595,10 @@ export default function PaymentSlipDetailPage() {
 
           {/* Review queue link */}
           {!isEditing && slip.review_status === 'pending' && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-4">
               <div>
-                <p className="text-sm font-medium text-amber-800">Ready for review</p>
-                <p className="text-xs text-amber-600 mt-0.5">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Ready for review</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
                   Approve or reject this transaction in the review queue
                 </p>
               </div>
@@ -612,10 +612,10 @@ export default function PaymentSlipDetailPage() {
 
           {/* Rejected — allow reopening back into the review queue */}
           {!isEditing && slip.review_status === 'rejected' && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-border bg-muted p-4">
               <div>
-                <p className="text-sm font-medium text-zinc-800">Rejected</p>
-                <p className="text-xs text-zinc-600 mt-0.5">
+                <p className="text-sm font-medium text-foreground">Rejected</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Reopen to put this slip back in the pending queue. Previously rejected matches will still be excluded from rematch.
                 </p>
               </div>
@@ -644,7 +644,7 @@ export default function PaymentSlipDetailPage() {
             variant="ghost"
             size="sm"
             onClick={() => setDeleteConfirmOpen(true)}
-            className="text-muted-foreground hover:text-red-600 hover:bg-red-50 gap-1.5"
+            className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1.5"
           >
             <Trash2 className="size-3.5" />
             Delete

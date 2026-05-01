@@ -152,8 +152,8 @@ export function ChatInterface() {
                   className={cn(
                     "max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 text-sm",
                     message.role === 'user'
-                      ? 'bg-zinc-900 text-white'
-                      : 'bg-zinc-100 text-zinc-900'
+                      ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                      : 'bg-muted text-foreground'
                   )}
                 >
                   <div className="whitespace-pre-wrap break-words">{message.content}</div>
@@ -163,7 +163,7 @@ export function ChatInterface() {
 
             {isLoading && (
               <div className="flex gap-3 px-4 justify-start">
-                <div className="bg-zinc-100 rounded-2xl px-4 py-3">
+                <div className="bg-muted rounded-2xl px-4 py-3">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               </div>

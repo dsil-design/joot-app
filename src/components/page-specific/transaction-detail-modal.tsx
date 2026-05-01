@@ -108,10 +108,10 @@ export function TransactionDetailModal({
   if (!statementItem) return null
 
   const confidenceColor = statementItem.confidence >= 90
-    ? 'text-green-700 bg-green-50 border-green-200'
+    ? 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
     : statementItem.confidence >= 55
-      ? 'text-amber-700 bg-amber-50 border-amber-200'
-      : 'text-red-700 bg-red-50 border-red-200'
+      ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
+      : 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -137,8 +137,8 @@ export function TransactionDetailModal({
           {/* Left: Statement transaction */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 pb-2 border-b">
-              <FileText className="h-3.5 w-3.5 text-zinc-400" />
-              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Statement</h3>
+              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Statement</h3>
             </div>
             <ComparisonField label="Date" value={formatDate(statementItem.date)} />
             <ComparisonField
@@ -155,8 +155,8 @@ export function TransactionDetailModal({
           {/* Right: Joot transaction */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 pb-2 border-b">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Joot Transaction</h3>
+              <CheckCircle2 className="h-3.5 w-3.5 text-green-500 dark:text-green-400" />
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Joot Transaction</h3>
             </div>
             {loading ? (
               <div className="space-y-3">
@@ -184,7 +184,7 @@ export function TransactionDetailModal({
                 )}
                 {transaction.tags && transaction.tags.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">Tags</p>
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Tags</p>
                     <div className="flex flex-wrap gap-1">
                       {transaction.tags.map((tag: { id: string; name: string; color: string }) => (
                         <Badge
@@ -211,7 +211,7 @@ export function TransactionDetailModal({
         {/* Match reasoning */}
         <div className="mt-4 pt-4 border-t space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Match Details</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Match Details</h3>
             <Badge variant="outline" className={cn('text-xs', confidenceColor)}>
               {statementItem.confidence}% confidence
             </Badge>
@@ -219,11 +219,11 @@ export function TransactionDetailModal({
 
           {statementItem.reasons.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-zinc-600">Why this was matched:</p>
+              <p className="text-xs font-medium text-muted-foreground">Why this was matched:</p>
               <ul className="space-y-1">
                 {statementItem.reasons.map((reason, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-zinc-600">
-                    <span className="text-green-500 mt-0.5 shrink-0">•</span>
+                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="text-green-500 dark:text-green-400 mt-0.5 shrink-0">•</span>
                     {reason}
                   </li>
                 ))}
@@ -358,7 +358,7 @@ export function TransactionDetailModal({
             {/* Queue done state */}
             {queue && queue.reviewed >= queue.total && (
               <div className="text-center py-2">
-                <p className="text-sm font-medium text-green-700">All matches reviewed!</p>
+                <p className="text-sm font-medium text-green-700 dark:text-green-300">All matches reviewed!</p>
                 <Button variant="outline" size="sm" className="mt-2" onClick={() => onOpenChange(false)}>
                   Done
                 </Button>
@@ -382,10 +382,10 @@ function ComparisonField({
 }) {
   return (
     <div className="space-y-0.5">
-      <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">{label}</p>
-      <p className="text-sm text-zinc-900">{value}</p>
+      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className="text-sm text-foreground">{value}</p>
       {secondaryValue && (
-        <p className="text-xs text-zinc-500">{secondaryValue}</p>
+        <p className="text-xs text-muted-foreground">{secondaryValue}</p>
       )}
     </div>
   )

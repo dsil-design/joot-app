@@ -51,16 +51,16 @@ export async function YTDKPISection({ userId }: YTDKPISectionProps) {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {/* YTD Income */}
-        <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0">
+        <Card className="bg-card border-border rounded-lg shadow-sm p-0">
           <div className="p-6 xl:p-5">
             <div className="flex flex-col gap-2 xl:gap-1.5">
-              <div className="text-[12px] font-medium text-zinc-500 leading-4">
+              <div className="text-[12px] font-medium text-muted-foreground leading-4">
                 Total Income
               </div>
-              <div className="text-[24px] xl:text-[20px] font-semibold text-green-600 leading-[32px] xl:leading-[28px]">
+              <div className="text-[24px] xl:text-[20px] font-semibold text-green-600 dark:text-green-400 leading-[32px] xl:leading-[28px]">
                 {formatCurrency(ytdSummary.income, 'USD')}
               </div>
-              <div className="text-[12px] font-normal text-zinc-400 leading-4">
+              <div className="text-[12px] font-normal text-muted-foreground leading-4">
                 {formatCurrency(ytdSummary.averageMonthlyIncome, 'USD')}/month avg
               </div>
             </div>
@@ -68,16 +68,16 @@ export async function YTDKPISection({ userId }: YTDKPISectionProps) {
         </Card>
 
         {/* YTD Expenses */}
-        <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0">
+        <Card className="bg-card border-border rounded-lg shadow-sm p-0">
           <div className="p-6 xl:p-5">
             <div className="flex flex-col gap-2 xl:gap-1.5">
-              <div className="text-[12px] font-medium text-zinc-500 leading-4">
+              <div className="text-[12px] font-medium text-muted-foreground leading-4">
                 Total Expenses
               </div>
-              <div className="text-[24px] xl:text-[20px] font-semibold text-red-600 leading-[32px] xl:leading-[28px]">
+              <div className="text-[24px] xl:text-[20px] font-semibold text-red-600 dark:text-red-400 leading-[32px] xl:leading-[28px]">
                 {formatCurrency(ytdSummary.expenses, 'USD')}
               </div>
-              <div className="text-[12px] font-normal text-zinc-400 leading-4">
+              <div className="text-[12px] font-normal text-muted-foreground leading-4">
                 {formatCurrency(ytdSummary.averageMonthlyExpenses, 'USD')}/month avg
               </div>
             </div>
@@ -85,18 +85,18 @@ export async function YTDKPISection({ userId }: YTDKPISectionProps) {
         </Card>
 
         {/* YTD Net */}
-        <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0">
+        <Card className="bg-card border-border rounded-lg shadow-sm p-0">
           <div className="p-6 xl:p-5">
             <div className="flex flex-col gap-2 xl:gap-1.5">
-              <div className="text-[12px] font-medium text-zinc-500 leading-4">
+              <div className="text-[12px] font-medium text-muted-foreground leading-4">
                 Net {ytdSummary.net >= 0 ? 'Surplus' : 'Deficit'}
               </div>
               <div className={`text-[24px] xl:text-[20px] font-semibold leading-[32px] xl:leading-[28px] ${
-                ytdSummary.net >= 0 ? 'text-green-600' : 'text-red-600'
+                ytdSummary.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
               }`}>
                 {formatCurrency(Math.abs(ytdSummary.net), 'USD')}
               </div>
-              <div className="text-[12px] font-normal text-zinc-400 leading-4">
+              <div className="text-[12px] font-normal text-muted-foreground leading-4">
                 {ytdSummary.savingsRate.toFixed(1)}% savings rate
               </div>
             </div>

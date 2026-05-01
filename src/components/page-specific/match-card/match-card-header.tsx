@@ -57,22 +57,22 @@ export function MatchCardHeader({
       <div className="flex items-center gap-2 min-w-0">
         {/* Source provenance pill */}
         {data.source === "merged" ? (
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
             <GitMerge className="h-3 w-3 shrink-0" />
             Cross-Source
           </span>
         ) : isPaymentSlip ? (
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300">
             <Receipt className="h-3 w-3 shrink-0" />
             Payment Slip
           </span>
         ) : data.source === "email" ? (
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-600">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300">
             <Mail className="h-3 w-3 shrink-0" />
             Email Only
           </span>
         ) : source ? (
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
             <File className="h-3 w-3 shrink-0" />
             <span className="truncate max-w-[140px]">{source}</span>
             <span>Only</span>
@@ -88,12 +88,12 @@ export function MatchCardHeader({
 
         {/* Status badge for resolved items */}
         {isApproved && (
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300">
             Linked
           </span>
         )}
         {isRejected && (
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
             Skipped
           </span>
         )}

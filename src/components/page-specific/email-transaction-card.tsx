@@ -29,25 +29,25 @@ interface EmailTransactionCardProps {
 function getStatusBadge(status: string) {
   switch (status) {
     case "unprocessed":
-      return { label: "Unprocessed", className: "bg-slate-100 text-slate-600 border-slate-200" }
+      return { label: "Unprocessed", className: "bg-muted text-slate-600 border-slate-200" }
     case "pending_review":
-      return { label: "Pending", className: "bg-amber-100 text-amber-800 border-amber-200" }
+      return { label: "Pending", className: "bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800" }
     case "matched":
-      return { label: "Linked", className: "bg-green-100 text-green-800 border-green-200" }
+      return { label: "Linked", className: "bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800" }
     case "waiting_for_statement":
-      return { label: "Waiting (Statement)", className: "bg-blue-100 text-blue-800 border-blue-200" }
+      return { label: "Waiting (Statement)", className: "bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800" }
     case "waiting_for_email":
-      return { label: "Waiting (Email)", className: "bg-indigo-100 text-indigo-800 border-indigo-200" }
+      return { label: "Waiting (Email)", className: "bg-indigo-100 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800" }
     case "waiting_for_slip":
-      return { label: "Waiting (Slip)", className: "bg-violet-100 text-violet-800 border-violet-200" }
+      return { label: "Waiting (Slip)", className: "bg-violet-100 dark:bg-violet-950/40 text-violet-800 dark:text-violet-200 border-violet-200 dark:border-violet-800" }
     case "ready_to_import":
-      return { label: "Ready to Import", className: "bg-purple-100 text-purple-800 border-purple-200" }
+      return { label: "Ready to Import", className: "bg-purple-100 dark:bg-purple-950/40 text-purple-800 dark:text-purple-200 border-purple-200 dark:border-purple-800" }
     case "imported":
-      return { label: "Imported", className: "bg-green-50 text-green-700 border-green-200" }
+      return { label: "Imported", className: "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800" }
     case "skipped":
-      return { label: "Skipped", className: "bg-gray-100 text-gray-600 border-gray-200" }
+      return { label: "Skipped", className: "bg-muted text-muted-foreground border-gray-200" }
     default:
-      return { label: status, className: "bg-gray-100 text-gray-600 border-gray-200" }
+      return { label: status, className: "bg-muted text-muted-foreground border-gray-200" }
   }
 }
 

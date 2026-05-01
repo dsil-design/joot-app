@@ -57,7 +57,7 @@ export async function RecentTransactionsSection({ userId }: RecentTransactionsSe
         </div>
 
         {/* Sticky Footer with View All CTA */}
-        <div className="sticky bottom-0 bg-background pt-4 mt-4 border-t border-zinc-200">
+        <div className="sticky bottom-0 bg-background pt-4 mt-4 border-t border-border">
           <Button variant="outline" className="w-full" asChild>
             <Link href="/transactions" className="flex items-center justify-center gap-2">
               View All Transactions

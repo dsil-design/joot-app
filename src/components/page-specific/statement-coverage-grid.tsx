@@ -51,10 +51,10 @@ function CoverageCell({ cell }: {
     <div
       className={cn(
         'flex items-center justify-center h-10 rounded-md border text-xs font-medium transition-colors',
-        cell.status === 'done' && 'border-green-300 bg-green-50 text-green-700',
-        cell.status === 'missing' && 'border-dashed border-red-300 bg-red-50/30 text-red-400',
-        cell.status === 'pending_review' && 'border-amber-300 bg-amber-50 text-amber-700',
-        cell.status === 'processing' && 'border-blue-300 bg-blue-50 text-blue-600',
+        cell.status === 'done' && 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300',
+        cell.status === 'missing' && 'border-dashed border-red-300 dark:border-red-700 bg-red-50/30 text-red-400',
+        cell.status === 'pending_review' && 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',
+        cell.status === 'processing' && 'border-blue-300 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400',
         href && 'cursor-pointer hover:opacity-80'
       )}
     >
@@ -145,19 +145,19 @@ export function StatementCoverageGrid({ data, isLoading }: StatementCoverageGrid
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-sm border border-green-300 bg-green-50" />
+          <span className="inline-block w-3 h-3 rounded-sm border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/20" />
           Done
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-sm border border-amber-300 bg-amber-50" />
+          <span className="inline-block w-3 h-3 rounded-sm border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40" />
           Pending Review
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-sm border border-blue-300 bg-blue-50" />
+          <span className="inline-block w-3 h-3 rounded-sm border border-blue-300 bg-blue-50 dark:bg-blue-950/40" />
           Processing
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-sm border border-dashed border-red-300 bg-red-50/30" />
+          <span className="inline-block w-3 h-3 rounded-sm border border-dashed border-red-300 dark:border-red-700 bg-red-50/30" />
           Missing
         </span>
       </div>

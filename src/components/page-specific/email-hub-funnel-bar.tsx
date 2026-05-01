@@ -38,9 +38,9 @@ export function EmailHubFunnelBar({ stats, isLoading }: EmailHubFunnelBarProps) 
 
   const stages = [
     { label: "Synced", count: total, color: "bg-slate-400" },
-    { label: "Extracted", count: extracted, color: "bg-blue-400" },
-    { label: "Linked", count: matched, color: "bg-amber-400" },
-    { label: "Imported", count: imported, color: "bg-green-400" },
+    { label: "Extracted", count: extracted, color: "bg-blue-400 dark:bg-blue-500" },
+    { label: "Linked", count: matched, color: "bg-amber-400 dark:bg-amber-500" },
+    { label: "Imported", count: imported, color: "bg-green-400 dark:bg-green-500" },
   ]
 
   return (
@@ -59,7 +59,7 @@ export function EmailHubFunnelBar({ stats, isLoading }: EmailHubFunnelBarProps) 
                 <div className="flex flex-col items-center shrink-0 self-end pb-1 gap-0.5">
                   <span className="text-muted-foreground/30 text-sm leading-none">→</span>
                   {dropOff > 10 && (
-                    <span className="text-[10px] text-red-500 leading-none whitespace-nowrap">
+                    <span className="text-[10px] text-red-500 dark:text-red-400 leading-none whitespace-nowrap">
                       -{dropOff}%
                     </span>
                   )}

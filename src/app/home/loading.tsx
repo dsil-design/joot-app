@@ -13,7 +13,7 @@ export default function HomeLoadingSkeleton() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="p-6 bg-white border-zinc-200">
+          <Card key={i} className="p-6 bg-card border-border">
             <Skeleton className="h-4 w-32 mb-3" />
             <Skeleton className="h-8 w-24 mb-2" />
             <Skeleton className="h-3 w-40" />
@@ -22,13 +22,13 @@ export default function HomeLoadingSkeleton() {
       </div>
 
       {/* Chart Section */}
-      <Card className="p-6 bg-white border-zinc-200">
+      <Card className="p-6 bg-card border-border">
         <Skeleton className="h-6 w-48 mb-6" />
         <Skeleton className="h-64 w-full" />
       </Card>
 
       {/* Top Vendors */}
-      <Card className="p-6 bg-white border-zinc-200">
+      <Card className="p-6 bg-card border-border">
         <Skeleton className="h-6 w-32 mb-4" />
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -43,7 +43,7 @@ export default function HomeLoadingSkeleton() {
       {/* Recent Transactions */}
       <div>
         <Skeleton className="h-7 w-48 mb-4" />
-        <Card className="bg-white border-zinc-200">
+        <Card className="bg-card border-border">
           <div className="divide-y divide-zinc-200">
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="p-4">

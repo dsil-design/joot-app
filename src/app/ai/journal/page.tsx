@@ -62,7 +62,7 @@ export default function AiJournalPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Brain className="h-5 w-5 text-purple-600" />
+          <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           <h2 className="text-lg font-semibold">AI Journal</h2>
         </div>
         <div className="flex gap-2">
@@ -99,7 +99,7 @@ export default function AiJournalPage() {
 
       {/* Active Insights */}
       <div>
-        <h3 className="text-sm font-semibold text-zinc-700 mb-3">
+        <h3 className="text-sm font-semibold text-foreground mb-3">
           Active Insights ({insights.length})
         </h3>
         <AiJournalInsightsList
@@ -112,7 +112,7 @@ export default function AiJournalPage() {
 
       {/* Journal Log */}
       <div>
-        <h3 className="text-sm font-semibold text-zinc-700 mb-3">
+        <h3 className="text-sm font-semibold text-foreground mb-3">
           Journal Log
         </h3>
         <AiJournalLogTable

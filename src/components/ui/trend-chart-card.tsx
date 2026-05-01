@@ -11,10 +11,16 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import { useTheme } from 'next-themes'
 import { Card, CardHeader, CardTitle, CardAction, CardContent } from '@/components/ui/card'
 import { TimePeriodToggle, type TimePeriod } from '@/components/ui/time-period-toggle'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+
+const SERIES_COLORS = {
+  light: { income: '#00a63e', expenses: '#e7000b', net: '#155dfc' },
+  dark: { income: '#00c951', expenses: '#fb2c36', net: '#2b7fff' },
+}
 
 export interface TrendDataPoint {
   date: string
@@ -52,6 +58,8 @@ export function TrendChartCard({
   className,
   onPeriodChange,
 }: TrendChartCardProps) {
+  const { resolvedTheme } = useTheme()
+  const colors = SERIES_COLORS[resolvedTheme === 'dark' ? 'dark' : 'light']
   const [selectedPeriod, setSelectedPeriod] = React.useState<TimePeriod>(defaultPeriod)
   const [hoveredLine, setHoveredLine] = React.useState<string | null>(null)
   const [visibleLines, setVisibleLines] = React.useState<Record<string, boolean>>({
@@ -169,9 +177,9 @@ export function TrendChartCard({
   // Custom legend component - memoized to prevent recreation
   const CustomLegend = React.useCallback(() => {
     const legendItems: LegendItem[] = [
-      { value: 'income', color: '#00a63e', label: 'Income', visible: visibleLines.income },
-      { value: 'expenses', color: '#e7000b', label: 'Expenses', visible: visibleLines.expenses },
-      { value: 'net', color: '#155dfc', label: 'Net', visible: visibleLines.net },
+      { value: 'income', color: colors.income, label: 'Income', visible: visibleLines.income },
+      { value: 'expenses', color: colors.expenses, label: 'Expenses', visible: visibleLines.expenses },
+      { value: 'net', color: colors.net, label: 'Net', visible: visibleLines.net },
     ]
 
     return (
@@ -205,7 +213,7 @@ export function TrendChartCard({
         ))}
       </div>
     )
-  }, [visibleLines, toggleLineVisibility])
+  }, [visibleLines, toggleLineVisibility, colors])
 
   return (
     <Card className={className}>
@@ -254,16 +262,16 @@ export function TrendChartCard({
           >
             <defs>
               <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#00a63e" stopOpacity={0.2} />
-                <stop offset="100%" stopColor="#00a63e" stopOpacity={0.02} />
+                <stop offset="0%" stopColor={colors.income} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={colors.income} stopOpacity={0.02} />
               </linearGradient>
               <linearGradient id="expensesGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#e7000b" stopOpacity={0.2} />
-                <stop offset="100%" stopColor="#e7000b" stopOpacity={0.02} />
+                <stop offset="0%" stopColor={colors.expenses} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={colors.expenses} stopOpacity={0.02} />
               </linearGradient>
               <linearGradient id="netGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#155dfc" stopOpacity={0.2} />
-                <stop offset="100%" stopColor="#155dfc" stopOpacity={0.02} />
+                <stop offset="0%" stopColor={colors.net} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={colors.net} stopOpacity={0.02} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={true} vertical={false} />
@@ -296,11 +304,11 @@ export function TrendChartCard({
               <Area
                 type="monotone"
                 dataKey="income"
-                stroke="#00a63e"
+                stroke={colors.income}
                 strokeWidth={hoveredLine === 'income' ? 3.5 : 2.5}
                 fill="url(#incomeGradient)"
                 dot={false}
-                activeDot={{ r: 5, fill: '#00a63e' }}
+                activeDot={{ r: 5, fill: colors.income }}
                 opacity={hoveredLine === null || hoveredLine === 'income' ? 1 : 0.3}
                 isAnimationActive={false}
               />
@@ -311,11 +319,11 @@ export function TrendChartCard({
               <Area
                 type="monotone"
                 dataKey="expenses"
-                stroke="#e7000b"
+                stroke={colors.expenses}
                 strokeWidth={hoveredLine === 'expenses' ? 3.5 : 2.5}
                 fill="url(#expensesGradient)"
                 dot={false}
-                activeDot={{ r: 5, fill: '#e7000b' }}
+                activeDot={{ r: 5, fill: colors.expenses }}
                 opacity={hoveredLine === null || hoveredLine === 'expenses' ? 1 : 0.3}
                 isAnimationActive={false}
               />
@@ -326,11 +334,11 @@ export function TrendChartCard({
               <Area
                 type="monotone"
                 dataKey="net"
-                stroke="#155dfc"
+                stroke={colors.net}
                 strokeWidth={hoveredLine === 'net' ? 3.5 : 2.5}
                 fill="url(#netGradient)"
                 dot={false}
-                activeDot={{ r: 5, fill: '#155dfc' }}
+                activeDot={{ r: 5, fill: colors.net }}
                 strokeDasharray="5 5"
                 opacity={hoveredLine === null || hoveredLine === 'net' ? 1 : 0.3}
                 isAnimationActive={false}

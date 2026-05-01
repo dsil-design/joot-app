@@ -222,7 +222,7 @@ export function HomePageClient({
                 <div className="text-[12px] font-medium text-muted-foreground leading-4">
                   {currentMonthName}
                 </div>
-                <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                <div className="text-[12px] font-normal text-muted-foreground leading-4">
                   {monthlySummary.daysElapsed} of {monthlySummary.daysInMonth} days ({monthlySummary.percentElapsed}%)
                 </div>
               </div>
@@ -241,20 +241,20 @@ export function HomePageClient({
               {/* Vertical Divider - Only visible on XL screens between columns 3 and 4 */}
               {ytdSummary && (
                 <div className="hidden xl:flex absolute left-1/2 top-0 bottom-0 items-center justify-center w-4 -ml-2">
-                  <div className="w-px h-full bg-zinc-200" />
+                  <div className="w-px h-full bg-border" />
                 </div>
               )}
               {/* Current Month - Total Income */}
-              <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+              <Card className="bg-card border-border rounded-lg shadow-sm p-0 w-full">
                 <div className="p-6 xl:p-5">
                   <div className="flex flex-col gap-2 xl:gap-1.5">
-                    <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                    <div className="text-[12px] font-medium text-muted-foreground leading-4">
                       Total Income
                     </div>
-                    <div className="text-[24px] xl:text-[20px] font-semibold text-green-600 leading-[32px] xl:leading-[28px]">
+                    <div className="text-[24px] xl:text-[20px] font-semibold text-green-600 dark:text-green-400 leading-[32px] xl:leading-[28px]">
                       {formatCurrency(monthlySummary.income, 'USD')}
                     </div>
-                    <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                    <div className="text-[12px] font-normal text-muted-foreground leading-4">
                       {monthlySummary.incomeCount} {monthlySummary.incomeCount === 1 ? 'transaction' : 'transactions'}
                     </div>
                     {monthlySummary.previousMonth && (
@@ -271,16 +271,16 @@ export function HomePageClient({
               </Card>
 
               {/* Current Month - Total Expenses */}
-              <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+              <Card className="bg-card border-border rounded-lg shadow-sm p-0 w-full">
                 <div className="p-6 xl:p-5">
                   <div className="flex flex-col gap-2 xl:gap-1.5">
-                    <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                    <div className="text-[12px] font-medium text-muted-foreground leading-4">
                       Total Expenses
                     </div>
-                    <div className="text-[24px] xl:text-[20px] font-semibold text-red-600 leading-[32px] xl:leading-[28px]">
+                    <div className="text-[24px] xl:text-[20px] font-semibold text-red-600 dark:text-red-400 leading-[32px] xl:leading-[28px]">
                       {formatCurrency(monthlySummary.expenses, 'USD')}
                     </div>
-                    <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                    <div className="text-[12px] font-normal text-muted-foreground leading-4">
                       {monthlySummary.expenseCount} {monthlySummary.expenseCount === 1 ? 'transaction' : 'transactions'}
                     </div>
                     {monthlySummary.previousMonth && (
@@ -297,18 +297,18 @@ export function HomePageClient({
               </Card>
 
               {/* Current Month - Net Surplus/Deficit */}
-              <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+              <Card className="bg-card border-border rounded-lg shadow-sm p-0 w-full">
                 <div className="p-6 xl:p-5">
                   <div className="flex flex-col gap-2 xl:gap-1.5">
-                    <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                    <div className="text-[12px] font-medium text-muted-foreground leading-4">
                       Net {monthlySummary.net >= 0 ? 'Surplus' : 'Deficit'}
                     </div>
                     <div className={`text-[24px] xl:text-[20px] font-semibold leading-[32px] xl:leading-[28px] ${
-                      monthlySummary.net >= 0 ? 'text-green-600' : 'text-red-600'
+                      monthlySummary.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                     }`}>
                       {formatCurrency(Math.abs(monthlySummary.net), 'USD')}
                     </div>
-                    <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                    <div className="text-[12px] font-normal text-muted-foreground leading-4">
                       {monthlySummary.transactionCount} total {monthlySummary.transactionCount === 1 ? 'transaction' : 'transactions'}
                     </div>
                     {monthlySummary.previousMonth && (
@@ -326,16 +326,16 @@ export function HomePageClient({
 
               {/* YTD - Total Income */}
               {ytdSummary && (
-                <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+                <Card className="bg-card border-border rounded-lg shadow-sm p-0 w-full">
                   <div className="p-6 xl:p-5">
                     <div className="flex flex-col gap-2 xl:gap-1.5">
-                      <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                      <div className="text-[12px] font-medium text-muted-foreground leading-4">
                         Total Income
                       </div>
-                      <div className="text-[24px] xl:text-[20px] font-semibold text-green-600 leading-[32px] xl:leading-[28px]">
+                      <div className="text-[24px] xl:text-[20px] font-semibold text-green-600 dark:text-green-400 leading-[32px] xl:leading-[28px]">
                         {formatCurrency(ytdSummary.income, 'USD')}
                       </div>
-                      <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                      <div className="text-[12px] font-normal text-muted-foreground leading-4">
                         {formatCurrency(ytdSummary.averageMonthlyIncome, 'USD')}/month avg
                       </div>
                     </div>
@@ -345,16 +345,16 @@ export function HomePageClient({
 
               {/* YTD - Total Expenses */}
               {ytdSummary && (
-                <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+                <Card className="bg-card border-border rounded-lg shadow-sm p-0 w-full">
                   <div className="p-6 xl:p-5">
                     <div className="flex flex-col gap-2 xl:gap-1.5">
-                      <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                      <div className="text-[12px] font-medium text-muted-foreground leading-4">
                         Total Expenses
                       </div>
-                      <div className="text-[24px] xl:text-[20px] font-semibold text-red-600 leading-[32px] xl:leading-[28px]">
+                      <div className="text-[24px] xl:text-[20px] font-semibold text-red-600 dark:text-red-400 leading-[32px] xl:leading-[28px]">
                         {formatCurrency(ytdSummary.expenses, 'USD')}
                       </div>
-                      <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                      <div className="text-[12px] font-normal text-muted-foreground leading-4">
                         {formatCurrency(ytdSummary.averageMonthlyExpenses, 'USD')}/month avg
                       </div>
                     </div>
@@ -364,18 +364,18 @@ export function HomePageClient({
 
               {/* YTD - Net Surplus/Deficit */}
               {ytdSummary && (
-                <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+                <Card className="bg-card border-border rounded-lg shadow-sm p-0 w-full">
                   <div className="p-6 xl:p-5">
                     <div className="flex flex-col gap-2 xl:gap-1.5">
-                      <div className="text-[12px] font-medium text-zinc-500 leading-4">
+                      <div className="text-[12px] font-medium text-muted-foreground leading-4">
                         Net {ytdSummary.net >= 0 ? 'Surplus' : 'Deficit'}
                       </div>
                       <div className={`text-[24px] xl:text-[20px] font-semibold leading-[32px] xl:leading-[28px] ${
-                        ytdSummary.net >= 0 ? 'text-green-600' : 'text-red-600'
+                        ytdSummary.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                       }`}>
                         {formatCurrency(Math.abs(ytdSummary.net), 'USD')}
                       </div>
-                      <div className="text-[12px] font-normal text-zinc-400 leading-4">
+                      <div className="text-[12px] font-normal text-muted-foreground leading-4">
                         {ytdSummary.savingsRate.toFixed(1)}% savings rate
                       </div>
                     </div>
@@ -406,7 +406,7 @@ export function HomePageClient({
             {/* Vertical Divider - Only visible on LG screens between columns */}
             {topVendors.length > 0 && (
               <div className="hidden lg:flex absolute left-1/2 top-0 bottom-0 items-center justify-center w-4 -ml-2">
-                <div className="w-px h-full bg-zinc-200" />
+                <div className="w-px h-full bg-border" />
               </div>
             )}
 
@@ -416,7 +416,7 @@ export function HomePageClient({
                 <div className="text-[12px] font-medium text-muted-foreground leading-4">
                   Top Spending
                 </div>
-                <Card className="bg-white border-zinc-200 rounded-lg shadow-sm p-0 w-full">
+                <Card className="bg-card border-border rounded-lg shadow-sm p-0 w-full">
                   <div className="p-6">
                     <TopVendorsWidget vendors={topVendors} timeframeLabel="Year to Date" />
                   </div>
@@ -439,7 +439,7 @@ export function HomePageClient({
                 </div>
 
                 {/* Sticky Footer with View All CTA */}
-                <div className="sticky bottom-0 bg-background pt-4 mt-4 border-t border-zinc-200">
+                <div className="sticky bottom-0 bg-background pt-4 mt-4 border-t border-border">
                   <Button variant="outline" className="w-full" asChild>
                     <Link href="/transactions" className="flex items-center justify-center gap-2">
                       View All Transactions
@@ -459,7 +459,7 @@ export function HomePageClient({
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-medium text-zinc-950">
+            <DialogTitle className="text-2xl font-medium text-foreground">
               Add transaction
             </DialogTitle>
           </DialogHeader>

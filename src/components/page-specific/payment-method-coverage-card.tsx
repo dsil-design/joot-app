@@ -89,7 +89,7 @@ export function PaymentMethodCoverageCard({
                 const firstMissing = months.find(m => cells[m]?.status === 'missing')
                 if (firstMissing) onMissingCellClick(firstMissing)
               }}
-              className="text-sm text-blue-600 hover:text-blue-700 underline underline-offset-2"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline underline-offset-2"
             >
               Upload your first statement
             </button>

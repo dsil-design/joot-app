@@ -17,9 +17,9 @@ export function ConfidenceBadge({
   const level = getConfidenceLevel(confidence)
 
   const colorClasses = {
-    high: "bg-green-100 text-green-800 hover:bg-green-100",
-    medium: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
-    low: "bg-gray-100 text-gray-600 hover:bg-gray-100",
+    high: "bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-200 hover:bg-green-100 dark:hover:bg-green-950/40",
+    medium: "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-950/40",
+    low: "bg-muted text-muted-foreground hover:bg-muted",
   }
 
   const labels = {

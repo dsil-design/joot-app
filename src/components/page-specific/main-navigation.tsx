@@ -58,8 +58,8 @@ export function MainNavigation() {
             className={cn(
               "flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors min-h-[44px] min-w-[44px] justify-center sm:justify-start",
               isActive
-                ? "bg-zinc-100 text-zinc-950"
-                : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
             <Icon className="h-4 w-4" />

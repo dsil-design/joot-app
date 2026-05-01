@@ -82,7 +82,7 @@ export default function AddTransactionPage() {
   }
 
   return (
-    <div className="bg-white flex flex-col gap-6 items-start justify-start pb-0 pt-6 sm:pt-20 px-4 sm:px-6 md:px-10 min-h-screen w-full transaction-form-page">
+    <div className="bg-background flex flex-col gap-6 items-start justify-start pb-0 pt-6 sm:pt-20 px-4 sm:px-6 md:px-10 min-h-screen w-full transaction-form-page">
       {/* Page Header with Close Button */}
       <div className="flex items-center justify-between w-full">
         <h1 className="text-2xl sm:text-[30px] md:text-[36px] font-medium text-foreground leading-tight">

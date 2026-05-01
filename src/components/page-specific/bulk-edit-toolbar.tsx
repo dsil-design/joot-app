@@ -113,20 +113,20 @@ export function BulkEditToolbar({
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 lg:left-[240px] bg-blue-50 border-t-2 border-blue-200 shadow-[0px_-2px_8px_0px_rgba(0,0,0,0.08)] z-40">
+    <div className="fixed bottom-0 left-0 right-0 lg:left-[240px] bg-blue-50 dark:bg-blue-950/40 border-t-2 border-blue-200 dark:border-blue-800 shadow-[0px_-2px_8px_0px_rgba(0,0,0,0.08)] z-40">
       <div className="w-full max-w-md md:max-w-none mx-auto px-6 md:px-8 py-4">
         <div className="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row">
           {/* Left: Selection Info & Totals */}
           <div className="flex flex-col gap-2 flex-1">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-sm font-medium text-blue-900">
+              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
                 {selectedCount} {selectedCount === 1 ? "transaction" : "transactions"} selected
               </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onClearSelection}
-                className="h-7 px-2 text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+                className="h-7 px-2 text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-950/40"
               >
                 <X className="h-4 w-4 mr-1" />
                 Clear
@@ -136,9 +136,9 @@ export function BulkEditToolbar({
             {/* Totals Section */}
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-zinc-700">Total:</span>
+                <span className="text-sm text-foreground">Total:</span>
                 <span className={`text-base font-semibold ${
-                  totals.netAmount >= 0 ? "text-green-600" : "text-red-600"
+                  totals.netAmount >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                 }`}>
                   {isCalculating ? "Calculating..." : formatTotal(totals.netAmount)}
                 </span>
@@ -175,7 +175,7 @@ export function BulkEditToolbar({
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="h-7 px-2 text-xs text-blue-700 hover:text-blue-900 hover:bg-blue-100 md:hidden"
+                className="h-7 px-2 text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-950/40 md:hidden"
               >
                 {isExpanded ? (
                   <>
@@ -193,14 +193,14 @@ export function BulkEditToolbar({
 
             {/* Expanded Breakdown (Always visible on desktop, toggleable on mobile) */}
             {(isExpanded || typeof window !== 'undefined' && window.innerWidth >= 768) && !isCalculating && (
-              <div className="flex items-center gap-4 text-xs text-zinc-600 flex-wrap">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                 <div className="flex items-center gap-1">
                   <span>Expenses:</span>
-                  <span className="font-medium text-red-600">{formatTotal(totals.totalExpenses)}</span>
+                  <span className="font-medium text-red-600 dark:text-red-400">{formatTotal(totals.totalExpenses)}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span>Income:</span>
-                  <span className="font-medium text-green-600">{formatTotal(totals.totalIncome)}</span>
+                  <span className="font-medium text-green-600 dark:text-green-400">{formatTotal(totals.totalIncome)}</span>
                 </div>
               </div>
             )}
@@ -212,7 +212,7 @@ export function BulkEditToolbar({
               variant="outline"
               size="sm"
               onClick={onEditVendor}
-              className="h-8 px-3 bg-white border-blue-200 hover:bg-blue-50 text-zinc-950"
+              className="h-8 px-3 bg-background border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-foreground"
             >
               <Building2 className="h-3.5 w-3.5 mr-1.5" />
               <span className="hidden sm:inline">Vendor</span>
@@ -221,7 +221,7 @@ export function BulkEditToolbar({
               variant="outline"
               size="sm"
               onClick={onEditDate}
-              className="h-8 px-3 bg-white border-blue-200 hover:bg-blue-50 text-zinc-950"
+              className="h-8 px-3 bg-background border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-foreground"
             >
               <Calendar className="h-3.5 w-3.5 mr-1.5" />
               <span className="hidden sm:inline">Date</span>
@@ -230,7 +230,7 @@ export function BulkEditToolbar({
               variant="outline"
               size="sm"
               onClick={onEditPaymentMethod}
-              className="h-8 px-3 bg-white border-blue-200 hover:bg-blue-50 text-zinc-950"
+              className="h-8 px-3 bg-background border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-foreground"
             >
               <CreditCard className="h-3.5 w-3.5 mr-1.5" />
               <span className="hidden sm:inline">Payment</span>
@@ -239,17 +239,17 @@ export function BulkEditToolbar({
               variant="outline"
               size="sm"
               onClick={onEditDescription}
-              className="h-8 px-3 bg-white border-blue-200 hover:bg-blue-50 text-zinc-950"
+              className="h-8 px-3 bg-background border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-foreground"
             >
               <FileText className="h-3.5 w-3.5 mr-1.5" />
               <span className="hidden sm:inline">Description</span>
             </Button>
-            <div className="hidden sm:block w-px h-6 bg-blue-200" />
+            <div className="hidden sm:block w-px h-6 bg-blue-200 dark:bg-blue-800" />
             <Button
               variant="outline"
               size="sm"
               onClick={onDelete}
-              className="h-8 px-3 bg-white border-red-200 hover:bg-red-50 text-red-600 hover:text-red-700"
+              className="h-8 px-3 bg-background border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-400"
             >
               <Trash2 className="h-3.5 w-3.5 mr-1.5" />
               Delete

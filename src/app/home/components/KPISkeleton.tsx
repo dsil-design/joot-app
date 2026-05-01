@@ -13,7 +13,7 @@ export function MonthlyKPISkeleton() {
       {/* KPI Cards skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="bg-white border-zinc-200 rounded-lg shadow-sm p-0">
+          <Card key={i} className="bg-card border-border rounded-lg shadow-sm p-0">
             <div className="p-6 xl:p-5">
               <div className="flex flex-col gap-2 xl:gap-1.5">
                 <Skeleton className="h-4 w-20" />
@@ -38,7 +38,7 @@ export function YTDKPISkeleton() {
       {/* KPI Cards skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="bg-white border-zinc-200 rounded-lg shadow-sm p-0">
+          <Card key={i} className="bg-card border-border rounded-lg shadow-sm p-0">
             <div className="p-6 xl:p-5">
               <div className="flex flex-col gap-2 xl:gap-1.5">
                 <Skeleton className="h-4 w-20" />

@@ -19,7 +19,7 @@ export default function VendorsLoadingSkeleton() {
       </div>
 
       {/* Vendors Card */}
-      <Card className="bg-white border-zinc-200 rounded-lg shadow-sm overflow-hidden">
+      <Card className="bg-card border-border rounded-lg shadow-sm overflow-hidden">
         <div className="divide-y divide-zinc-200">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div
