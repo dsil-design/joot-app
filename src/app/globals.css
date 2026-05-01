@@ -127,7 +127,7 @@
   --border: var(--zinc-800);
   --input: var(--zinc-800);
   --primary: var(--blue-600);
-  --primary-foreground: var(--zinc-900);
+  --primary-foreground: var(--white);
   --secondary: var(--zinc-800);
   --secondary-foreground: var(--zinc-50);
   --accent: var(--zinc-800);
