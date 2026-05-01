@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { extractionService } from '@/lib/email/extraction-service';
+import { emailSyncService } from '@/lib/services/email-sync-service';
 import { recordFeedback } from '@/lib/email/ai-feedback-service';
 import { determineStatusFromConfidence } from '@/lib/email/confidence-scoring';
 import { consolidateEmail } from '@/lib/email/email-consolidation';
 import { aiClassificationToCoarse } from '@/lib/types/email-imports';
 import type { AiClassification } from '@/lib/types/email-imports';
-import type { RawEmailData, EmailTransactionData } from '@/lib/email/types';
+import type { RawEmailData, EmailTransactionData, AttachmentTextEntry } from '@/lib/email/types';
 import { formatLocalDate } from '@/lib/utils/date-helpers';
+
+// Allow time for IMAP fetch + PDF download/extract on top of the AI call.
+export const maxDuration = 60;
 
 /**
  * POST /api/emails/[id]/extract
@@ -76,6 +80,11 @@ export async function POST(
       .eq('user_id', user.id)
       .single();
 
+    // Make sure PDF attachments for this email have been fetched and
+    // text-extracted. No-op if already done.
+    const attachmentRun = await emailSyncService.ensureAttachmentsForEmail(emailId, user.id);
+    console.log(`[Extract] ensureAttachments for email ${emailId}: ${attachmentRun.message}`);
+
     if (existingTx) {
       // Record feedback if provided (before reprocessing so it's available as a few-shot example)
       let feedbackId: string | null = null;
@@ -97,7 +106,7 @@ export async function POST(
         }, serviceClient);
       }
 
-      // Reprocess existing email transaction
+      // Reprocess existing email transaction (loads attachment text internally)
       const extraction = await extractionService.reprocessEmailTransaction(
         user.id,
         existingTx.id,
@@ -118,6 +127,22 @@ export async function POST(
       });
     }
 
+    // Load any extracted PDF attachments so they're fed to the parsers/AI.
+    const { data: attachmentRows } = await serviceClient
+      .from('email_attachments')
+      .select('id, filename, extracted_text')
+      .eq('email_id', email.id)
+      .eq('extraction_status', 'extracted')
+      .not('extracted_text', 'is', null);
+
+    const attachments: AttachmentTextEntry[] | undefined = (attachmentRows ?? [])
+      .filter((a) => a.extracted_text)
+      .map((a) => ({
+        id: a.id,
+        filename: a.filename ?? 'attachment.pdf',
+        text: a.extracted_text as string,
+      }));
+
     // Build RawEmailData from stored email
     const rawEmail: RawEmailData = {
       message_id: email.message_id,
@@ -131,6 +156,7 @@ export async function POST(
       html_body: email.html_body ?? null,
       seen: email.seen ?? false,
       has_attachments: email.has_attachments ?? false,
+      attachments: attachments && attachments.length > 0 ? attachments : undefined,
     };
 
     // Try regex extraction first, fall back to AI if extraction fails

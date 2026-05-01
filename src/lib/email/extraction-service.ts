@@ -33,6 +33,7 @@ import type {
   EmailParser,
   ExtractionServiceConfig,
   AiClassificationResult,
+  AttachmentTextEntry,
 } from './types';
 import {
   calculateConfidenceScore,
@@ -478,6 +479,13 @@ export class EmailExtractionService {
         .order('uid', { ascending: true })
         .limit(this.config.batchSize);
 
+      // Pre-fetch extracted PDF attachment text for the batch of emails so we
+      // can pass receipt PDF content to parsers/AI alongside the email body.
+      const attachmentsByEmailId = await this.fetchAttachmentTextByEmailId(
+        supabase,
+        (emails ?? []).map((e) => e.id),
+      );
+
       if (fetchError) {
         result.errors.push(`Failed to fetch emails: ${fetchError.message}`);
         return result;
@@ -545,6 +553,7 @@ export class EmailExtractionService {
             html_body: htmlBody,
             seen: email.seen ?? false,
             has_attachments: email.has_attachments ?? false,
+            attachments: attachmentsByEmailId.get(email.id),
           };
 
           // ---- Try regex parsers first, fall back to AI if extraction fails ----
@@ -723,6 +732,42 @@ export class EmailExtractionService {
   }
 
   /**
+   * Load extracted PDF text for a batch of emails, keyed by email id. Only
+   * returns rows with extraction_status = 'extracted' and non-empty text.
+   */
+  private async fetchAttachmentTextByEmailId(
+    supabase: SupabaseClient,
+    emailIds: string[],
+  ): Promise<Map<string, AttachmentTextEntry[]>> {
+    const map = new Map<string, AttachmentTextEntry[]>();
+    if (emailIds.length === 0) return map;
+
+    const { data, error } = await supabase
+      .from('email_attachments')
+      .select('id, email_id, filename, extracted_text')
+      .in('email_id', emailIds)
+      .eq('extraction_status', 'extracted')
+      .not('extracted_text', 'is', null);
+
+    if (error) {
+      console.error('Failed to load email attachments for extraction:', error);
+      return map;
+    }
+
+    for (const row of data ?? []) {
+      if (!row.extracted_text || !row.email_id) continue;
+      const list = map.get(row.email_id) ?? [];
+      list.push({
+        id: row.id,
+        filename: row.filename ?? 'attachment.pdf',
+        text: row.extracted_text,
+      });
+      map.set(row.email_id, list);
+    }
+    return map;
+  }
+
+  /**
    * Fetch email content using the email sync service
    */
   private async fetchEmailContent(folder: string, uid: number): Promise<{ text: string | null; html: string | null } | null> {
@@ -794,18 +839,24 @@ export class EmailExtractionService {
     // Check for stored bodies in the emails table first
     let textBody: string | null = null;
     let htmlBody: string | null = null;
+    let emailRowId: string | null = null;
 
     const { data: dbEmail } = await supabase
       .from('emails')
-      .select('text_body, html_body')
+      .select('id, text_body, html_body')
       .eq('folder', emailTx.folder)
       .eq('uid', emailTx.uid)
       .single();
 
-    if (dbEmail && (dbEmail.text_body !== null || dbEmail.html_body !== null)) {
-      textBody = dbEmail.text_body;
-      htmlBody = dbEmail.html_body;
-    } else {
+    if (dbEmail) {
+      emailRowId = dbEmail.id ?? null;
+      if (dbEmail.text_body !== null || dbEmail.html_body !== null) {
+        textBody = dbEmail.text_body;
+        htmlBody = dbEmail.html_body;
+      }
+    }
+
+    if (textBody === null && htmlBody === null) {
       // Fall back to IMAP
       const content = await this.fetchEmailContent(emailTx.folder, emailTx.uid);
       if (!content) {
@@ -817,6 +868,13 @@ export class EmailExtractionService {
       }
       textBody = content.text;
       htmlBody = content.html;
+    }
+
+    // Load any extracted PDF attachments for this email
+    let attachments: AttachmentTextEntry[] | undefined;
+    if (emailRowId) {
+      const map = await this.fetchAttachmentTextByEmailId(supabase, [emailRowId]);
+      attachments = map.get(emailRowId);
     }
 
     // Build raw email data
@@ -832,6 +890,7 @@ export class EmailExtractionService {
       html_body: htmlBody,
       seen: emailTx.seen ?? false,
       has_attachments: emailTx.has_attachments ?? false,
+      attachments,
     };
 
     // Try regex extraction first, fall back to AI if extraction fails

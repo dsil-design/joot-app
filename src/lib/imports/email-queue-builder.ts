@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { makeEmailId } from '@/lib/utils/import-id'
-import type { QueueItem } from './queue-types'
+import type { QueueItem, EmailAttachmentSummary } from './queue-types'
 import { fetchMatchedTransactions } from './fetch-matched-transactions'
 
 interface EmailFilters {
@@ -57,6 +57,68 @@ export async function fetchEmailQueueItems(
     .map(r => r.matched_transaction_id as string)
 
   const matchedMap = await fetchMatchedTransactions(supabase, emailMatchedIds)
+
+  // Look up the corresponding emails row id for each email_transaction so we
+  // can join in attachments. email_transactions doesn't store email_id, but
+  // (user_id, message_id) is unique on emails, so we can map via message_id.
+  // Note: email_transactions does carry message_id but we didn't select it
+  // above — re-query just the message_ids we need.
+  const txIds = emailRows.map(r => r.id)
+  const attachmentsByEmailTxId = new Map<string, EmailAttachmentSummary[]>()
+
+  if (txIds.length > 0) {
+    const { data: txMessageIds } = await supabase
+      .from('email_transactions')
+      .select('id, message_id')
+      .in('id', txIds)
+
+    const messageIds = (txMessageIds ?? [])
+      .map(r => r.message_id)
+      .filter((m): m is string => Boolean(m))
+
+    if (messageIds.length > 0) {
+      const { data: emailIdRows } = await supabase
+        .from('emails')
+        .select('id, message_id')
+        .eq('user_id', userId)
+        .in('message_id', messageIds)
+
+      const messageIdToEmailId = new Map<string, string>()
+      for (const row of emailIdRows ?? []) {
+        if (row.id && row.message_id) messageIdToEmailId.set(row.message_id, row.id)
+      }
+
+      const emailIds = Array.from(messageIdToEmailId.values())
+      if (emailIds.length > 0) {
+        const { data: attachmentRows } = await supabase
+          .from('email_attachments')
+          .select('id, email_id, filename, extraction_status, page_count')
+          .in('email_id', emailIds)
+
+        const byEmailId = new Map<string, EmailAttachmentSummary[]>()
+        for (const a of attachmentRows ?? []) {
+          if (!a.email_id) continue
+          const list = byEmailId.get(a.email_id) ?? []
+          list.push({
+            id: a.id,
+            filename: a.filename ?? 'attachment.pdf',
+            extractionStatus: (a.extraction_status as EmailAttachmentSummary['extractionStatus']) ?? 'pending',
+            pageCount: a.page_count ?? null,
+          })
+          byEmailId.set(a.email_id, list)
+        }
+
+        // Map back to email_transaction.id
+        for (const row of txMessageIds ?? []) {
+          if (!row.message_id) continue
+          const emailId = messageIdToEmailId.get(row.message_id)
+          if (!emailId) continue
+          const list = byEmailId.get(emailId)
+          if (list && list.length > 0) attachmentsByEmailTxId.set(row.id, list)
+        }
+      }
+    }
+  }
 
   const items: QueueItem[] = []
 
@@ -138,6 +200,7 @@ export async function fetchEmailQueueItems(
         paymentCardLastFour: row.payment_card_last_four ?? undefined,
         paymentCardType: row.payment_card_type ?? undefined,
         vendorNameRaw: row.vendor_name_raw ?? undefined,
+        attachments: attachmentsByEmailTxId.get(row.id),
       },
     })
   }

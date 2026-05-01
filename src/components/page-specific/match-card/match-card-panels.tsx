@@ -24,6 +24,7 @@ import {
   Copy,
   Check,
   Ban,
+  Paperclip,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -219,11 +220,78 @@ function EmailSourcePanel({
         </TransactionDetailRow>
       )}
 
+      {/* PDF attachments — receipt PDFs that were extracted alongside the email */}
+      {meta.attachments && meta.attachments.length > 0 && (
+        <TransactionDetailRow icon={<Paperclip className="h-3.5 w-3.5" />}>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            {meta.attachments.map((att) => (
+              <AttachmentLink key={att.id} attachment={att} />
+            ))}
+          </div>
+        </TransactionDetailRow>
+      )}
+
       {/* Email ID — subtle, with copy button */}
       {emailId && (
         <CopyableId id={emailId} />
       )}
     </div>
+  )
+}
+
+/**
+ * Click-to-open link for a PDF receipt attached to an email. Fetches a signed
+ * URL from /api/email-attachments/:id/file and opens it in a new tab.
+ */
+function AttachmentLink({
+  attachment,
+}: {
+  attachment: NonNullable<EmailMetadata["attachments"]>[number]
+}) {
+  const [loading, setLoading] = React.useState(false)
+  const usable = attachment.extractionStatus === "extracted"
+
+  const handleOpen = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (loading) return
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/email-attachments/${attachment.id}/file`)
+      if (!res.ok) {
+        console.error("Failed to fetch attachment URL", await res.text())
+        return
+      }
+      const json = await res.json() as { url?: string }
+      if (json.url) {
+        window.open(json.url, "_blank", "noopener,noreferrer")
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleOpen}
+      disabled={loading}
+      className={cn(
+        "text-left text-xs truncate inline-flex items-center gap-1 hover:underline disabled:opacity-50",
+        usable ? "text-muted-foreground hover:text-foreground" : "text-muted-foreground/60",
+      )}
+      title={
+        usable
+          ? `Open ${attachment.filename}`
+          : `${attachment.filename} (${attachment.extractionStatus})`
+      }
+    >
+      <span className="truncate">{attachment.filename}</span>
+      {attachment.pageCount ? (
+        <span className="text-[10px] text-muted-foreground/60 shrink-0">
+          {attachment.pageCount}p
+        </span>
+      ) : null}
+    </button>
   )
 }
 

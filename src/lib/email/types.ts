@@ -82,6 +82,17 @@ export interface ClassificationResult {
 }
 
 /**
+ * Text extracted from one of the email's PDF attachments.
+ */
+export interface AttachmentTextEntry {
+  /** email_attachments.id */
+  id: string;
+  filename: string;
+  /** PDF text content (may be very long). */
+  text: string;
+}
+
+/**
  * Raw email data passed to parsers
  *
  * Contains the email content and metadata needed for extraction.
@@ -119,6 +130,14 @@ export interface RawEmailData {
 
   /** Whether email has attachments */
   has_attachments: boolean;
+
+  /**
+   * Extracted text from PDF attachments associated with this email. When
+   * present, parsers and the AI extractor should treat this as authoritative
+   * (the PDF is typically the actual receipt while the email body is just
+   * a notification wrapper).
+   */
+  attachments?: AttachmentTextEntry[];
 }
 
 /**

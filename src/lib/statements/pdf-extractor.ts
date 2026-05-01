@@ -2,16 +2,20 @@
  * PDF Text Extraction Service
  *
  * Extracts text from PDF files and routes to the appropriate statement parser.
- * Uses pdf-parse library for text extraction.
+ * Uses pdfjs-dist directly (legacy ESM build for Node compatibility).
+ *
+ * Replaces the prior pdf-parse@1.1.4 wrapper, which bundled an old pdfjs that
+ * triggered a Buffer() deprecation warning. Iteration logic mirrors pdf-parse's
+ * default Y-coordinate-aware concatenation so the text output stays compatible
+ * with the existing statement parsers (Bangkok Bank, Kasikorn, Chase, etc.).
  */
 
 import type { StatementParseResult, StatementParser } from './parsers/types';
 import { parserRegistry, detectParser, getParser } from './parsers';
 
-// Polyfill DOMMatrix for Node.js environment (required by pdfjs-dist)
-// This must be done before requiring pdf-parse
+// Polyfill DOMMatrix for Node.js — pdfjs uses it internally even when we only
+// extract text. Lightweight no-op-ish polyfill is sufficient for text content.
 if (typeof globalThis.DOMMatrix === 'undefined') {
-  // Simple DOMMatrix polyfill for pdfjs-dist
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (globalThis as any).DOMMatrix = class DOMMatrix {
     a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
@@ -42,9 +46,16 @@ if (typeof globalThis.DOMMatrix === 'undefined') {
   };
 }
 
-// Now we can safely require pdf-parse (v1.x uses simple function export)
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse');
+// Lazy-loaded pdfjs handle — kept module-scoped so we only import once.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let pdfjsModulePromise: Promise<any> | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getPdfjs(): Promise<any> {
+  if (!pdfjsModulePromise) {
+    pdfjsModulePromise = import('pdfjs-dist/legacy/build/pdf.mjs');
+  }
+  return pdfjsModulePromise;
+}
 
 /**
  * Result of PDF extraction
@@ -119,59 +130,84 @@ export async function extractPDFText(
   const errors: string[] = [];
 
   try {
-    // Convert ArrayBuffer to Buffer if needed
-    const buffer = Buffer.isBuffer(pdfBuffer)
-      ? pdfBuffer
-      : Buffer.from(pdfBuffer);
+    // pdfjs expects a Uint8Array. We give it a fresh copy because pdfjs may
+    // detach/transfer the underlying buffer.
+    const source = Buffer.isBuffer(pdfBuffer)
+      ? new Uint8Array(pdfBuffer)
+      : new Uint8Array(pdfBuffer);
+    // Make a copy so pdfjs doesn't detach a shared backing store.
+    const data = new Uint8Array(source);
 
-    // Configure pdf-parse options
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parseOptions: Record<string, any> = {
-      // Custom page render function to extract text properly
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      pagerender: function (pageData: any) {
-        return pageData.getTextContent().then((textContent: { items: Array<{ str: string }> }) => {
-          let lastY: number | null = null;
-          let text = '';
+    const pdfjs = await getPdfjs();
 
-          for (const item of textContent.items) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const itemWithTransform = item as any;
-            if (lastY !== null && lastY !== itemWithTransform.transform?.[5]) {
-              text += '\n';
-            }
-            text += item.str;
-            lastY = itemWithTransform.transform?.[5] || null;
+    const loadingTask = pdfjs.getDocument({
+      data,
+      // Disable on-disk fonts/cmaps lookup — we only care about text content.
+      disableFontFace: true,
+      // Quiet pdfjs's own console warnings during parsing.
+      verbosity: 0,
+    });
+    const doc = await loadingTask.promise;
+
+    const totalPages: number = doc.numPages;
+    const counter = options.maxPages && options.maxPages > 0
+      ? Math.min(options.maxPages, totalPages)
+      : totalPages;
+
+    // Mirror pdf-parse's behavior: concat each page's text with `\n\n`
+    // separator and a leading blank, so the first character is `\n\n` followed
+    // by page 1 — keeps the output identical to the previous implementation.
+    let text = '';
+    for (let i = 1; i <= counter; i++) {
+      try {
+        const page = await doc.getPage(i);
+        const textContent = await page.getTextContent();
+        let lastY: number | null = null;
+        let pageText = '';
+        for (const item of textContent.items) {
+          // Marked content / structural items don't have `str` — skip them.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const it = item as any;
+          if (typeof it.str !== 'string') continue;
+          const y: number | undefined = Array.isArray(it.transform) ? it.transform[5] : undefined;
+          if (lastY !== null && y !== lastY) {
+            pageText += '\n';
           }
-
-          return text;
-        });
-      },
-    };
-
-    // Apply max pages limit if specified
-    if (options.maxPages) {
-      parseOptions.max = options.maxPages;
+          pageText += it.str;
+          lastY = typeof y === 'number' ? y : null;
+        }
+        // Release the page promptly to free pdfjs internal caches.
+        page.cleanup();
+        text = `${text}\n\n${pageText}`;
+      } catch {
+        // Match pdf-parse: swallow per-page errors and continue.
+      }
     }
 
-    const pdfData = await pdfParse(buffer, parseOptions);
-
-    // Extract metadata
+    // Pull document metadata (title, author, etc.)
     const metadata: PDFExtractionResult['metadata'] = {};
-    if (pdfData.info) {
-      if (pdfData.info.Title) metadata.title = pdfData.info.Title;
-      if (pdfData.info.Author) metadata.author = pdfData.info.Author;
-      if (pdfData.info.Subject) metadata.subject = pdfData.info.Subject;
-      if (pdfData.info.Creator) metadata.creator = pdfData.info.Creator;
-      if (pdfData.info.Producer) metadata.producer = pdfData.info.Producer;
-      if (pdfData.info.CreationDate) metadata.creationDate = pdfData.info.CreationDate;
-      if (pdfData.info.ModDate) metadata.modDate = pdfData.info.ModDate;
+    try {
+      const meta = await doc.getMetadata();
+      const info = meta?.info as Record<string, unknown> | undefined;
+      if (info) {
+        if (typeof info.Title === 'string') metadata.title = info.Title;
+        if (typeof info.Author === 'string') metadata.author = info.Author;
+        if (typeof info.Subject === 'string') metadata.subject = info.Subject;
+        if (typeof info.Creator === 'string') metadata.creator = info.Creator;
+        if (typeof info.Producer === 'string') metadata.producer = info.Producer;
+        if (typeof info.CreationDate === 'string') metadata.creationDate = info.CreationDate;
+        if (typeof info.ModDate === 'string') metadata.modDate = info.ModDate;
+      }
+    } catch {
+      // Metadata is best-effort; continue without it.
     }
+
+    await doc.destroy();
 
     return {
       success: true,
-      text: pdfData.text,
-      pageCount: pdfData.numpages,
+      text,
+      pageCount: totalPages,
       metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       errors,
     };

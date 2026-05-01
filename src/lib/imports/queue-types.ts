@@ -1,5 +1,17 @@
 export type ImportSource = 'statement' | 'email' | 'merged' | 'payment_slip'
 
+/**
+ * One PDF attachment associated with an email — surfaced on review cards
+ * so the user can open the original receipt.
+ */
+export interface EmailAttachmentSummary {
+  id: string
+  filename: string
+  /** 'extracted' = text was successfully pulled from the PDF; others indicate failure modes. */
+  extractionStatus: 'pending' | 'extracted' | 'failed' | 'skipped'
+  pageCount?: number | null
+}
+
 export interface EmailMetadata {
   subject?: string
   fromName?: string
@@ -13,6 +25,7 @@ export interface EmailMetadata {
   paymentCardLastFour?: string
   paymentCardType?: string
   vendorNameRaw?: string
+  attachments?: EmailAttachmentSummary[]
 }
 
 export interface MergedEmailData {

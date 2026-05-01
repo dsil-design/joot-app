@@ -386,6 +386,82 @@ export type Database = {
         }
         Relationships: []
       }
+      email_attachments: {
+        Row: {
+          content_type: string | null
+          created_at: string | null
+          email_id: string
+          extracted_at: string | null
+          extracted_text: string | null
+          extraction_error: string | null
+          extraction_status: string
+          filename: string
+          id: string
+          imap_part_id: string | null
+          page_count: number | null
+          pdf_metadata: Json | null
+          size_bytes: number | null
+          storage_path: string | null
+          user_id: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string | null
+          email_id: string
+          extracted_at?: string | null
+          extracted_text?: string | null
+          extraction_error?: string | null
+          extraction_status?: string
+          filename: string
+          id?: string
+          imap_part_id?: string | null
+          page_count?: number | null
+          pdf_metadata?: Json | null
+          size_bytes?: number | null
+          storage_path?: string | null
+          user_id: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string | null
+          email_id?: string
+          extracted_at?: string | null
+          extracted_text?: string | null
+          extraction_error?: string | null
+          extraction_status?: string
+          filename?: string
+          id?: string
+          imap_part_id?: string | null
+          page_count?: number | null
+          pdf_metadata?: Json | null
+          size_bytes?: number | null
+          storage_path?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_attachments_email_id_fkey"
+            columns: ["email_id"]
+            isOneToOne: false
+            referencedRelation: "email_hub_unified"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_attachments_email_id_fkey"
+            columns: ["email_id"]
+            isOneToOne: false
+            referencedRelation: "emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_attachments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_groups: {
         Row: {
           amount: number | null
@@ -508,6 +584,7 @@ export type Database = {
           has_attachments: boolean | null
           id: string
           is_group_primary: boolean | null
+          manual_pair_keys: string[]
           match_confidence: number | null
           match_method: string | null
           matched_at: string | null
@@ -518,8 +595,8 @@ export type Database = {
           payment_card_last_four: string | null
           payment_card_type: string | null
           processed_at: string | null
-          rejected_transaction_ids: string[]
           rejected_pair_keys: string[]
+          rejected_transaction_ids: string[]
           seen: boolean | null
           status: string
           subject: string | null
@@ -550,6 +627,7 @@ export type Database = {
           has_attachments?: boolean | null
           id?: string
           is_group_primary?: boolean | null
+          manual_pair_keys?: string[]
           match_confidence?: number | null
           match_method?: string | null
           matched_at?: string | null
@@ -560,8 +638,8 @@ export type Database = {
           payment_card_last_four?: string | null
           payment_card_type?: string | null
           processed_at?: string | null
-          rejected_transaction_ids?: string[]
           rejected_pair_keys?: string[]
+          rejected_transaction_ids?: string[]
           seen?: boolean | null
           status?: string
           subject?: string | null
@@ -592,6 +670,7 @@ export type Database = {
           has_attachments?: boolean | null
           id?: string
           is_group_primary?: boolean | null
+          manual_pair_keys?: string[]
           match_confidence?: number | null
           match_method?: string | null
           matched_at?: string | null
@@ -602,8 +681,8 @@ export type Database = {
           payment_card_last_four?: string | null
           payment_card_type?: string | null
           processed_at?: string | null
-          rejected_transaction_ids?: string[]
           rejected_pair_keys?: string[]
+          rejected_transaction_ids?: string[]
           seen?: boolean | null
           status?: string
           subject?: string | null
@@ -920,6 +999,7 @@ export type Database = {
           file_type: string | null
           filename: string
           id: string
+          manual_pair_keys: string[]
           match_confidence: number | null
           matched_transaction_id: string | null
           memo: string | null
@@ -927,8 +1007,8 @@ export type Database = {
           recipient_account: string | null
           recipient_bank: string | null
           recipient_name: string | null
-          rejected_transaction_ids: string[]
           rejected_pair_keys: string[]
+          rejected_transaction_ids: string[]
           review_status: string
           sender_account: string | null
           sender_bank: string | null
@@ -965,6 +1045,7 @@ export type Database = {
           file_type?: string | null
           filename: string
           id?: string
+          manual_pair_keys?: string[]
           match_confidence?: number | null
           matched_transaction_id?: string | null
           memo?: string | null
@@ -972,8 +1053,8 @@ export type Database = {
           recipient_account?: string | null
           recipient_bank?: string | null
           recipient_name?: string | null
-          rejected_transaction_ids?: string[]
           rejected_pair_keys?: string[]
+          rejected_transaction_ids?: string[]
           review_status?: string
           sender_account?: string | null
           sender_bank?: string | null
@@ -1010,6 +1091,7 @@ export type Database = {
           file_type?: string | null
           filename?: string
           id?: string
+          manual_pair_keys?: string[]
           match_confidence?: number | null
           matched_transaction_id?: string | null
           memo?: string | null
@@ -1017,8 +1099,8 @@ export type Database = {
           recipient_account?: string | null
           recipient_bank?: string | null
           recipient_name?: string | null
-          rejected_transaction_ids?: string[]
           rejected_pair_keys?: string[]
+          rejected_transaction_ids?: string[]
           review_status?: string
           sender_account?: string | null
           sender_bank?: string | null
@@ -1106,6 +1188,57 @@ export type Database = {
             columns: ["sync_history_id"]
             isOneToOne: false
             referencedRelation: "sync_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statement_description_mappings: {
+        Row: {
+          created_at: string | null
+          description_normalized: string
+          description_raw: string
+          id: string
+          last_used_at: string | null
+          match_count: number
+          payment_method_id: string | null
+          user_id: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description_normalized: string
+          description_raw: string
+          id?: string
+          last_used_at?: string | null
+          match_count?: number
+          payment_method_id?: string | null
+          user_id: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description_normalized?: string
+          description_raw?: string
+          id?: string
+          last_used_at?: string | null
+          match_count?: number
+          payment_method_id?: string | null
+          user_id?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_description_mappings_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_description_mappings_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -1928,6 +2061,144 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_decision_log: {
+        Row: {
+          amount: number | null
+          composite_id: string
+          created_at: string | null
+          currency: string | null
+          decision_type: string
+          email_from_address: string | null
+          email_parser_key: string | null
+          email_transaction_id: string | null
+          email_vendor_name_raw: string | null
+          id: string
+          match_confidence: number | null
+          payment_method_id: string | null
+          payment_slip_id: string | null
+          rejected_transaction_id: string | null
+          slip_counterparty_name: string | null
+          source_type: string
+          statement_description: string | null
+          statement_upload_id: string | null
+          suggestion_index: number | null
+          tag_ids: string[] | null
+          transaction_id: string | null
+          user_id: string
+          vendor_id: string | null
+          was_auto_matched: boolean | null
+        }
+        Insert: {
+          amount?: number | null
+          composite_id: string
+          created_at?: string | null
+          currency?: string | null
+          decision_type: string
+          email_from_address?: string | null
+          email_parser_key?: string | null
+          email_transaction_id?: string | null
+          email_vendor_name_raw?: string | null
+          id?: string
+          match_confidence?: number | null
+          payment_method_id?: string | null
+          payment_slip_id?: string | null
+          rejected_transaction_id?: string | null
+          slip_counterparty_name?: string | null
+          source_type: string
+          statement_description?: string | null
+          statement_upload_id?: string | null
+          suggestion_index?: number | null
+          tag_ids?: string[] | null
+          transaction_id?: string | null
+          user_id: string
+          vendor_id?: string | null
+          was_auto_matched?: boolean | null
+        }
+        Update: {
+          amount?: number | null
+          composite_id?: string
+          created_at?: string | null
+          currency?: string | null
+          decision_type?: string
+          email_from_address?: string | null
+          email_parser_key?: string | null
+          email_transaction_id?: string | null
+          email_vendor_name_raw?: string | null
+          id?: string
+          match_confidence?: number | null
+          payment_method_id?: string | null
+          payment_slip_id?: string | null
+          rejected_transaction_id?: string | null
+          slip_counterparty_name?: string | null
+          source_type?: string
+          statement_description?: string | null
+          statement_upload_id?: string | null
+          suggestion_index?: number | null
+          tag_ids?: string[] | null
+          transaction_id?: string | null
+          user_id?: string
+          vendor_id?: string | null
+          was_auto_matched?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_decision_log_email_transaction_id_fkey"
+            columns: ["email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_hub_unified"
+            referencedColumns: ["email_transaction_id"]
+          },
+          {
+            foreignKeyName: "user_decision_log_email_transaction_id_fkey"
+            columns: ["email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_decision_log_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_decision_log_payment_slip_id_fkey"
+            columns: ["payment_slip_id"]
+            isOneToOne: false
+            referencedRelation: "payment_slip_uploads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_decision_log_rejected_transaction_id_fkey"
+            columns: ["rejected_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_decision_log_statement_upload_id_fkey"
+            columns: ["statement_upload_id"]
+            isOneToOne: false
+            referencedRelation: "statement_uploads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_decision_log_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_decision_log_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]

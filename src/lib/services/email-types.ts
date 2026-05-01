@@ -75,6 +75,22 @@ export interface EmailAttachment {
   filename: string;
   contentType: string;
   size: number;
+  /** IMAP MIME part ID (e.g. "2", "2.1") used to fetch the attachment content */
+  imapPartId?: string;
+}
+
+/**
+ * A row from the email_attachments table (subset used by extraction).
+ */
+export interface EmailAttachmentRecord {
+  id: string;
+  email_id: string;
+  filename: string;
+  content_type: string | null;
+  storage_path: string | null;
+  extraction_status: 'pending' | 'extracted' | 'failed' | 'skipped';
+  extracted_text: string | null;
+  page_count: number | null;
 }
 
 /**

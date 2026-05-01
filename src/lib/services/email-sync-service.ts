@@ -4,6 +4,10 @@ import { createServiceRoleClient } from '../supabase/server';
 import type { EmailInsertData, SyncResult, ImapConfig, EmailContent, EmailAttachment } from './email-types';
 import type { BatchProcessingResult } from '../email/types';
 import { getEarliestTransactionDate } from '../email/date-cutoff';
+import {
+  processAttachmentsForEmail,
+  collectPdfAttachments,
+} from './email-attachment-processor';
 
 /**
  * Extended sync result that includes extraction statistics
@@ -194,6 +198,10 @@ export class EmailSyncService {
 
       console.log(`Found ${uidsToFetch.length} messages to fetch, UIDs: ${uidsToFetch.slice(0, 5).join(', ')}${uidsToFetch.length > 5 ? '...' : ''}`);
 
+      // Track per-message bodyStructure + UID so we can fetch attachments
+      // after the email rows are inserted (and we know each email's id).
+      const messageMeta = new Map<string, { uid: number; bodyStructure: unknown }>();
+
       // Fetch message envelopes and source (for body parsing)
       // Pass { uid: true } as third param to indicate we're using UIDs not sequence numbers
       for await (const message of this.client.fetch(uidsToFetch, {
@@ -225,9 +233,12 @@ export class EmailSyncService {
             html_body = parsed.html ?? '';
           }
 
+          const messageId = envelope.messageId || `uid-${message.uid}`;
+          const pdfNodes = collectPdfAttachments(message.bodyStructure);
+
           emails.push({
             user_id: userId,
-            message_id: envelope.messageId || `uid-${message.uid}`,
+            message_id: messageId,
             uid: message.uid,
             folder,
             subject: envelope.subject || null,
@@ -235,10 +246,20 @@ export class EmailSyncService {
             from_name: fromAddress?.name || null,
             date: envelope.date?.toISOString() || null,
             seen: message.flags?.has('\\Seen') || false,
-            has_attachments: this.hasAttachments(message.bodyStructure),
+            // True if either the legacy walker says so OR we found PDF parts.
+            // Both can miss in pathological cases, so OR them together.
+            has_attachments:
+              pdfNodes.length > 0 || this.hasAttachments(message.bodyStructure),
             text_body,
             html_body,
           });
+
+          if (pdfNodes.length > 0) {
+            messageMeta.set(messageId, {
+              uid: message.uid,
+              bodyStructure: message.bodyStructure,
+            });
+          }
 
           result.lastUid = Math.max(result.lastUid, message.uid);
         } catch (parseError) {
@@ -249,10 +270,42 @@ export class EmailSyncService {
 
       console.log(`Fetched ${emails.length} new emails`);
 
-      // Insert emails into database
+      // Insert emails into database — get back map of message_id → email_id
+      // for newly inserted rows (existing rows are skipped via ignoreDuplicates).
+      let insertedIds = new Map<string, string>();
       if (emails.length > 0) {
-        const insertedCount = await this.insertEmails(emails, userId);
-        result.synced = insertedCount;
+        insertedIds = await this.insertEmails(emails, userId);
+        result.synced = insertedIds.size;
+      }
+
+      // Process PDF attachments for newly inserted emails. This reuses the
+      // open IMAP connection. Errors per-attachment are isolated.
+      if (this.client && messageMeta.size > 0 && insertedIds.size > 0) {
+        let attachmentExtracted = 0;
+        let attachmentFailed = 0;
+        for (const [messageId, meta] of messageMeta.entries()) {
+          const emailId = insertedIds.get(messageId);
+          if (!emailId) continue; // Existing email; we don't re-process here.
+          try {
+            const summary = await processAttachmentsForEmail({
+              client: this.client,
+              userId,
+              emailId,
+              uid: meta.uid,
+              bodyStructure: meta.bodyStructure,
+            });
+            attachmentExtracted += summary.extracted;
+            attachmentFailed += summary.failed;
+          } catch (err) {
+            console.error(`Attachment processing failed for email ${emailId}:`, err);
+            attachmentFailed++;
+          }
+        }
+        if (attachmentExtracted > 0 || attachmentFailed > 0) {
+          console.log(
+            `Attachments: extracted=${attachmentExtracted}, failed=${attachmentFailed}`
+          );
+        }
       }
 
       // Always update sync state so last_sync_at reflects when we last checked
@@ -469,9 +522,11 @@ export class EmailSyncService {
   }
 
   /**
-   * Insert emails into database
+   * Insert emails into database. Returns a map of message_id → email id for
+   * newly inserted rows. Existing rows (matched on user_id, message_id) are
+   * skipped and won't appear in the map.
    */
-  private async insertEmails(emails: EmailInsertData[], _userId: string): Promise<number> {
+  private async insertEmails(emails: EmailInsertData[], _userId: string): Promise<Map<string, string>> {
     const supabase = createServiceRoleClient();
 
     // Use upsert to handle duplicates gracefully
@@ -481,14 +536,18 @@ export class EmailSyncService {
         onConflict: 'user_id,message_id',
         ignoreDuplicates: true,
       })
-      .select('id');
+      .select('id, message_id');
 
     if (error) {
       console.error('Error inserting emails:', error);
       throw error;
     }
 
-    return data?.length || 0;
+    const map = new Map<string, string>();
+    for (const row of data ?? []) {
+      if (row.message_id && row.id) map.set(row.message_id, row.id);
+    }
+    return map;
   }
 
   /**
@@ -543,6 +602,259 @@ export class EmailSyncService {
       lastSyncAt,
       folders,
     };
+  }
+
+  /**
+   * Result of a backfill run.
+   */
+  // (intentionally redefined inline below — see BackfillAttachmentsResult)
+
+  /**
+   * Backfill PDF attachments for already-synced emails that don't yet have any
+   * email_attachments rows. Useful after enabling the feature for the first
+   * time, since pre-existing emails were synced without attachment processing.
+   *
+   * Walks every email's bodyStructure (cheap IMAP metadata fetch) and runs the
+   * standard PDF processor on any that have PDF parts. Errors per-email are
+   * isolated.
+   */
+  async backfillAttachments(userId: string, options: { limit?: number } = {}): Promise<{
+    success: boolean;
+    emailsScanned: number;
+    attempted: number;
+    extracted: number;
+    failed: number;
+    skipped: number;
+    message: string;
+  }> {
+    const result = {
+      success: true,
+      emailsScanned: 0,
+      attempted: 0,
+      extracted: 0,
+      failed: 0,
+      skipped: 0,
+      message: '',
+    };
+
+    console.log(`[Backfill] starting for user=${userId}, limit=${options.limit ?? 'none'}`);
+    const supabase = createServiceRoleClient();
+
+    // Find emails that have no email_attachments rows yet. We don't filter by
+    // emails.has_attachments because the legacy walker had a bug that flagged
+    // most multipart messages as attachment-free, so the flag is unreliable
+    // for historical rows.
+    console.log('[Backfill] querying emails...');
+    const { data: emails, error: emailsError } = await supabase
+      .from('emails')
+      .select('id, uid, folder')
+      .eq('user_id', userId)
+      .order('uid', { ascending: false });
+
+    if (emailsError) {
+      console.error('[Backfill] emails query failed:', emailsError);
+      result.success = false;
+      result.message = `Failed to load emails: ${emailsError.message}`;
+      return result;
+    }
+    if (!emails || emails.length === 0) {
+      console.log('[Backfill] no emails found');
+      result.message = 'No emails found.';
+      return result;
+    }
+    console.log(`[Backfill] found ${emails.length} total emails`);
+
+    const { data: existing, error: existingError } = await supabase
+      .from('email_attachments')
+      .select('email_id')
+      .eq('user_id', userId);
+
+    if (existingError) {
+      console.error('[Backfill] existing attachments query failed:', existingError);
+      result.success = false;
+      result.message = `Failed to load existing attachments: ${existingError.message}`;
+      return result;
+    }
+
+    const processed = new Set((existing ?? []).map((r) => r.email_id));
+    let todo = emails.filter((e) => !processed.has(e.id));
+    if (options.limit && todo.length > options.limit) todo = todo.slice(0, options.limit);
+    result.emailsScanned = todo.length;
+    console.log(`[Backfill] ${processed.size} already processed, ${todo.length} to scan`);
+
+    if (todo.length === 0) {
+      result.message = 'All emails already scanned for attachments.';
+      return result;
+    }
+
+    // Group by folder so we open each mailbox once.
+    const byFolder = new Map<string, Array<{ id: string; uid: number }>>();
+    for (const e of todo) {
+      const list = byFolder.get(e.folder) ?? [];
+      list.push({ id: e.id, uid: e.uid });
+      byFolder.set(e.folder, list);
+    }
+    console.log(`[Backfill] folders: ${Array.from(byFolder.keys()).join(', ')}`);
+
+    try {
+      await this.connect();
+      if (!this.client) throw new Error('Not connected');
+
+      for (const [folder, items] of byFolder.entries()) {
+        console.log(`[Backfill] opening mailbox "${folder}" (${items.length} emails)...`);
+        try {
+          await this.client.mailboxOpen(folder);
+        } catch (err) {
+          console.error(`[Backfill] failed to open mailbox ${folder}:`, err);
+          continue;
+        }
+
+        const uidList = items.map((i) => i.uid).join(',');
+        const idByUid = new Map(items.map((i) => [i.uid, i.id]));
+
+        // Collect bodyStructures FIRST. iCloud's IMAP server doesn't allow
+        // overlapping commands on the same connection, so we can't call
+        // download() while the fetch stream is still active.
+        console.log(`[Backfill] fetching bodyStructure for ${items.length} UIDs...`);
+        const tasks: Array<{ emailId: string; uid: number; bodyStructure: unknown }> = [];
+        for await (const message of this.client.fetch(
+          uidList,
+          { uid: true, bodyStructure: true },
+          { uid: true },
+        )) {
+          const emailId = idByUid.get(message.uid);
+          if (!emailId) continue;
+          tasks.push({ emailId, uid: message.uid, bodyStructure: message.bodyStructure });
+        }
+        console.log(`[Backfill] collected ${tasks.length} bodyStructures, processing PDFs...`);
+
+        // Now process attachments sequentially with the connection idle from
+        // the fetch stream's perspective.
+        let processedInFolder = 0;
+        for (const task of tasks) {
+          try {
+            const summary = await processAttachmentsForEmail({
+              client: this.client,
+              userId,
+              emailId: task.emailId,
+              uid: task.uid,
+              bodyStructure: task.bodyStructure,
+            });
+            result.attempted += summary.attempted;
+            result.extracted += summary.extracted;
+            result.failed += summary.failed;
+            result.skipped += summary.skipped;
+            if (summary.attempted > 0) {
+              console.log(
+                `[Backfill] uid=${task.uid}: attempted=${summary.attempted}, extracted=${summary.extracted}, failed=${summary.failed}, skipped=${summary.skipped}`,
+              );
+            }
+          } catch (err) {
+            console.error(`[Backfill] failed for email ${task.emailId} (uid=${task.uid}):`, err);
+            result.failed++;
+          }
+          processedInFolder++;
+          if (processedInFolder % 25 === 0) {
+            console.log(`[Backfill] ${folder}: ${processedInFolder}/${tasks.length} scanned`);
+          }
+        }
+        console.log(`[Backfill] ${folder}: done (${processedInFolder} scanned)`);
+      }
+    } catch (err) {
+      console.error('[Backfill] fatal error:', err);
+      result.success = false;
+      result.message = `Backfill failed: ${err instanceof Error ? err.message : String(err)}`;
+      return result;
+    } finally {
+      await this.disconnect();
+    }
+
+    result.message = `Scanned ${result.emailsScanned} emails: extracted=${result.extracted}, failed=${result.failed}, skipped=${result.skipped}`;
+    console.log(`[Backfill] done — ${result.message}`);
+    return result;
+  }
+
+  /**
+   * Ensure PDF attachments are processed for a single email. Idempotent: if
+   * any email_attachments row already exists for the email, returns early.
+   * Otherwise, connects to IMAP, fetches the email's body structure, and runs
+   * the standard PDF extraction pipeline.
+   *
+   * Used by the on-demand "extract this email" UI path so the user doesn't
+   * have to wait for a full backfill before seeing PDF-aware extraction.
+   */
+  async ensureAttachmentsForEmail(emailId: string, userId: string): Promise<{
+    processed: boolean;
+    extracted: number;
+    failed: number;
+    skipped: number;
+    message: string;
+  }> {
+    const result = { processed: false, extracted: 0, failed: 0, skipped: 0, message: '' };
+    const supabase = createServiceRoleClient();
+
+    // Skip if already processed.
+    const { data: existing, error: existingErr } = await supabase
+      .from('email_attachments')
+      .select('id')
+      .eq('email_id', emailId)
+      .limit(1);
+    if (existingErr) {
+      result.message = `Failed to check existing attachments: ${existingErr.message}`;
+      return result;
+    }
+    if (existing && existing.length > 0) {
+      result.message = 'Attachments already processed';
+      return result;
+    }
+
+    // Look up the email's UID + folder.
+    const { data: email, error: emailErr } = await supabase
+      .from('emails')
+      .select('id, uid, folder')
+      .eq('id', emailId)
+      .eq('user_id', userId)
+      .single();
+    if (emailErr || !email) {
+      result.message = `Email not found: ${emailErr?.message ?? 'no row'}`;
+      return result;
+    }
+
+    try {
+      await this.connect();
+      if (!this.client) throw new Error('Not connected');
+
+      await this.client.mailboxOpen(email.folder);
+
+      const message = await this.client.fetchOne(
+        String(email.uid),
+        { uid: true, bodyStructure: true },
+        { uid: true },
+      );
+      if (!message) {
+        result.message = 'IMAP message not found';
+        return result;
+      }
+
+      const summary = await processAttachmentsForEmail({
+        client: this.client,
+        userId,
+        emailId,
+        uid: email.uid,
+        bodyStructure: message.bodyStructure,
+      });
+      result.processed = true;
+      result.extracted = summary.extracted;
+      result.failed = summary.failed;
+      result.skipped = summary.skipped;
+      result.message = `attempted=${summary.attempted}, extracted=${summary.extracted}, failed=${summary.failed}, skipped=${summary.skipped}`;
+    } catch (err) {
+      result.message = `Error: ${err instanceof Error ? err.message : String(err)}`;
+      console.error(`[ensureAttachmentsForEmail] ${result.message}`);
+    } finally {
+      await this.disconnect();
+    }
+    return result;
   }
 
   /**

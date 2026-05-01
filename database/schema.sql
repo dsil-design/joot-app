@@ -618,6 +618,60 @@ CREATE POLICY "Users can delete own email sync state" ON public.email_sync_state
 CREATE TRIGGER update_email_sync_state_updated_at BEFORE UPDATE ON public.email_sync_state
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Email attachments table — captures PDF attachments from synced emails along
+-- with their extracted text so the extraction pipeline can use the receipt PDF
+-- alongside the email body.
+CREATE TABLE public.email_attachments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  email_id UUID REFERENCES public.emails(id) ON DELETE CASCADE NOT NULL,
+
+  -- Source data from IMAP
+  filename TEXT NOT NULL,
+  content_type TEXT,
+  size_bytes INTEGER,
+  imap_part_id TEXT,                -- MIME part path (e.g. "2", "2.1") for re-fetching
+
+  -- Storage
+  storage_path TEXT,                -- Path in email-attachments bucket; NULL if not stored
+
+  -- Extraction results
+  extraction_status TEXT NOT NULL DEFAULT 'pending' CHECK (extraction_status IN (
+    'pending',
+    'extracted',
+    'failed',
+    'skipped'
+  )),
+  extracted_text TEXT,
+  page_count INTEGER,
+  pdf_metadata JSONB,
+  extraction_error TEXT,
+  extracted_at TIMESTAMPTZ,
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+
+  UNIQUE(email_id, imap_part_id)
+);
+
+CREATE INDEX idx_email_attachments_email_id ON public.email_attachments(email_id);
+CREATE INDEX idx_email_attachments_user_id ON public.email_attachments(user_id);
+CREATE INDEX idx_email_attachments_status ON public.email_attachments(extraction_status)
+  WHERE extraction_status = 'pending';
+
+ALTER TABLE public.email_attachments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own email attachments" ON public.email_attachments
+  FOR SELECT USING ((select auth.uid()) = user_id);
+
+CREATE POLICY "Users can insert own email attachments" ON public.email_attachments
+  FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
+
+CREATE POLICY "Users can update own email attachments" ON public.email_attachments
+  FOR UPDATE USING ((select auth.uid()) = user_id);
+
+CREATE POLICY "Users can delete own email attachments" ON public.email_attachments
+  FOR DELETE USING ((select auth.uid()) = user_id);
+
 -- Email groups table - consolidates related emails about the same transaction
 CREATE TABLE public.email_groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1466,6 +1520,48 @@ CREATE POLICY "Users can delete own statement files"
 ON storage.objects FOR DELETE TO authenticated
 USING (
   bucket_id = 'statement-uploads'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Storage bucket: email-attachments (private)
+-- Stores PDF attachments downloaded from synced emails so the extraction
+-- pipeline (and the review queue UI) can access the original receipt.
+-- Files are stored at path: {user_id}/{email_id}/{attachment_id}.pdf
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'email-attachments',
+  'email-attachments',
+  false,
+  10485760,  -- 10MB
+  ARRAY['application/pdf']
+)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Users can upload own email attachments"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'email-attachments'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+CREATE POLICY "Users can view own email attachments"
+ON storage.objects FOR SELECT TO authenticated
+USING (
+  bucket_id = 'email-attachments'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+CREATE POLICY "Users can update own email attachments"
+ON storage.objects FOR UPDATE TO authenticated
+USING (
+  bucket_id = 'email-attachments'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+CREATE POLICY "Users can delete own email attachments"
+ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id = 'email-attachments'
   AND (storage.foldername(name))[1] = auth.uid()::text
 );
 

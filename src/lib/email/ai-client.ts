@@ -9,6 +9,10 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export const AI_MODEL = 'claude-haiku-4-5-20251001';
 export const MAX_BODY_LENGTH = 8000;
+/** Cap on PDF attachment text per email; PDFs can be much longer than emails. */
+export const MAX_ATTACHMENT_TEXT_LENGTH = 12000;
+/** When a PDF is present, the email body is supplementary — keep it short. */
+export const MAX_BODY_LENGTH_WITH_ATTACHMENT = 2000;
 export const REQUEST_TIMEOUT_MS = 15000;
 
 /**
@@ -132,8 +136,16 @@ function substantiveWordCount(text: string): number {
  * Prefers text_body when it contains meaningful content. Falls back to
  * stripping HTML to plain text — this avoids sending raw CSS/markup that
  * wastes the token budget and hides the actual email content.
+ *
+ * @param maxLen Optional override (defaults to MAX_BODY_LENGTH). Pass
+ *   MAX_BODY_LENGTH_WITH_ATTACHMENT when a PDF attachment is also being sent
+ *   to keep the prompt within budget.
  */
-export function truncateBody(textBody: string | null, htmlBody: string | null): string {
+export function truncateBody(
+  textBody: string | null,
+  htmlBody: string | null,
+  maxLen: number = MAX_BODY_LENGTH,
+): string {
   // Check if text body has meaningful content (not just "enable HTML" boilerplate
   // or a bare tracking-pixel link with no real text).
   const textUsable = textBody
@@ -142,13 +154,36 @@ export function truncateBody(textBody: string | null, htmlBody: string | null): 
     && substantiveWordCount(textBody) >= 5;
 
   if (textUsable) {
-    return textBody!.slice(0, MAX_BODY_LENGTH);
+    return textBody!.slice(0, maxLen);
   }
 
   // Strip HTML to plain text to avoid wasting tokens on CSS/markup
   if (htmlBody) {
-    return htmlToPlainText(htmlBody).slice(0, MAX_BODY_LENGTH);
+    return htmlToPlainText(htmlBody).slice(0, maxLen);
   }
 
-  return (textBody || '').slice(0, MAX_BODY_LENGTH);
+  return (textBody || '').slice(0, maxLen);
+}
+
+/**
+ * Combine extracted text from one or more PDF attachments, capped at
+ * MAX_ATTACHMENT_TEXT_LENGTH so we don't blow the prompt budget.
+ *
+ * Returns null when there are no usable attachments.
+ */
+export function buildAttachmentSection(
+  attachments: Array<{ filename: string; text: string }> | undefined,
+): string | null {
+  if (!attachments || attachments.length === 0) return null;
+  const usable = attachments.filter((a) => a.text && a.text.trim().length > 0);
+  if (usable.length === 0) return null;
+
+  // Distribute the budget across attachments so a single very-long PDF doesn't
+  // starve the others.
+  const perAttachment = Math.floor(MAX_ATTACHMENT_TEXT_LENGTH / usable.length);
+  const sections = usable.map((a) => {
+    const text = a.text.length > perAttachment ? a.text.slice(0, perAttachment) : a.text;
+    return `--- PDF: ${a.filename} ---\n${text}`;
+  });
+  return sections.join('\n\n');
 }

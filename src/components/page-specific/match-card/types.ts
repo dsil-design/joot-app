@@ -17,6 +17,16 @@ export type MatchCardVariant =
 export type ImportSource = "statement" | "email" | "merged" | "payment_slip"
 
 /**
+ * One PDF attachment surfaced on an email card.
+ */
+export interface EmailAttachmentSummary {
+  id: string
+  filename: string
+  extractionStatus: "pending" | "extracted" | "failed" | "skipped"
+  pageCount?: number | null
+}
+
+/**
  * Email metadata for email-sourced queue items.
  * Mirrors the queue-types EmailMetadata so all API fields are available.
  */
@@ -33,6 +43,7 @@ export interface EmailMetadata {
   paymentCardLastFour?: string
   paymentCardType?: string
   vendorNameRaw?: string
+  attachments?: EmailAttachmentSummary[]
 }
 
 /**

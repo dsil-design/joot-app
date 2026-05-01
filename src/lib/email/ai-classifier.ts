@@ -12,7 +12,13 @@
 import type { RawEmailData, ExtractionResult, AiClassificationResult } from './types';
 import type { AiClassification } from '../types/email-imports';
 import { AI_CLASSIFICATION } from '../types/email-imports';
-import { callAi, isAiAvailable, truncateBody } from './ai-client';
+import {
+  callAi,
+  isAiAvailable,
+  truncateBody,
+  buildAttachmentSection,
+  MAX_BODY_LENGTH_WITH_ATTACHMENT,
+} from './ai-client';
 import { getRecentFeedback, type FeedbackExample } from './ai-feedback-service';
 
 // ============================================================================
@@ -51,7 +57,12 @@ function buildClassificationPrompt(
   email: RawEmailData,
   feedbackExamples: FeedbackExample[]
 ): string {
-  const body = truncateBody(email.text_body, email.html_body);
+  const attachmentSection = buildAttachmentSection(email.attachments);
+  const body = truncateBody(
+    email.text_body,
+    email.html_body,
+    attachmentSection ? MAX_BODY_LENGTH_WITH_ATTACHMENT : undefined,
+  );
 
   let fewShotSection = '';
   if (feedbackExamples.length > 0) {
@@ -86,7 +97,7 @@ ${fewShotSection}**Email to classify:**
 
 **Email body:**
 ${body}
-
+${attachmentSection ? `\n**PDF attachment(s) — these are typically the actual receipt; treat them as authoritative when they conflict with the email body:**\n${attachmentSection}\n` : ''}
 Respond with this exact JSON structure:
 {
   "ai_classification": "<one of the classification categories above>",
@@ -113,7 +124,12 @@ function buildCombinedPrompt(
   feedbackExamples: FeedbackExample[],
   userHint?: string
 ): string {
-  const body = truncateBody(email.text_body, email.html_body);
+  const attachmentSection = buildAttachmentSection(email.attachments);
+  const body = truncateBody(
+    email.text_body,
+    email.html_body,
+    attachmentSection ? MAX_BODY_LENGTH_WITH_ATTACHMENT : undefined,
+  );
 
   let fewShotSection = '';
   if (feedbackExamples.length > 0) {
@@ -151,11 +167,12 @@ ${fewShotSection}${userHint ? `**IMPORTANT — User correction for this specific
 
 **Email body:**
 ${body}
-
+${attachmentSection ? `\n**PDF attachment(s) — these are typically the actual receipt; prefer them over the email body when extracting amount/date/vendor:**\n${attachmentSection}\n` : ''}
 **Instructions for extraction (if this is a financial transaction):**
 1. Extract: vendor name, amount (number), currency (3-letter ISO), transaction date (YYYY-MM-DD), description, order/reference ID.
 2. For currency, infer from context: Thai bank = THB, $ alone = USD.
 3. Use the actual payment/transaction date from content, falling back to email date.
+4. When a PDF attachment is present, treat it as the source of truth — the email body is often just a notification wrapper.
 
 Respond with this exact JSON structure:
 {
@@ -339,12 +356,13 @@ export async function classifyAndExtractEmail(
         transactionDate = email.email_date;
       }
 
-      // Calculate confidence (max 70 for AI)
+      // Calculate confidence (max 70 for AI, +10 when a PDF receipt is present)
       let score = 30;
       if (ext.amount > 0) score += 15;
       if (ext.currency) score += 10;
       if (ext.vendor_name) score += 10;
       if (ext.transaction_date) score += 5;
+      if (email.attachments && email.attachments.length > 0) score += 10;
 
       extraction = {
         success: true,
