@@ -2,14 +2,13 @@
  * Kasikorn Bank (K Bank / K PLUS) Statement Parser
  *
  * Parses Kasikorn Bank PDF statements for savings/checking accounts.
- * Handles the K PLUS app export format where pdf-parse concatenates
- * table columns without delimiters.
- *
- * Real extracted line format (no spaces between columns):
- *   DD-MM-YYHH:MM<Channel><Balance><Description><TypeKeyword><Amount>
- *
- * Example:
- *   02-12-2510:23K PLUS241,943.10Paid for Ref XF001 บริษัท เอส จี จี 2023 จํากัดPayment270.00
+ * Handles the K PLUS app export format. Column boundaries arrive in
+ * two flavors depending on the extractor:
+ *   - pdf-parse (legacy): columns concatenated with no delimiters
+ *       02-12-2510:23K PLUS241,943.10…Payment270.00
+ *   - pdfjs-dist (current): preserves spaces between text items
+ *       01-04-26 09:29 K PLUS76,861.67 …Transfer Deposit 8,000.00
+ * Regexes below are whitespace-tolerant so both inputs parse identically.
  *
  * Multi-line descriptions are joined before parsing.
  */
@@ -77,9 +76,11 @@ const TYPE_KEYWORDS = [
 
 type KBankTypeKeyword = (typeof TYPE_KEYWORDS)[number];
 
-// Regex to match type keyword + amount at end of a line
+// Regex to match type keyword + amount at end of a line. Whitespace between
+// the keyword and the amount is optional — pdfjs preserves the PDF's space
+// characters, while pdf-parse concatenated columns with no delimiter.
 const TYPE_AMOUNT_PATTERN = new RegExp(
-  `(${TYPE_KEYWORDS.join('|')})(\\d[\\d,]*\\.\\d{2})\\s*$`
+  `(${TYPE_KEYWORDS.join('|')})\\s*(\\d[\\d,]*\\.\\d{2})\\s*$`
 );
 
 // ---------------------------------------------------------------------------
@@ -553,13 +554,15 @@ function parseTransactions(
     const transactionDate = parseThaiDate(dateMatch[1]);
     if (!transactionDate) continue;
 
-    // After date, try to extract time (HH:MM)
-    let rest = block.slice(8); // after DD-MM-YY
+    // After date, try to extract time (HH:MM). The time may be flush against
+    // the date (pdf-parse) or separated by whitespace (pdfjs); strip leading
+    // whitespace before matching, and again after consuming the time.
+    let rest = block.slice(8).replace(/^\s+/, '');
     const timeMatch = rest.match(/^(\d{2}:\d{2})/);
     let transactionTime: string | undefined;
     if (timeMatch) {
       transactionTime = timeMatch[1];
-      rest = rest.slice(5); // after HH:MM
+      rest = rest.slice(5).replace(/^\s+/, '');
     }
 
     // Channel = non-digit characters before the first decimal number (balance)
