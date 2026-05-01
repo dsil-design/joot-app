@@ -71,7 +71,7 @@ export function ActiveFilterChips({
   if (!hasFilters) return null
 
   return (
-    <div className="w-full bg-blue-50/50 border border-blue-100 dark:border-blue-900 rounded-lg px-4 py-3">
+    <div className="w-full bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 rounded-lg px-4 py-3">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-medium text-muted-foreground mr-1">Active:</span>

@@ -242,7 +242,7 @@ export function EmailsSettings({
                   key={email.id}
                   className={cn(
                     "flex items-start gap-3 p-3 rounded-lg border transition-colors",
-                    !email.seen && "bg-blue-50/50 border-blue-200 dark:border-blue-800",
+                    !email.seen && "bg-blue-50/50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
                     email.seen && "bg-card hover:bg-muted"
                   )}
                 >

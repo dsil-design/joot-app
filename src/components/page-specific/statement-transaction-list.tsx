@@ -192,8 +192,8 @@ export const StatementTransactionList = React.forwardRef<
             className={cn(
               'rounded-lg px-3 py-2.5 text-sm transition-colors',
               isHighlighted && 'ring-1 ring-blue-200',
-              isLinked && 'bg-green-50/50 hover:bg-green-50 dark:hover:bg-green-950/20',
-              isMatched && 'bg-amber-50/40 hover:bg-amber-50/70 cursor-pointer',
+              isLinked && 'bg-green-50/50 dark:bg-green-950/30 hover:bg-green-100 dark:hover:bg-green-900/40',
+              isMatched && 'bg-amber-50/40 dark:bg-amber-950/30 hover:bg-amber-50/70 dark:hover:bg-amber-900/40 cursor-pointer',
               isIgnored && 'opacity-50 bg-muted',
               isActionable && 'hover:bg-muted/50',
               !isLinked && !isMatched && !isActionable && !isIgnored && 'hover:bg-muted/30',
