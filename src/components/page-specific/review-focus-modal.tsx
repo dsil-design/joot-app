@@ -668,7 +668,7 @@ function MatchedTransactionPanel({
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-2 pt-2 border-t">
+      <div className="flex items-center gap-3 pt-3 pb-1 border-t">
         <Button
           variant="ghost"
           size="sm"
@@ -686,13 +686,13 @@ function MatchedTransactionPanel({
           onClick={onLinkManually}
           disabled={isProcessing}
         >
-          Link to Different
+          Link Different
         </Button>
         <Button
           size="sm"
           onClick={onApprove}
           disabled={isProcessing}
-          className="bg-green-600 hover:bg-green-700"
+          className="bg-green-600 hover:bg-green-700 px-5"
         >
           {isProcessing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
@@ -1427,7 +1427,7 @@ export function ReviewFocusModal({
                 </div>
 
                 {/* Actions for new items */}
-                <div className="flex items-center gap-2 pt-3 border-t">
+                <div className="flex items-center gap-3 pt-3 pb-1 border-t">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1445,35 +1445,37 @@ export function ReviewFocusModal({
                     disabled={isSaving || isProcessing(item.id)}
                   >
                     <ArrowLeftRight className="h-3.5 w-3.5 mr-1.5" />
-                    Link to Existing
+                    Link Existing
                   </Button>
                   <div className="flex-1" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCreate(true)}
-                    disabled={!isValid || isSaving}
-                  >
-                    {isSaving ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                    ) : (
-                      <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-                    )}
-                    Create & Close
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleCreate(false)}
-                    disabled={!isValid || isSaving}
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
-                    {isSaving ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                    ) : (
-                      <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
-                    )}
-                    Create & Continue
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCreate(true)}
+                      disabled={!isValid || isSaving}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                      ) : (
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      Create & Close
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleCreate(false)}
+                      disabled={!isValid || isSaving}
+                      className="bg-purple-600 hover:bg-purple-700 px-5"
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                      ) : (
+                        <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      Create & Continue
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : (
