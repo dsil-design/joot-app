@@ -3,13 +3,20 @@
 import * as React from "react"
 import { useTransition } from "react"
 import Link from "next/link"
-import { LogOut, Settings } from "lucide-react"
+import { LogOut, Monitor, Moon, Settings, Sun, SunMoon } from "lucide-react"
+import { useTheme } from "next-themes"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { signOut } from "@/app/home/actions"
@@ -22,6 +29,7 @@ interface UserMenuProps {
 
 export function UserMenu({ children, userName = "User", isAdmin = false }: UserMenuProps) {
   const [isPending, startTransition] = useTransition()
+  const { theme, setTheme } = useTheme()
 
   const handleLogout = () => {
     startTransition(async () => {
@@ -62,6 +70,43 @@ export function UserMenu({ children, userName = "User", isAdmin = false }: UserM
             </Link>
           </>
         )}
+
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="px-spacing-2 py-spacing-1_5 text-sm/normal text-foreground cursor-pointer focus:bg-accent focus:text-accent-foreground">
+            <SunMoon className="mr-spacing-2 h-4 w-4" />
+            Theme
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent className="bg-background border-border rounded-md shadow-md p-spacing-1">
+              <DropdownMenuRadioGroup
+                value={theme ?? "system"}
+                onValueChange={setTheme}
+              >
+                <DropdownMenuRadioItem
+                  value="light"
+                  className="px-spacing-2 py-spacing-1_5 text-sm/normal text-foreground cursor-pointer focus:bg-accent focus:text-accent-foreground"
+                >
+                  <Sun className="mr-spacing-2 h-4 w-4" />
+                  Light
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem
+                  value="dark"
+                  className="px-spacing-2 py-spacing-1_5 text-sm/normal text-foreground cursor-pointer focus:bg-accent focus:text-accent-foreground"
+                >
+                  <Moon className="mr-spacing-2 h-4 w-4" />
+                  Dark
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem
+                  value="system"
+                  className="px-spacing-2 py-spacing-1_5 text-sm/normal text-foreground cursor-pointer focus:bg-accent focus:text-accent-foreground"
+                >
+                  <Monitor className="mr-spacing-2 h-4 w-4" />
+                  System
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
 
         <DropdownMenuSeparator className="bg-border" />
         <DropdownMenuItem
