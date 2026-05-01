@@ -52,7 +52,22 @@ let pdfjsModulePromise: Promise<any> | null = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getPdfjs(): Promise<any> {
   if (!pdfjsModulePromise) {
-    pdfjsModulePromise = import('pdfjs-dist/legacy/build/pdf.mjs');
+    pdfjsModulePromise = (async () => {
+      // Pre-load the worker module and expose it on globalThis. pdfjs checks
+      // `globalThis.pdfjsWorker?.WorkerMessageHandler` before falling back to a
+      // dynamic `import("./pdf.worker.mjs")`. On Vercel that dynamic import
+      // fails — the worker file isn't traced into the serverless bundle —
+      // surfacing as `Setting up fake worker failed: Cannot find module …`.
+      // Importing it statically here pulls it into the bundle and bypasses the
+      // dynamic resolution path entirely.
+      const workerModule = await import(
+        // @ts-expect-error — pdfjs-dist ships no .d.ts for the worker entry.
+        'pdfjs-dist/legacy/build/pdf.worker.mjs'
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (globalThis as any).pdfjsWorker = workerModule;
+      return import('pdfjs-dist/legacy/build/pdf.mjs');
+    })();
   }
   return pdfjsModulePromise;
 }
