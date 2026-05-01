@@ -193,9 +193,10 @@ function parseSummary(text: string): StatementSummary | undefined {
   const summary: StatementSummary = {};
   let hasData = false;
 
-  // Beginning balance from first "Beginning Balance" line
+  // Beginning balance from first "Beginning Balance" line. The amount may be
+  // flush against the date (pdf-parse) or separated by whitespace (pdfjs).
   const beginMatch = text.match(
-    /\d{2}-\d{2}-\d{2}([\d,]+\.\d{2})Beginning Balance/
+    /\d{2}-\d{2}-\d{2}\s*([\d,]+\.\d{2})\s*Beginning Balance/
   );
   if (beginMatch) {
     summary.previousBalance = parseAmount(beginMatch[1]) ?? undefined;
@@ -209,22 +210,25 @@ function parseSummary(text: string): StatementSummary | undefined {
     if (summary.newBalance !== undefined) hasData = true;
   }
 
-  // Total withdrawal: number on line before "Total Withdrawal"
-  const withdrawMatch = text.match(
-    /([\d,]+\.\d{2})\s*\n[^\n]*Total Withdrawal\s+(\d+)\s+Items/
+  // Total withdrawal + deposit. The PDF lays these out as:
+  //   <withdrawal_amount>
+  //   <deposit_amount>
+  //   Total Withdrawal N Items
+  //   Total Deposit M Items
+  // Capture the pair together — matching individually is ambiguous because
+  // the "Total Withdrawal" label is closer to the deposit amount.
+  const totalsMatch = text.match(
+    /([\d,]+\.\d{2})\s*\n\s*([\d,]+\.\d{2})\s*\n\s*Total Withdrawal\s+\d+\s+Items\s*\n\s*Total Deposit\s+\d+\s+Items/
   );
-  if (withdrawMatch) {
-    summary.purchasesAndCharges = parseAmount(withdrawMatch[1]) ?? undefined;
-    if (summary.purchasesAndCharges !== undefined) hasData = true;
-  }
-
-  // Total deposit: number on line before "Total Deposit"
-  const depositMatch = text.match(
-    /([\d,]+\.\d{2})\s*\n[^\n]*Total Deposit\s+(\d+)\s+Items/
-  );
-  if (depositMatch) {
-    summary.paymentsAndCredits = parseAmount(depositMatch[1]) ?? undefined;
-    if (summary.paymentsAndCredits !== undefined) hasData = true;
+  if (totalsMatch) {
+    summary.purchasesAndCharges = parseAmount(totalsMatch[1]) ?? undefined;
+    summary.paymentsAndCredits = parseAmount(totalsMatch[2]) ?? undefined;
+    if (
+      summary.purchasesAndCharges !== undefined ||
+      summary.paymentsAndCredits !== undefined
+    ) {
+      hasData = true;
+    }
   }
 
   return hasData ? summary : undefined;
