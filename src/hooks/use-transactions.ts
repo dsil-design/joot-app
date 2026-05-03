@@ -447,15 +447,21 @@ export function useTransactions() {
           ? [(data as any).payment_slip_uploads]
           : []
 
-      // Extract amount/currency from statement suggestion if available
+      // Extract line-level fields from the matched statement suggestion
       let statementSourceAmount: number | null = null
       let statementSourceCurrency: string | null = null
+      let statementSourceDescription: string | null = null
+      let statementSourceDate: string | null = null
       if (statementUpload?.extraction_log && (data as any).source_statement_suggestion_index != null) {
-        const suggestions = statementUpload.extraction_log as any[]
-        const suggestion = suggestions[(data as any).source_statement_suggestion_index]
+        const suggestions = (statementUpload.extraction_log as { suggestions?: any[] })?.suggestions
+        const suggestion = Array.isArray(suggestions)
+          ? suggestions[(data as any).source_statement_suggestion_index]
+          : null
         if (suggestion) {
           statementSourceAmount = suggestion.amount ?? null
           statementSourceCurrency = suggestion.currency ?? null
+          statementSourceDescription = suggestion.description ?? null
+          statementSourceDate = suggestion.transaction_date ?? null
         }
       }
 
@@ -476,6 +482,8 @@ export function useTransactions() {
           match_confidence: (data as any).source_statement_match_confidence ?? null,
           source_amount: statementSourceAmount,
           source_currency: statementSourceCurrency,
+          source_description: statementSourceDescription,
+          source_date: statementSourceDate,
         } : null,
       }
 

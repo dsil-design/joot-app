@@ -136,27 +136,40 @@ function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData
   )
   const sourceAmount = (source as any).source_amount as number | null
   const sourceCurrency = (source as any).source_currency as string | null
+  const sourceDescription = (source as any).source_description as string | null
+  const sourceDate = (source as any).source_date as string | null
+  const statementId = (source as any).id as string
+
+  const lineDate = sourceDate ? format(parseISO(sourceDate), "MMM d, yyyy") : null
 
   return (
     <>
     <div className="bg-muted rounded-lg border border-border p-4 w-full">
       <div className="flex items-start gap-3">
         <FileText className="size-4 text-muted-foreground mt-0.5 shrink-0" strokeWidth={1.5} />
-        <div className="flex flex-col gap-1 min-w-0">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
           <p className="text-[14px] font-normal text-foreground truncate">
             {source.filename}
           </p>
           {periodLabel && (
-            <p className="text-[14px] font-normal text-muted-foreground">{periodLabel}</p>
+            <p className="text-[12px] font-normal text-muted-foreground">{periodLabel}</p>
           )}
           {source.payment_method_name && (
             <p className="text-[14px] font-normal text-muted-foreground">
               {source.payment_method_name}
             </p>
           )}
+          {lineDate && (
+            <p className="text-[14px] font-normal text-muted-foreground">{lineDate}</p>
+          )}
           {sourceAmount != null && sourceCurrency && (
             <p className="text-[14px] font-normal text-foreground">
               {formatCurrency(sourceAmount, sourceCurrency)} {sourceCurrency}
+            </p>
+          )}
+          {sourceDescription && (
+            <p className="text-[14px] font-normal text-foreground line-clamp-2 break-words">
+              {sourceDescription}
             </p>
           )}
           {source.match_confidence !== null && (
@@ -187,16 +200,40 @@ function StatementSourceCard({ source, onUnlink }: { source: StatementSourceData
               </Button>
             )}
           </div>
+          <CopyableStatementId id={statementId} />
         </div>
       </div>
     </div>
     <StatementViewerModal
       open={viewerOpen}
       onOpenChange={setViewerOpen}
-      statementId={(source as any).id}
+      statementId={statementId}
       filename={source.filename}
     />
     </>
+  )
+}
+
+function CopyableStatementId({ id }: { id: string }) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(id)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 mt-1">
+      <span className="text-[12px] text-muted-foreground font-mono truncate">{id}</span>
+      <button
+        onClick={handleCopy}
+        className="text-muted-foreground hover:text-foreground transition-colors p-0.5 shrink-0"
+        aria-label="Copy statement ID"
+      >
+        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+      </button>
+    </div>
   )
 }
 
