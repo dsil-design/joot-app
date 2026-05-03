@@ -69,3 +69,6 @@ check-migrations.js
 .env*.local
 /transaction-docs/
 /transaction-docs/
+
+# Local analysis / investigation dumps in repo root
+/source_link_*
