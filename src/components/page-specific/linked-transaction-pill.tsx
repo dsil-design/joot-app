@@ -28,7 +28,7 @@ export function LinkedTransactionPill({
   className,
 }: LinkedTransactionPillProps) {
   const vendor = linked.vendor_name || linked.description || "Linked transaction"
-  const amount = formatAmountOrDash(linked.amount, linked.original_currency)
+  const amountTooltip = formatAmountOrDash(linked.amount, linked.original_currency)
 
   return (
     <button
@@ -38,19 +38,17 @@ export function LinkedTransactionPill({
         onClick()
       }}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors",
-        "max-w-[180px] sm:max-w-[220px]",
+        "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs transition-colors",
+        "max-w-[140px] sm:max-w-[180px]",
         lowConfidence
           ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-950/50"
           : "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 text-green-900 dark:text-green-100 hover:bg-green-100 dark:hover:bg-green-950/50",
-        className
+        className,
       )}
-      title={`${vendor} — ${amount}`}
+      title={`${vendor} — ${amountTooltip}`}
     >
       <Link2 className="h-3 w-3 shrink-0" />
       <span className="truncate font-medium">{vendor}</span>
-      <span className="shrink-0 opacity-80">·</span>
-      <span className="shrink-0 tabular-nums">{amount}</span>
     </button>
   )
 }

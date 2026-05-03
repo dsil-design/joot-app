@@ -189,29 +189,14 @@ export function EmailTransactionCard({
             </div>
           ) : extracted ? (
             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              {showLinkedPill && linked ? (
-                <div className="flex flex-col items-end gap-0.5">
-                  <LinkedTransactionPill
-                    linked={linked}
-                    lowConfidence={lowConfidence}
-                    onClick={() => setPeekOpen(true)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(
-                      linked.transaction_date || data.transaction_date || data.email_date,
-                    ) || "—"}
-                  </p>
-                </div>
-              ) : (
-                <div className="text-right">
-                  <p className="text-sm font-semibold">
-                    {formatAmountOrDash(data.amount, data.currency)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(displayDate)}
-                  </p>
-                </div>
-              )}
+              <div className="text-right">
+                <p className="text-sm font-semibold">
+                  {formatAmountOrDash(data.amount, data.currency)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(displayDate)}
+                </p>
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
@@ -259,13 +244,24 @@ export function EmailTransactionCard({
           )}
         </div>
 
-        {/* Status */}
-        <Badge
-          variant="outline"
-          className={cn("shrink-0 text-xs", statusBadge.className)}
-        >
-          {statusBadge.label}
-        </Badge>
+        {/* Status — for linked rows the pill takes the badge slot and routes
+            to the linked transaction; other statuses keep their text badge. */}
+        {showLinkedPill && linked ? (
+          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+            <LinkedTransactionPill
+              linked={linked}
+              lowConfidence={lowConfidence}
+              onClick={() => setPeekOpen(true)}
+            />
+          </div>
+        ) : (
+          <Badge
+            variant="outline"
+            className={cn("shrink-0 text-xs", statusBadge.className)}
+          >
+            {statusBadge.label}
+          </Badge>
+        )}
 
         {/* Expand chevron */}
         <div className="shrink-0 text-muted-foreground">
