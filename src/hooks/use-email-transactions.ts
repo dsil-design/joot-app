@@ -4,6 +4,19 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll"
 import type { EmailHubFilters } from "@/hooks/use-email-hub-filters"
 
 /**
+ * Minimal summary of the transaction an email is linked to.
+ * Populated by the list endpoint when status is matched/imported.
+ */
+export interface LinkedTransactionSummary {
+  id: string
+  amount: number | null
+  original_currency: string | null
+  transaction_date: string | null
+  description: string | null
+  vendor_name: string | null
+}
+
+/**
  * Email transaction row type (from API)
  */
 export interface EmailTransactionRow {
@@ -45,6 +58,7 @@ export interface EmailTransactionRow {
   is_processed: boolean
   email_transaction_id: string | null
   effective_date: string | null
+  linked_transaction?: LinkedTransactionSummary | null
 }
 
 /**

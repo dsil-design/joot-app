@@ -30,3 +30,16 @@ export function formatCurrency(amount: number, currency: CurrencyType | string, 
     return `${symbol}${formattedNumber}`
   }
 }
+
+/**
+ * Format an amount with currency symbol, returning "—" when the amount is missing.
+ * Used by views that may render rows with or without extracted data.
+ */
+export function formatAmountOrDash(amount: number | null | undefined, currency: string | null | undefined): string {
+  if (amount == null) return "—"
+  const num = Number(amount)
+  if (!currency) {
+    return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+  return formatCurrency(num, currency)
+}

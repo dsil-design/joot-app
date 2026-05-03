@@ -1,13 +1,15 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "@/lib/utils"
+import { cn, formatAmountOrDash } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Bot, ChevronDown, ChevronRight, Eye, RefreshCw, SkipForward, Zap } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { EmailViewerModal } from "./email-viewer-modal"
+import { LinkedTransactionPill } from "./linked-transaction-pill"
+import { LinkedTransactionPeekModal } from "./linked-transaction-peek-modal"
 import { getParserTag } from "@/lib/utils/parser-tags"
 
 interface EmailTransactionCardProps {
@@ -52,15 +54,6 @@ function getStatusBadge(status: string) {
 }
 
 /**
- * Format amount with currency symbol
- */
-function formatAmount(amount: number | null, currency: string | null): string {
-  if (amount == null) return "—"
-  const sym = currency === "THB" ? "฿" : currency === "USD" ? "$" : (currency || "")
-  return `${sym}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
-/**
  * Format date as compact string
  */
 function formatDate(dateStr: string | null): string {
@@ -89,6 +82,7 @@ export function EmailTransactionCard({
   children,
 }: EmailTransactionCardProps) {
   const [viewerOpen, setViewerOpen] = React.useState(false)
+  const [peekOpen, setPeekOpen] = React.useState(false)
   const statusBadge = getStatusBadge(data.status)
   const parserTag = getParserTag(data.from_address)
   const vendorName = data.vendor_name_raw || data.from_name || "Unknown sender"
@@ -97,6 +91,15 @@ export function EmailTransactionCard({
 
   // Use transaction_date if extracted, fall back to email_date
   const displayDate = data.transaction_date || data.email_date
+
+  // The pill renders only when the row is linked AND the linked transaction
+  // still exists. matched_transaction_id may point to a deleted row (FK is
+  // ON DELETE SET NULL); the list endpoint returns linked_transaction: null
+  // in that case, which we treat the same as no link for the row affordance.
+  const isLinked = data.status === "matched" || data.status === "imported"
+  const linked = data.linked_transaction ?? null
+  const showLinkedPill = isLinked && !!linked
+  const lowConfidence = data.match_confidence != null && data.match_confidence < 70
 
   return (
     <div
@@ -186,14 +189,29 @@ export function EmailTransactionCard({
             </div>
           ) : extracted ? (
             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              <div className="text-right">
-                <p className="text-sm font-semibold">
-                  {formatAmount(data.amount, data.currency)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDate(displayDate)}
-                </p>
-              </div>
+              {showLinkedPill && linked ? (
+                <div className="flex flex-col items-end gap-0.5">
+                  <LinkedTransactionPill
+                    linked={linked}
+                    lowConfidence={lowConfidence}
+                    onClick={() => setPeekOpen(true)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(
+                      linked.transaction_date || data.transaction_date || data.email_date,
+                    ) || "—"}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-right">
+                  <p className="text-sm font-semibold">
+                    {formatAmountOrDash(data.amount, data.currency)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(displayDate)}
+                  </p>
+                </div>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -273,6 +291,17 @@ export function EmailTransactionCard({
         fromAddress={data.from_address}
         emailDate={data.email_date}
       />
+
+      {linked && (
+        <LinkedTransactionPeekModal
+          open={peekOpen}
+          onOpenChange={setPeekOpen}
+          transactionId={linked.id}
+          matchMethod={data.match_method}
+          matchConfidence={data.match_confidence}
+          isImported={data.status === "imported"}
+        />
+      )}
     </div>
   )
 }

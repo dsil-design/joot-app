@@ -398,8 +398,48 @@ export async function GET(request: NextRequest) {
     const total = count || 0;
     const hasMore = offset + limit < total;
 
+    // Attach a minimal linked_transaction summary for rows that point to a
+    // real transaction. One batched lookup avoids N+1 while keeping the row
+    // payload small (full transaction details are lazy-loaded by the modal).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = (emails || []) as any[];
+    const matchedIds = Array.from(
+      new Set(
+        rows
+          .filter((r) => (r.status === 'matched' || r.status === 'imported') && r.matched_transaction_id)
+          .map((r) => r.matched_transaction_id as string)
+      )
+    );
+
+    if (matchedIds.length > 0) {
+      const { data: linkedTxs } = await supabase
+        .from('transactions')
+        .select('id, amount, original_currency, transaction_date, description, vendor_id, vendors:vendor_id(name)')
+        .eq('user_id', user.id)
+        .in('id', matchedIds);
+
+      const byId = new Map<string, unknown>();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const tx of (linkedTxs || []) as any[]) {
+        byId.set(tx.id, {
+          id: tx.id,
+          amount: tx.amount == null ? null : Number(tx.amount),
+          original_currency: tx.original_currency,
+          transaction_date: tx.transaction_date,
+          description: tx.description,
+          vendor_name: tx.vendors?.name ?? null,
+        });
+      }
+
+      for (const row of rows) {
+        if ((row.status === 'matched' || row.status === 'imported') && row.matched_transaction_id) {
+          row.linked_transaction = byId.get(row.matched_transaction_id) ?? null;
+        }
+      }
+    }
+
     return NextResponse.json({
-      emails: emails || [],
+      emails: rows,
       total,
       limit,
       offset,

@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { ConfidenceIndicator } from "@/components/ui/confidence-indicator"
-import { cn } from "@/lib/utils"
+import { DetailRow } from "@/components/ui/detail-row"
+import { cn, formatAmountOrDash } from "@/lib/utils"
 import {
   Calendar,
   Coins,
@@ -28,6 +29,7 @@ import {
 } from "lucide-react"
 import type { EmailTransactionRow } from "@/hooks/use-email-transactions"
 import { EmailViewerModal } from "./email-viewer-modal"
+import { LinkedTransactionSection } from "./linked-transaction-section"
 import { createClient } from "@/lib/supabase/client"
 import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour } from "@/lib/proposals/payment-method-mapper"
 
@@ -37,6 +39,9 @@ interface EmailDetailPanelProps {
   onDelete?: () => void
   onReopen?: (emailId: string) => void
   onFeedbackReprocess?: (emailId: string, userHint: string) => void
+  /** Called after an action that mutates the underlying row (e.g. unlinking
+   * a matched transaction) so the parent can refetch the email list. */
+  onRefresh?: () => void
   isProcessing: boolean
   isProcessingExtraction?: boolean
   isDeleting?: boolean
@@ -50,6 +55,7 @@ export function EmailDetailPanel({
   onDelete,
   onReopen,
   onFeedbackReprocess,
+  onRefresh,
   isProcessing,
   isProcessingExtraction,
   isDeleting,
@@ -59,6 +65,10 @@ export function EmailDetailPanel({
   const [viewerOpen, setViewerOpen] = React.useState(false)
 
   const isUnprocessed = !emailTransaction.is_processed
+  const isLinked =
+    (emailTransaction.status === "matched" || emailTransaction.status === "imported") &&
+    !!emailTransaction.linked_transaction
+  const isImported = emailTransaction.status === "imported"
 
   // Unprocessed email: show metadata + Extract Data button
   if (isUnprocessed) {
@@ -108,7 +118,7 @@ export function EmailDetailPanel({
           </Button>
 
           <div className="flex items-center justify-between w-full">
-            <CopyableId id={emailTransaction.id} />
+            <CopyableId id={emailTransaction.email_transaction_id ?? emailTransaction.id} />
             {onDelete && (
               <Button
                 variant="ghost"
@@ -179,7 +189,7 @@ export function EmailDetailPanel({
           <DetailRow
             icon={<Coins className="h-4 w-4" />}
             label="Amount"
-            value={formatAmount(emailTransaction.amount, emailTransaction.currency)}
+            value={formatAmountOrDash(emailTransaction.amount, emailTransaction.currency)}
           />
           <DetailRow
             icon={<Calendar className="h-4 w-4" />}
@@ -278,7 +288,7 @@ export function EmailDetailPanel({
         )}
 
         <div className="flex items-center justify-between w-full">
-          <CopyableId id={emailTransaction.id} />
+          <CopyableId id={emailTransaction.email_transaction_id ?? emailTransaction.id} />
           {onDelete && (
             <Button
               variant="ghost"
@@ -294,14 +304,36 @@ export function EmailDetailPanel({
         </div>
       </div>
 
-      {/* Right: Transaction Preview + AI Analysis */}
+      {/* Right: Linked Transaction (when matched/imported) or Transaction Preview, plus AI Analysis */}
       <div className="space-y-6">
-        <section className="space-y-4">
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Transaction Preview
-          </h4>
-          <TransactionPreview emailTransaction={emailTransaction} />
-        </section>
+        {isLinked && emailTransaction.linked_transaction ? (
+          <section className="space-y-4">
+            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Linked Transaction
+            </h4>
+            <LinkedTransactionSection
+              transactionId={emailTransaction.linked_transaction.id}
+              matchMethod={emailTransaction.match_method}
+              matchConfidence={emailTransaction.match_confidence}
+              isImported={isImported}
+              emailTransactionId={emailTransaction.email_transaction_id}
+              onUnlinked={onRefresh}
+            />
+            {/* Imported emails created the transaction — comparing against the
+                hypothetical preview is meaningless. Only offer the toggle for
+                matched (linked-to-existing) emails. */}
+            {!isImported && (
+              <CollapsibleExtractedPreview emailTransaction={emailTransaction} />
+            )}
+          </section>
+        ) : (
+          <section className="space-y-4">
+            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Transaction Preview
+            </h4>
+            <TransactionPreview emailTransaction={emailTransaction} />
+          </section>
+        )}
 
         <section className="space-y-3">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
@@ -350,24 +382,6 @@ function CopyableId({ id }: { id: string }) {
       >
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       </button>
-    </div>
-  )
-}
-
-function DetailRow({
-  icon,
-  label,
-  value,
-}: {
-  icon?: React.ReactNode
-  label: string
-  value: React.ReactNode
-}) {
-  return (
-    <div className="flex items-start gap-2 text-sm">
-      {icon && <span className="text-muted-foreground mt-0.5">{icon}</span>}
-      <span className="text-muted-foreground shrink-0 w-20">{label}</span>
-      <span className="font-medium break-words min-w-0">{value}</span>
     </div>
   )
 }
@@ -525,7 +539,7 @@ function TransactionPreview({
         label="Amount"
         value={
           hasAmount
-            ? formatAmount(emailTransaction.amount, emailTransaction.currency)
+            ? formatAmountOrDash(emailTransaction.amount, emailTransaction.currency)
             : "—"
         }
       />
@@ -533,20 +547,38 @@ function TransactionPreview({
   )
 }
 
-function PreviewRow({
-  icon,
-  label,
-  value,
+const PreviewRow = DetailRow
+
+/**
+ * Toggle that reveals the hypothetical TransactionPreview for a matched email.
+ * Useful when the user wants to see whether the email's extracted fields would
+ * have produced the same transaction (vendor mapping diff, etc.).
+ */
+function CollapsibleExtractedPreview({
+  emailTransaction,
 }: {
-  icon: React.ReactNode
-  label: string
-  value: React.ReactNode
+  emailTransaction: EmailTransactionRow
 }) {
+  const [open, setOpen] = React.useState(false)
+
   return (
-    <div className="flex items-start gap-2 text-sm">
-      <span className="text-muted-foreground mt-0.5">{icon}</span>
-      <span className="text-muted-foreground shrink-0 w-20">{label}</span>
-      <span className="font-medium break-words min-w-0">{value}</span>
+    <div className="space-y-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="text-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+      >
+        <span className={cn("transition-transform", open && "rotate-90")}>›</span>
+        {open ? "Hide" : "Show"} extracted preview
+      </button>
+      {open && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground italic">
+            What a transaction would look like if created from this email&apos;s extracted data.
+          </p>
+          <TransactionPreview emailTransaction={emailTransaction} />
+        </div>
+      )}
     </div>
   )
 }
@@ -663,8 +695,3 @@ function MessageAiControl({
   )
 }
 
-function formatAmount(amount: number | null, currency: string | null): string {
-  if (amount == null) return "—"
-  const sym = currency === "THB" ? "฿" : currency === "USD" ? "$" : (currency || "")
-  return `${sym}${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}

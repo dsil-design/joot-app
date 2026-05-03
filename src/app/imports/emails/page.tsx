@@ -321,6 +321,10 @@ export default function EmailHubPage() {
                 emailTransaction={item}
                 onProcess={handleProcess}
                 onFeedbackReprocess={handleFeedbackReprocess}
+                onRefresh={() => {
+                  refresh()
+                  refetchStats()
+                }}
                 isProcessing={isProcessing(item.id)}
                 isProcessingExtraction={isExtracting(item.id)}
                 isFeedbackProcessing={isFeedbackProcessing(item.id)}
