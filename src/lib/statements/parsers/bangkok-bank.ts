@@ -40,18 +40,22 @@ const SAVINGS_ACCOUNT_IDENTIFIERS = [
 
 /**
  * Savings account transaction line pattern.
- * pdf-parse concatenates columns with no spaces, producing lines like:
- *   01/10/25TRANSFER2,782.0053,506.43mPhone
- *   02/10/25TRF FR OTH BK228.2553,734.68mPhone
- *   18/10/25CASH W/D ATM2,000.0019,010.90ATM SARAPHI,CHIANG MAI
+ *
+ * PDF text extraction may produce either of these shapes depending on column spacing:
+ *   - Concatenated (legacy pdf-parse, tight columns):
+ *       01/10/25TRANSFER2,782.0053,506.43mPhone
+ *   - Spaced (current pdfjs-dist, wide columns):
+ *       01/04/26 TRF. PROMPTPAY 750.00 9,220.00 mPhone
+ *       10/04/26 COM/ANNUAL FEE 15.00 9,205.00 Auto
  *
  * Structure: date(DD/MM/YY) + description(letters/spaces/dots/slashes) + amount(s) + via?
  * Descriptions never contain digits, so the first digit after the description marks amounts.
+ * Whitespace between fields is optional so both extraction shapes match.
  */
-const SAVINGS_TX_PATTERN = /^(\d{2}\/\d{2}\/\d{2})([A-Z][A-Z/. ,'&]+?)([\d,]+\.\d{2})([\d,]+\.\d{2})?(.*)$/;
+const SAVINGS_TX_PATTERN = /^(\d{2}\/\d{2}\/\d{2})\s*([A-Z][A-Z/. ,'&]+?)\s*([\d,]+\.\d{2})(?:\s*([\d,]+\.\d{2}))?\s*(.*)$/;
 
 // B/F (brought forward) line - only has balance
-const SAVINGS_BF_PATTERN = /^(\d{2}\/\d{2}\/\d{2})B\/F([\d,]+\.\d{2})$/;
+const SAVINGS_BF_PATTERN = /^(\d{2}\/\d{2}\/\d{2})\s*B\/F\s*([\d,]+\.\d{2})$/;
 
 // Date patterns in Bangkok Bank statements
 // DD/MM/YYYY or DD/MM/YY (Thai format - day first)

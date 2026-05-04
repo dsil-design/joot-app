@@ -8,12 +8,15 @@ import {
   parseShortDate,
   parseAmount,
   parseStatementPeriod,
+  parseSavingsPeriod,
   parseSummary,
   parseAccountInfo,
   parseTransactions,
+  parseSavingsTransactions,
   determineTransactionType,
   detectCategory,
   calculateConfidence,
+  isSavingsAccount,
   BANGKOK_BANK_IDENTIFIERS,
   THAI_MONTH_NAMES,
 } from '@/lib/statements/parsers/bangkok-bank';
@@ -77,6 +80,47 @@ TRANSACTION DETAILS
 01/11/24  AMAZON PRIME                      299.00      -
 05/11/24  NETFLIX SUBSCRIPTION              289.00      -
 10/11/24  SHOPEE PURCHASE                   450.00      -
+`;
+
+// Real pdfjs-dist extraction output from a Bangkok Bank savings statement.
+// Columns render as space-separated text rather than the older pdf-parse
+// concatenated form. Statement upload 264ae5e2-… returned 0 transactions
+// because the regex assumed the concatenated form — captured here as a regression.
+const SAMPLE_BBL_SAVINGS_SPACED = `
+
+ธนาคารกรุงเทพ จํากัด (มหาชน)
+Bangkok Bank Public Company Limited
+0967 NIMMANAHAEMINDA ROAD CHIANGMAI BRANCH
+ชื่อ/Name
+DENNIS RODGER SILLER MR
+เลขที่บัญชี/Account No.
+สกุลเงิน/Currency
+รอบรายการบัญชี / Statement Period
+967-0-12337-2
+THB
+01/04/2026 - 30/04/2026
+วันที่
+Date
+รายการ
+Particulars
+ใบแจงรายการบัญชีเงินฝากสะสมทรัพย
+STATEMENT OF SAVING ACCOUNT
+01/04/26 B/F 8,470.00
+01/04/26 TRF. PROMPTPAY 750.00 9,220.00 mPhone
+10/04/26 COM/ANNUAL FEE 15.00 9,205.00 Auto
+`;
+
+// Legacy pdf-parse extraction shape — columns concatenated with no separators.
+// Kept so the parser stays backwards-compatible with older uploads.
+const SAMPLE_BBL_SAVINGS_CONCATENATED = `
+Bangkok Bank
+STATEMENT OF SAVING ACCOUNT
+967-0-12337-2
+THB
+01/10/2025 - 31/10/2025
+01/10/25B/F50,724.43
+01/10/25TRANSFER2,782.0053,506.43mPhone
+02/10/25TRF FR OTH BK228.2553,734.68mPhone
 `;
 
 const SAMPLE_BBL_CREDITS = `
@@ -462,6 +506,73 @@ describe('Bangkok Bank Statement Parser', () => {
       transactions.forEach((t) => {
         expect(t.rawLine).not.toBeUndefined();
       });
+    });
+  });
+
+  describe('parseSavingsTransactions', () => {
+    it('should parse savings transactions in spaced (pdfjs-dist) format', () => {
+      const { transactions } = parseSavingsTransactions(SAMPLE_BBL_SAVINGS_SPACED);
+      expect(transactions).toHaveLength(2);
+
+      // PromptPay deposit: 8,470 → 9,220 (balance up 750, money in)
+      const deposit = transactions.find((t) => t.description.includes('PROMPTPAY'));
+      expect(deposit).toBeDefined();
+      expect(deposit!.amount).toBe(-750); // negative = money in
+      expect(deposit!.type).toBe('credit');
+
+      // Annual fee: 9,220 → 9,205 (balance down 15, money out)
+      const fee = transactions.find((t) => t.description.includes('ANNUAL FEE'));
+      expect(fee).toBeDefined();
+      expect(fee!.amount).toBe(15); // positive = money out
+      expect(fee!.type).toBe('fee');
+    });
+
+    it('should parse savings transactions in concatenated (legacy pdf-parse) format', () => {
+      const { transactions } = parseSavingsTransactions(SAMPLE_BBL_SAVINGS_CONCATENATED);
+      expect(transactions).toHaveLength(2);
+      expect(transactions[0].description).toBe('TRANSFER');
+      expect(transactions[1].description).toBe('TRF FR OTH BK');
+    });
+  });
+
+  describe('parseSavingsPeriod', () => {
+    it('should parse standalone date range from spaced format', () => {
+      const period = parseSavingsPeriod(SAMPLE_BBL_SAVINGS_SPACED);
+      expect(period).toBeDefined();
+      expect(period!.startDate.getDate()).toBe(1);
+      expect(period!.startDate.getMonth()).toBe(3); // April (0-indexed)
+      expect(period!.startDate.getFullYear()).toBe(2026);
+      expect(period!.endDate.getDate()).toBe(30);
+    });
+  });
+
+  describe('isSavingsAccount', () => {
+    it('should detect English "saving account" identifier', () => {
+      expect(isSavingsAccount('STATEMENT OF SAVING ACCOUNT')).toBe(true);
+    });
+
+    it('should detect Thai savings identifier', () => {
+      expect(isSavingsAccount('เงินฝากสะสมทรัพย')).toBe(true);
+    });
+
+    it('should not flag credit card statements as savings', () => {
+      expect(isSavingsAccount('Bangkok Bank Credit Card Statement')).toBe(false);
+    });
+  });
+
+  describe('parse (savings statement)', () => {
+    it('should successfully parse a Bangkok Bank savings statement (spaced format)', () => {
+      const result = bangkokBankParser.parse(SAMPLE_BBL_SAVINGS_SPACED);
+      expect(result.success).toBe(true);
+      expect(result.transactions).toHaveLength(2);
+      expect(result.warnings).not.toContain('No transactions extracted from statement');
+    });
+
+    it('should extract savings statement period', () => {
+      const result = bangkokBankParser.parse(SAMPLE_BBL_SAVINGS_SPACED);
+      expect(result.period).toBeDefined();
+      expect(result.period!.startDate.getMonth()).toBe(3);
+      expect(result.period!.endDate.getMonth()).toBe(3);
     });
   });
 
