@@ -3,6 +3,7 @@ import { makeEmailId } from '@/lib/utils/import-id'
 import type { QueueItem, EmailAttachmentSummary } from './queue-types'
 import { fetchMatchedTransactions } from './fetch-matched-transactions'
 import { isSplitReceiptVendor } from '@/lib/matching/split-receipt-vendors'
+import { groupRowsIntoBundles } from '@/lib/matching/email-bundler'
 
 interface EmailFilters {
   currencyFilter?: string
@@ -19,7 +20,7 @@ export async function fetchEmailQueueItems(
   let emailQuery = supabase
     .from('email_transactions')
     .select(`
-      id, subject, from_name, from_address, email_date,
+      id, user_id, subject, from_name, from_address, email_date,
       transaction_date, description, amount, currency,
       classification, order_id, extraction_confidence,
       match_confidence, matched_transaction_id, status,
@@ -156,6 +157,51 @@ export async function fetchEmailQueueItems(
       extras.map((e) => e.id),
     )
     const total = group.reduce((s, r) => s + Number(r.amount ?? 0), 0)
+    bundleSumByPrimary.set(primary.id, total)
+    for (const e of extras) bundleSecondaryIds.add(e.id)
+  }
+
+  // --- Unmatched-bundle detection ---
+  // The matched pass above only collapses bundles that already share a
+  // matched_transaction_id. For *waiting* split-receipt emails (still in
+  // pending_review / waiting_for_statement / ready_to_import), the cross-source
+  // pairer downstream is strictly 1:1 — neither sibling matches the statement
+  // line individually because the line aggregates them. Pre-bundle here so the
+  // pairer sees a single candidate whose summed amount can match the
+  // statement's foreign-amount signal.
+  const unmatchedRows = emailRows.filter(
+    (row) => !row.matched_transaction_id && !bundleSecondaryIds.has(row.id),
+  )
+  const unmatchedBundles = groupRowsIntoBundles(
+    unmatchedRows.map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      from_address: row.from_address,
+      email_date: row.email_date,
+      transaction_date: row.transaction_date,
+      amount: row.amount,
+      currency: row.currency,
+      vendor_name_raw: row.vendor_name_raw,
+      description: row.description,
+      order_id: row.order_id,
+      status: row.status,
+    })),
+  )
+
+  for (const bundle of unmatchedBundles) {
+    const memberIdSet = new Set(bundle.members.map((m) => m.id))
+    const memberRows = unmatchedRows.filter((r) => memberIdSet.has(r.id))
+    if (memberRows.length < 2) continue
+    const sorted = [...memberRows].sort(
+      (a, b) => Number(b.amount ?? 0) - Number(a.amount ?? 0),
+    )
+    const primary = sorted[0]
+    const extras = sorted.slice(1)
+    bundleExtrasByPrimary.set(
+      primary.id,
+      extras.map((e) => e.id),
+    )
+    const total = memberRows.reduce((s, r) => s + Number(r.amount ?? 0), 0)
     bundleSumByPrimary.set(primary.id, total)
     for (const e of extras) bundleSecondaryIds.add(e.id)
   }
