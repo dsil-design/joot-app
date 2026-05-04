@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { rankMatches } from '@/lib/matching/match-ranker'
 import type { SourceTransaction, TargetTransaction } from '@/lib/matching/match-scorer'
+import { CONFIDENCE_THRESHOLDS } from '@/lib/matching/match-scorer'
+import { buildBundleForEmail } from '@/lib/matching/email-bundler'
+import { scoreBundleAgainstTargets } from '@/lib/matching/bundle-scorer'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -175,9 +178,66 @@ export async function GET(
       }
     })
 
+    // For split-receipt vendors (e.g. Lazada), also score the focal email as
+    // part of a multi-email bundle against each candidate. The bundler returns
+    // null when the focal isn't an allowlisted vendor or no siblings exist —
+    // in that case we skip bundle scoring entirely.
+    let bundleSuggestions: Array<{
+      targetId: string
+      memberIds: string[]
+      totalNativeAmount: number
+      nativeCurrency: string
+      convertedAmount: number
+      rateQuality: number
+      score: number
+      confidence: string
+      isMatch: boolean
+      reasons: string[]
+      vendorLabel: string
+      transaction: typeof filteredCandidates[number] | null
+    }> = []
+    let bundleMembers: Array<{ id: string; amount: number; currency: string; order_id?: string; description?: string; transaction_date: string }> | null = null
+
+    const bundle = await buildBundleForEmail(supabase, id, user.id)
+    if (bundle) {
+      bundleMembers = bundle.members.map((m) => ({
+        id: m.id,
+        amount: m.amount,
+        currency: m.currency,
+        order_id: m.order_id,
+        description: m.description,
+        transaction_date: m.transaction_date,
+      }))
+      const bundleScored = await scoreBundleAgainstTargets(bundle, targets, supabase)
+      bundleSuggestions = bundleScored
+        .filter((r) => r.isMatch && r.score >= CONFIDENCE_THRESHOLDS.MEDIUM)
+        .slice(0, 3)
+        .map((r) => ({
+          targetId: r.targetId,
+          memberIds: r.memberIds,
+          totalNativeAmount: r.totalNativeAmount,
+          nativeCurrency: r.nativeCurrency,
+          convertedAmount: r.convertedAmount,
+          rateQuality: r.rateQuality,
+          score: r.score,
+          confidence: r.confidence,
+          isMatch: r.isMatch,
+          reasons: r.reasons,
+          vendorLabel: r.vendorLabel,
+          transaction: filteredCandidates.find((c) => c.id === r.targetId) || null,
+        }))
+    }
+
     return NextResponse.json({
       email_transaction: emailTx,
       suggestions: enrichedSuggestions,
+      bundle: bundle
+        ? {
+            vendorLabel: bundle.vendorLabel,
+            members: bundleMembers,
+          }
+        : null,
+      bundleSuggestions,
       stats: ranked.stats,
       status: ranked.status,
       reason: ranked.reason,

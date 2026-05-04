@@ -133,6 +133,22 @@ export function MatchCard({
           <ProposalConfidenceBar score={data.proposal.overallConfidence} />
         )}
         <MatchCardReasons reasons={data.reasons} isNew={data.isNew} />
+        {/* Bundle / extras indicator — always visible when extras are present
+            (a matched bundle still needs to communicate the +N siblings) */}
+        {!data.isNew && ((data.extraEmailIds?.length ?? 0) > 0 || (data.extraSlipIds?.length ?? 0) > 0) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {(data.extraEmailIds?.length ?? 0) > 0 && (
+              <Badge className="bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border-0 text-[11px]">
+                +{data.extraEmailIds!.length} email{data.extraEmailIds!.length === 1 ? '' : 's'}
+              </Badge>
+            )}
+            {(data.extraSlipIds?.length ?? 0) > 0 && (
+              <Badge className="bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border-0 text-[11px]">
+                +{data.extraSlipIds!.length} slip{data.extraSlipIds!.length === 1 ? '' : 's'}
+              </Badge>
+            )}
+          </div>
+        )}
         {onAttachSource && data.isNew && (
           <div className="flex flex-wrap items-center gap-2">
             <Button

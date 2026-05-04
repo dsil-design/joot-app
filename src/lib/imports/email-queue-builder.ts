@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import { makeEmailId } from '@/lib/utils/import-id'
 import type { QueueItem, EmailAttachmentSummary } from './queue-types'
 import { fetchMatchedTransactions } from './fetch-matched-transactions'
+import { isSplitReceiptVendor } from '@/lib/matching/split-receipt-vendors'
 
 interface EmailFilters {
   currencyFilter?: string
@@ -122,7 +123,45 @@ export async function fetchEmailQueueItems(
 
   const items: QueueItem[] = []
 
+  // --- Multi-email bundle detection ---
+  // For split-receipt vendors (e.g. Lazada), multiple email_transactions can
+  // share the same `matched_transaction_id` because the retailer emails one
+  // receipt per sub-vendor while the credit card aggregates them. Collapse
+  // those into a single queue card whose `extraEmailIds` carry the siblings,
+  // so the user approves the whole bundle in one click.
+  const bundleSecondaryIds = new Set<string>()
+  const bundleExtrasByPrimary = new Map<string, string[]>()
+  const bundleSumByPrimary = new Map<string, number>()
+
+  const bundleGroups = new Map<string, typeof emailRows>()
   for (const row of emailRows) {
+    if (!row.matched_transaction_id) continue
+    if (!isSplitReceiptVendor(row.from_address)) continue
+    const group = bundleGroups.get(row.matched_transaction_id) || []
+    group.push(row)
+    bundleGroups.set(row.matched_transaction_id, group)
+  }
+
+  for (const group of bundleGroups.values()) {
+    if (group.length < 2) continue
+    // Largest-amount member is the primary so users see the most recognizable
+    // line item in the queue card.
+    const sorted = [...group].sort(
+      (a, b) => Number(b.amount ?? 0) - Number(a.amount ?? 0),
+    )
+    const primary = sorted[0]
+    const extras = sorted.slice(1)
+    bundleExtrasByPrimary.set(
+      primary.id,
+      extras.map((e) => e.id),
+    )
+    const total = group.reduce((s, r) => s + Number(r.amount ?? 0), 0)
+    bundleSumByPrimary.set(primary.id, total)
+    for (const e of extras) bundleSecondaryIds.add(e.id)
+  }
+
+  for (const row of emailRows) {
+    if (bundleSecondaryIds.has(row.id)) continue
     let queueStatus: 'pending' | 'approved' | 'rejected'
     const isWaitingForStatement = row.status === 'waiting_for_statement'
     switch (row.status) {
@@ -166,6 +205,16 @@ export async function fetchEmailQueueItems(
 
     const sourceLabel = row.from_name || row.from_address || row.subject || 'Email'
 
+    const bundleExtras = bundleExtrasByPrimary.get(row.id)
+    const bundleTotal = bundleSumByPrimary.get(row.id)
+    const reasons: string[] = []
+    if (bundleExtras && bundleTotal !== undefined) {
+      const memberCount = bundleExtras.length + 1
+      reasons.push(
+        `Bundled with ${bundleExtras.length} other ${row.from_address && /lazada/i.test(row.from_address) ? 'Lazada ' : ''}order${bundleExtras.length === 1 ? '' : 's'}: ${memberCount} emails total ${row.currency ?? ''} ${bundleTotal.toFixed(2)}`,
+      )
+    }
+
     items.push({
       id: makeEmailId(row.id),
       statementFilename: sourceLabel,
@@ -173,19 +222,20 @@ export async function fetchEmailQueueItems(
       statementTransaction: {
         date: row.transaction_date ?? row.email_date?.split('T')[0] ?? '',
         description: row.description ?? row.subject ?? '',
-        amount: row.amount ?? 0,
+        amount: bundleTotal ?? row.amount ?? 0,
         currency: row.currency ?? 'USD',
         sourceFilename: sourceLabel,
       },
       matchedTransaction: matchedTransactionData,
       confidence,
       confidenceLevel,
-      reasons: [],
+      reasons,
       isNew,
       status: queueStatus,
       waitingForStatement: isWaitingForStatement || undefined,
       rejectedPairKeys: ((row as { rejected_pair_keys?: string[] }).rejected_pair_keys) || undefined,
       manualPairKeys: ((row as { manual_pair_keys?: string[] }).manual_pair_keys) || undefined,
+      extraEmailIds: bundleExtras,
       source: 'email',
       emailMetadata: {
         subject: row.subject ?? undefined,

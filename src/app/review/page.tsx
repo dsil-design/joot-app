@@ -344,8 +344,14 @@ export default function ReviewQueuePage() {
 
   const handleLinkConfirm = async (transactionIds: string[]) => {
     if (!linkingItemId) return
+    const item = items.find((i) => i.id === linkingItemId)
     for (const txId of transactionIds) {
       await linkToExisting(linkingItemId, txId)
+      // For bundle items (Lazada-style multi-email), also link sibling emails
+      // to the same target so all members are resolved together.
+      if (item?.extraEmailIds && item.extraEmailIds.length > 0) {
+        await linkExtraSources(txId, item)
+      }
     }
     handleFocusItemRemove(linkingItemId)
     setLinkDialogOpen(false)
@@ -902,13 +908,30 @@ export default function ReviewQueuePage() {
     [],
   )
 
+  // For email bundles (multiple Lazada emails sharing one card charge), the
+  // card carries `extraEmailIds`. Approving must propagate to siblings so the
+  // user resolves the whole bundle in one click.
+  const handleApproveBundleAware = React.useCallback(
+    async (id: string) => {
+      const item = items.find((i) => i.id === id)
+      const extras = item?.extraEmailIds
+      if (extras && extras.length > 0) {
+        const compositeIds = [id, ...extras.map((eid) => `email:${eid}`)]
+        await batchApprove(compositeIds)
+        return
+      }
+      approve(id)
+    },
+    [items, approve, batchApprove],
+  )
+
   const renderMatchCard = (item: MatchCardData) => (
     <MatchCard
       key={item.id}
       data={item}
       selected={selectedIds.has(item.id)}
       loading={isProcessing(item.id) || generatingProposalIds.has(item.id)}
-      onApprove={(id) => approve(id)}
+      onApprove={handleApproveBundleAware}
       onReject={(id) => reject(id)}
       onRejectSource={handleRejectSource}
       onLinkManually={handleLinkManually}
