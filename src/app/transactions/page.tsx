@@ -37,7 +37,7 @@ import { TransactionGroup } from "@/components/page-specific/transactions-list"
 import { format, parseISO } from "date-fns"
 import { getBatchExchangeRates, getCacheKey } from "@/lib/utils/exchange-rate-batch"
 import type { CurrencyType } from "@/lib/supabase/types"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, getReadableTextColor } from "@/lib/utils"
 import { DateRangeDialogContent } from "@/components/ui/date-range-dialog"
 import type { DateRange } from "react-day-picker"
 import { Input } from "@/components/ui/input"
@@ -484,17 +484,17 @@ function TransactionsTable({
                     {(transaction as any).source_email_transaction_id || (transaction as any).source_statement_upload_id || (transaction as any).source_payment_slip_id ? (
                       <div className="flex flex-nowrap gap-1">
                         {(transaction as any).source_email_transaction_id && (
-                          <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 text-xs">
+                          <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30 text-xs">
                             Email
                           </Badge>
                         )}
                         {(transaction as any).source_statement_upload_id && (
-                          <Badge variant="secondary" className="bg-muted text-slate-800 border border-slate-200 text-xs">
+                          <Badge variant="secondary" className="bg-muted text-muted-foreground border border-border text-xs">
                             Statement
                           </Badge>
                         )}
                         {(transaction as any).source_payment_slip_id && (
-                          <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs">
+                          <Badge variant="secondary" className="bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30 text-xs">
                             Slip
                           </Badge>
                         )}
@@ -525,7 +525,7 @@ function TransactionsTable({
                             variant="secondary"
                             style={{
                               backgroundColor: tag.color,
-                              color: '#18181b',
+                              color: getReadableTextColor(tag.color ?? ''),
                             }}
                             className="text-xs whitespace-nowrap shrink-0"
                           >
