@@ -216,6 +216,36 @@ describe('grabParser', () => {
       expect(result.notes).toContain('GrabPay Wallet');
     });
 
+    it('should detect VND currency for Vietnam Grab receipts', () => {
+      // Real-world scenario: user travels to Hanoi, Grab receipt is in dong.
+      // Regression test for the bug where parser hardcoded currency='THB',
+      // mislabeling VND receipts and breaking cross-source pairing with the
+      // statement's printed foreign-amount in VND.
+      const email = createMockEmail({
+        text_body: `
+          Your GrabFood order has been delivered!
+
+          Your order from McDonald's (Nguyễn Văn Linh)
+
+          Order Details
+          2x Big Mac Burger Meal                ₫238,000
+          Delivery Fee                          ₫26,000
+          Service Fee                           ₫6,000
+          Foreign card processing fee           ₫10,800
+          Total                                 ₫280,800
+
+          Payment Method: Visa •••• 0599
+          Order ID: A-947IMIHGX4MNAV
+        `,
+      });
+
+      const result = grabParser.extract(email);
+
+      expect(result.success).toBe(true);
+      expect(result.data!.amount).toBe(280800);
+      expect(result.data!.currency).toBe('VND');
+    });
+
     it('should fail gracefully when no amount found', () => {
       const email = createMockEmail({
         text_body: 'Your order has been delivered!',

@@ -10,7 +10,9 @@
  * Key patterns:
  * - Sender: no-reply@grab.com
  * - Subject: "Your Grab E-Receipt" or "Your GrabExpress Receipt"
- * - Currency: Always THB (฿)
+ * - Currency: Detected from body. Defaults to THB (฿) but Grab operates across
+ *   SE Asia, so receipts may be in VND, SGD, MYR, IDR, or PHP when the user
+ *   travels.
  * - Amount: Needs to be matched to USD credit card charge
  */
 
@@ -32,6 +34,27 @@ const GRAB_SUBJECT_PATTERNS = [
 // Amount extraction patterns
 // THB with ฿ symbol or "THB" prefix
 const THB_AMOUNT_PATTERN = /(?:฿|THB)\s*([\d,]+(?:\.\d{2})?)/gi;
+
+// Currencies Grab operates in. Order matters: when multiple currencies have
+// equally-strong signals in the same body, the first listed wins. THB stays
+// first because it covers the user's primary market; non-THB receipts only
+// appear when the user travels, in which case the foreign symbol is the only
+// labeled-total signal in the body.
+//
+// Each `symbolRegex` is a regex fragment matching either the currency's
+// symbol or its ISO code. Word boundaries on ISO codes prevent false hits
+// inside random words; lookaheads on ambiguous prefixes (RM, Rp) require
+// digits to follow.
+const GRAB_CURRENCIES: Array<{ code: string; symbolRegex: string }> = [
+  { code: 'THB', symbolRegex: '(?:฿|\\bTHB\\b)' },
+  // ₫ is the unambiguous dong sign. We deliberately don't match the lowercase
+  // "đ" letter because it appears in regular Vietnamese words.
+  { code: 'VND', symbolRegex: '(?:₫|\\bVND\\b)' },
+  { code: 'SGD', symbolRegex: '(?:S\\$|\\bSGD\\b)' },
+  { code: 'MYR', symbolRegex: '(?:RM(?=\\s*[\\d,])|\\bMYR\\b)' },
+  { code: 'IDR', symbolRegex: '(?:Rp(?=\\s*[\\d,])|\\bIDR\\b)' },
+  { code: 'PHP', symbolRegex: '(?:₱|\\bPHP\\b)' },
+];
 
 // Order/Booking ID patterns
 // Note: Patterns are checked in order - more specific patterns first
@@ -306,57 +329,92 @@ function getFoodType(emailDate: Date, restaurant: string): string {
   return 'Meal';
 }
 
-// Total line patterns — Thai "รวม" (standalone, not part of longer words like
-// "รวมมูลค่า" which means "total value of goods subject to VAT") and English
-// "Total" / "Grand Total". These appear near the actual charged amount.
-const TOTAL_LINE_PATTERN = /(?:รวม(?!มูลค่า|ภาษี)|Grand\s*Total|(?<!\w)Total(?!\s*(?:VAT|Tax)))[^฿]*฿\s*([\d,]+(?:\.\d{2})?)/gi;
+// Total line label (Thai "รวม" — standalone, not part of longer words like
+// "รวมมูลค่า" — and English "Total" / "Grand Total"). The currency-specific
+// symbol is appended at runtime.
+const TOTAL_LABEL = '(?:รวม(?!มูลค่า|ภาษี)|Grand\\s*Total|(?<!\\w)Total(?!\\s*(?:VAT|Tax)))';
+
+function buildTotalPattern(symbolRegex: string): RegExp {
+  // Tempered greedy: match up to 200 chars between the label and the
+  // symbol+amount, but stop at the first occurrence of this currency's symbol
+  // so we don't skip past a closer match.
+  return new RegExp(
+    `${TOTAL_LABEL}(?:(?!${symbolRegex})[\\s\\S]){0,200}${symbolRegex}\\s*([\\d,]+(?:\\.\\d{2})?)`,
+    'gi'
+  );
+}
+
+function buildAmountPattern(symbolRegex: string): RegExp {
+  return new RegExp(`${symbolRegex}\\s*([\\d,]+(?:\\.\\d{2})?)`, 'gi');
+}
+
+function collectMatches(body: string, pattern: RegExp): number[] {
+  pattern.lastIndex = 0;
+  const out: number[] = [];
+  let m;
+  while ((m = pattern.exec(body)) !== null) {
+    const v = parseFloat(m[1].replace(/,/g, ''));
+    if (!isNaN(v) && v > 0) out.push(v);
+  }
+  return out;
+}
 
 /**
- * Extract THB amount from email body
+ * Extract amount AND currency from a Grab email body.
  *
  * Priority:
- * 1. Look for "รวม" (Thai for "Total") or "Total"/"Grand Total" labels — this is the
- *    actual charged amount (after discounts, promos, and delivery fee adjustments).
- * 2. Fall back to the largest ฿ amount if no total label is found.
+ * 1. Pick the currency that has a labeled total (รวม / Total / Grand Total
+ *    followed by symbol+amount) — that's the actual charged amount.
+ * 2. If no labeled total in any currency, pick the currency that has the most
+ *    bare symbol+amount occurrences and return its largest value.
+ *
+ * Ties are broken by `GRAB_CURRENCIES` order (THB first), since the user's
+ * primary market is Thailand and a stray non-THB symbol shouldn't override
+ * a real THB receipt.
+ */
+function extractAmountAndCurrency(
+  body: string
+): { amount: number; currency: string; confidence: number } | null {
+  // Pass 1: labeled totals
+  for (const cfg of GRAB_CURRENCIES) {
+    const labeled = collectMatches(body, buildTotalPattern(cfg.symbolRegex));
+    if (labeled.length > 0) {
+      // Receipts often repeat the total at the bottom — take the last one.
+      return {
+        amount: labeled[labeled.length - 1],
+        currency: cfg.code,
+        confidence: 95,
+      };
+    }
+  }
+
+  // Pass 2: bare symbol+amount. Pick the currency with the most matches.
+  let best: { code: string; matches: number[] } | null = null;
+  for (const cfg of GRAB_CURRENCIES) {
+    const matches = collectMatches(body, buildAmountPattern(cfg.symbolRegex));
+    if (matches.length === 0) continue;
+    if (!best || matches.length > best.matches.length) {
+      best = { code: cfg.code, matches };
+    }
+  }
+
+  if (!best) return null;
+
+  return {
+    amount: Math.max(...best.matches),
+    currency: best.code,
+    confidence: best.matches.length > 1 ? 80 : 70,
+  };
+}
+
+/**
+ * Backward-compatible amount-only extractor (used by tests). Returns the
+ * amount in whichever currency the body's strongest signal points to.
  */
 function extractAmount(body: string): { amount: number; confidence: number } | null {
-  // Try labeled total first — these are the actual charged amounts
-  TOTAL_LINE_PATTERN.lastIndex = 0;
-  const totalMatches: number[] = [];
-  let match;
-  while ((match = TOTAL_LINE_PATTERN.exec(body)) !== null) {
-    const amountStr = match[1].replace(/,/g, '');
-    const amount = parseFloat(amountStr);
-    if (!isNaN(amount) && amount > 0) {
-      totalMatches.push(amount);
-    }
-  }
-
-  if (totalMatches.length > 0) {
-    // Use the last labeled total (receipts often repeat the total at the bottom)
-    const total = totalMatches[totalMatches.length - 1];
-    return { amount: total, confidence: 95 };
-  }
-
-  // Fallback: find all THB amounts and pick the largest
-  const allMatches: number[] = [];
-  THB_AMOUNT_PATTERN.lastIndex = 0;
-  while ((match = THB_AMOUNT_PATTERN.exec(body)) !== null) {
-    const amountStr = match[1].replace(/,/g, '');
-    const amount = parseFloat(amountStr);
-    if (!isNaN(amount) && amount > 0) {
-      allMatches.push(amount);
-    }
-  }
-
-  if (allMatches.length === 0) {
-    return null;
-  }
-
-  const total = Math.max(...allMatches);
-  const confidence = allMatches.length > 1 ? 80 : 70;
-
-  return { amount: total, confidence };
+  const r = extractAmountAndCurrency(body);
+  if (!r) return null;
+  return { amount: r.amount, confidence: r.confidence };
 }
 
 /**
@@ -483,12 +541,14 @@ export const grabParser: EmailParser = {
     // Detect service type
     const serviceInfo = detectServiceType(body, email.subject || '');
 
-    // Extract amount
-    const amountResult = extractAmount(body);
+    // Extract amount + currency (THB by default, but Grab operates in VND,
+    // SGD, MYR, IDR, PHP — we detect from the symbol present in the body).
+    const amountResult = extractAmountAndCurrency(body);
     if (!amountResult) {
       return {
         success: false,
         confidence: 0,
+        // Wording kept for back-compat: classifier rule and tests look for it.
         errors: ['No THB amount found in email'],
       };
     }
@@ -531,7 +591,7 @@ export const grabParser: EmailParser = {
     const data: ExtractedTransaction = {
       vendor_name_raw: serviceInfo.vendorName,
       amount: amountResult.amount,
-      currency: 'THB',
+      currency: amountResult.currency,
       transaction_date: email.email_date,
       description,
       order_id: orderId,

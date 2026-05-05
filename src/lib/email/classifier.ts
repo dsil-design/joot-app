@@ -209,14 +209,17 @@ const DEFAULT_CLASSIFICATION_RULES: ClassificationRule[] = [
     enabled: true,
   },
 
-  // Rule 2: THB receipts from ride-hailing apps paid via credit card need statement matching
+  // Rule 2: Foreign-currency receipts from ride-hailing apps paid via credit card
+  // need statement matching. Grab operates across SE Asia, so the user can incur
+  // VND/SGD/MYR/IDR/PHP charges when traveling — all settle to USD on the
+  // statement and need cross-source pairing the same way THB does.
   {
     id: 'grab_bolt_cc_thb',
-    description: 'Grab/Bolt THB receipts (credit card) wait for USD statement',
+    description: 'Grab/Bolt foreign-currency receipts (credit card) wait for USD statement',
     parserKeys: ['grab', 'bolt'],
     classifications: [EMAIL_CLASSIFICATION.RECEIPT],
     paymentContexts: ['credit_card', 'unknown'], // Assume CC if unknown
-    currencies: ['THB'],
+    currencies: ['THB', 'VND', 'SGD', 'MYR', 'IDR', 'PHP'],
     status: EMAIL_TRANSACTION_STATUS.WAITING_FOR_STATEMENT,
     priority: 20,
     enabled: true,

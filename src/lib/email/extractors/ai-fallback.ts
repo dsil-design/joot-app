@@ -25,7 +25,7 @@ function buildPrompt(email: RawEmailData): string {
 
   return `You are a transaction extraction assistant. Analyze this email and extract transaction data if it represents a financial transaction (purchase, payment, subscription, transfer).
 
-**User context:** Based in Thailand, uses USD and THB currencies.
+**User context:** Primarily uses USD and THB, but transacts internationally — receipts may be in any currency. Treat user context as a weak prior; the symbol or code in the email body is authoritative.
 
 **Email metadata:**
 - From: ${email.from_name || ''} <${email.from_address || ''}>
@@ -38,7 +38,17 @@ ${body}
 **Instructions:**
 1. First determine if this email represents a financial transaction. Marketing emails, OTP codes, newsletters, shipping updates without amounts, and account notifications are NOT transactions.
 2. If it is a transaction, extract the details below.
-3. For currency, use the 3-letter ISO code (e.g., "USD", "THB"). If unclear, infer from context (Thai bank = THB, $ symbol alone = USD).
+3. For currency, use the 3-letter ISO code. **The currency symbol or code present next to the amount in the email body is authoritative** — do NOT default to THB just because the user is based in Thailand, and do NOT default to a sender's home country (e.g., a Grab receipt with ₫ amounts is VND, not THB). Common symbol → ISO mappings:
+   - ฿ → THB
+   - ₫ (or "đ" next to a number) → VND
+   - S$ → SGD
+   - RM (followed by digits) → MYR
+   - Rp → IDR
+   - ₱ → PHP
+   - ៛ → KHR
+   - $ alone (no prefix) → USD
+   - €  → EUR, £ → GBP, ¥ → JPY
+   If multiple currencies appear, choose the one used for the *total/charged amount*, not item-level prices or converted equivalents.
 4. For the transaction date, use the actual transaction/payment date from the email content if available, otherwise use the email date.
 5. For vendor name, use the merchant/company name as it appears (e.g., "Tello", "Netflix", "7-Eleven").
 
