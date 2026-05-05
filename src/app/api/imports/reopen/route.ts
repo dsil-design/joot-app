@@ -169,6 +169,23 @@ export async function POST(request: NextRequest) {
           const suggestions = extractionLog?.suggestions || []
           let hasChanges = false
 
+          // A suggestion can be in 'rejected' state while a real transaction
+          // still references it (e.g. a merged-reject left the statement's own
+          // link intact in matched_transaction_id but flipped status). Look up
+          // those transactions up front so we can heal the drift instead of
+          // clobbering a valid match.
+          const linkedByIdx = new Map<number, string>()
+          const { data: linkedTxs } = await serviceClient
+            .from('transactions')
+            .select('id, source_statement_suggestion_index')
+            .eq('user_id', user.id)
+            .eq('source_statement_upload_id', statement.id)
+            .in('source_statement_suggestion_index', indices)
+          for (const tx of linkedTxs || []) {
+            const i = (tx as { source_statement_suggestion_index: number | null }).source_statement_suggestion_index
+            if (i != null) linkedByIdx.set(i, (tx as { id: string }).id)
+          }
+
           for (const idx of indices) {
             if (idx < 0 || idx >= suggestions.length) {
               results.failed++
@@ -177,14 +194,25 @@ export async function POST(request: NextRequest) {
             }
             const suggestion = suggestions[idx]
             if (suggestion.status !== 'rejected') continue
-            // Clear the match so batch rematch can propose something new.
-            // rejected_transaction_ids on the slip/email side is honored there;
-            // for statement suggestions, we also clear matched_transaction_id.
-            suggestion.status = 'pending'
-            suggestion.matched_transaction_id = undefined
-            suggestion.confidence = 0
-            suggestion.reasons = []
-            suggestion.is_new = true
+
+            const linkedTxId = linkedByIdx.get(idx)
+            if (linkedTxId) {
+              // Restore the existing link instead of clearing it. The user's
+              // "reopen" intent collapses to a no-op for the statement side
+              // because the underlying tx pairing is still valid.
+              suggestion.status = 'approved'
+              suggestion.matched_transaction_id = linkedTxId
+              suggestion.is_new = false
+            } else {
+              // Clear the match so batch rematch can propose something new.
+              // rejected_transaction_ids on the slip/email side is honored there;
+              // for statement suggestions, we also clear matched_transaction_id.
+              suggestion.status = 'pending'
+              suggestion.matched_transaction_id = undefined
+              suggestion.confidence = 0
+              suggestion.reasons = []
+              suggestion.is_new = true
+            }
             hasChanges = true
             results.reopened++
           }

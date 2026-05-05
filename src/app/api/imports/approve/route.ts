@@ -271,6 +271,16 @@ export async function POST(request: NextRequest) {
                 stmtTransactionId = newStmtTx?.id
                 results.transactionsCreated++
                 results.totalAmount += Math.abs(suggestion.amount)
+                // Reciprocal back-link on the suggestion so the queue builder
+                // and any matched_transaction_id lookups stay in sync with the
+                // forward link we just wrote on the new transaction. Without
+                // this, the suggestion either keeps a stale pre-match id from
+                // auto-matching or stays empty, even though we did create a
+                // real tx for it.
+                if (newStmtTx?.id) {
+                  suggestion.matched_transaction_id = newStmtTx.id
+                  suggestion.is_new = false
+                }
               }
             }
 

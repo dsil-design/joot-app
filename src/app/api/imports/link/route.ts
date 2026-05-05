@@ -23,6 +23,34 @@ interface ExtractionLog {
 }
 
 /**
+ * Mirror of the conflict guard in /api/transactions/[id]/attach-source: refuse
+ * to overwrite a suggestion whose match already points at a different tx. Without
+ * this, link silently steals the suggestion from the previous transaction and
+ * leaves that tx's source_statement_* columns dangling — the exact drift seen
+ * with the d3423a3b ↔ 7c8a05c0 taxi pair on edf5c209:34.
+ */
+function statementMatchConflict(
+  suggestion: Suggestion | undefined,
+  transactionId: string,
+): { conflictTransactionId: string } | null {
+  const existing = suggestion?.matched_transaction_id
+  if (existing && existing !== transactionId) {
+    return { conflictTransactionId: existing }
+  }
+  return null
+}
+
+function conflictResponse(conflict: { conflictTransactionId: string }) {
+  return NextResponse.json(
+    {
+      error: 'Statement row is already linked to another transaction',
+      conflictTransactionId: conflict.conflictTransactionId,
+    },
+    { status: 409 },
+  )
+}
+
+/**
  * POST /api/imports/link
  *
  * Links a queue item to an existing transaction.
@@ -107,6 +135,9 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
+
+      const mergedConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
+      if (mergedConflict) return conflictResponse(mergedConflict)
 
       suggestions[parsed.index] = {
         ...suggestions[parsed.index],
@@ -194,6 +225,9 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
+
+      const stmtConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
+      if (stmtConflict) return conflictResponse(stmtConflict)
 
       suggestions[parsed.index] = {
         ...suggestions[parsed.index],
@@ -320,6 +354,9 @@ export async function POST(request: NextRequest) {
       const suggestions = extractionLog?.suggestions || []
 
       if (parsed.index >= 0 && parsed.index < suggestions.length) {
+        const slipStmtConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
+        if (slipStmtConflict) return conflictResponse(slipStmtConflict)
+
         suggestions[parsed.index] = {
           ...suggestions[parsed.index],
           matched_transaction_id: transactionId,
@@ -384,6 +421,9 @@ export async function POST(request: NextRequest) {
       const suggestions = extractionLog?.suggestions || []
 
       if (parsed.index >= 0 && parsed.index < suggestions.length) {
+        const threeWayConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
+        if (threeWayConflict) return conflictResponse(threeWayConflict)
+
         suggestions[parsed.index] = {
           ...suggestions[parsed.index],
           matched_transaction_id: transactionId,
@@ -443,6 +483,36 @@ export async function POST(request: NextRequest) {
 
     } else if (parsed.type === 'self_transfer') {
       // --- SELF-TRANSFER link: link both statement entries to the same transaction ---
+      // Pre-fetch both statements and conflict-check both suggestions before
+      // any writes. A self-transfer touches two suggestions; checking inside
+      // the write loop would leave one side stolen and the other untouched if
+      // the second suggestion conflicts.
+      const stmtRefs = [
+        { stmtId: parsed.debitStatementId, idx: parsed.debitIndex },
+        { stmtId: parsed.creditStatementId, idx: parsed.creditIndex },
+      ] as const
+
+      const fetchedStmts = await Promise.all(
+        stmtRefs.map(({ stmtId }) =>
+          serviceClient
+            .from('statement_uploads')
+            .select('id, extraction_log')
+            .eq('id', stmtId)
+            .eq('user_id', user.id)
+            .single()
+            .then((r) => r.data),
+        ),
+      )
+
+      for (let i = 0; i < stmtRefs.length; i++) {
+        const stmt = fetchedStmts[i]
+        if (!stmt) continue
+        const log = stmt.extraction_log as ExtractionLog | null
+        const sugs = log?.suggestions || []
+        const conflict = statementMatchConflict(sugs[stmtRefs[i].idx], transactionId)
+        if (conflict) return conflictResponse(conflict)
+      }
+
       // Update the transaction to be a transfer type
       const { error: txUpdateError } = await serviceClient
         .from('transactions')
@@ -462,31 +532,22 @@ export async function POST(request: NextRequest) {
       }
 
       // Mark both suggestions as approved
-      for (const { stmtId, idx } of [
-        { stmtId: parsed.debitStatementId, idx: parsed.debitIndex },
-        { stmtId: parsed.creditStatementId, idx: parsed.creditIndex },
-      ]) {
-        const { data: stmt } = await serviceClient
-          .from('statement_uploads')
-          .select('id, extraction_log')
-          .eq('id', stmtId)
-          .eq('user_id', user.id)
-          .single()
-
-        if (stmt) {
-          const log = stmt.extraction_log as { suggestions?: Array<Record<string, unknown>>; [key: string]: unknown } | null
-          const suggestions = log?.suggestions || []
-          if (idx >= 0 && idx < suggestions.length) {
-            suggestions[idx] = {
-              ...suggestions[idx],
-              status: 'approved',
-              matched_transaction_id: transactionId,
-            }
-            await serviceClient
-              .from('statement_uploads')
-              .update({ extraction_log: { ...log, suggestions } as unknown as Json })
-              .eq('id', stmt.id)
+      for (let i = 0; i < stmtRefs.length; i++) {
+        const stmt = fetchedStmts[i]
+        if (!stmt) continue
+        const log = stmt.extraction_log as { suggestions?: Array<Record<string, unknown>>; [key: string]: unknown } | null
+        const suggestions = log?.suggestions || []
+        const { idx } = stmtRefs[i]
+        if (idx >= 0 && idx < suggestions.length) {
+          suggestions[idx] = {
+            ...suggestions[idx],
+            status: 'approved',
+            matched_transaction_id: transactionId,
           }
+          await serviceClient
+            .from('statement_uploads')
+            .update({ extraction_log: { ...log, suggestions } as unknown as Json })
+            .eq('id', stmt.id)
         }
       }
 

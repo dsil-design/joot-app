@@ -304,6 +304,18 @@ export async function POST(request: NextRequest) {
             // cross-source pairer won't re-pair the same pair, while still
             // letting the statement stand on its own in the queue.
             const isMerged = mergedStatementKeys.has(`${statement.id}:${idx}`)
+
+            // Merged reject of a statement entry that already has its own tx
+            // link (status='approved' + matched_transaction_id): only the
+            // email↔stmt pairing is being rejected; the statement's own link
+            // is independent and must stay intact. Leave the suggestion fully
+            // alone — flipping it to 'rejected' here is what produced the
+            // drift where reopen later cleared a still-valid match.
+            if (isMerged && suggestion.status === 'approved' && suggestion.matched_transaction_id) {
+              results.skipped++
+              continue
+            }
+
             const keepSuggestionPending = keepAlive
             suggestion.status = keepSuggestionPending ? 'pending' : 'rejected'
             // For non-merged rejects we also clear a stale matched transaction
