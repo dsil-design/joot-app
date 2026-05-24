@@ -38,6 +38,7 @@ import {
   type AttachSourceType,
   type SourceSearchResult,
 } from "@/components/page-specific/attach-source-dialog"
+import { RejectedPairsDialog } from "@/components/page-specific/rejected-pairs-dialog"
 import { parseImportId } from "@/lib/utils/import-id"
 import {
   useInfiniteScroll,
@@ -167,6 +168,7 @@ async function fetchMatches(
       waitingForStatement?: boolean
       extraEmailIds?: string[]
       extraSlipIds?: string[]
+      rejectedPairKeys?: string[]
     }) => ({
       id: item.id,
       statementTransaction: item.statementTransaction,
@@ -188,6 +190,7 @@ async function fetchMatches(
       waitingForStatement: item.waitingForStatement,
       extraEmailIds: item.extraEmailIds,
       extraSlipIds: item.extraSlipIds,
+      rejectedPairKeys: item.rejectedPairKeys,
     }))
 
     return {
@@ -551,6 +554,14 @@ export default function ReviewQueuePage() {
     if (!item) return
     setAttachTargetItem(item)
     setAttachOpen(true)
+  }
+
+  // "Rejected pairings" dialog — lets the user un-reject a previously rejected
+  // email↔statement pair so the cross-source pairer reconsiders it.
+  const [rejectedPairsEmailId, setRejectedPairsEmailId] = React.useState<string | null>(null)
+
+  const handleShowRejectedPairs = (emailId: string) => {
+    setRejectedPairsEmailId(emailId)
   }
 
   const attachDisabledTypes = React.useMemo<AttachSourceType[]>(() => {
@@ -941,6 +952,7 @@ export default function ReviewQueuePage() {
       onRefreshProposal={handleManualRefreshProposal}
       onSelectionChange={handleSelectionChange}
       onAttachSource={handleAttachSource}
+      onShowRejectedPairs={handleShowRejectedPairs}
     />
   )
 
@@ -1218,6 +1230,19 @@ export default function ReviewQueuePage() {
         onAttach={handleAttachConfirm}
         disabledTypes={attachDisabledTypes}
       />
+
+      {/* Rejected pairings dialog — surfaces email_transactions.rejected_pair_keys
+          and lets the user un-reject so the cross-source pairer reconsiders. */}
+      {rejectedPairsEmailId && (
+        <RejectedPairsDialog
+          open={!!rejectedPairsEmailId}
+          onOpenChange={(open) => {
+            if (!open) setRejectedPairsEmailId(null)
+          }}
+          emailId={rejectedPairsEmailId}
+          onRestored={() => refresh()}
+        />
+      )}
 
       {/* Create from import dialog */}
       <CreateFromImportDialog

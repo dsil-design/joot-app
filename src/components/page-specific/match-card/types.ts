@@ -146,6 +146,10 @@ export interface MatchCardData {
    * multi-item Lazada orders → multiple email receipts → one charge). */
   extraEmailIds?: string[]
   extraSlipIds?: string[]
+  /** Pair keys (`${statementId}:${index}`) the user previously rejected as a
+   * match for this email. Surfaced in the card so users can un-reject. Only
+   * meaningful when source === 'email'. */
+  rejectedPairKeys?: string[]
 }
 
 /**
@@ -170,6 +174,11 @@ export interface MatchCardCallbacks {
    * dialog itself; the card just signals intent.
    */
   onAttachSource?: (id: string) => void
+  /**
+   * Open the "Rejected pairings" dialog for an email card so the user can
+   * restore a previously rejected statement match. The page owns the dialog.
+   */
+  onShowRejectedPairs?: (emailId: string) => void
 }
 
 /**

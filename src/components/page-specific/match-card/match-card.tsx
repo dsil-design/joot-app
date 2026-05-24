@@ -15,7 +15,7 @@ import { MatchCardReasons } from "./match-card-reasons"
 import { MatchCardActions } from "./match-card-actions"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus } from "lucide-react"
+import { Plus, Ban } from "lucide-react"
 
 /**
  * Derive variant from data when not explicitly provided
@@ -87,6 +87,7 @@ export function MatchCard({
   onRefreshProposal,
   onSelectionChange,
   onAttachSource,
+  onShowRejectedPairs,
   className,
 }: MatchCardProps) {
   const variant = providedVariant || getVariant(data)
@@ -147,6 +148,21 @@ export function MatchCard({
                 +{data.extraSlipIds!.length} slip{data.extraSlipIds!.length === 1 ? '' : 's'}
               </Badge>
             )}
+          </div>
+        )}
+        {onShowRejectedPairs && data.source === "email" && (data.rejectedPairKeys?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onShowRejectedPairs(data.id.replace(/^email:/, ""))}
+              className="h-7 gap-1.5 text-xs text-muted-foreground"
+            >
+              <Ban className="size-3" />
+              {data.rejectedPairKeys!.length} rejected pairing
+              {data.rejectedPairKeys!.length === 1 ? "" : "s"} · Review
+            </Button>
           </div>
         )}
         {onAttachSource && data.isNew && (
