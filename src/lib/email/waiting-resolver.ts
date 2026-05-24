@@ -111,6 +111,8 @@ export async function resolveWaitingEmailTransactions(
         matched_transaction_id: best.targetId,
         match_confidence: best.score,
         match_method: 'auto',
+        status: 'matched',
+        matched_at: new Date().toISOString(),
       })
       .in('id', memberIds)
       .eq('user_id', userId)
@@ -145,6 +147,8 @@ export async function resolveWaitingEmailTransactions(
         .update({
           matched_transaction_id: ranked.bestMatch.targetId,
           match_confidence: ranked.bestMatch.score,
+          status: 'matched',
+          matched_at: new Date().toISOString(),
         })
         .eq('id', email.id)
         .eq('user_id', userId)

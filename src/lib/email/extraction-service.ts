@@ -182,15 +182,18 @@ export class EmailExtractionService {
    * - Parser type
    * - Payment context (e-wallet vs credit card)
    * - Currency (THB vs USD)
+   * - Optional AI classification (e.g. upcoming_charge_notice) so AI-only
+   *   rules can fire even when no regex parser matched
    *
    * Returns extended classification with rule matching info for debugging.
    */
   classifyEmailWithExtraction(
     email: RawEmailData,
-    extractionResult: ExtractionResult
+    extractionResult: ExtractionResult,
+    aiClassification?: AiClassification | null
   ): ExtendedClassificationResult {
     const extractedData = extractionResult.success ? extractionResult.data : undefined;
-    return classifyEmailWithContext(email, extractedData);
+    return classifyEmailWithContext(email, extractedData, aiClassification);
   }
 
   /**
@@ -560,7 +563,11 @@ export class EmailExtractionService {
           const { extraction, aiResult, parserKey } = await this.extractWithAiFallback(rawEmail, userId);
 
           // Step 3: Classify email with full context (backward-compatible coarse classification)
-          const classification = this.classifyEmailWithExtraction(rawEmail, extraction);
+          const classification = this.classifyEmailWithExtraction(
+            rawEmail,
+            extraction,
+            (aiResult?.ai_classification ?? null) as AiClassification | null,
+          );
 
           // Calculate confidence with detailed breakdown
           const confidenceBreakdown = this.calculateConfidenceWithBreakdown(extraction);
@@ -897,7 +904,11 @@ export class EmailExtractionService {
     const { extraction, aiResult, parserKey } = await this.extractWithAiFallback(rawEmail, userId, options?.userHint);
 
     // Re-classify with full context (including extracted currency)
-    const classification = this.classifyEmailWithExtraction(rawEmail, extraction);
+    const classification = this.classifyEmailWithExtraction(
+      rawEmail,
+      extraction,
+      (aiResult?.ai_classification ?? null) as AiClassification | null,
+    );
 
     // Calculate confidence with detailed breakdown
     const confidenceBreakdown = this.calculateConfidenceWithBreakdown(extraction);

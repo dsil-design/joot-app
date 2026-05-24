@@ -21,7 +21,7 @@
 
 import type { RawEmailData, ClassificationResult, ExtractedTransaction } from './types';
 import { EMAIL_CLASSIFICATION, EMAIL_TRANSACTION_STATUS } from '../types/email-imports';
-import type { EmailClassification, EmailTransactionStatus } from '../types/email-imports';
+import type { EmailClassification, EmailTransactionStatus, AiClassification } from '../types/email-imports';
 import { normalizeICloudRelay } from './icloud-relay';
 
 // ============================================================================
@@ -59,6 +59,14 @@ export interface ClassificationRule {
 
   /** Currency codes this rule applies to (null = all) */
   currencies: string[] | null;
+
+  /**
+   * AI classifications this rule applies to (null/omitted = all). When set,
+   * the rule only fires if the context carries an `aiClassification` in this
+   * list. Lets us special-case granular AI verdicts (e.g. notifications about
+   * future charges) that don't map cleanly to the coarse classification axis.
+   */
+  aiClassifications?: AiClassification[] | null;
 
   /** Resulting status when rule matches */
   status: EmailTransactionStatus;
@@ -196,6 +204,24 @@ const PARSER_PATTERNS: ParserPattern[] = [
  * 5. Unknown → pending_review
  */
 const DEFAULT_CLASSIFICATION_RULES: ClassificationRule[] = [
+  // Rule 0: AI-classified "upcoming charge notice" emails are heads-ups about
+  // future debits (T-Mobile/Comcast/utility "your bill is ready" mailers),
+  // not receipts of completed charges. They must go to pending_review so the
+  // user can decide whether to track the future transaction. Without this rule
+  // the reject UI's "wait for statement" option could park them indefinitely.
+  {
+    id: 'upcoming_charge_notice_review',
+    description: 'AI-flagged upcoming charge notices need manual review (never wait for a statement)',
+    parserKeys: null,
+    classifications: null,
+    paymentContexts: null,
+    currencies: null,
+    aiClassifications: ['upcoming_charge_notice'],
+    status: EMAIL_TRANSACTION_STATUS.PENDING_REVIEW,
+    priority: 5,
+    enabled: true,
+  },
+
   // Rule 1: E-wallet payments are ready to import (no CC matching needed)
   {
     id: 'e_wallet_ready',
@@ -410,6 +436,8 @@ export interface ClassificationContext {
   classification: EmailClassification;
   paymentContext: PaymentContext;
   currency: string | null;
+  /** Granular AI classification (when AI ran on this email) */
+  aiClassification?: AiClassification | null;
 }
 
 /**
@@ -444,6 +472,13 @@ function ruleMatches(rule: ClassificationRule, context: ClassificationContext): 
   // Check currency
   if (rule.currencies !== null && context.currency !== null) {
     if (!rule.currencies.includes(context.currency)) {
+      return false;
+    }
+  }
+
+  // Check AI classification (rules omitting this field don't constrain on it)
+  if (rule.aiClassifications && rule.aiClassifications.length > 0) {
+    if (!context.aiClassification || !rule.aiClassifications.includes(context.aiClassification)) {
       return false;
     }
   }
@@ -611,11 +646,14 @@ export interface ExtendedClassificationResult extends ClassificationResult {
  *
  * @param email - Raw email data with headers and body
  * @param extractedData - Optional extracted transaction data for currency info
+ * @param aiClassification - Optional granular AI verdict (used by rules that
+ *   need to special-case e.g. `upcoming_charge_notice`)
  * @returns Extended classification result with full context
  */
 export function classifyEmailWithContext(
   email: RawEmailData,
-  extractedData?: Partial<ExtractedTransaction>
+  extractedData?: Partial<ExtractedTransaction>,
+  aiClassification?: AiClassification | null
 ): ExtendedClassificationResult {
   const fromAddress = normalizeICloudRelay(email.from_address || '')?.toLowerCase() || '';
   const subject = email.subject?.toLowerCase() || '';
@@ -645,6 +683,7 @@ export function classifyEmailWithContext(
         classification: pattern.classification,
         paymentContext,
         currency,
+        aiClassification: aiClassification ?? null,
       };
 
       // Get status from rules
@@ -663,12 +702,36 @@ export function classifyEmailWithContext(
     }
   }
 
-  // No parser matched - classify using basic heuristics
+  // No parser matched. Fall back to basic heuristics — but if the AI labelled
+  // this email, run the rules engine so AI-only rules (e.g. upcoming-charge
+  // notices) can still take effect before we hand off to the heuristic default.
   const unknownResult = classifyUnknownEmail(email);
+  const currency = extractedData?.currency || null;
+
+  if (aiClassification) {
+    const context: ClassificationContext = {
+      parserKey: null,
+      classification: unknownResult.classification,
+      paymentContext: 'unknown',
+      currency,
+      aiClassification,
+    };
+    const matchedRule = getMatchingRule(context);
+    if (matchedRule && matchedRule.aiClassifications && matchedRule.aiClassifications.includes(aiClassification)) {
+      return {
+        ...unknownResult,
+        status: matchedRule.status,
+        paymentContext: 'unknown',
+        currency,
+        matchedRule,
+      };
+    }
+  }
+
   return {
     ...unknownResult,
     paymentContext: 'unknown',
-    currency: extractedData?.currency || null,
+    currency,
     matchedRule: null,
   };
 }
