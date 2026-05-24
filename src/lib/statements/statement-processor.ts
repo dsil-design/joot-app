@@ -234,6 +234,32 @@ export class StatementProcessor {
       result.parseResult = pdfResult.parseResult;
       result.transactionsExtracted = pdfResult.parseResult.transactions.length;
 
+      // Guardrail: if the parser pulled a non-trivial summary (charges/credits)
+      // but extracted zero transactions, that is almost certainly a parser
+      // miss — the upload that drove this guardrail (AmEx Hilton-Honors /
+      // Screen-Reader layout) reported $252.83 in charges with no
+      // transactions. Fail loudly instead of silently advancing to
+      // ready_for_review, so the miss is visible and retryable.
+      const summary = pdfResult.parseResult.summary;
+      const summaryHasActivity =
+        !!summary &&
+        (Math.abs(summary.totalCharges ?? 0) > 0.005 ||
+          Math.abs(summary.totalCredits ?? 0) > 0.005);
+      if (
+        summaryHasActivity &&
+        pdfResult.parseResult.transactions.length === 0
+      ) {
+        const charges = summary?.totalCharges ?? 0;
+        const credits = summary?.totalCredits ?? 0;
+        throw new Error(
+          `Parser produced 0 transactions despite the statement summary ` +
+            `reporting activity (totalCharges=${charges.toFixed(2)}, ` +
+            `totalCredits=${credits.toFixed(2)}). This is likely a parser ` +
+            `bug — please retry after the parser is updated, or report the ` +
+            `statement format.`
+        );
+      }
+
       // Step 5: Run matching (if not skipped)
       if (!options.skipMatching && pdfResult.parseResult.transactions.length > 0) {
         this.reportProgress('matching', 60, 'Matching transactions...');

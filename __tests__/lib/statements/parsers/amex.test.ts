@@ -805,6 +805,92 @@ $24.37
     });
   });
 
+  describe('Screen-Reader Optimized format (Hilton Honors layout)', () => {
+    // Date + merchant share the first line and the amount appears on a later
+    // line. Regression for the May 14 2026 upload that returned 0
+    // transactions despite the summary showing $252.83 in charges.
+    const SCREEN_READER_STATEMENT = `
+Hilton Honors Card
+Screen Reader Optimized version
+Prepared for
+DENNIS R SILLER
+Account Ending 4-85008
+Closing Date 05/14/26
+Payment Summary
+New Balance $252.83
+Minimum Payment Due $40.00
+Payment Due Date 06/08/26
+Account Summary
+Previous Balance $0.00
+Plus New Charges $252.83
+Plus Interest Charged $0.00
+Equals New Balance $252.83
+New Charges Summary
+Total New Charges $252.83
+New Charges Details
+DENNIS R SILLER
+Card Ending 4-85008
+Date Description Amount
+04/25/26 HILTON GARDEN INN EXTON EXTON PA
+Arrival Date : 04/24/26 Departure Date : 04/25/26
+00000000
+LODGING
+$252.83
+Fees
+Total Fees for this Period $0.00
+Interest Charged
+Total Interest Charged for this Period $0.00
+About Trailing Interest
+Interest may be reflected on your next statement.
+IMPORTANT NOTICES
+End of Important Notices.
+Important Information
+Customer Care & Billing Inquiries: 1-833-698-2566
+American Express Address
+AMERICAN EXPRESS
+PO BOX 6031
+CAROL STREAM IL 60197-6031
+Account Ending 4-85008
+Make check payable to American Express.
+Payment Due Date
+06/08/26
+New Balance
+$252.83
+AutoPay Amount
+$252.83
+`;
+
+    it('extracts the Hilton charge from the screen-reader layout', () => {
+      const result = amexParser.parse(SCREEN_READER_STATEMENT);
+
+      expect(result.success).toBe(true);
+      expect(result.transactions).toHaveLength(1);
+
+      const tx = result.transactions[0];
+      expect(tx.amount).toBeCloseTo(252.83, 2);
+      expect(tx.currency).toBe('USD');
+      expect(tx.description).toContain('HILTON GARDEN INN EXTON');
+      expect(tx.type).toBe('charge');
+      // 04/25/26 — parsed against the 2026 reference year
+      expect(tx.transactionDate.getFullYear()).toBe(2026);
+      expect(tx.transactionDate.getMonth()).toBe(3); // April (0-indexed)
+      expect(tx.transactionDate.getDate()).toBe(25);
+    });
+
+    it('does not pick up the payment coupon at the foot of the statement', () => {
+      // The coupon has "06/08/26", "New Balance", "$252.83" lines that
+      // structurally resemble a multi-line transaction. The trailer guards
+      // (Important Notices / Important Information / Customer Care /
+      // American Express Address) must stop parsing before reaching it.
+      const result = amexParser.parse(SCREEN_READER_STATEMENT);
+
+      const couponDateTx = result.transactions.find(
+        (t) => t.transactionDate.getMonth() === 5 // June 2026 = payment due date
+      );
+      expect(couponDateTx).toBeUndefined();
+    });
+  });
+
   describe('Amex identifiers', () => {
     it('should have comprehensive identifier list', () => {
       expect(AMEX_IDENTIFIERS).toContain('american express');

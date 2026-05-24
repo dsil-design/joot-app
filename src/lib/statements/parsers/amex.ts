@@ -556,7 +556,7 @@ function parseAccountInfo(text: string): StatementParseResult['accountInfo'] | u
 
 /**
  * Parse multi-line transactions (format used in some Amex statements)
- * Format:
+ * Format A (date alone on its own line):
  *   09/27/25
  *   SHEETZLINDENPA
  *   800-487-5444
@@ -568,6 +568,17 @@ function parseAccountInfo(text: string): StatementParseResult['accountInfo'] | u
  *   1.28 SINGAPORE DOLLAR @
  *   0.7742291
  *   $0.99
+ *
+ * Format B ("Screen Reader Optimized" / Hilton Honors layout — date and
+ * merchant share the first line, amount appears on a later line):
+ *   04/25/26 HILTON GARDEN INN EXTON EXTON PA
+ *   Arrival Date : 04/24/26 Departure Date : 04/25/26
+ *   LODGING
+ *   $252.83
+ *
+ * Stops parsing at the statement trailer (Important Notices / Interest
+ * Charge Calculation / etc.) so the payment coupon at the foot of the
+ * statement is not mistaken for a transaction.
  */
 function parseMultiLineTransactions(
   lines: string[],
@@ -576,8 +587,10 @@ function parseMultiLineTransactions(
 ): { transactions: ParsedStatementTransaction[]; endIndex: number } {
   const transactions: ParsedStatementTransaction[] = [];
 
-  // Date patterns for multi-line format (MM/DD/YY at the start of line)
-  const dateLinePattern = /^(\d{1,2}\/\d{1,2}\/\d{2})$/;
+  // Start of a multi-line transaction: MM/DD/YY at the start of the line,
+  // optionally followed by description on the same line. Format A leaves
+  // group 2 empty; Format B captures the merchant in group 2.
+  const dateLinePattern = /^(\d{1,2}\/\d{1,2}\/\d{2})(?:\s+(.+?))?$/;
   // Amount pattern (standalone $XX.XX on a line, possibly with CR)
   // $ prefix is REQUIRED to avoid matching bare foreign currency amounts (e.g., "296.00" THB)
   // which appear before the actual USD amount line (e.g., "$8.62")
@@ -588,13 +601,32 @@ function parseMultiLineTransactions(
   // Only matches after a foreign currency line has been seen
   const exchangeRatePattern = /^(0\.\d+|\d{1,2}\.\d+)$/;
 
+  // Statement trailer — once any of these markers appears we are past every
+  // transaction section. The payment coupon at the foot of every AmEx
+  // statement (Payment Due Date / date / New Balance / $amount) otherwise
+  // looks structurally like a multi-line transaction.
+  const trailerPattern =
+    /^(?:about\s+trailing\s+interest|interest\s+charge\s+calculation|important\s+(?:information|notices?)|customer\s+care|payment\s+coupon|american\s+express\s+address)/i;
+
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
 
+    // Stop at the statement trailer.
+    if (trailerPattern.test(line)) break;
+
     // Check if this line starts a new transaction (date line)
     const dateMatch = line.match(dateLinePattern);
     if (!dateMatch) {
+      i++;
+      continue;
+    }
+
+    // If the date line already contains a $amount in its trailing content,
+    // this is a traditional single-line transaction — let `parseTransactions`
+    // handle it via TRANSACTION_PATTERNS.
+    const trailingContent = dateMatch[2]?.trim() ?? '';
+    if (/\$[\d,]+\.\d{2}/.test(trailingContent)) {
       i++;
       continue;
     }
@@ -608,8 +640,10 @@ function parseMultiLineTransactions(
       continue;
     }
 
-    // Collect description lines until we hit an amount
+    // Collect description lines until we hit an amount. If the date line
+    // carried trailing merchant text (Format B), seed the description with it.
     const descriptionParts: string[] = [];
+    if (trailingContent) descriptionParts.push(trailingContent);
     let amount: number | null = null;
     let hasCR = false;
     let foreignAmount: number | undefined;
@@ -621,6 +655,9 @@ function parseMultiLineTransactions(
 
     while (i < lines.length) {
       const nextLine = lines[i];
+
+      // Trailer cuts off an in-progress transaction too.
+      if (trailerPattern.test(nextLine)) break;
 
       // Check for section headers that would end transaction parsing
       let isHeader = false;
@@ -736,10 +773,17 @@ function parseTransactions(
   let currentSection = 'purchases';
   const referenceDate = period?.endDate || new Date();
 
-  // First, try multi-line parsing for statements that use that format
-  // Detect if this is a multi-line format statement by looking for standalone date lines
+  // First, try multi-line parsing for statements that use that format.
+  // Two signals indicate a multi-line layout:
+  //   1. Three or more standalone date lines (Format A — date alone on line)
+  //   2. Any standalone $amount line (Format B — "Screen Reader Optimized"
+  //      / Hilton Honors, where date+merchant share a line and the amount
+  //      lives on its own). Traditional single-line AmEx statements never
+  //      put an amount on its own line, so this signal is specific.
   const standaloneDataLines = lines.filter(l => /^\d{1,2}\/\d{1,2}\/\d{2}$/.test(l));
-  const hasMultiLineFormat = standaloneDataLines.length >= 3;
+  const standaloneAmountLines = lines.filter(l => /^\$[\d,]+\.\d{2}(\s*CR)?$/i.test(l));
+  const hasMultiLineFormat =
+    standaloneDataLines.length >= 3 || standaloneAmountLines.length >= 1;
 
   if (hasMultiLineFormat) {
     // Use multi-line parser for the entire document
