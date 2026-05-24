@@ -12,6 +12,12 @@ interface EmailFilters {
   toDate?: string
 }
 
+function addOneDayUTC(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
 export async function fetchEmailQueueItems(
   supabase: SupabaseClient,
   userId: string,
@@ -34,11 +40,20 @@ export async function fetchEmailQueueItems(
   if (filters.currencyFilter && filters.currencyFilter !== 'all') {
     emailQuery = emailQuery.eq('currency', filters.currencyFilter)
   }
+  // Mirror email_hub_unified.effective_date = COALESCE(transaction_date, email_date::date).
+  // A strict transaction_date filter would silently drop pending emails whose parser
+  // hasn't extracted a date yet (NULL >= X is false in Postgres). For email_date
+  // (TIMESTAMPTZ), use `< nextDay` so the inclusive upper bound matches UTC-date bucketing.
   if (filters.fromDate) {
-    emailQuery = emailQuery.gte('transaction_date', filters.fromDate)
+    emailQuery = emailQuery.or(
+      `transaction_date.gte.${filters.fromDate},and(transaction_date.is.null,email_date.gte.${filters.fromDate})`
+    )
   }
   if (filters.toDate) {
-    emailQuery = emailQuery.lte('transaction_date', filters.toDate)
+    const nextDay = addOneDayUTC(filters.toDate)
+    emailQuery = emailQuery.or(
+      `transaction_date.lte.${filters.toDate},and(transaction_date.is.null,email_date.lt.${nextDay})`
+    )
   }
   if (filters.searchQuery) {
     emailQuery = emailQuery.or(`description.ilike.%${filters.searchQuery}%,subject.ilike.%${filters.searchQuery}%`)

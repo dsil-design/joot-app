@@ -13,9 +13,9 @@ interface SlipFilters {
 export async function fetchPaymentSlipQueueItems(
   supabase: SupabaseClient,
   userId: string,
-  _filters: SlipFilters = {}
+  filters: SlipFilters = {}
 ): Promise<QueueItem[]> {
-  const { data: slips, error: fetchError } = await supabase
+  let slipQuery = supabase
     .from('payment_slip_uploads')
     .select(`
       id, filename, status, review_status,
@@ -37,6 +37,13 @@ export async function fetchPaymentSlipQueueItems(
     .eq('user_id', userId)
     .in('status', ['ready_for_review', 'done'])
     .order('extraction_completed_at', { ascending: false })
+
+  // Matches the Sources view's filter (api/payment-slips/route.ts) so the queue
+  // shows the same slips users see flagged yellow/pending for the same month.
+  if (filters.fromDate) slipQuery = slipQuery.gte('transaction_date', filters.fromDate)
+  if (filters.toDate) slipQuery = slipQuery.lte('transaction_date', filters.toDate)
+
+  const { data: slips, error: fetchError } = await slipQuery
 
   if (fetchError) {
     console.error('Failed to fetch payment slips:', fetchError)

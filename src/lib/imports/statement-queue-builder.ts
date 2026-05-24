@@ -45,13 +45,15 @@ export async function fetchStatementQueueItems(
   userId: string,
   filters: StatementFilters
 ): Promise<QueueItem[]> {
-  const { data: statements, error: fetchError } = await supabase
+  let statementQuery = supabase
     .from('statement_uploads')
     .select(`
       id,
       filename,
       payment_method_id,
       extraction_log,
+      statement_period_start,
+      statement_period_end,
       payment_methods (
         id,
         name,
@@ -61,6 +63,24 @@ export async function fetchStatementQueueItems(
     .eq('user_id', userId)
     .in('status', ['ready_for_review', 'in_review', 'done'])
     .order('extraction_completed_at', { ascending: false })
+
+  // Coarse pre-filter: keep statements whose period overlaps [fromDate, toDate].
+  // Per-suggestion dates still get filtered by the aggregator on
+  // statementTransaction.date — this just trims the fetch. Statements without a
+  // parsed period are kept (period columns NULL → no constraint), so the
+  // aggregator remains the authoritative filter.
+  if (filters.fromDate) {
+    statementQuery = statementQuery.or(
+      `statement_period_end.gte.${filters.fromDate},statement_period_end.is.null`
+    )
+  }
+  if (filters.toDate) {
+    statementQuery = statementQuery.or(
+      `statement_period_start.lte.${filters.toDate},statement_period_start.is.null`
+    )
+  }
+
+  const { data: statements, error: fetchError } = await statementQuery
 
   if (fetchError) {
     console.error('Failed to fetch statements:', fetchError)
