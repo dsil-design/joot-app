@@ -15,7 +15,7 @@ import {
 import { MonthStepperFilter } from "@/components/ui/month-stepper-filter"
 import { Search, X, SlidersHorizontal } from "lucide-react"
 import type { DateRange } from "react-day-picker"
-import { getMonthRange, isCurrentMonthRange } from "@/lib/utils/date-filters"
+import { getMonthRange, isCurrentMonthRange, type DatePresetKey } from "@/lib/utils/date-filters"
 
 // The review queue is, by definition, a "pending work" surface — items leave
 // the queue once they're approved or rejected. The status field is retained on
@@ -74,6 +74,14 @@ const paymentMethodTypeOptions: Array<{ value: FilterPaymentMethodType; label: s
   { value: "all", label: "All Types" },
   { value: "credit_card", label: "Credit Card" },
   { value: "bank_account", label: "Bank Account" },
+]
+
+const datePresets: Array<{ key: DatePresetKey; label: string }> = [
+  { key: "today", label: "Today" },
+  { key: "this-week", label: "This Week" },
+  { key: "last-month", label: "Last Month" },
+  { key: "this-year", label: "Year to Date" },
+  { key: "all-time", label: "All Time" },
 ]
 
 // Primary source filter — mutually exclusive. "Cross-Source" lives in the
@@ -315,6 +323,7 @@ export function ReviewQueueFilterBar({
         <MonthStepperFilter
           dateRange={filters.dateRange}
           onDateRangeChange={(range: DateRange | undefined) => handleFilterChange("dateRange", range)}
+          presets={datePresets}
         />
       </div>
 

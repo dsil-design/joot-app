@@ -25,7 +25,7 @@ import {
 } from "@/lib/utils/date-filters"
 import { cn } from "@/lib/utils"
 
-const SECONDARY_PRESETS: Array<{ key: DatePresetKey; label: string }> = [
+const DEFAULT_SECONDARY_PRESETS: Array<{ key: DatePresetKey; label: string }> = [
   { key: "today", label: "Today" },
   { key: "this-week", label: "This Week" },
   { key: "this-year", label: "Year to Date" },
@@ -36,6 +36,7 @@ interface MonthStepperFilterProps {
   dateRange: DateRange | undefined
   onDateRangeChange: (range: DateRange | undefined) => void
   className?: string
+  presets?: Array<{ key: DatePresetKey; label: string }>
 }
 
 /**
@@ -49,6 +50,7 @@ export function MonthStepperFilter({
   dateRange,
   onDateRangeChange,
   className,
+  presets = DEFAULT_SECONDARY_PRESETS,
 }: MonthStepperFilterProps) {
   const [customOpen, setCustomOpen] = React.useState(false)
 
@@ -60,7 +62,7 @@ export function MonthStepperFilter({
     // "All Time" is represented by dateRange === undefined
     if (!dateRange) return "all-time"
     if (!dateRange.from || !dateRange.to) return null
-    for (const { key } of SECONDARY_PRESETS) {
+    for (const { key } of presets) {
       if (key === "all-time") continue
       const r = getPresetRange(key)
       if (
@@ -73,7 +75,7 @@ export function MonthStepperFilter({
       }
     }
     return null
-  }, [dateRange])
+  }, [dateRange, presets])
 
   const isCustomActive = !isMonthMode && !activePreset && !!dateRange?.from
 
@@ -85,7 +87,7 @@ export function MonthStepperFilter({
       return format(monthAnchor, "MMMM yyyy")
     }
     if (activePreset && dateRange?.from && dateRange?.to) {
-      const presetLabel = SECONDARY_PRESETS.find(p => p.key === activePreset)?.label
+      const presetLabel = presets.find(p => p.key === activePreset)?.label
       const rangeText = isSameDay(dateRange.from, dateRange.to)
         ? format(dateRange.from, "MMM d")
         : `${format(dateRange.from, "MMM d")}–${format(dateRange.to, "MMM d")}`
@@ -95,7 +97,7 @@ export function MonthStepperFilter({
       return `${format(dateRange.from, "MMM d, yyyy")} – ${format(dateRange.to, "MMM d, yyyy")}`
     }
     return format(currentMonthAnchor, "MMMM yyyy")
-  }, [isMonthMode, monthAnchor, activePreset, dateRange, currentMonthAnchor])
+  }, [isMonthMode, monthAnchor, activePreset, dateRange, currentMonthAnchor, presets])
 
   const canStepForward = isMonthMode && monthAnchor !== null && monthAnchor < currentMonthAnchor
 
@@ -188,7 +190,7 @@ export function MonthStepperFilter({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-        {SECONDARY_PRESETS.map(({ key, label: chipLabel }) => {
+        {presets.map(({ key, label: chipLabel }) => {
           const isActive = activePreset === key
           return (
             <button

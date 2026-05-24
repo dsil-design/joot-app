@@ -1,0 +1,63 @@
+{
+  "log": [
+    {
+      "step": "downloading",
+      "message": "Fetching upload record...",
+      "percent": 0,
+      "timestamp": "2026-05-24T07:23:37.476Z"
+    },
+    {
+      "step": "downloading",
+      "message": "Downloading file from storage...",
+      "percent": 10,
+      "timestamp": "2026-05-24T07:23:38.059Z"
+    },
+    {
+      "step": "validating",
+      "message": "Validating file...",
+      "percent": 20,
+      "timestamp": "2026-05-24T07:23:38.095Z"
+    },
+    {
+      "step": "extracting",
+      "message": "Extracting text from PDF...",
+      "percent": 30,
+      "timestamp": "2026-05-24T07:23:40.615Z"
+    },
+    {
+      "step": "parsing",
+      "message": "Parsed 0 transactions",
+      "percent": 50,
+      "timestamp": "2026-05-24T07:23:40.823Z"
+    },
+    {
+      "step": "saving",
+      "message": "Saving results...",
+      "percent": 90,
+      "timestamp": "2026-05-24T07:23:40.823Z"
+    },
+    {
+      "step": "completed",
+      "message": "Processing complete",
+      "percent": 100,
+      "timestamp": "2026-05-24T07:23:40.823Z"
+    }
+  ],
+  "summary": {
+    "newBalance": 252.83,
+    "totalCharges": 252.83,
+    "totalInterest": 0,
+    "minimumPayment": 40,
+    "previousBalance": 0
+  },
+  "warnings": [
+    "No transactions extracted from statement"
+  ],
+  "confidence": 50,
+  "page_count": 10,
+  "period_end": "2026-05-14",
+  "parser_used": "amex",
+  "suggestions": [],
+  "period_start": "2026-04-14",
+  "transactions": []
+}
