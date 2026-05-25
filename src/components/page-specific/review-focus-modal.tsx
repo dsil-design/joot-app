@@ -184,106 +184,108 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
 
     const slipData = data.mergedPaymentSlipData
     return (
-      <div className="space-y-4">
-        {/* Payment slip section (only present for 3-way slip+email+stmt groupings) */}
-        {slipData && (
-          <div className="space-y-2">
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row lg:flex-col gap-3">
+          {/* Payment slip section (only present for 3-way slip+email+stmt groupings) */}
+          {slipData && (
+            <SourceCard>
+              <SourceSectionLabel
+                label="From Payment Slip"
+                href={getSourceLink(data.id)}
+                onPreview={openSlipPreview}
+              />
+              <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+                <span>{formatMatchDate(slipData.date)}</span>
+              </TransactionDetailRow>
+              <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+                <span className="font-medium truncate" title={slipData.description}>
+                  {slipData.description}
+                </span>
+              </TransactionDetailRow>
+              <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+                <span className="font-medium">
+                  {formatMatchAmount(slipData.amount, slipData.currency)}
+                </span>
+              </TransactionDetailRow>
+              {slipData.metadata.senderName && (
+                <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+                  <span className="text-muted-foreground truncate">
+                    {slipData.metadata.senderName}
+                  </span>
+                </TransactionDetailRow>
+              )}
+            </SourceCard>
+          )}
+
+          {/* Email section */}
+          <SourceCard>
             <SourceSectionLabel
-              label="From Payment Slip"
+              label="From Email"
+              href={getMergedEmailLink(data.id)}
+              onPreview={openEmailPreview}
+            />
+            {(meta.fromName || meta.fromAddress) && (
+              <TransactionDetailRow icon={<Mail className="h-3.5 w-3.5" />}>
+                <div className="min-w-0">
+                  <span className="font-medium truncate block">
+                    {meta.fromName || meta.fromAddress}
+                  </span>
+                  {meta.fromName && meta.fromAddress && (
+                    <span className="text-[11px] text-muted-foreground truncate block">
+                      {meta.fromAddress}
+                    </span>
+                  )}
+                </div>
+                {parserTag && (
+                  <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ml-1", parserTag.className)}>
+                    {parserTag.label}
+                  </span>
+                )}
+              </TransactionDetailRow>
+            )}
+            {meta.subject && (
+              <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+                <span className="truncate text-muted-foreground" title={meta.subject}>
+                  {meta.subject}
+                </span>
+              </TransactionDetailRow>
+            )}
+            <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+              <span className="font-medium">
+                {formatMatchAmount(data.mergedEmailData.amount, data.mergedEmailData.currency)}
+              </span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+              <span>{formatMatchDate(data.mergedEmailData.date)}</span>
+            </TransactionDetailRow>
+            {meta.vendorNameRaw && (
+              <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+                <span className="text-muted-foreground truncate">{meta.vendorNameRaw}</span>
+              </TransactionDetailRow>
+            )}
+          </SourceCard>
+
+          {/* Statement section */}
+          <SourceCard>
+            <SourceSectionLabel
+              label="From Statement"
               href={getSourceLink(data.id)}
-              onPreview={openSlipPreview}
+              onPreview={openStatementPreview}
             />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
-              <span>{formatMatchDate(slipData.date)}</span>
+              <span>{formatMatchDate(data.statementTransaction.date)}</span>
             </TransactionDetailRow>
             <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
-              <span className="font-medium truncate" title={slipData.description}>
-                {slipData.description}
+              <span className="font-medium truncate" title={data.statementTransaction.description}>
+                {cleanStatementDescription(data.statementTransaction.description)}
               </span>
             </TransactionDetailRow>
             <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
               <span className="font-medium">
-                {formatMatchAmount(slipData.amount, slipData.currency)}
+                {formatMatchAmount(data.statementTransaction.amount, data.statementTransaction.currency)}
               </span>
             </TransactionDetailRow>
-            {slipData.metadata.senderName && (
-              <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
-                <span className="text-muted-foreground truncate">
-                  {slipData.metadata.senderName}
-                </span>
-              </TransactionDetailRow>
-            )}
-          </div>
-        )}
-
-        {/* Email section */}
-        <div className={cn("space-y-2", slipData && "border-t pt-3")}>
-          <SourceSectionLabel
-            label="From Email"
-            href={getMergedEmailLink(data.id)}
-            onPreview={openEmailPreview}
-          />
-          {(meta.fromName || meta.fromAddress) && (
-            <TransactionDetailRow icon={<Mail className="h-3.5 w-3.5" />}>
-              <div className="min-w-0">
-                <span className="font-medium truncate block">
-                  {meta.fromName || meta.fromAddress}
-                </span>
-                {meta.fromName && meta.fromAddress && (
-                  <span className="text-[11px] text-muted-foreground truncate block">
-                    {meta.fromAddress}
-                  </span>
-                )}
-              </div>
-              {parserTag && (
-                <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ml-1", parserTag.className)}>
-                  {parserTag.label}
-                </span>
-              )}
-            </TransactionDetailRow>
-          )}
-          {meta.subject && (
-            <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
-              <span className="truncate text-muted-foreground" title={meta.subject}>
-                {meta.subject}
-              </span>
-            </TransactionDetailRow>
-          )}
-          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
-            <span className="font-medium">
-              {formatMatchAmount(data.mergedEmailData.amount, data.mergedEmailData.currency)}
-            </span>
-          </TransactionDetailRow>
-          <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
-            <span>{formatMatchDate(data.mergedEmailData.date)}</span>
-          </TransactionDetailRow>
-          {meta.vendorNameRaw && (
-            <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
-              <span className="text-muted-foreground truncate">{meta.vendorNameRaw}</span>
-            </TransactionDetailRow>
-          )}
-        </div>
-
-        {/* Statement section */}
-        <div className="space-y-2 border-t pt-3">
-          <SourceSectionLabel
-            label="From Statement"
-            href={getSourceLink(data.id)}
-            onPreview={openStatementPreview}
-          />
-          <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
-            <span>{formatMatchDate(data.statementTransaction.date)}</span>
-          </TransactionDetailRow>
-          <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
-            <span className="font-medium truncate" title={data.statementTransaction.description}>
-              {cleanStatementDescription(data.statementTransaction.description)}
-            </span>
-          </TransactionDetailRow>
-          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
-            <span className="font-medium">
-              {formatMatchAmount(data.statementTransaction.amount, data.statementTransaction.currency)}
-            </span>
-          </TransactionDetailRow>
+          </SourceCard>
         </div>
 
         {/* Cross-currency bar */}
@@ -326,59 +328,61 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
     const slip = data.mergedPaymentSlipData
 
     return (
-      <div className="space-y-4">
-        {/* Payment slip section */}
-        <div className="space-y-2">
-          <SourceSectionLabel
-            label="From Payment Slip"
-            href={getSourceLink(data.id)}
-            onPreview={openSlipPreview}
-          />
-          <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
-            <span>{formatMatchDate(slip.date)}</span>
-          </TransactionDetailRow>
-          <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
-            <span className="font-medium truncate" title={slip.description}>
-              {slip.description}
-            </span>
-          </TransactionDetailRow>
-          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
-            <span className="font-medium">
-              {formatMatchAmount(slip.amount, slip.currency)}
-            </span>
-          </TransactionDetailRow>
-          {slip.metadata.senderName && (
-            <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
-              <span className="text-muted-foreground truncate">{slip.metadata.senderName}</span>
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row lg:flex-col gap-3">
+          {/* Payment slip section */}
+          <SourceCard>
+            <SourceSectionLabel
+              label="From Payment Slip"
+              href={getSourceLink(data.id)}
+              onPreview={openSlipPreview}
+            />
+            <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+              <span>{formatMatchDate(slip.date)}</span>
             </TransactionDetailRow>
-          )}
-          {slip.metadata.bankDetected && (
-            <TransactionDetailRow icon={<CreditCard className="h-3.5 w-3.5" />}>
-              <span className="text-muted-foreground">{slip.metadata.bankDetected}</span>
+            <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+              <span className="font-medium truncate" title={slip.description}>
+                {slip.description}
+              </span>
             </TransactionDetailRow>
-          )}
-        </div>
+            <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+              <span className="font-medium">
+                {formatMatchAmount(slip.amount, slip.currency)}
+              </span>
+            </TransactionDetailRow>
+            {slip.metadata.senderName && (
+              <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+                <span className="text-muted-foreground truncate">{slip.metadata.senderName}</span>
+              </TransactionDetailRow>
+            )}
+            {slip.metadata.bankDetected && (
+              <TransactionDetailRow icon={<CreditCard className="h-3.5 w-3.5" />}>
+                <span className="text-muted-foreground">{slip.metadata.bankDetected}</span>
+              </TransactionDetailRow>
+            )}
+          </SourceCard>
 
-        {/* Statement section */}
-        <div className="space-y-2 border-t pt-3">
-          <SourceSectionLabel
-            label="From Statement"
-            href={getSourceLink(data.id)}
-            onPreview={openStatementPreview}
-          />
-          <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
-            <span>{formatMatchDate(data.statementTransaction.date)}</span>
-          </TransactionDetailRow>
-          <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
-            <span className="font-medium truncate" title={data.statementTransaction.description}>
-              {cleanStatementDescription(data.statementTransaction.description)}
-            </span>
-          </TransactionDetailRow>
-          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
-            <span className="font-medium">
-              {formatMatchAmount(data.statementTransaction.amount, data.statementTransaction.currency)}
-            </span>
-          </TransactionDetailRow>
+          {/* Statement section */}
+          <SourceCard>
+            <SourceSectionLabel
+              label="From Statement"
+              href={getSourceLink(data.id)}
+              onPreview={openStatementPreview}
+            />
+            <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+              <span>{formatMatchDate(data.statementTransaction.date)}</span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+              <span className="font-medium truncate" title={data.statementTransaction.description}>
+                {cleanStatementDescription(data.statementTransaction.description)}
+              </span>
+            </TransactionDetailRow>
+            <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+              <span className="font-medium">
+                {formatMatchAmount(data.statementTransaction.amount, data.statementTransaction.currency)}
+              </span>
+            </TransactionDetailRow>
+          </SourceCard>
         </div>
 
         {/* Preview modals */}
@@ -521,6 +525,14 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
           filename={previewModal.filename}
         />
       )}
+    </div>
+  )
+}
+
+function SourceCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex-1 min-w-0 rounded-md border bg-card/50 p-3 space-y-2">
+      {children}
     </div>
   )
 }
@@ -1191,7 +1203,7 @@ export function ReviewFocusModal({
         {/* ── Split pane content ── */}
         <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-[1fr_2fr] lg:divide-x min-h-0">
           {/* Left panel: Source info */}
-          <div className="overflow-y-auto p-5 border-b lg:border-b-0 max-h-40 lg:max-h-none">
+          <div className="overflow-y-auto p-5 border-b lg:border-b-0">
             <SourceInfoPanel data={item} />
           </div>
 
@@ -1433,7 +1445,7 @@ export function ReviewFocusModal({
               </div>
               {/* Actions for new items */}
               <div className="sticky bottom-0 bg-background border-t px-5 py-3 shrink-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-                <div className="flex items-center gap-2 lg:contents">
+                <div className="flex flex-wrap items-center gap-2 lg:contents">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1458,7 +1470,7 @@ export function ReviewFocusModal({
                     size="sm"
                     onClick={() => handleCreate(true)}
                     disabled={!isValid || isSaving}
-                    className="ml-auto lg:ml-0"
+                    className="w-full sm:w-auto sm:ml-auto lg:ml-0"
                   >
                     {isSaving ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
