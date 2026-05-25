@@ -713,6 +713,18 @@ export async function aggregateQueueItems(
     for (const [, group] of byMatchedTxn) {
       if (group.length < 2) continue
 
+      // Safety: this pass only understands bare statement/email/slip items.
+      // When the group contains an already-merged item (built by Phase 0 or
+      // the cross-source pairer), the find() lookups below skip it as if it
+      // weren't there — and line 744 then marks every group member, merged
+      // included, for removal. If the lookups find bare counterparts for a
+      // DIFFERENT real-world payment (which happens when an upstream fuzzy
+      // heuristic puts a wrong matched_transaction_id on one side), the
+      // user's deliberately-built merged card vanishes with no replacement.
+      // Leaving the group untouched is strictly safer; worst case the user
+      // sees two cards for the same txn instead of zero.
+      if (group.some(i => i.source === 'merged')) continue
+
       // Pick the best item as the base (prefer statement, then email, then others)
       const stmtItem = group.find(i => i.source === 'statement')
       const emailItem = group.find(i => i.source === 'email')
