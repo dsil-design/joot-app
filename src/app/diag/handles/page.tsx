@@ -22,6 +22,38 @@ export default function HandleDiagnostic() {
   const [openD, setOpenD] = React.useState(false)
   const [openE, setOpenE] = React.useState(false)
   const [openF, setOpenF] = React.useState(false)
+  const [openG, setOpenG] = React.useState(false)
+
+  // Variant G: capture-phase touchmove guard that stops propagation
+  // (so react-remove-scroll never preventDefaults) when the user has an
+  // active text-selection inside an input. Registered at mount so it
+  // runs before any Dialog's RemoveScroll listener.
+  React.useEffect(() => {
+    const onTouchMove = (e: TouchEvent) => {
+      const active = document.activeElement
+      if (
+        !(active instanceof HTMLInputElement) &&
+        !(active instanceof HTMLTextAreaElement)
+      ) {
+        return
+      }
+      const start = active.selectionStart
+      const end = active.selectionEnd
+      if (start === null || end === null || start === end) return
+      e.stopImmediatePropagation()
+    }
+    document.addEventListener("touchmove", onTouchMove, {
+      capture: true,
+      passive: true,
+    })
+    return () => {
+      document.removeEventListener(
+        "touchmove",
+        onTouchMove,
+        { capture: true } as EventListenerOptions
+      )
+    }
+  }, [])
 
   return (
     <div className="mx-auto max-w-2xl p-6 space-y-6">
@@ -107,6 +139,16 @@ export default function HandleDiagnostic() {
             onInteractOutside={(e) => e.preventDefault()}
           >
             <DialogHeader><DialogTitle>F</DialogTitle></DialogHeader>
+            <Input defaultValue={SAMPLE} />
+          </DialogContent>
+        </Dialog>
+      </Card>
+
+      <Card label="G — modal=true with capture-phase touchmove guard (real-fix candidate)">
+        <Button onClick={() => setOpenG(true)}>Open G</Button>
+        <Dialog open={openG} onOpenChange={setOpenG}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>G</DialogTitle></DialogHeader>
             <Input defaultValue={SAMPLE} />
           </DialogContent>
         </Dialog>
