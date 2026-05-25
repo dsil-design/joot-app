@@ -3,25 +3,34 @@
 import * as React from "react"
 
 /**
- * Keeps native iOS text-selection handles draggable inside Radix Dialogs.
+ * Patches two iOS-only touchmove bugs caused by react-remove-scroll, which
+ * Radix Dialog wraps its content with. That library attaches a capture-phase
+ * `touchmove` listener on the document and preventDefaults movements outside
+ * the allowed container's bounds, which breaks:
  *
- * Why: Radix Dialog's `<DialogContent>` wraps its tree in react-remove-scroll,
- * which attaches a capture-phase `touchmove` listener on the document and
- * preventDefaults movements that would scroll past the allowed container's
- * bounds. iOS dispatches touchmove during a selection-handle drag, and that
- * preventDefault aborts the drag — handles render but won't move.
+ *   1. Native selection-handle drags inside Dialog inputs/textareas — iOS
+ *      dispatches touchmove during the drag, gets preventDefaulted, and the
+ *      handles render but won't move.
+ *   2. Touch scrolling inside Radix popovers/selects/dropdowns rendered while
+ *      a Dialog is open — they portal to `document.body`, so they sit outside
+ *      the allowed container and their internal scroll gets blocked.
  *
- * Fix: register a capture-phase `touchmove` listener at app start, before any
+ * Fix: register capture-phase `touchmove` listeners at app start, before any
  * Dialog mounts (and therefore before react-remove-scroll's listener). When
- * an input/textarea has a non-collapsed selection (i.e. the user is likely
- * dragging a handle), stopImmediatePropagation so react-remove-scroll's
- * listener never fires.
+ * the event matches one of the patched cases, stopImmediatePropagation so
+ * react-remove-scroll's listener never fires.
  *
- * Validated on iPad via `/diag/handles` Variant G.
+ * Selection-handle variant validated on iPad via `/diag/handles` Variant G.
  */
 export function IOSSelectionFix() {
   React.useEffect(() => {
     const onTouchMove = (e: TouchEvent) => {
+      const target = e.target as Element | null
+      if (target?.closest("[data-radix-popper-content-wrapper]")) {
+        e.stopImmediatePropagation()
+        return
+      }
+
       const active = document.activeElement
       if (
         !(active instanceof HTMLInputElement) &&
