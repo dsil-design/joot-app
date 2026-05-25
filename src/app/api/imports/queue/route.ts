@@ -5,6 +5,7 @@ import { fetchEmailQueueItems } from '@/lib/imports/email-queue-builder'
 import { fetchPaymentSlipQueueItems } from '@/lib/imports/payment-slip-queue-builder'
 import { aggregateQueueItems } from '@/lib/imports/queue-aggregator'
 import { backfillSlipTransactionMatches } from '@/lib/imports/slip-transaction-backfill'
+import { backfillStatementBacklinks } from '@/lib/imports/statement-backlink-backfill'
 import { getProposalsForItems, markStaleProposals, transformProposalRow } from '@/lib/proposals/proposal-service'
 import { parseImportId } from '@/lib/utils/import-id'
 import type { QueueFilters, QueueItem } from '@/lib/imports/queue-types'
@@ -77,6 +78,12 @@ export async function GET(request: NextRequest) {
     // so the aggregator's existing dedup-by-matched-transaction pass will
     // consolidate them into a single merged card.
     await backfillSlipTransactionMatches(supabase, user.id, emailItems, statementItems)
+
+    // Backfill: auto-approve pending statement suggestions whose matched
+    // Joot transaction is already linked to a slip or email. Without this,
+    // the suggestion sits forever as "unset" and the statement never reaches
+    // 'done' even though the dedup pass already merges the card as approved.
+    await backfillStatementBacklinks(supabase, user.id, statementItems)
 
     // Aggregate, pair, filter, sort
     const result = await aggregateQueueItems(supabase, statementItems, emailItems, filters, paymentSlipItems)
