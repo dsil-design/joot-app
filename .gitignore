@@ -72,3 +72,6 @@ check-migrations.js
 
 # Local analysis / investigation dumps in repo root
 /source_link_*
+
+# Local visual-verification screenshots from scripts/verify-focus-modal.ts
+tmp/modal-shots/
