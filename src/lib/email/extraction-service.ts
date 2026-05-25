@@ -53,6 +53,7 @@ import { rankMatches } from '../matching/match-ranker';
 import type { SourceTransaction, TargetTransaction } from '../matching/match-scorer';
 import { classifyEmail as aiClassifyEmail, classifyAndExtractEmail } from './ai-classifier';
 import { consolidateEmail } from './email-consolidation';
+import { persistSubOrders, autoMatchSubOrders, loadSubOrders } from './sub-order-matcher';
 import { getFeedbackCount } from './ai-feedback-service';
 import { logJournalEntry, getInvocationType } from './ai-journal-service';
 import { triggerBatchAnalysis } from './ai-analysis-service';
@@ -63,6 +64,7 @@ import { boltParser } from './extractors/bolt';
 import { bangkokBankParser } from './extractors/bangkok-bank';
 import { kasikornParser } from './extractors/kasikorn';
 import { lazadaParser } from './extractors/lazada';
+import { amazonParser } from './extractors/amazon';
 import { appleParser } from './extractors/apple';
 import { stripeParser } from './extractors/stripe';
 import { citizensBankParser } from './extractors/citizens-bank';
@@ -396,15 +398,6 @@ export class EmailExtractionService {
 
       const txDateStr = transaction_date.toISOString().split('T')[0];
 
-      // Build source transaction
-      const source: SourceTransaction = {
-        amount: Number(amount),
-        currency: currency || 'USD',
-        date: txDateStr,
-        vendor: vendor_name_raw || '',
-        description: extraction.data.description || undefined,
-      };
-
       // Query candidate transactions within ±7 days
       const dateFrom = new Date(transaction_date);
       dateFrom.setDate(dateFrom.getDate() - 7);
@@ -435,7 +428,28 @@ export class EmailExtractionService {
         description: tx.description || undefined,
       }));
 
-      // Rank matches — pass supabase for cross-currency conversion
+      // Multi-sub-order email (e.g. Amazon split shipment): load the
+      // persisted sub-order rows and match each one independently. Parent's
+      // matched_transaction_id stays NULL; the trigger flips parent status to
+      // `matched` when every sub-order is matched.
+      const persistedSubs = await loadSubOrders(supabase, emailTransactionId);
+      if (persistedSubs.length >= 2) {
+        await autoMatchSubOrders(supabase, userId, persistedSubs, targets, {
+          sourceDate: txDateStr,
+          sourceVendor: vendor_name_raw || '',
+        });
+        return;
+      }
+
+      // Single-amount email — existing behavior.
+      const source: SourceTransaction = {
+        amount: Number(amount),
+        currency: currency || 'USD',
+        date: txDateStr,
+        vendor: vendor_name_raw || '',
+        description: extraction.data.description || undefined,
+      };
+
       const ranked = await rankMatches(source, targets, { supabase });
 
       // Auto-approval intentionally disabled: every match (including HIGH
@@ -654,6 +668,19 @@ export class EmailExtractionService {
               errors: [`Database insert failed: ${insertError.message}`],
             });
             continue;
+          }
+
+          // Persist sub-order breakdown when present (e.g. Amazon split
+          // shipments). The trigger keeps parent status in sync as sub-orders
+          // get matched. Done before consolidation/matching so the data is
+          // available regardless of the auto-match branch taken.
+          const subOrdersToPersist = extraction.data?.sub_orders ?? [];
+          if (insertedRow && subOrdersToPersist.length >= 2) {
+            try {
+              await persistSubOrders(supabase, insertedRow.id, userId, subOrdersToPersist);
+            } catch (err) {
+              console.error(`Failed to persist sub-orders for ${insertedRow.id}:`, err);
+            }
           }
 
           // Step 5: Log to AI journal (fire-and-forget)
@@ -971,6 +998,20 @@ export class EmailExtractionService {
       .update(updateData)
       .eq('id', emailTransactionId);
 
+    // Refresh sub-order rows from the latest extraction. persistSubOrders is
+    // a delete-then-insert, so an empty sub_orders array correctly removes
+    // any stale rows from a previous extraction.
+    try {
+      await persistSubOrders(
+        supabase,
+        emailTransactionId,
+        userId,
+        extraction.data?.sub_orders ?? [],
+      );
+    } catch (err) {
+      console.error(`Failed to refresh sub-orders for ${emailTransactionId}:`, err);
+    }
+
     // Log to AI journal (fire-and-forget)
     if (aiResult) {
       const hadRegexParser = parserKey !== null && parserKey !== 'ai-fallback';
@@ -1086,6 +1127,7 @@ extractionService.registerParser(boltParser);
 extractionService.registerParser(bangkokBankParser);
 extractionService.registerParser(kasikornParser);
 extractionService.registerParser(lazadaParser);
+extractionService.registerParser(amazonParser);
 extractionService.registerParser(appleParser);
 extractionService.registerParser(stripeParser);
 extractionService.registerParser(citizensBankParser);

@@ -40,6 +40,31 @@ export interface ExtractedTransaction {
 
   /** Payment card type extracted from receipt (e.g., "Visa", "Mastercard") */
   payment_card_type?: string | null;
+
+  /**
+   * Per-sub-order breakdown, used by vendors (e.g. Amazon) that send one order
+   * email summarizing multiple sub-orders that each post to the credit card as
+   * separate charges. When present, `amount` is the grand total and each
+   * sub-order is matched against statement transactions independently.
+   *
+   * The order of the array is the order the sub-orders appeared in the email.
+   */
+  sub_orders?: ExtractedSubOrder[];
+}
+
+/**
+ * One sub-order extracted from a multi-shipment order email. See
+ * `ExtractedTransaction.sub_orders` for context.
+ */
+export interface ExtractedSubOrder {
+  /** Per-shipment order ID, e.g. "111-8507210-6332245" for Amazon */
+  order_id?: string | null;
+  amount: number;
+  currency: string;
+  /** Short description / first item name (best-effort) */
+  description?: string;
+  /** Parsed arrival date if the email surfaces one (e.g. "Arriving May 7") */
+  arrival_date?: Date;
 }
 
 /**

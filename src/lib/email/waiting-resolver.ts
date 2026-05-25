@@ -4,6 +4,7 @@ import type { SourceTransaction, TargetTransaction } from '@/lib/matching/match-
 import { CONFIDENCE_THRESHOLDS } from '@/lib/matching/match-scorer'
 import { groupRowsIntoBundles } from '@/lib/matching/email-bundler'
 import { scoreBundleAgainstTargets } from '@/lib/matching/bundle-scorer'
+import { loadSubOrders, autoMatchSubOrders } from './sub-order-matcher'
 
 interface ResolveResult {
   resolved: number
@@ -131,6 +132,20 @@ export async function resolveWaitingEmailTransactions(
     if (!email.amount || !email.transaction_date) continue
 
     const vendorName = (email.vendors as { name: string } | null)?.name || email.vendor_name_raw || ''
+
+    // Sub-order email (e.g. Amazon split shipment): match each sub-order
+    // independently against the candidate statement lines. The
+    // sync_parent_status_from_sub_orders trigger flips parent status to
+    // `matched` when every sub-order is matched.
+    const persistedSubs = await loadSubOrders(supabase, email.id)
+    if (persistedSubs.length >= 2) {
+      await autoMatchSubOrders(supabase, userId, persistedSubs, targets, {
+        sourceDate: email.transaction_date,
+        sourceVendor: vendorName,
+      })
+      continue
+    }
+
     const source: SourceTransaction = {
       amount: Number(email.amount),
       currency: email.currency || 'USD',
