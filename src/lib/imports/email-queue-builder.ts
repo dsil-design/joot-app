@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { makeEmailId } from '@/lib/utils/import-id'
-import type { QueueItem, EmailAttachmentSummary } from './queue-types'
+import type { QueueItem, EmailAttachmentSummary, EmailSubOrderSummary } from './queue-types'
 import { fetchMatchedTransactions } from './fetch-matched-transactions'
 import { isSplitReceiptVendor } from '@/lib/matching/split-receipt-vendors'
 import { groupRowsIntoBundles } from '@/lib/matching/email-bundler'
@@ -90,6 +90,59 @@ export async function fetchEmailQueueItems(
   // Note: email_transactions does carry message_id but we didn't select it
   // above — re-query just the message_ids we need.
   const txIds = emailRows.map(r => r.id)
+
+  // Sub-order breakdown for multi-shipment vendors (currently Amazon). One
+  // row in email_sub_orders per shipment, each with its own match state.
+  // Surfaced on the parent's queue card so the user can see how the order
+  // is split — see email_sub_orders schema in database/schema.sql.
+  const subOrdersByParent = new Map<string, EmailSubOrderSummary[]>()
+  if (txIds.length > 0) {
+    const { data: subRows } = await supabase
+      .from('email_sub_orders')
+      .select('id, email_transaction_id, position, order_id, amount, currency, description, arrival_date, matched_transaction_id, match_confidence')
+      .in('email_transaction_id', txIds)
+      .order('position', { ascending: true })
+
+    // Hydrate matched-transaction details for sub-orders so the card can
+    // inline "Shipment 2 of 3 → matched to $20.79 charge on May 7" without a
+    // second client round-trip.
+    const subOrderMatchedIds = (subRows ?? [])
+      .map((r) => r.matched_transaction_id as string | null)
+      .filter((x): x is string => !!x)
+    const subOrderMatchedMap = subOrderMatchedIds.length
+      ? await fetchMatchedTransactions(supabase, subOrderMatchedIds)
+      : new Map()
+
+    for (const row of subRows ?? []) {
+      const parentId = row.email_transaction_id as string
+      const list = subOrdersByParent.get(parentId) ?? []
+      const summary: EmailSubOrderSummary = {
+        id: row.id as string,
+        position: row.position as number,
+        orderId: (row.order_id as string | null) ?? undefined,
+        amount: Number(row.amount),
+        currency: row.currency as string,
+        description: (row.description as string | null) ?? undefined,
+        arrivalDate: (row.arrival_date as string | null) ?? undefined,
+        matchedTransactionId: (row.matched_transaction_id as string | null) ?? undefined,
+        matchConfidence: (row.match_confidence as number | null) ?? undefined,
+      }
+      const matched = row.matched_transaction_id ? subOrderMatchedMap.get(row.matched_transaction_id as string) : null
+      if (matched) {
+        summary.matchedTransaction = {
+          date: matched.transaction_date,
+          amount: Number(matched.amount),
+          currency: matched.original_currency,
+          description: matched.description ?? undefined,
+          vendorName: matched.vendors?.name,
+          paymentMethodName: matched.payment_methods?.name,
+        }
+      }
+      list.push(summary)
+      subOrdersByParent.set(parentId, list)
+    }
+  }
+
   const attachmentsByEmailTxId = new Map<string, EmailAttachmentSummary[]>()
 
   if (txIds.length > 0) {
@@ -321,6 +374,7 @@ export async function fetchEmailQueueItems(
         paymentCardType: row.payment_card_type ?? undefined,
         vendorNameRaw: row.vendor_name_raw ?? undefined,
         attachments: attachmentsByEmailTxId.get(row.id),
+        subOrders: subOrdersByParent.get(row.id),
       },
     })
   }

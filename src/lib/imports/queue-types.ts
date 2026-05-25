@@ -26,6 +26,40 @@ export interface EmailMetadata {
   paymentCardType?: string
   vendorNameRaw?: string
   attachments?: EmailAttachmentSummary[]
+  /**
+   * Per-shipment breakdown for vendors (currently Amazon) that send one
+   * order-confirmation email summarizing N sub-orders that each post as a
+   * separate credit-card charge. Each sub-order tracks its own match state.
+   * Absent or empty for normal one-amount emails.
+   */
+  subOrders?: EmailSubOrderSummary[]
+}
+
+export interface EmailSubOrderSummary {
+  /** email_sub_orders.id */
+  id: string
+  /** 0-based position in the original email */
+  position: number
+  /** Per-shipment order ID, e.g. "111-8507210-6332245" */
+  orderId?: string
+  amount: number
+  currency: string
+  /** Short summary or first item name */
+  description?: string
+  /** Parsed "Arriving ..." date when the email surfaced one, YYYY-MM-DD */
+  arrivalDate?: string
+  /** Linked transaction (when matched). */
+  matchedTransactionId?: string
+  matchConfidence?: number
+  /** Summary of the matched transaction for inline display. */
+  matchedTransaction?: {
+    date: string
+    amount: number
+    currency: string
+    description?: string
+    vendorName?: string
+    paymentMethodName?: string
+  }
 }
 
 export interface MergedEmailData {

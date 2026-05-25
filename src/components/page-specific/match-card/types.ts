@@ -44,6 +44,27 @@ export interface EmailMetadata {
   paymentCardType?: string
   vendorNameRaw?: string
   attachments?: EmailAttachmentSummary[]
+  subOrders?: EmailSubOrderSummary[]
+}
+
+export interface EmailSubOrderSummary {
+  id: string
+  position: number
+  orderId?: string
+  amount: number
+  currency: string
+  description?: string
+  arrivalDate?: string
+  matchedTransactionId?: string
+  matchConfidence?: number
+  matchedTransaction?: {
+    date: string
+    amount: number
+    currency: string
+    description?: string
+    vendorName?: string
+    paymentMethodName?: string
+  }
 }
 
 /**

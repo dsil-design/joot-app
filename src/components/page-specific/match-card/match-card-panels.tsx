@@ -25,6 +25,7 @@ import {
   Check,
   Ban,
   Paperclip,
+  Package,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -35,7 +36,7 @@ import { PaymentSlipViewerModal } from "@/components/page-specific/payment-slip-
 import { EmailViewerModal } from "@/components/page-specific/email-viewer-modal"
 import { cn } from "@/lib/utils"
 import { getParserTag } from "@/lib/utils/parser-tags"
-import type { MatchCardData, EmailMetadata, MergedPaymentSlipData } from "./types"
+import type { MatchCardData, EmailMetadata, EmailSubOrderSummary, MergedPaymentSlipData } from "./types"
 
 /**
  * Build a link to the source page (statement or email) from the queue item ID.
@@ -231,11 +232,79 @@ function EmailSourcePanel({
         </TransactionDetailRow>
       )}
 
+      {/* Multi-shipment sub-order breakdown (Amazon split shipments).
+         Surfaced on the parent's queue card so the user can see how the
+         total decomposes and which sub-orders have matched charges. */}
+      {meta.subOrders && meta.subOrders.length > 0 && (
+        <SubOrdersSection subOrders={meta.subOrders} parentCurrency={data.statementTransaction.currency} />
+      )}
+
       {/* Email ID — subtle, with copy button */}
       {emailId && (
         <CopyableId id={emailId} />
       )}
     </div>
+  )
+}
+
+/**
+ * Per-shipment breakdown for Amazon-style multi-charge orders. Each row shows
+ * the sub-order amount + match status (matched to a charge vs. still waiting).
+ */
+function SubOrdersSection({
+  subOrders,
+  parentCurrency,
+}: {
+  subOrders: EmailSubOrderSummary[]
+  parentCurrency: string
+}) {
+  const matchedCount = subOrders.filter((s) => s.matchedTransactionId).length
+  const total = subOrders.reduce((sum, s) => sum + s.amount, 0)
+
+  return (
+    <TransactionDetailRow icon={<Package className="h-3.5 w-3.5" />}>
+      <div className="flex flex-col gap-1 min-w-0 w-full">
+        <div className="text-[11px] text-muted-foreground">
+          {subOrders.length} shipment{subOrders.length === 1 ? "" : "s"} · {matchedCount}/{subOrders.length} matched · total{" "}
+          {formatMatchAmount(total, parentCurrency)}
+        </div>
+        <ul className="flex flex-col gap-0.5">
+          {subOrders.map((sub) => (
+            <SubOrderRow key={sub.id} sub={sub} />
+          ))}
+        </ul>
+      </div>
+    </TransactionDetailRow>
+  )
+}
+
+function SubOrderRow({ sub }: { sub: EmailSubOrderSummary }) {
+  const matched = !!sub.matchedTransactionId
+  return (
+    <li className="flex items-baseline gap-2 text-xs min-w-0">
+      <span className="text-muted-foreground/70 shrink-0 tabular-nums">
+        #{sub.position + 1}
+      </span>
+      <span className="font-medium tabular-nums shrink-0">
+        {formatMatchAmount(sub.amount, sub.currency)}
+      </span>
+      {sub.orderId && (
+        <span className="text-[10px] text-muted-foreground/70 font-mono truncate" title={sub.orderId}>
+          {sub.orderId}
+        </span>
+      )}
+      <span className="ml-auto shrink-0">
+        {matched ? (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-green-500/40 text-green-700 dark:text-green-400">
+            matched
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground">
+            waiting
+          </Badge>
+        )}
+      </span>
+    </li>
   )
 }
 
