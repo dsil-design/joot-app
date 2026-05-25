@@ -20,6 +20,8 @@ export default function HandleDiagnostic() {
   const [openB, setOpenB] = React.useState(false)
   const [openC, setOpenC] = React.useState(false)
   const [openD, setOpenD] = React.useState(false)
+  const [openE, setOpenE] = React.useState(false)
+  const [openF, setOpenF] = React.useState(false)
 
   return (
     <div className="mx-auto max-w-2xl p-6 space-y-6">
@@ -83,6 +85,29 @@ export default function HandleDiagnostic() {
               ))}
               <Input defaultValue={SAMPLE} />
             </div>
+          </DialogContent>
+        </Dialog>
+      </Card>
+
+      <Card label="E — Dialog with modal={false} (bypasses react-remove-scroll)">
+        <Button onClick={() => setOpenE(true)}>Open E</Button>
+        <Dialog open={openE} onOpenChange={setOpenE} modal={false}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>E</DialogTitle></DialogHeader>
+            <Input defaultValue={SAMPLE} />
+          </DialogContent>
+        </Dialog>
+      </Card>
+
+      <Card label="F — Dialog with onInteractOutside swallowed (neutralizes DismissableLayer)">
+        <Button onClick={() => setOpenF(true)}>Open F</Button>
+        <Dialog open={openF} onOpenChange={setOpenF}>
+          <DialogContent
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
+          >
+            <DialogHeader><DialogTitle>F</DialogTitle></DialogHeader>
+            <Input defaultValue={SAMPLE} />
           </DialogContent>
         </Dialog>
       </Card>
