@@ -595,80 +595,84 @@ function MatchedTransactionPanel({
         : "[&>div]:bg-orange-500"
 
   return (
-    <div className="space-y-4">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Matched Transaction in Joot
-      </p>
+    <>
+      <div className="flex-1 overflow-y-auto p-5">
+        <div className="space-y-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Matched Transaction in Joot
+          </p>
 
-      {data.matchedTransaction && (
-        <div className="space-y-2">
-          <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
-            <span>{formatMatchDate(data.matchedTransaction.date)}</span>
-            {deltas?.dateDelta && (
-              <span className="text-xs text-muted-foreground">{deltas.dateDelta}</span>
-            )}
-          </TransactionDetailRow>
-          <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
-            <span className="font-medium truncate">
-              {data.matchedTransaction.vendor_name || "Unknown vendor"}
-            </span>
-          </TransactionDetailRow>
-          {data.matchedTransaction.description && (
-            <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
-              <span className="font-medium truncate">
-                {data.matchedTransaction.description}
-              </span>
-            </TransactionDetailRow>
+          {data.matchedTransaction && (
+            <div className="space-y-2">
+              <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
+                <span>{formatMatchDate(data.matchedTransaction.date)}</span>
+                {deltas?.dateDelta && (
+                  <span className="text-xs text-muted-foreground">{deltas.dateDelta}</span>
+                )}
+              </TransactionDetailRow>
+              <TransactionDetailRow icon={<Store className="h-3.5 w-3.5" />}>
+                <span className="font-medium truncate">
+                  {data.matchedTransaction.vendor_name || "Unknown vendor"}
+                </span>
+              </TransactionDetailRow>
+              {data.matchedTransaction.description && (
+                <TransactionDetailRow icon={<FileText className="h-3.5 w-3.5" />}>
+                  <span className="font-medium truncate">
+                    {data.matchedTransaction.description}
+                  </span>
+                </TransactionDetailRow>
+              )}
+              <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
+                <span className="font-medium">
+                  {formatMatchAmount(data.matchedTransaction.amount, data.matchedTransaction.currency)}
+                </span>
+                {deltas?.amountDelta && (
+                  <span className="text-xs text-muted-foreground">{deltas.amountDelta}</span>
+                )}
+              </TransactionDetailRow>
+              {data.matchedTransaction.payment_method_name && (
+                <TransactionDetailRow icon={<CreditCard className="h-3.5 w-3.5" />}>
+                  <span className="text-muted-foreground">
+                    {data.matchedTransaction.payment_method_name}
+                  </span>
+                </TransactionDetailRow>
+              )}
+            </div>
           )}
-          <TransactionDetailRow icon={<Coins className="h-3.5 w-3.5" />}>
-            <span className="font-medium">
-              {formatMatchAmount(data.matchedTransaction.amount, data.matchedTransaction.currency)}
-            </span>
-            {deltas?.amountDelta && (
-              <span className="text-xs text-muted-foreground">{deltas.amountDelta}</span>
-            )}
-          </TransactionDetailRow>
-          {data.matchedTransaction.payment_method_name && (
-            <TransactionDetailRow icon={<CreditCard className="h-3.5 w-3.5" />}>
-              <span className="text-muted-foreground">
-                {data.matchedTransaction.payment_method_name}
-              </span>
-            </TransactionDetailRow>
+
+          {/* Confidence bar */}
+          <div className="space-y-1 pt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Match Confidence</span>
+              <span className="text-xs font-medium text-muted-foreground">{data.confidence}%</span>
+            </div>
+            <Progress
+              value={data.confidence}
+              className={`h-1.5 [&>div]:transition-none ${barColor}`}
+            />
+          </div>
+
+          {/* Match reasons */}
+          {data.reasons && data.reasons.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Why this match
+              </p>
+              <ul className="text-xs text-muted-foreground space-y-0.5">
+                {data.reasons.map((reason, i) => (
+                  <li key={i} className="flex items-start gap-1.5">
+                    <span className="text-muted-foreground/50 mt-0.5">•</span>
+                    {reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
-      )}
-
-      {/* Confidence bar */}
-      <div className="space-y-1 pt-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Match Confidence</span>
-          <span className="text-xs font-medium text-muted-foreground">{data.confidence}%</span>
-        </div>
-        <Progress
-          value={data.confidence}
-          className={`h-1.5 [&>div]:transition-none ${barColor}`}
-        />
       </div>
 
-      {/* Match reasons */}
-      {data.reasons && data.reasons.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Why this match
-          </p>
-          <ul className="text-xs text-muted-foreground space-y-0.5">
-            {data.reasons.map((reason, i) => (
-              <li key={i} className="flex items-start gap-1.5">
-                <span className="text-muted-foreground/50 mt-0.5">•</span>
-                {reason}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {/* Actions */}
-      <div className="flex items-center gap-3 pt-3 pb-1 border-t">
+      <div className="sticky bottom-0 bg-background border-t px-5 py-3 shrink-0 flex items-center gap-3">
         <Button
           variant="ghost"
           size="sm"
@@ -702,7 +706,7 @@ function MatchedTransactionPanel({
           Approve & Continue
         </Button>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -1111,7 +1115,7 @@ export function ReviewFocusModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-5xl max-h-[90vh] p-0 gap-0 flex flex-col"
+        className="w-full max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-2rem)] lg:max-w-5xl max-h-[100dvh] sm:max-h-[90dvh] lg:max-h-[88vh] p-0 gap-0 flex flex-col"
         showCloseButton={false}
         onPointerDownOutside={(e) => {
           // Prevent modal from closing when clicking on Sonner toasts (e.g. reject feedback form)
@@ -1173,9 +1177,6 @@ export function ReviewFocusModal({
                 New
               </Badge>
             )}
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              Arrow keys to navigate
-            </span>
             <Button
               variant="ghost"
               size="icon"
@@ -1188,15 +1189,17 @@ export function ReviewFocusModal({
         </div>
 
         {/* ── Split pane content ── */}
-        <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-[2fr_3fr] md:divide-x min-h-0">
+        <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-[1fr_2fr] lg:divide-x min-h-0">
           {/* Left panel: Source info */}
-          <div className="overflow-y-auto p-5 border-b md:border-b-0 max-h-48 sm:max-h-none">
+          <div className="overflow-y-auto p-5 border-b lg:border-b-0 max-h-40 lg:max-h-none">
             <SourceInfoPanel data={item} />
           </div>
 
           {/* Right panel: Form (new items) or Match info */}
-          <div className="overflow-y-auto p-5">
+          <div className="flex flex-col overflow-hidden">
             {item.isNew ? (
+              <>
+              <div className="flex-1 overflow-y-auto p-5">
               <div className="space-y-4">
                 {/* AI pre-fill banner */}
                 {hasAnyPrefill && (
@@ -1426,8 +1429,11 @@ export function ReviewFocusModal({
                   )}
                 </div>
 
-                {/* Actions for new items */}
-                <div className="flex items-center gap-3 pt-3 pb-1 border-t">
+                </div>
+              </div>
+              {/* Actions for new items */}
+              <div className="sticky bottom-0 bg-background border-t px-5 py-3 shrink-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+                <div className="flex items-center gap-2 lg:contents">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1447,37 +1453,37 @@ export function ReviewFocusModal({
                     <ArrowLeftRight className="h-3.5 w-3.5 mr-1.5" />
                     Link Existing
                   </Button>
-                  <div className="flex-1" />
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCreate(true)}
-                      disabled={!isValid || isSaving}
-                    >
-                      {isSaving ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                      ) : (
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-                      )}
-                      Create & Close
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleCreate(false)}
-                      disabled={!isValid || isSaving}
-                      className="bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600 px-5"
-                    >
-                      {isSaving ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                      ) : (
-                        <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
-                      )}
-                      Create & Continue
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCreate(true)}
+                    disabled={!isValid || isSaving}
+                    className="ml-auto lg:ml-0"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                    )}
+                    Create & Close
+                  </Button>
                 </div>
+                <div className="hidden lg:block flex-1" />
+                <Button
+                  size="sm"
+                  onClick={() => handleCreate(false)}
+                  disabled={!isValid || isSaving}
+                  className="bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 dark:hover:bg-purple-600 px-5 w-full lg:w-auto"
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  ) : (
+                    <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Create & Continue
+                </Button>
               </div>
+              </>
             ) : (
               /* Match items: show matched transaction info */
               <MatchedTransactionPanel
