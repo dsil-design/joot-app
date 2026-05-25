@@ -4,6 +4,7 @@ import type { Json } from '@/lib/supabase/types'
 import { parseImportId } from '@/lib/utils/import-id'
 import { updateStatementReviewStatus } from '@/lib/utils/statement-status'
 import { recordDecision } from '@/lib/services/decision-learning'
+import { clearDuplicateStatementMatches } from '@/lib/imports/clear-duplicate-statement-matches'
 
 interface Suggestion {
   transaction_date: string
@@ -172,6 +173,16 @@ export async function POST(request: NextRequest) {
       errors: [] as string[],
     }
 
+    // Collected at every point we finalize a transaction's canonical statement
+    // link. After all primary writes finish below, we sweep any *other*
+    // statement suggestions still auto-matched to these transactions and clear
+    // the false-positive matches. Deferred so we don't race the in-loop
+    // extraction_log rewrites that follow each batch.
+    const linksToClear: Array<{
+      transactionId: string
+      keep: { statementId: string; index: number } | Array<{ statementId: string; index: number }>
+    }> = []
+
     // --- Process STATEMENT items ---
     if (statementIds.length > 0) {
       // Group by statement ID
@@ -286,6 +297,11 @@ export async function POST(request: NextRequest) {
 
             // Learn from this decision (fire-and-forget)
             if (stmtTransactionId) {
+              linksToClear.push({
+                transactionId: stmtTransactionId,
+                keep: { statementId: statement.id, index: idx },
+              })
+
               const { data: stmtTxData } = await serviceClient
                 .from('transactions')
                 .select('vendor_id, payment_method_id')
@@ -622,6 +638,11 @@ export async function POST(request: NextRequest) {
 
         // Learn from this merged decision (fire-and-forget)
         if (transactionId) {
+          linksToClear.push({
+            transactionId,
+            keep: { statementId: merged.statementId, index: merged.index },
+          })
+
           const { data: mergedTxData } = await serviceClient
             .from('transactions')
             .select('vendor_id, payment_method_id')
@@ -962,6 +983,11 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        linksToClear.push({
+          transactionId: newTx.id,
+          keep: { statementId: merged.statementId, index: merged.index },
+        })
+
         // Learn from this decision (fire-and-forget)
         // Get the statement description for learning
         const mergedStmtSuggestions = (statement?.extraction_log as ExtractionLog | null)?.suggestions
@@ -1075,6 +1101,11 @@ export async function POST(request: NextRequest) {
               .eq('id', statement.id)
           }
         }
+
+        linksToClear.push({
+          transactionId: newTx.id,
+          keep: { statementId: merged.statementId, index: merged.index },
+        })
 
         // Learn from this decision (fire-and-forget)
         const mergedStmtSuggestions = (statement?.extraction_log as ExtractionLog | null)?.suggestions
@@ -1204,6 +1235,16 @@ export async function POST(request: NextRequest) {
         await updateSuggestion(debitStmt, debitLog, st.debitIndex)
         await updateSuggestion(creditStmt, creditLog, st.creditIndex)
 
+        // Both sides of a self-transfer legitimately reference the same tx —
+        // keep both so the cleanup pass doesn't strip the credit-side back-link.
+        linksToClear.push({
+          transactionId: newTx.id,
+          keep: [
+            { statementId: st.debitStatementId, index: st.debitIndex },
+            { statementId: st.creditStatementId, index: st.creditIndex },
+          ],
+        })
+
         // Learn from this self-transfer decision (fire-and-forget)
         recordDecision(serviceClient, {
           userId: user.id,
@@ -1222,6 +1263,23 @@ export async function POST(request: NextRequest) {
         results.success++
         results.transactionsCreated++
         results.totalAmount += Math.abs(Number(debitSuggestion.amount))
+      }
+    }
+
+    // Sweep false-positive duplicate matches: any other statement suggestion
+    // still auto-matched to a transaction we just finalized is stale and would
+    // otherwise pull the approved card back to pending via the queue's
+    // matched-tx dedup pass on the next refresh.
+    for (const link of linksToClear) {
+      try {
+        await clearDuplicateStatementMatches(
+          serviceClient,
+          user.id,
+          link.transactionId,
+          link.keep,
+        )
+      } catch (err) {
+        console.error('clearDuplicateStatementMatches failed:', err)
       }
     }
 
