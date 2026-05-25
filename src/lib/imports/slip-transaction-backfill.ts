@@ -22,8 +22,18 @@ export async function backfillSlipTransactionMatches(
   emailItems: QueueItem[],
   statementItems: QueueItem[]
 ): Promise<void> {
+  // Skip items the user has manually paired with another source via
+  // manualPairKeys. Without this, the (currency, amount, ±3 days) heuristic
+  // can falsely match e.g. a 265 THB Grab receipt to an unrelated 265 THB
+  // payment slip from a few days earlier, then the matched-txn dedup pass
+  // consolidates the user's merged pair into the wrong card and the
+  // manually-attached pair disappears from the queue entirely.
   const candidates = [...emailItems, ...statementItems].filter(
-    (item) => item.status === 'pending' && item.isNew && !item.matchedTransaction
+    (item) =>
+      item.status === 'pending' &&
+      item.isNew &&
+      !item.matchedTransaction &&
+      !(item.manualPairKeys && item.manualPairKeys.length > 0)
   )
   if (candidates.length === 0) return
 
