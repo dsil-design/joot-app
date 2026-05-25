@@ -764,13 +764,18 @@ export async function aggregateQueueItems(
 
       const emailMeta: EmailMetadata = emailItem?.emailMetadata ?? {}
 
-      // Derive status from constituent items — if ANY item is approved, the
-      // whole group is approved because they all point to the same matched
-      // transaction (the match is already confirmed by at least one source).
+      // Derive status from constituent items. Pending wins over approved:
+      // a fresh source that auto-matched to an already-approved transaction
+      // still needs the user to confirm or reject *that source's* match
+      // (e.g., a new slip might be a legitimate duplicate or a separate
+      // same-amount purchase the matcher mis-attributed). Without this the
+      // pending source is silently absorbed into the approved group and the
+      // user can never review it.
+      const anyPending = group.some(item => item.status === 'pending')
       const anyApproved = group.some(item => item.status === 'approved')
       const anyRejected = group.some(item => item.status === 'rejected')
       const derivedStatus: 'pending' | 'approved' | 'rejected' =
-        anyApproved ? 'approved' : anyRejected ? 'rejected' : 'pending'
+        anyPending ? 'pending' : anyApproved ? 'approved' : anyRejected ? 'rejected' : 'pending'
 
       mergedDedup.push({
         id: mergedId,

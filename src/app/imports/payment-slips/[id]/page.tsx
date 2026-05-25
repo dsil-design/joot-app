@@ -82,6 +82,23 @@ function formatAmount(amount: number): string {
   }).format(amount)
 }
 
+// Build a review-queue link scoped to the slip's transaction month, so the
+// queue arrives pre-filtered to where the slip actually lives. We deliberately
+// omit `source=payment_slip` — a slip that auto-matches to an existing txn
+// surfaces as a `source: 'merged'` card after the aggregator's dedup pass,
+// which a `source=payment_slip` filter would hide.
+function buildReviewQueueHref(transactionDate: string | null): string {
+  if (!transactionDate) return '/review'
+  const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(transactionDate)
+  if (!match) return '/review'
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const lastDay = new Date(year, month, 0).getDate()
+  const from = `${match[1]}-${match[2]}-01`
+  const to = `${match[1]}-${match[2]}-${String(lastDay).padStart(2, '0')}`
+  return `/review?from=${from}&to=${to}`
+}
+
 function CopyableId({ id }: { id: string }) {
   const [copied, setCopied] = useState(false)
 
@@ -603,7 +620,7 @@ export default function PaymentSlipDetailPage() {
                 </p>
               </div>
               <Button size="sm" variant="outline" asChild className="self-start sm:self-auto shrink-0">
-                <Link href="/review?source=payment_slip">
+                <Link href={buildReviewQueueHref(slip.transaction_date)}>
                   Go to Review Queue
                 </Link>
               </Button>
