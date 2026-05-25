@@ -368,7 +368,7 @@ export function useMatchActions({
    * Link a match to an existing transaction
    */
   const linkToExisting = React.useCallback(
-    async (id: string, transactionId: string, options?: { silent?: boolean }) => {
+    async (id: string, transactionId: string, options?: { silent?: boolean; isNewTransaction?: boolean }) => {
       setState({ isLoading: true, processingId: id, error: null })
 
       // Optimistic update
@@ -378,7 +378,11 @@ export function useMatchActions({
         const response = await fetch("/api/imports/link", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ compositeId: id, transactionId }),
+          body: JSON.stringify({
+            compositeId: id,
+            transactionId,
+            isNewTransaction: options?.isNewTransaction,
+          }),
         })
 
         if (!response.ok) {

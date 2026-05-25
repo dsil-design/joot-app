@@ -69,14 +69,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    let body: { compositeId?: string; transactionId?: string }
+    let body: { compositeId?: string; transactionId?: string; isNewTransaction?: boolean }
     try {
       body = await request.json()
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const { compositeId, transactionId } = body
+    const { compositeId, transactionId, isNewTransaction } = body
 
     if (!compositeId || !transactionId) {
       return NextResponse.json(
@@ -136,8 +136,10 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const mergedConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
-      if (mergedConflict) return conflictResponse(mergedConflict)
+      if (!isNewTransaction) {
+        const mergedConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
+        if (mergedConflict) return conflictResponse(mergedConflict)
+      }
 
       suggestions[parsed.index] = {
         ...suggestions[parsed.index],
@@ -226,8 +228,10 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const stmtConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
-      if (stmtConflict) return conflictResponse(stmtConflict)
+      if (!isNewTransaction) {
+        const stmtConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
+        if (stmtConflict) return conflictResponse(stmtConflict)
+      }
 
       suggestions[parsed.index] = {
         ...suggestions[parsed.index],
@@ -354,8 +358,10 @@ export async function POST(request: NextRequest) {
       const suggestions = extractionLog?.suggestions || []
 
       if (parsed.index >= 0 && parsed.index < suggestions.length) {
-        const slipStmtConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
-        if (slipStmtConflict) return conflictResponse(slipStmtConflict)
+        if (!isNewTransaction) {
+          const slipStmtConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
+          if (slipStmtConflict) return conflictResponse(slipStmtConflict)
+        }
 
         suggestions[parsed.index] = {
           ...suggestions[parsed.index],
@@ -421,8 +427,10 @@ export async function POST(request: NextRequest) {
       const suggestions = extractionLog?.suggestions || []
 
       if (parsed.index >= 0 && parsed.index < suggestions.length) {
-        const threeWayConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
-        if (threeWayConflict) return conflictResponse(threeWayConflict)
+        if (!isNewTransaction) {
+          const threeWayConflict = statementMatchConflict(suggestions[parsed.index], transactionId)
+          if (threeWayConflict) return conflictResponse(threeWayConflict)
+        }
 
         suggestions[parsed.index] = {
           ...suggestions[parsed.index],
@@ -504,13 +512,15 @@ export async function POST(request: NextRequest) {
         ),
       )
 
-      for (let i = 0; i < stmtRefs.length; i++) {
-        const stmt = fetchedStmts[i]
-        if (!stmt) continue
-        const log = stmt.extraction_log as ExtractionLog | null
-        const sugs = log?.suggestions || []
-        const conflict = statementMatchConflict(sugs[stmtRefs[i].idx], transactionId)
-        if (conflict) return conflictResponse(conflict)
+      if (!isNewTransaction) {
+        for (let i = 0; i < stmtRefs.length; i++) {
+          const stmt = fetchedStmts[i]
+          if (!stmt) continue
+          const log = stmt.extraction_log as ExtractionLog | null
+          const sugs = log?.suggestions || []
+          const conflict = statementMatchConflict(sugs[stmtRefs[i].idx], transactionId)
+          if (conflict) return conflictResponse(conflict)
+        }
       }
 
       // Update the transaction to be a transfer type
