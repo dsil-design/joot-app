@@ -595,4 +595,100 @@ describe('Chase Sapphire Statement Parser', () => {
       expect(CHASE_IDENTIFIERS).toContain('chase.com');
     });
   });
+
+  // Regression: domestic-US Chase charges print as
+  //   "<MM/DD> <merchant> <STATE><amount>"
+  // where the two-letter state code and the dollar amount are emitted as
+  // separate text items at the same Y coordinate. Some PDF text extractors
+  // (notably pdf-parse@1.x and certain pdfjs-dist versions) concatenate
+  // same-Y items without inserting a space, producing lines like
+  //   "04/01 & GOOGLE *Workspace_inte cc@google.com CA7.42"
+  // The parser must capture these even when the state code is glued to the
+  // amount, otherwise recurring domestic charges (Google G Suite on the 1st
+  // of every month, Tello, Anthropic, Apple, etc.) silently disappear from
+  // the extraction.
+  describe('glued state-code amount (domestic US)', () => {
+    const period = {
+      startDate: new Date(2026, 2, 19), // Mar 19, 2026
+      endDate: new Date(2026, 3, 18),   // Apr 18, 2026
+    };
+
+    it('captures a glued domestic line (Google G Suite, CA7.42)', () => {
+      const text = `
+        CHASE SAPPHIRE RESERVE
+        Opening/Closing Date: 03/19/26 - 04/18/26
+
+        PURCHASES
+
+        04/01 & GOOGLE *Workspace_inte cc@google.com CA7.42
+      `;
+      const { transactions } = parseTransactions(text, period);
+      const google = transactions.find((t) => /google/i.test(t.description));
+      expect(google).toBeDefined();
+      expect(google!.amount).toBe(7.42);
+      expect(google!.description).toContain('GOOGLE');
+    });
+
+    it('still captures the same line when a space is present (CA 7.42)', () => {
+      const text = `
+        CHASE SAPPHIRE RESERVE
+        Opening/Closing Date: 03/19/26 - 04/18/26
+
+        PURCHASES
+
+        04/01 & GOOGLE *Workspace_inte cc@google.com CA 7.42
+      `;
+      const { transactions } = parseTransactions(text, period);
+      const google = transactions.find((t) => /google/i.test(t.description));
+      expect(google).toBeDefined();
+      expect(google!.amount).toBe(7.42);
+    });
+
+    it('captures multiple glued domestic charges in one statement', () => {
+      const text = `
+        CHASE SAPPHIRE RESERVE
+        Opening/Closing Date: 03/19/26 - 04/18/26
+
+        PURCHASES
+
+        03/29 ANTHROPIC ANTHROPIC.COM CA15.12
+        04/01 TELLO MOBILE TELLO.COM GA6.65
+        04/01 & GOOGLE *Workspace_inte cc@google.com CA7.42
+        04/02 & PY *ALL U NEED PEST CONTR 239-4248742 FL110.00
+      `;
+      const { transactions } = parseTransactions(text, period);
+
+      const anthropic = transactions.find((t) => /ANTHROPIC/.test(t.description));
+      const tello = transactions.find((t) => /TELLO/.test(t.description));
+      const google = transactions.find((t) => /GOOGLE/.test(t.description));
+      const pest = transactions.find((t) => /PEST CONTR/.test(t.description));
+
+      expect(anthropic?.amount).toBe(15.12);
+      expect(tello?.amount).toBe(6.65);
+      expect(google?.amount).toBe(7.42);
+      expect(pest?.amount).toBe(110.0);
+    });
+
+    it('does not mis-split descriptions that end in a number', () => {
+      // Chase descriptions sometimes end with a numeric token before the
+      // state code, e.g. an installment count or a phone number. The
+      // non-greedy `(.+?)` + `$` anchor should still pin the amount to the
+      // final numeric token, not an embedded one.
+      const text = `
+        CHASE SAPPHIRE RESERVE
+        Opening/Closing Date: 03/19/26 - 04/18/26
+
+        PURCHASES
+
+        03/19 & IPHONE CITIZ*PMT 7 OF 24 888-2016306 CT57.00
+      `;
+      const { transactions } = parseTransactions(text, period);
+      const iphone = transactions.find((t) => /IPHONE/.test(t.description));
+      expect(iphone).toBeDefined();
+      expect(iphone!.amount).toBe(57.0);
+      // Description should retain the embedded "7 OF 24" and phone number
+      expect(iphone!.description).toContain('7 OF 24');
+      expect(iphone!.description).toContain('888-2016306');
+    });
+  });
 });

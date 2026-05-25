@@ -50,8 +50,15 @@ const DUE_DATE_PATTERN = /payment\s+due\s+date[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})/
 // Captures: date, description, amount
 // Example: "12/05  GRAB* BANGKOK TH                        10.00"
 // Example: "12/05  12/06  AMAZON.COM                      -25.99"  (with posting date)
+// Example: "12/01 & GOOGLE *Workspace_inte cc@google.com CA7.42"
+//   ^ domestic-US charges have the state code glued to the amount in some
+//     PDF extractions (pdf-parse, older pdfjs-dist versions). `\s*` before
+//     the amount tolerates both spaced and glued forms; the trailing `$`
+//     anchor + non-greedy `(.+?)` still pin the amount to the final
+//     numeric token, so descriptions ending in numbers (e.g. "JFK TERM 1")
+//     don't get mis-split.
 const TRANSACTION_PATTERN =
-  /^(\d{1,2}\/\d{1,2})\s+(?:(\d{1,2}\/\d{1,2})\s+)?(.+?)\s+([-]?\$?[\d,]+\.\d{2})$/;
+  /^(\d{1,2}\/\d{1,2})\s+(?:(\d{1,2}\/\d{1,2})\s+)?(.+?)\s*([-]?\$?[\d,]+\.\d{2})$/;
 
 // Foreign transaction patterns
 //
@@ -550,9 +557,11 @@ function parseTransactions(
       }
     }
 
-    // Also try a more flexible pattern for Chase's various formats
+    // Also try a more flexible pattern for Chase's various formats.
+    // Matches `\s*` before the amount to tolerate glued state-code + amount
+    // (see TRANSACTION_PATTERN above).
     const flexMatch = line.match(
-      /^(\d{1,2}\/\d{1,2})\s+(.+?)\s+(-?\$?[\d,]+\.\d{2})$/
+      /^(\d{1,2}\/\d{1,2})\s+(.+?)\s*(-?\$?[\d,]+\.\d{2})$/
     );
     if (
       flexMatch &&
