@@ -8,6 +8,8 @@ interface SlipFilters {
   searchQuery?: string
   fromDate?: string
   toDate?: string
+  // See EmailFilters.manualPairOverlapKeys — same purpose for slips.
+  manualPairOverlapKeys?: string[]
 }
 
 export async function fetchPaymentSlipQueueItems(
@@ -42,6 +44,9 @@ export async function fetchPaymentSlipQueueItems(
   // shows the same slips users see flagged yellow/pending for the same month.
   if (filters.fromDate) slipQuery = slipQuery.gte('transaction_date', filters.fromDate)
   if (filters.toDate) slipQuery = slipQuery.lte('transaction_date', filters.toDate)
+  if (filters.manualPairOverlapKeys && filters.manualPairOverlapKeys.length > 0) {
+    slipQuery = slipQuery.overlaps('manual_pair_keys', filters.manualPairOverlapKeys)
+  }
 
   const { data: slips, error: fetchError } = await slipQuery
 

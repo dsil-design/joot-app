@@ -39,13 +39,19 @@ export async function GET(request: NextRequest) {
       statementUploadId: searchParams.get('statementUploadId') || undefined,
     }
 
-    // Fetch items from each source in parallel
-    // When filtering by a specific statement, don't fetch email items (they're irrelevant)
+    // Fetch items from each source in parallel.
+    // When filtering by a specific statement we normally skip emails/slips
+    // (they're irrelevant for that view) — but we still need to surface ones
+    // the user has manually attached to a suggestion in this statement, so the
+    // aggregator's Phase 0 manual-pair materialization can merge them. We do
+    // that in a second pass after the statement fetch resolves (we need its
+    // suggestion count to build the overlap key list).
     const shouldFetchStatements = filters.sourceFilter === 'all' || filters.sourceFilter === 'statement' || filters.sourceFilter === 'merged'
     const shouldFetchEmails = !filters.statementUploadId && (filters.sourceFilter === 'all' || filters.sourceFilter === 'email' || filters.sourceFilter === 'merged')
     const shouldFetchSlips = !filters.statementUploadId && (filters.sourceFilter === 'all' || filters.sourceFilter === 'payment_slip' || filters.sourceFilter === 'merged')
+    const shouldFetchManualPairExtras = !!filters.statementUploadId && (filters.sourceFilter === 'all' || filters.sourceFilter === 'merged')
 
-    const [statementItems, emailItems, paymentSlipItems] = await Promise.all([
+    const [statementItems, emailItemsAll, paymentSlipItemsAll] = await Promise.all([
       shouldFetchStatements
         ? fetchStatementQueueItems(supabase, user.id, {
             statementUploadId: filters.statementUploadId,
@@ -72,6 +78,32 @@ export async function GET(request: NextRequest) {
           })
         : Promise.resolve([]),
     ])
+
+    let emailItems = emailItemsAll
+    let paymentSlipItems = paymentSlipItemsAll
+    if (shouldFetchManualPairExtras && statementItems.length > 0) {
+      // Build the list of every composite key this statement could own
+      // (`stmt:<id>:<idx>` for each suggestion) and look up email/slip rows
+      // whose manual_pair_keys overlap with any of them.
+      const overlapKeys = statementItems.map((i) => i.id)
+      const [extraEmails, extraSlips] = await Promise.all([
+        fetchEmailQueueItems(supabase, user.id, {
+          currencyFilter: filters.currencyFilter,
+          searchQuery: filters.searchQuery,
+          // Skip date filters: manually-attached emails may sit outside the
+          // active month (the user attached an Apr 7 email to an Apr 8 charge,
+          // etc.) and would be silently dropped by a strict date window.
+          manualPairOverlapKeys: overlapKeys,
+        }),
+        fetchPaymentSlipQueueItems(supabase, user.id, {
+          currencyFilter: filters.currencyFilter,
+          searchQuery: filters.searchQuery,
+          manualPairOverlapKeys: overlapKeys,
+        }),
+      ])
+      emailItems = extraEmails
+      paymentSlipItems = extraSlips
+    }
 
     // Backfill: auto-link unmatched email/statement items to existing
     // transactions that were created from a payment slip. Mutates items in place

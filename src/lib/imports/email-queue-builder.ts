@@ -10,6 +10,12 @@ interface EmailFilters {
   searchQuery?: string
   fromDate?: string
   toDate?: string
+  // When set, only return emails whose manual_pair_keys array overlaps with
+  // this list. Used by the statement-scoped queue view to surface emails the
+  // user has manually attached to one of the active statement's suggestions
+  // (which would otherwise be skipped because the route doesn't fetch
+  // unrelated emails when statementUploadId is set).
+  manualPairOverlapKeys?: string[]
 }
 
 function addOneDayUTC(dateStr: string): string {
@@ -57,6 +63,9 @@ export async function fetchEmailQueueItems(
   }
   if (filters.searchQuery) {
     emailQuery = emailQuery.or(`description.ilike.%${filters.searchQuery}%,subject.ilike.%${filters.searchQuery}%`)
+  }
+  if (filters.manualPairOverlapKeys && filters.manualPairOverlapKeys.length > 0) {
+    emailQuery = emailQuery.overlaps('manual_pair_keys', filters.manualPairOverlapKeys)
   }
 
   const { data: emailRows, error: emailError } = await emailQuery
