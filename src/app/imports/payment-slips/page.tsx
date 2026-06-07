@@ -4,15 +4,72 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Upload, Receipt, ArrowRight, Eye, RefreshCw, X } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Upload, Receipt, ArrowRight, Eye, RefreshCw, X, Trash2, CheckSquare } from 'lucide-react'
 import { UploadPaymentSlipDialog } from '@/components/page-specific/upload-payment-slip-dialog'
 import { PaymentSlipViewerModal } from '@/components/page-specific/payment-slip-viewer-modal'
 import { PaymentSlipsFilterBar } from '@/components/page-specific/payment-slips-filter-bar'
 import { usePaymentSlipFilters } from '@/hooks/use-payment-slips-filters'
 import { LoadMoreTrigger } from '@/hooks/use-infinite-scroll'
-import { usePaymentSlips } from '@/hooks/use-payment-slips'
+import { usePaymentSlips, fetchAllFilteredSlipIds } from '@/hooks/use-payment-slips'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { toast } from 'sonner'
+
+function SlipDeleteDialog({
+  open,
+  onOpenChange,
+  count,
+  onConfirm,
+  isDeleting,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  count: number
+  onConfirm: () => void | Promise<void>
+  isDeleting: boolean
+}) {
+  const isBulk = count > 1
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-xl font-medium text-foreground">
+            {isBulk ? 'Delete payment slips?' : 'Delete payment slip?'}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-sm text-muted-foreground">
+            {isBulk ? (
+              <>
+                This will permanently delete <strong className="font-semibold text-foreground">{count} payment slips</strong> and their uploaded images. This cannot be undone.
+              </>
+            ) : (
+              'This will permanently delete the slip and its uploaded image. This cannot be undone.'
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Nevermind</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => { await onConfirm() }}
+            disabled={isDeleting}
+            className="bg-red-600 hover:bg-red-700 dark:hover:bg-red-600 focus:ring-red-600"
+          >
+            {isDeleting ? 'Deleting...' : isBulk ? 'Yes, delete all' : 'Yes, delete'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
 
 /**
  * Derive a single user-facing badge from the two independent status fields
@@ -60,6 +117,10 @@ export default function PaymentSlipsPage() {
   const [filters, setFilters] = usePaymentSlipFilters()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isReprocessing, setIsReprocessing] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<string[] | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isAllSelected, setIsAllSelected] = useState(false)
+  const [isSelectingAll, setIsSelectingAll] = useState(false)
 
   const {
     items: slips,
@@ -74,6 +135,7 @@ export default function PaymentSlipsPage() {
   } = usePaymentSlips(filters)
 
   const toggleSelect = useCallback((id: string) => {
+    setIsAllSelected(false)
     setSelectedIds(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -83,13 +145,18 @@ export default function PaymentSlipsPage() {
   }, [])
 
   const toggleSelectAll = useCallback(() => {
-    setSelectedIds(prev => {
-      if (prev.size === slips.length) return new Set()
-      return new Set(slips.map(s => s.id))
-    })
-  }, [slips])
+    if (selectedIds.size > 0) {
+      setSelectedIds(new Set())
+      setIsAllSelected(false)
+    } else {
+      setSelectedIds(new Set(slips.map(s => s.id)))
+    }
+  }, [slips, selectedIds])
 
-  const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set())
+    setIsAllSelected(false)
+  }, [])
 
   const reprocessSelected = useCallback(async () => {
     setIsReprocessing(true)
@@ -108,6 +175,36 @@ export default function PaymentSlipsPage() {
       setIsReprocessing(false)
     }
   }, [selectedIds, clearSelection, reset])
+
+  const handleSelectAll = useCallback(async () => {
+    setIsSelectingAll(true)
+    try {
+      const allIds = await fetchAllFilteredSlipIds(filters)
+      setSelectedIds(new Set(allIds))
+      setIsAllSelected(true)
+    } catch {
+      toast.error("Failed to select all slips")
+    } finally {
+      setIsSelectingAll(false)
+    }
+  }, [filters])
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteTarget) return
+    setIsDeleting(true)
+    try {
+      await Promise.all(
+        deleteTarget.map(id => fetch(`/api/payment-slips/${id}`, { method: 'DELETE' }))
+      )
+      setDeleteTarget(null)
+      clearSelection()
+      reset()
+    } catch {
+      // error is handled by the hook
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [deleteTarget, clearSelection, reset])
 
   return (
     <div className="flex flex-col gap-6">
@@ -172,6 +269,24 @@ export default function PaymentSlipsPage() {
       {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-3 rounded-lg border bg-muted sticky top-0 z-10">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          {!isAllSelected && total != null && total > selectedIds.size && (
+            <Button
+              variant="link"
+              size="sm"
+              className="text-xs px-1 h-auto"
+              onClick={handleSelectAll}
+              disabled={isSelectingAll}
+            >
+              {isSelectingAll ? (
+                <><RefreshCw className="h-3 w-3 mr-1 animate-spin" />Selecting...</>
+              ) : (
+                <><CheckSquare className="h-3 w-3 mr-1" />{`Select all ${total}`}</>
+              )}
+            </Button>
+          )}
+          {isAllSelected && (
+            <span className="text-xs text-muted-foreground">All {selectedIds.size} filtered results selected</span>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -181,6 +296,16 @@ export default function PaymentSlipsPage() {
           >
             <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isReprocessing && "animate-spin")} />
             {isReprocessing ? 'Reprocessing...' : 'Reprocess Selected'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setDeleteTarget(Array.from(selectedIds))}
+            disabled={isReprocessing}
+            className="min-h-[44px] sm:min-h-0 text-destructive hover:text-destructive border-destructive/40 hover:bg-destructive/10"
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+            Delete Selected
           </Button>
           <Button size="sm" variant="ghost" onClick={clearSelection} className="min-h-[44px] sm:min-h-0">
             <X className="h-3.5 w-3.5 mr-1" />
@@ -193,7 +318,7 @@ export default function PaymentSlipsPage() {
       {!isInitialLoading && slips.length > 0 && (
         <div className="flex items-center gap-3 px-4 -mb-4">
           <Checkbox
-            checked={selectedIds.size === slips.length && slips.length > 0}
+            checked={slips.length > 0 && slips.every(s => selectedIds.has(s.id))}
             onCheckedChange={toggleSelectAll}
             aria-label="Select all"
           />
@@ -224,6 +349,7 @@ export default function PaymentSlipsPage() {
               href={`/imports/payment-slips/${slip.id}`}
               className="flex items-center justify-between flex-1 min-w-0"
             >
+
             <div className="flex items-center gap-4 min-w-0">
               <div className="flex flex-col gap-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -274,6 +400,18 @@ export default function PaymentSlipsPage() {
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
             </div>
           </Link>
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setDeleteTarget([slip.id])
+            }}
+            className="shrink-0 p-2.5 sm:p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            title="Delete slip"
+            aria-label={`Delete ${description}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
           </div>
         )
       })}
@@ -302,6 +440,14 @@ export default function PaymentSlipsPage() {
           filename={previewSlip.filename}
         />
       )}
+
+      <SlipDeleteDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        count={deleteTarget?.length ?? 0}
+        onConfirm={confirmDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   )
 }

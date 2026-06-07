@@ -60,6 +60,56 @@ export async function GET(request: NextRequest) {
       amountCurrency: searchParams.get("amountCurrency") || undefined,
     }
 
+    // Shortpath: return only IDs for bulk selection ("Select all N" toolbar)
+    if (searchParams.get("fields") === "ids") {
+      let idsQuery = supabase.from("transactions").select("id").eq("user_id", user.id)
+
+      if (filters.transactionType && filters.transactionType !== "all") idsQuery = idsQuery.eq("transaction_type", filters.transactionType)
+      if (filters.dateFrom && filters.datePreset !== "all-time") idsQuery = idsQuery.gte("transaction_date", filters.dateFrom)
+      if (filters.dateTo && filters.datePreset !== "all-time") idsQuery = idsQuery.lte("transaction_date", filters.dateTo)
+      if (filters.vendorIds?.length) idsQuery = idsQuery.in("vendor_id", filters.vendorIds)
+      if (filters.paymentMethodIds?.length) {
+        const hasNone = filters.paymentMethodIds.includes("none")
+        const otherIds = filters.paymentMethodIds.filter(id => id !== "none")
+        if (hasNone && otherIds.length > 0) idsQuery = idsQuery.or(`payment_method_id.is.null,payment_method_id.in.(${otherIds.join(",")})`)
+        else if (hasNone) idsQuery = idsQuery.is("payment_method_id", null)
+        else idsQuery = idsQuery.in("payment_method_id", otherIds)
+      }
+      if (filters.searchKeyword) {
+        const kw = filters.searchKeyword
+        const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        if (uuidRe.test(kw)) {
+          idsQuery = idsQuery.eq("id", kw)
+        } else {
+          const numVal = parseFloat(kw.replace(/[,$฿]/g, ""))
+          if (!isNaN(numVal) && /^[\d,$฿.]+$/.test(kw)) {
+            idsQuery = idsQuery.eq("amount", numVal)
+          } else {
+            const { data: mv } = await supabase.from("vendors").select("id").eq("user_id", user.id).ilike("name", `%${kw}%`)
+            const vids = mv?.map((v: { id: string }) => v.id) || []
+            if (vids.length > 0) idsQuery = idsQuery.or(`description.ilike.%${kw}%,vendor_id.in.(${vids.join(",")})`)
+            else idsQuery = idsQuery.ilike("description", `%${kw}%`)
+          }
+        }
+      }
+      if (filters.sourceType) {
+        switch (filters.sourceType) {
+          case "any": idsQuery = idsQuery.or("source_email_transaction_id.not.is.null,source_statement_upload_id.not.is.null,source_payment_slip_id.not.is.null"); break
+          case "email": idsQuery = idsQuery.not("source_email_transaction_id", "is", null); break
+          case "statement": idsQuery = idsQuery.not("source_statement_upload_id", "is", null); break
+          case "payment_slip": idsQuery = idsQuery.not("source_payment_slip_id", "is", null); break
+          case "none": idsQuery = idsQuery.is("source_email_transaction_id", null).is("source_statement_upload_id", null).is("source_payment_slip_id", null); break
+        }
+      }
+      if (filters.amountCurrency) idsQuery = idsQuery.eq("original_currency", filters.amountCurrency)
+      if (filters.amountMin !== undefined && !isNaN(filters.amountMin)) idsQuery = idsQuery.gte("amount", filters.amountMin)
+      if (filters.amountMax !== undefined && !isNaN(filters.amountMax)) idsQuery = idsQuery.lte("amount", filters.amountMax)
+
+      const { data: idRows, error: idsError } = await idsQuery
+      if (idsError) return NextResponse.json({ error: "Failed to fetch IDs" }, { status: 500 })
+      return NextResponse.json({ ids: (idRows || []).map((r: { id: string }) => r.id) })
+    }
+
     // Build base query (without tags for now)
     let query = supabase
       .from("transactions")

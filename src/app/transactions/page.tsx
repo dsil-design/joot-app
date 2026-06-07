@@ -736,6 +736,26 @@ function TotalsFooter({ totals, totalsCurrency, onTotalsCurrencyChange }: Totals
   )
 }
 
+async function fetchAllFilteredTransactionIds(apiFilters: Record<string, unknown>): Promise<string[]> {
+  const params = new URLSearchParams()
+  params.set("fields", "ids")
+  if (apiFilters.datePreset) params.set("datePreset", String(apiFilters.datePreset))
+  if (apiFilters.dateFrom) params.set("dateFrom", String(apiFilters.dateFrom))
+  if (apiFilters.dateTo) params.set("dateTo", String(apiFilters.dateTo))
+  if (apiFilters.searchKeyword) params.set("searchKeyword", String(apiFilters.searchKeyword))
+  if (Array.isArray(apiFilters.vendorIds) && apiFilters.vendorIds.length) params.set("vendorIds", apiFilters.vendorIds.join(","))
+  if (Array.isArray(apiFilters.paymentMethodIds) && apiFilters.paymentMethodIds.length) params.set("paymentMethodIds", apiFilters.paymentMethodIds.join(","))
+  if (apiFilters.transactionType) params.set("transactionType", String(apiFilters.transactionType))
+  if (apiFilters.sourceType) params.set("sourceType", String(apiFilters.sourceType))
+  if (apiFilters.amountMin !== undefined) params.set("amountMin", String(apiFilters.amountMin))
+  if (apiFilters.amountMax !== undefined) params.set("amountMax", String(apiFilters.amountMax))
+  if (apiFilters.amountCurrency) params.set("amountCurrency", String(apiFilters.amountCurrency))
+  const res = await fetch(`/api/transactions?${params}`)
+  if (!res.ok) throw new Error("Failed to fetch transaction IDs")
+  const data = await res.json()
+  return data.ids || []
+}
+
 // Session storage key for preserving list state across navigation
 const TX_LIST_STATE_KEY = 'joot:transactions-list-state'
 
@@ -970,6 +990,8 @@ export default function AllTransactionsPage() {
   // Selection state
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
   const [lastClickedIndex, setLastClickedIndex] = React.useState<number | null>(null)
+  const [isAllSelected, setIsAllSelected] = React.useState(false)
+  const [isSelectingAll, setIsSelectingAll] = React.useState(false)
 
   // Bulk edit modals state
   const [isBulkVendorModalOpen, setIsBulkVendorModalOpen] = React.useState(false)
@@ -1321,6 +1343,9 @@ export default function AllTransactionsPage() {
 
   // Selection handlers
   const handleToggleSelection = React.useCallback((id: string, shiftKey: boolean, ctrlKey: boolean) => {
+    // Any individual toggle breaks the "all filtered results selected" invariant
+    setIsAllSelected(false)
+
     const transactionList = allTransactions
     const currentIndex = transactionList.findIndex(t => t.id === id)
 
@@ -1359,18 +1384,32 @@ export default function AllTransactionsPage() {
   }, [allTransactions, selectedIds, lastClickedIndex, layoutMode])
 
   const handleToggleAll = React.useCallback(() => {
-    const transactionList = allTransactions
-    if (selectedIds.size === transactionList.length) {
+    if (selectedIds.size > 0) {
       setSelectedIds(new Set())
+      setIsAllSelected(false)
     } else {
-      setSelectedIds(new Set(transactionList.map(t => t.id)))
+      setSelectedIds(new Set(allTransactions.map(t => t.id)))
     }
-  }, [allTransactions, selectedIds, layoutMode])
+  }, [allTransactions, selectedIds])
 
   const handleClearSelection = React.useCallback(() => {
     setSelectedIds(new Set())
     setLastClickedIndex(null)
+    setIsAllSelected(false)
   }, [])
+
+  const handleSelectAll = React.useCallback(async () => {
+    setIsSelectingAll(true)
+    try {
+      const allIds = await fetchAllFilteredTransactionIds(apiFilters as Record<string, unknown>)
+      setSelectedIds(new Set(allIds))
+      setIsAllSelected(true)
+    } catch {
+      toast.error("Failed to select all transactions")
+    } finally {
+      setIsSelectingAll(false)
+    }
+  }, [apiFilters])
 
   // Delete handlers
   const handleDeleteSingle = React.useCallback((id: string) => {
@@ -1406,6 +1445,7 @@ export default function AllTransactionsPage() {
         if (success) {
           toast.success(`${ids.length} transaction${ids.length > 1 ? 's' : ''} deleted successfully`)
           setSelectedIds(new Set())
+          setIsAllSelected(false)
           setDeleteConfirmOpen(false)
           await queryClient.invalidateQueries({ queryKey: ["transactions", "paginated"] })
         } else {
@@ -1741,6 +1781,10 @@ export default function AllTransactionsPage() {
           onEditPaymentMethod={() => setIsBulkPaymentModalOpen(true)}
           onEditDescription={() => setIsBulkDescriptionModalOpen(true)}
           onDelete={handleDeleteBulk}
+          totalFilteredCount={totalCount}
+          isAllSelected={isAllSelected}
+          onSelectAll={handleSelectAll}
+          isSelectingAll={isSelectingAll}
         />
       )}
 

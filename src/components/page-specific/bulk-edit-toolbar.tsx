@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { X, Trash2, Calendar, Building2, CreditCard, FileText, ChevronDown, ChevronUp } from "lucide-react"
+import { X, Trash2, Calendar, Building2, CreditCard, FileText, ChevronDown, ChevronUp, CheckSquare, RefreshCw } from "lucide-react"
 import type { TransactionWithVendorAndPayment } from "@/lib/supabase/types"
 import { getExchangeRateWithMetadata } from "@/lib/utils/exchange-rate-utils"
 import { formatCurrency } from "@/lib/utils"
@@ -28,6 +28,10 @@ interface BulkEditToolbarProps {
   onEditPaymentMethod: () => void
   onEditDescription: () => void
   onDelete: () => void
+  totalFilteredCount?: number | null
+  isAllSelected?: boolean
+  onSelectAll?: () => void
+  isSelectingAll?: boolean
 }
 
 export function BulkEditToolbar({
@@ -41,6 +45,10 @@ export function BulkEditToolbar({
   onEditPaymentMethod,
   onEditDescription,
   onDelete,
+  totalFilteredCount,
+  isAllSelected = false,
+  onSelectAll,
+  isSelectingAll = false,
 }: BulkEditToolbarProps) {
   const [totals, setTotals] = React.useState<TransactionTotals>({
     totalExpenses: 0,
@@ -122,6 +130,26 @@ export function BulkEditToolbar({
               <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
                 {selectedCount} {selectedCount === 1 ? "transaction" : "transactions"} selected
               </span>
+              {!isAllSelected && onSelectAll && totalFilteredCount != null && totalFilteredCount > selectedCount && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-7 px-1 text-xs text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100"
+                  onClick={onSelectAll}
+                  disabled={isSelectingAll}
+                >
+                  {isSelectingAll ? (
+                    <><RefreshCw className="h-3 w-3 mr-1 animate-spin" />Selecting...</>
+                  ) : (
+                    <><CheckSquare className="h-3 w-3 mr-1" />Select all {totalFilteredCount}</>
+                  )}
+                </Button>
+              )}
+              {isAllSelected && (
+                <span className="text-xs text-blue-700/70 dark:text-blue-300/70">
+                  All {selectedCount} filtered results selected
+                </span>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
