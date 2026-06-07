@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MonthStepperFilter } from "@/components/ui/month-stepper-filter"
-import { Search, X, SlidersHorizontal } from "lucide-react"
+import { Search, X, SlidersHorizontal, Play, Filter } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 import { getMonthRange, isCurrentMonthRange, type DatePresetKey } from "@/lib/utils/date-filters"
 
@@ -178,6 +178,19 @@ interface StatementOption {
   label: string
 }
 
+function filtersChanged(a: ReviewQueueFilters, b: ReviewQueueFilters): boolean {
+  return (
+    a.search !== b.search ||
+    a.source !== b.source ||
+    a.currency !== b.currency ||
+    a.confidence !== b.confidence ||
+    a.statementUploadId !== b.statementUploadId ||
+    a.paymentMethodType !== b.paymentMethodType ||
+    a.dateRange?.from?.getTime() !== b.dateRange?.from?.getTime() ||
+    a.dateRange?.to?.getTime() !== b.dateRange?.to?.getTime()
+  )
+}
+
 export function ReviewQueueFilterBar({
   filters,
   onFiltersChange,
@@ -187,9 +200,14 @@ export function ReviewQueueFilterBar({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [searchInput, setSearchInput] = React.useState(filters.search)
+  const [draft, setDraft] = React.useState<ReviewQueueFilters>(filters)
   const [statementOptions, setStatementOptions] = React.useState<StatementOption[]>([])
   const [showMoreFilters, setShowMoreFilters] = React.useState(false)
+
+  // Sync draft when filters change externally (e.g. URL init, stmtUploadId deep-link)
+  React.useEffect(() => {
+    setDraft(filters)
+  }, [filters])
 
   // Fetch statement options on mount
   React.useEffect(() => {
@@ -238,16 +256,6 @@ export function ReviewQueueFilterBar({
     loadStatements()
   }, [])
 
-  // Debounced search
-  React.useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (searchInput !== filters.search) {
-        onFiltersChange({ ...filters, search: searchInput })
-      }
-    }, 300)
-    return () => clearTimeout(timeoutId)
-  }, [searchInput, filters, onFiltersChange])
-
   // Initialize from URL params on mount
   React.useEffect(() => {
     if (syncWithUrl && searchParams) {
@@ -255,9 +263,6 @@ export function ReviewQueueFilterBar({
       if (Object.keys(urlFilters).length > 0) {
         const dateRange = urlFilters.dateRange ?? getMonthRange()
         onFiltersChange({ ...defaultFilters, ...urlFilters, dateRange })
-        if (urlFilters.search) setSearchInput(urlFilters.search)
-        // Auto-expand secondary row if secondary filters are active
-        // (Status is in the primary row, so it's not counted here.)
         if (
           urlFilters.currency !== undefined ||
           urlFilters.confidence !== undefined ||
@@ -272,7 +277,7 @@ export function ReviewQueueFilterBar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Sync filters to URL
+  // Sync committed filters to URL
   React.useEffect(() => {
     if (syncWithUrl) {
       const params = filtersToUrlParams(filters)
@@ -283,28 +288,40 @@ export function ReviewQueueFilterBar({
     }
   }, [filters, pathname, router, syncWithUrl])
 
-  const handleFilterChange = (
+  const isDirty = filtersChanged(draft, filters)
+
+  const handleApply = () => {
+    onFiltersChange(draft)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && isDirty) {
+      handleApply()
+    }
+  }
+
+  const updateDraft = (
     key: keyof ReviewQueueFilters,
     value: FilterStatus | FilterCurrency | FilterConfidence | FilterSource | FilterPaymentMethodType | DateRange | undefined | string
   ) => {
-    onFiltersChange({ ...filters, [key]: value })
+    setDraft(prev => ({ ...prev, [key]: value }))
   }
 
   const handleClearAll = () => {
-    setSearchInput("")
-    onFiltersChange({ ...defaultFilters, dateRange: getMonthRange() })
+    const reset = { ...defaultFilters, dateRange: getMonthRange() }
+    setDraft(reset)
+    onFiltersChange(reset)
   }
 
-  // Secondary filters that live in the expanded "More Filters" panel.
-  // Note: Status is now promoted to the primary row, so it's NOT counted here.
+  // Badge on "More Filters" reflects draft state
   const secondaryFilterCount =
-    (filters.currency !== "all" ? 1 : 0) +
-    (filters.confidence !== "all" ? 1 : 0) +
-    (filters.statementUploadId !== "" ? 1 : 0) +
-    (filters.paymentMethodType !== undefined && filters.paymentMethodType !== "all" ? 1 : 0) +
-    (filters.source === "merged" ? 1 : 0)
+    (draft.currency !== "all" ? 1 : 0) +
+    (draft.confidence !== "all" ? 1 : 0) +
+    (draft.statementUploadId !== "" ? 1 : 0) +
+    (draft.paymentMethodType !== undefined && draft.paymentMethodType !== "all" ? 1 : 0) +
+    (draft.source === "merged" ? 1 : 0)
 
-  // Show "Reset" only when something has been changed away from the defaults.
+  // Reset button shows when committed filters differ from defaults
   const showReset =
     filters.currency !== "all" ||
     filters.confidence !== "all" ||
@@ -314,20 +331,31 @@ export function ReviewQueueFilterBar({
     filters.statementUploadId !== "" ||
     (filters.paymentMethodType !== undefined && filters.paymentMethodType !== "all")
 
-  const isCrossSourceOnly = filters.source === "merged"
+  // Count of committed active filters for display
+  const activeFilterCount = [
+    filters.search !== "",
+    filters.source !== "all",
+    filters.currency !== "all",
+    filters.confidence !== "all",
+    filters.statementUploadId !== "",
+    filters.paymentMethodType !== undefined && filters.paymentMethodType !== "all",
+    filters.dateRange !== undefined && !isCurrentMonthRange(filters.dateRange),
+  ].filter(Boolean).length
+
+  const isCrossSourceOnly = draft.source === "merged"
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-3", className)} onKeyDown={handleKeyDown}>
       {/* Row A — date navigation */}
       <div className="pb-3 border-b">
         <MonthStepperFilter
-          dateRange={filters.dateRange}
-          onDateRangeChange={(range: DateRange | undefined) => handleFilterChange("dateRange", range)}
+          dateRange={draft.dateRange}
+          onDateRangeChange={(range: DateRange | undefined) => updateDraft("dateRange", range)}
           presets={datePresets}
         />
       </div>
 
-      {/* Row B — search, source, status, actions */}
+      {/* Row B — search, source, actions */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
         {/* Search input */}
         <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-sm">
@@ -335,8 +363,8 @@ export function ReviewQueueFilterBar({
           <Input
             type="search"
             placeholder="Search vendor, amount..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            value={draft.search}
+            onChange={(e) => updateDraft("search", e.target.value)}
             className="pl-9 h-10"
           />
         </div>
@@ -347,10 +375,10 @@ export function ReviewQueueFilterBar({
             <button
               key={btn.value}
               type="button"
-              onClick={() => handleFilterChange("source", btn.value)}
+              onClick={() => updateDraft("source", btn.value)}
               className={cn(
                 "px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
-                filters.source === btn.value
+                draft.source === btn.value
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
@@ -398,8 +426,8 @@ export function ReviewQueueFilterBar({
         <div className="flex flex-wrap items-center gap-3 pt-3 border-t">
           {/* Group 1: data shape */}
           <Select
-            value={filters.currency}
-            onValueChange={(value) => handleFilterChange("currency", value as FilterCurrency)}
+            value={draft.currency}
+            onValueChange={(value) => updateDraft("currency", value as FilterCurrency)}
           >
             <SelectTrigger className="w-full sm:w-[140px]">
               <SelectValue placeholder="Currency" />
@@ -414,9 +442,9 @@ export function ReviewQueueFilterBar({
           </Select>
 
           <Select
-            value={filters.paymentMethodType || "all"}
+            value={draft.paymentMethodType || "all"}
             onValueChange={(value) =>
-              handleFilterChange("paymentMethodType", value as FilterPaymentMethodType)
+              updateDraft("paymentMethodType", value as FilterPaymentMethodType)
             }
           >
             <SelectTrigger className="w-full sm:w-[160px]">
@@ -436,8 +464,8 @@ export function ReviewQueueFilterBar({
 
           {/* Group 2: review quality */}
           <Select
-            value={filters.confidence}
-            onValueChange={(value) => handleFilterChange("confidence", value as FilterConfidence)}
+            value={draft.confidence}
+            onValueChange={(value) => updateDraft("confidence", value as FilterConfidence)}
           >
             <SelectTrigger className="w-full sm:w-[160px]">
               <SelectValue placeholder="Confidence" />
@@ -453,9 +481,9 @@ export function ReviewQueueFilterBar({
 
           {statementOptions.length > 0 && (
             <Select
-              value={filters.statementUploadId || "all"}
+              value={draft.statementUploadId || "all"}
               onValueChange={(value) =>
-                handleFilterChange("statementUploadId", value === "all" ? "" : value)
+                updateDraft("statementUploadId", value === "all" ? "" : value)
               }
             >
               <SelectTrigger className="w-full sm:w-[200px]">
@@ -476,7 +504,7 @@ export function ReviewQueueFilterBar({
           <button
             type="button"
             onClick={() =>
-              handleFilterChange("source", isCrossSourceOnly ? "all" : "merged")
+              updateDraft("source", isCrossSourceOnly ? "all" : "merged")
             }
             className={cn(
               "h-9 px-3 rounded-md border text-xs font-medium transition-colors",
@@ -489,6 +517,27 @@ export function ReviewQueueFilterBar({
           </button>
         </div>
       )}
+
+      {/* Row D — Apply / filter status */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+        <Button
+          size="sm"
+          onClick={handleApply}
+          disabled={!isDirty}
+        >
+          <Play className="h-3.5 w-3.5 mr-1.5" />
+          Apply
+        </Button>
+
+        {activeFilterCount > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            <span>
+              {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

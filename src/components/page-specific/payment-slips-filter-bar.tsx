@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MonthStepperFilter } from "@/components/ui/month-stepper-filter"
-import { Search, X, SlidersHorizontal, ArrowUp, ArrowDown } from "lucide-react"
+import { Search, X, SlidersHorizontal, ArrowUp, ArrowDown, Play, Filter } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 import { getMonthRange, isCurrentMonthRange } from "@/lib/utils/date-filters"
 import {
@@ -69,6 +69,20 @@ const sortFieldOptions: Array<{ value: PaymentSlipSortField; label: string }> = 
   { value: "confidence", label: "Confidence" },
 ]
 
+function filtersChanged(a: PaymentSlipFilters, b: PaymentSlipFilters): boolean {
+  return (
+    a.search !== b.search ||
+    a.direction !== b.direction ||
+    a.slipState !== b.slipState ||
+    a.bank !== b.bank ||
+    a.confidence !== b.confidence ||
+    a.sortField !== b.sortField ||
+    a.sortOrder !== b.sortOrder ||
+    a.dateRange?.from?.getTime() !== b.dateRange?.from?.getTime() ||
+    a.dateRange?.to?.getTime() !== b.dateRange?.to?.getTime()
+  )
+}
+
 export function PaymentSlipsFilterBar({
   filters,
   onFiltersChange,
@@ -76,6 +90,12 @@ export function PaymentSlipsFilterBar({
   className,
 }: PaymentSlipsFilterBarProps) {
   const [showMoreFilters, setShowMoreFilters] = React.useState(false)
+  const [draft, setDraft] = React.useState<PaymentSlipFilters>(filters)
+
+  // Sync draft when filters change externally
+  React.useEffect(() => {
+    setDraft(filters)
+  }, [filters])
 
   // Auto-expand if any of the overflow filters are active on first render
   React.useEffect(() => {
@@ -91,20 +111,36 @@ export function PaymentSlipsFilterBar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const update = <K extends keyof PaymentSlipFilters>(key: K, value: PaymentSlipFilters[K]) => {
-    onFiltersChange({ ...filters, [key]: value })
+  const isDirty = filtersChanged(draft, filters)
+
+  const handleApply = () => {
+    onFiltersChange(draft)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && isDirty) {
+      handleApply()
+    }
+  }
+
+  const updateDraft = <K extends keyof PaymentSlipFilters>(key: K, value: PaymentSlipFilters[K]) => {
+    setDraft(prev => ({ ...prev, [key]: value }))
   }
 
   const handleClearAll = () => {
-    onFiltersChange({ ...defaultPaymentSlipFilters, dateRange: getMonthRange() })
+    const reset = { ...defaultPaymentSlipFilters, dateRange: getMonthRange() }
+    setDraft(reset)
+    onFiltersChange(reset)
   }
 
+  // Badge on "More Filters" reflects draft state
   const secondaryFilterCount =
-    (filters.slipState !== "all" ? 1 : 0) +
-    (filters.bank !== "all" ? 1 : 0) +
-    (filters.sortField !== defaultPaymentSlipFilters.sortField ? 1 : 0) +
-    (filters.sortOrder !== defaultPaymentSlipFilters.sortOrder ? 1 : 0)
+    (draft.slipState !== "all" ? 1 : 0) +
+    (draft.bank !== "all" ? 1 : 0) +
+    (draft.sortField !== defaultPaymentSlipFilters.sortField ? 1 : 0) +
+    (draft.sortOrder !== defaultPaymentSlipFilters.sortOrder ? 1 : 0)
 
+  // Reset button shows when committed filters differ from defaults
   const showReset =
     filters.search !== "" ||
     filters.direction !== "all" ||
@@ -115,6 +151,7 @@ export function PaymentSlipsFilterBar({
     filters.sortField !== defaultPaymentSlipFilters.sortField ||
     filters.sortOrder !== defaultPaymentSlipFilters.sortOrder
 
+  // Count of committed active filters for display
   const activeFilterCount = [
     filters.search !== "",
     filters.direction !== "all",
@@ -125,12 +162,12 @@ export function PaymentSlipsFilterBar({
   ].filter(Boolean).length
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-3", className)} onKeyDown={handleKeyDown}>
       {/* Row A — date navigation */}
       <div className="pb-3 border-b">
         <MonthStepperFilter
-          dateRange={filters.dateRange}
-          onDateRangeChange={(range: DateRange | undefined) => update("dateRange", range)}
+          dateRange={draft.dateRange}
+          onDateRangeChange={(range: DateRange | undefined) => updateDraft("dateRange", range)}
         />
       </div>
 
@@ -142,8 +179,8 @@ export function PaymentSlipsFilterBar({
           <Input
             type="search"
             placeholder="Search sender, recipient, memo..."
-            value={filters.search}
-            onChange={(e) => update("search", e.target.value)}
+            value={draft.search}
+            onChange={(e) => updateDraft("search", e.target.value)}
             className="pl-9 h-10"
           />
         </div>
@@ -154,10 +191,10 @@ export function PaymentSlipsFilterBar({
             <button
               key={btn.value}
               type="button"
-              onClick={() => update("direction", btn.value)}
+              onClick={() => updateDraft("direction", btn.value)}
               className={cn(
                 "px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
-                filters.direction === btn.value
+                draft.direction === btn.value
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
@@ -169,8 +206,8 @@ export function PaymentSlipsFilterBar({
 
         {/* Confidence */}
         <Select
-          value={filters.confidence}
-          onValueChange={(value) => update("confidence", value as PaymentSlipConfidence)}
+          value={draft.confidence}
+          onValueChange={(value) => updateDraft("confidence", value as PaymentSlipConfidence)}
         >
           <SelectTrigger className="w-full sm:w-[160px] h-10 shrink-0">
             <SelectValue placeholder="Confidence" />
@@ -219,8 +256,8 @@ export function PaymentSlipsFilterBar({
         <div className="flex flex-wrap items-center gap-3 pt-3 border-t">
           {/* State */}
           <Select
-            value={filters.slipState}
-            onValueChange={(value) => update("slipState", value as PaymentSlipState)}
+            value={draft.slipState}
+            onValueChange={(value) => updateDraft("slipState", value as PaymentSlipState)}
           >
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="State" />
@@ -234,8 +271,8 @@ export function PaymentSlipsFilterBar({
 
           {/* Bank */}
           <Select
-            value={filters.bank}
-            onValueChange={(value) => update("bank", value as PaymentSlipBank)}
+            value={draft.bank}
+            onValueChange={(value) => updateDraft("bank", value as PaymentSlipBank)}
           >
             <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Bank" />
@@ -251,8 +288,8 @@ export function PaymentSlipsFilterBar({
 
           {/* Sort field */}
           <Select
-            value={filters.sortField}
-            onValueChange={(value) => update("sortField", value as PaymentSlipSortField)}
+            value={draft.sortField}
+            onValueChange={(value) => updateDraft("sortField", value as PaymentSlipSortField)}
           >
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Sort by" />
@@ -268,36 +305,48 @@ export function PaymentSlipsFilterBar({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => update("sortOrder", filters.sortOrder === "asc" ? "desc" : "asc")}
+            onClick={() => updateDraft("sortOrder", draft.sortOrder === "asc" ? "desc" : "asc")}
             className="gap-1.5"
-            title={filters.sortOrder === "asc" ? "Ascending" : "Descending"}
+            title={draft.sortOrder === "asc" ? "Ascending" : "Descending"}
           >
-            {filters.sortOrder === "asc" ? (
+            {draft.sortOrder === "asc" ? (
               <ArrowUp className="h-3.5 w-3.5" />
             ) : (
               <ArrowDown className="h-3.5 w-3.5" />
             )}
-            {filters.sortOrder === "asc" ? "Asc" : "Desc"}
+            {draft.sortOrder === "asc" ? "Asc" : "Desc"}
           </Button>
         </div>
       )}
 
-      {/* Match count footer */}
-      {(activeFilterCount > 0 || totalMatches != null) && (
-        <div className="text-xs text-muted-foreground">
-          {activeFilterCount > 0 && (
-            <>
-              {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
-              {totalMatches != null && " · "}
-            </>
-          )}
-          {totalMatches != null && (
-            <>
-              {totalMatches.toLocaleString()} match{totalMatches !== 1 ? "es" : ""}
-            </>
-          )}
-        </div>
-      )}
+      {/* Row D — Apply / filter status */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+        <Button
+          size="sm"
+          onClick={handleApply}
+          disabled={!isDirty}
+        >
+          <Play className="h-3.5 w-3.5 mr-1.5" />
+          Apply
+        </Button>
+
+        {(activeFilterCount > 0 || totalMatches != null) && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {activeFilterCount > 0 && (
+              <>
+                <Filter className="h-4 w-4" />
+                <span>
+                  {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
+                  {totalMatches != null && ` · ${totalMatches.toLocaleString()} match${totalMatches !== 1 ? "es" : ""}`}
+                </span>
+              </>
+            )}
+            {activeFilterCount === 0 && totalMatches != null && (
+              <span>{totalMatches.toLocaleString()} match{totalMatches !== 1 ? "es" : ""}</span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

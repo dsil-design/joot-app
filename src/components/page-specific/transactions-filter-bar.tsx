@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import type { DateRange } from "react-day-picker"
-import { Search, X, SlidersHorizontal } from "lucide-react"
+import { Search, X, SlidersHorizontal, Play, Filter } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,6 +52,21 @@ const typeButtons: Array<{ value: TransactionType; label: string }> = [
   { value: "transfer", label: "Transfers" },
 ]
 
+function filtersChanged(a: TransactionFilters, b: TransactionFilters): boolean {
+  return (
+    a.searchKeyword !== b.searchKeyword ||
+    a.transactionType !== b.transactionType ||
+    a.sourceType !== b.sourceType ||
+    a.amountMin !== b.amountMin ||
+    a.amountMax !== b.amountMax ||
+    a.amountCurrency !== b.amountCurrency ||
+    JSON.stringify(a.vendorIds) !== JSON.stringify(b.vendorIds) ||
+    JSON.stringify(a.paymentMethodIds) !== JSON.stringify(b.paymentMethodIds) ||
+    a.dateRange?.from?.getTime() !== b.dateRange?.from?.getTime() ||
+    a.dateRange?.to?.getTime() !== b.dateRange?.to?.getTime()
+  )
+}
+
 export function TransactionsFilterBar({
   filters,
   onFiltersChange,
@@ -60,22 +75,12 @@ export function TransactionsFilterBar({
   className,
 }: TransactionsFilterBarProps) {
   const [showMoreFilters, setShowMoreFilters] = React.useState(false)
-  const [searchInput, setSearchInput] = React.useState(filters.searchKeyword)
+  const [draft, setDraft] = React.useState<TransactionFilters>(filters)
 
-  // Debounced search — commits to parent filters 300ms after last keystroke
+  // Sync draft when filters change externally (e.g. ActiveFilterChips "Clear all")
   React.useEffect(() => {
-    const t = setTimeout(() => {
-      if (searchInput !== filters.searchKeyword) {
-        onFiltersChange({ ...filters, searchKeyword: searchInput })
-      }
-    }, 300)
-    return () => clearTimeout(t)
-  }, [searchInput, filters, onFiltersChange])
-
-  // If parent filters reset externally (e.g. Clear All), sync local search input
-  React.useEffect(() => {
-    setSearchInput(filters.searchKeyword)
-  }, [filters.searchKeyword])
+    setDraft(filters)
+  }, [filters])
 
   // Auto-expand Row C on first render if any overflow filter is active
   React.useEffect(() => {
@@ -92,24 +97,35 @@ export function TransactionsFilterBar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const update = <K extends keyof TransactionFilters>(
+  const isDirty = filtersChanged(draft, filters)
+
+  const handleApply = () => {
+    onFiltersChange(draft)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && isDirty) {
+      handleApply()
+    }
+  }
+
+  const updateDraft = <K extends keyof TransactionFilters>(
     key: K,
     value: TransactionFilters[K],
   ) => {
-    onFiltersChange({ ...filters, [key]: value })
+    setDraft(prev => ({ ...prev, [key]: value }))
   }
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
-    onFiltersChange({
-      ...filters,
+    setDraft(prev => ({
+      ...prev,
       dateRange: range,
       datePreset: detectPreset(range) ?? "custom",
-    })
+    }))
   }
 
   const handleReset = () => {
-    setSearchInput("")
-    onFiltersChange({
+    const reset: TransactionFilters = {
       ...filters,
       dateRange: undefined,
       datePreset: "all-time",
@@ -121,16 +137,19 @@ export function TransactionsFilterBar({
       amountMin: undefined,
       amountMax: undefined,
       amountCurrency: undefined,
-    })
+    }
+    setDraft(reset)
+    onFiltersChange(reset)
   }
 
+  // Badge on "More Filters" reflects draft state (shows pending changes in the panel)
   const secondaryFilterCount =
-    (filters.vendorIds.length > 0 ? 1 : 0) +
-    (filters.paymentMethodIds.length > 0 ? 1 : 0) +
-    (filters.sourceType !== undefined ? 1 : 0) +
-    (filters.amountMin !== undefined || filters.amountMax !== undefined ? 1 : 0)
+    (draft.vendorIds.length > 0 ? 1 : 0) +
+    (draft.paymentMethodIds.length > 0 ? 1 : 0) +
+    (draft.sourceType !== undefined ? 1 : 0) +
+    (draft.amountMin !== undefined || draft.amountMax !== undefined ? 1 : 0)
 
-  // "this-month" is the page default — anything else is user-initiated.
+  // Reset button shows when committed filters differ from page defaults
   const showReset =
     filters.searchKeyword !== "" ||
     filters.vendorIds.length > 0 ||
@@ -141,6 +160,17 @@ export function TransactionsFilterBar({
     filters.amountMax !== undefined ||
     filters.datePreset !== "this-month"
 
+  // Count of committed active filters shown in Row D
+  const activeFilterCount = [
+    filters.searchKeyword !== "",
+    filters.vendorIds.length > 0,
+    filters.paymentMethodIds.length > 0,
+    filters.transactionType !== "all",
+    filters.sourceType !== undefined,
+    filters.amountMin !== undefined || filters.amountMax !== undefined,
+    filters.datePreset !== "this-month",
+  ].filter(Boolean).length
+
   const vendorOptions = React.useMemo(
     () => vendors.map(v => ({ value: v.id, label: v.name })),
     [vendors],
@@ -150,30 +180,30 @@ export function TransactionsFilterBar({
     [paymentMethods],
   )
 
-  const amountCurrency = filters.amountCurrency || "USD"
+  const amountCurrency = draft.amountCurrency || "USD"
   const amountSymbol = CURRENCY_CONFIG_FALLBACK[amountCurrency]?.symbol ?? "$"
   const amountPl = amountSymbol.length > 1 ? "pl-10" : "pl-7"
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-3", className)} onKeyDown={handleKeyDown}>
       {/* Row A — date navigation */}
       <div className="pb-3 border-b">
         <MonthStepperFilter
-          dateRange={filters.dateRange}
+          dateRange={draft.dateRange}
           onDateRangeChange={handleDateRangeChange}
         />
       </div>
 
       {/* Row B — search, type, actions */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
-        {/* Search — now inline, no longer buried in a modal */}
+        {/* Search */}
         <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Search description, vendor..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            value={draft.searchKeyword}
+            onChange={(e) => updateDraft("searchKeyword", e.target.value)}
             className="pl-9 h-10"
           />
         </div>
@@ -184,10 +214,10 @@ export function TransactionsFilterBar({
             <button
               key={btn.value}
               type="button"
-              onClick={() => update("transactionType", btn.value)}
+              onClick={() => updateDraft("transactionType", btn.value)}
               className={cn(
                 "px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
-                filters.transactionType === btn.value
+                draft.transactionType === btn.value
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
@@ -236,8 +266,8 @@ export function TransactionsFilterBar({
               <label className="text-xs font-medium text-muted-foreground">Vendors</label>
               <MultiSelectComboBox
                 options={vendorOptions}
-                values={filters.vendorIds}
-                onValuesChange={(vendorIds) => update("vendorIds", vendorIds)}
+                values={draft.vendorIds}
+                onValuesChange={(vendorIds) => updateDraft("vendorIds", vendorIds)}
                 placeholder="Select vendors..."
                 searchPlaceholder="Search vendors..."
                 emptyMessage="No vendors found."
@@ -250,8 +280,8 @@ export function TransactionsFilterBar({
               <label className="text-xs font-medium text-muted-foreground">Payment Methods</label>
               <MultiSelectComboBox
                 options={paymentMethodOptions}
-                values={filters.paymentMethodIds}
-                onValuesChange={(paymentMethodIds) => update("paymentMethodIds", paymentMethodIds)}
+                values={draft.paymentMethodIds}
+                onValuesChange={(paymentMethodIds) => updateDraft("paymentMethodIds", paymentMethodIds)}
                 placeholder="Select payment methods..."
                 searchPlaceholder="Search payment methods..."
                 emptyMessage="No payment methods found."
@@ -267,10 +297,10 @@ export function TransactionsFilterBar({
               <label className="text-xs font-medium text-muted-foreground">Sources</label>
               <ToggleGroup
                 type="single"
-                value={filters.sourceType || "all"}
+                value={draft.sourceType || "all"}
                 onValueChange={(value: string) => {
                   if (value) {
-                    update("sourceType", value === "all" ? undefined : (value as SourceType))
+                    updateDraft("sourceType", value === "all" ? undefined : (value as SourceType))
                   }
                 }}
                 variant="outline"
@@ -289,7 +319,7 @@ export function TransactionsFilterBar({
               <div className="flex items-center gap-2">
                 <Select
                   value={amountCurrency}
-                  onValueChange={(value) => update("amountCurrency", value)}
+                  onValueChange={(value) => updateDraft("amountCurrency", value)}
                 >
                   <SelectTrigger className="w-[90px] bg-background h-9 shrink-0">
                     <SelectValue />
@@ -309,9 +339,9 @@ export function TransactionsFilterBar({
                   <Input
                     type="number"
                     placeholder="Min"
-                    value={filters.amountMin ?? ""}
+                    value={draft.amountMin ?? ""}
                     onChange={(e) =>
-                      update(
+                      updateDraft(
                         "amountMin",
                         e.target.value ? parseFloat(e.target.value) : undefined,
                       )
@@ -329,9 +359,9 @@ export function TransactionsFilterBar({
                   <Input
                     type="number"
                     placeholder="Max"
-                    value={filters.amountMax ?? ""}
+                    value={draft.amountMax ?? ""}
                     onChange={(e) =>
-                      update(
+                      updateDraft(
                         "amountMax",
                         e.target.value ? parseFloat(e.target.value) : undefined,
                       )
@@ -346,6 +376,27 @@ export function TransactionsFilterBar({
           </div>
         </div>
       )}
+
+      {/* Row D — Apply / filter status */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+        <Button
+          size="sm"
+          onClick={handleApply}
+          disabled={!isDirty}
+        >
+          <Play className="h-3.5 w-3.5 mr-1.5" />
+          Apply
+        </Button>
+
+        {activeFilterCount > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            <span>
+              {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
