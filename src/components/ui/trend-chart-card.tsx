@@ -274,22 +274,22 @@ export function TrendChartCard({
                 <stop offset="100%" stopColor={colors.net} stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={true} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={true} vertical={false} />
             <XAxis
               dataKey="date"
               interval={xAxisInterval}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: breakpoint === 'mobile' ? 10 : 12 }}
-              tickLine={{ stroke: 'hsl(var(--border))' }}
-              axisLine={{ stroke: 'hsl(var(--border))' }}
+              tick={{ fill: 'var(--muted-foreground)', fontSize: breakpoint === 'mobile' ? 10 : 12 }}
+              tickLine={{ stroke: 'var(--border)' }}
+              axisLine={{ stroke: 'var(--border)' }}
               angle={breakpoint === 'mobile' ? -45 : 0}
               textAnchor={breakpoint === 'mobile' ? 'end' : 'middle'}
               height={breakpoint === 'mobile' ? 60 : 30}
             />
             <YAxis
               domain={yAxisDomain}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-              tickLine={{ stroke: 'hsl(var(--border))' }}
-              axisLine={{ stroke: 'hsl(var(--border))' }}
+              tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+              tickLine={{ stroke: 'var(--border)' }}
+              axisLine={{ stroke: 'var(--border)' }}
               tickFormatter={(value) => {
                 if (value >= 1000) {
                   return `$${(value / 1000).toFixed(1)}k`
@@ -297,7 +297,7 @@ export function TrendChartCard({
                 return formatCurrency(value, 'USD')
               }}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border)', strokeWidth: 1 }} />
 
             {/* Income Area */}
             {visibleLines.income && (
