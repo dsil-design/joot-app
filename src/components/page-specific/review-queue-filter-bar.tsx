@@ -15,7 +15,7 @@ import {
 import { MonthStepperFilter } from "@/components/ui/month-stepper-filter"
 import { Search, X, SlidersHorizontal, Play, Filter } from "lucide-react"
 import type { DateRange } from "react-day-picker"
-import { getMonthRange, isCurrentMonthRange, type DatePresetKey } from "@/lib/utils/date-filters"
+import { getMonthRange, getPresetRange, isCurrentMonthRange, type DatePresetKey } from "@/lib/utils/date-filters"
 
 // The review queue is, by definition, a "pending work" surface — items leave
 // the queue once they're approved or rejected. The status field is retained on
@@ -549,7 +549,15 @@ export function useReviewQueueFilters(
 
   const [filters, setFilters] = React.useState<ReviewQueueFilters>(() => {
     const urlFilters = searchParams ? parseUrlParams(searchParams) : {}
-    const dateRange = urlFilters.dateRange ?? initialFilters.dateRange ?? getMonthRange()
+    const urlPreset = searchParams?.get("preset") as DatePresetKey | null
+    let dateRange: DateRange | undefined
+    if (urlPreset === "all-time") {
+      dateRange = undefined
+    } else if (urlPreset && urlPreset !== "custom") {
+      dateRange = getPresetRange(urlPreset) ?? getMonthRange()
+    } else {
+      dateRange = urlFilters.dateRange ?? initialFilters.dateRange ?? getMonthRange()
+    }
     return { ...defaultFilters, ...initialFilters, ...urlFilters, dateRange }
   })
 
@@ -565,6 +573,16 @@ export function useReviewQueueFilters(
   // Run whenever the statement ID in the URL changes (including first client render).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stmtIdFromUrl])
+
+  // Re-sync when ?preset= changes (sidebar in-page navigation)
+  const urlPresetFromUrl = searchParams?.get('preset') as DatePresetKey | null
+  React.useEffect(() => {
+    if (urlPresetFromUrl && urlPresetFromUrl !== 'custom') {
+      const dateRange = urlPresetFromUrl === 'all-time' ? undefined : getPresetRange(urlPresetFromUrl)
+      setFilters(f => ({ ...defaultFilters, dateRange }))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlPresetFromUrl])
 
   return [filters, setFilters]
 }

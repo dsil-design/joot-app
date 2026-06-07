@@ -73,6 +73,7 @@ import { createClient } from "@/lib/supabase/client"
 import { TransactionsFilterBar } from "@/components/page-specific/transactions-filter-bar"
 import { ActiveFilterChips } from "@/components/page-specific/active-filter-chips"
 import { getPresetRange, type DatePresetKey } from "@/lib/utils/date-filters"
+import { useSearchParams } from "next/navigation"
 
 type ViewMode = "recorded" | "all-usd" | "all-thb"
 type LayoutMode = "cards" | "table"
@@ -806,6 +807,8 @@ export default function AllTransactionsPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const { navigateToViewTransaction } = useTransactionFlow()
+  const searchParams = useSearchParams()
+  const urlPreset = searchParams.get("preset") as DatePresetKey | null
 
   // Keep useTransactions for mutations only
   const {
@@ -828,8 +831,18 @@ export default function AllTransactionsPage() {
   const [totalsCurrency, setTotalsCurrency] = React.useState<TotalsCurrency>(savedState?.totalsCurrency ?? "USD")
   const [showExchangeRates, setShowExchangeRates] = React.useState<boolean>(savedState?.showExchangeRates ?? false)
   const [conversionCurrency, setConversionCurrency] = React.useState<ConversionCurrency>(savedState?.conversionCurrency ?? "USD")
-  const [filters, setFilters] = React.useState<TransactionFilters>(
-    savedState ? restoreFilters(savedState.filters) : {
+  const [filters, setFilters] = React.useState<TransactionFilters>(() => {
+    if (urlPreset && urlPreset !== 'custom') {
+      return {
+        dateRange: getPresetRange(urlPreset),
+        datePreset: urlPreset,
+        searchKeyword: "",
+        vendorIds: [],
+        paymentMethodIds: [],
+        transactionType: "all",
+      }
+    }
+    return savedState ? restoreFilters(savedState.filters) : {
       dateRange: getPresetRange('this-month'),
       datePreset: 'this-month',
       searchKeyword: "",
@@ -837,7 +850,7 @@ export default function AllTransactionsPage() {
       paymentMethodIds: [],
       transactionType: "all",
     }
-  )
+  })
 
   // Convert filters to API format
   const apiFilters = React.useMemo(() => ({
@@ -853,6 +866,21 @@ export default function AllTransactionsPage() {
     amountMax: filters.amountMax,
     amountCurrency: filters.amountCurrency || undefined,
   }), [filters])
+
+  // Apply URL preset when navigating to this page from the sidebar while already on it
+  React.useEffect(() => {
+    if (urlPreset && urlPreset !== 'custom') {
+      setFilters({
+        dateRange: getPresetRange(urlPreset),
+        datePreset: urlPreset,
+        searchKeyword: "",
+        vendorIds: [],
+        paymentMethodIds: [],
+        transactionType: "all",
+      })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlPreset])
 
   // Sorting state (needs to be declared before usePaginatedTransactions)
   const [sortField, setSortField] = React.useState<SortField>(savedState?.sortField ?? "date")
