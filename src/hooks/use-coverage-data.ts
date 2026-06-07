@@ -6,8 +6,9 @@ export type CellStatus = 'missing' | 'processing' | 'pending_review' | 'done' | 
 
 export interface TooltipCounts {
   extracted: number
-  matched: number
-  newCount: number
+  approved: number
+  rejected: number
+  pending: number
 }
 
 export interface CellData {

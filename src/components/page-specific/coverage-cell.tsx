@@ -29,8 +29,9 @@ export function CoverageCell({ month, cell, onMissingClick }: CoverageCellProps)
   const tooltipContent = cell.tooltipCounts ? (
     <div className="text-xs space-y-0.5">
       <div>{cell.tooltipCounts.extracted} extracted</div>
-      <div>{cell.tooltipCounts.matched} matched</div>
-      <div>{cell.tooltipCounts.newCount} new</div>
+      {cell.tooltipCounts.approved > 0 && <div>{cell.tooltipCounts.approved} approved</div>}
+      {cell.tooltipCounts.rejected > 0 && <div>{cell.tooltipCounts.rejected} rejected</div>}
+      {cell.tooltipCounts.pending > 0 && <div>{cell.tooltipCounts.pending} pending</div>}
     </div>
   ) : null
 

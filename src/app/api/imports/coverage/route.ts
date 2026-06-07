@@ -114,8 +114,9 @@ export async function GET() {
     type CellStatus = 'missing' | 'processing' | 'pending_review' | 'done' | 'future'
     interface TooltipCounts {
       extracted: number
-      matched: number
-      newCount: number
+      approved: number
+      rejected: number
+      pending: number
     }
     interface CellData {
       status: CellStatus
@@ -176,16 +177,22 @@ export async function GET() {
       if (!stmtMonth || !months.includes(stmtMonth)) continue
       if (!cells[stmt.payment_method_id]) continue
 
-      // Build tooltip counts from extraction_log
+      // Build tooltip counts live from extraction_log so they reflect current review state
       const extractionLog = stmt.extraction_log as {
         transactions?: Array<unknown>
         suggestions?: Array<{ status?: string; confidence?: number; is_new?: boolean }>
       } | null
 
-      const extracted = stmt.transactions_extracted ?? extractionLog?.transactions?.length ?? 0
-      const matched = stmt.transactions_matched ?? 0
-      const newCount = stmt.transactions_new ?? 0
-      const tooltipCounts: TooltipCounts = { extracted, matched, newCount }
+      const allSuggestions = extractionLog?.suggestions || []
+      const approvedCount = allSuggestions.filter(s => s.status === 'approved').length
+      const rejectedCount = allSuggestions.filter(s => s.status === 'rejected').length
+      const pendingSuggCount = allSuggestions.filter(s => !s.status || s.status === 'pending').length
+      const tooltipCounts: TooltipCounts = {
+        extracted: allSuggestions.length,
+        approved: approvedCount,
+        rejected: rejectedCount,
+        pending: pendingSuggCount,
+      }
 
       if (stmt.status === 'pending' || stmt.status === 'processing') {
         cells[stmt.payment_method_id][stmtMonth] = {
@@ -203,20 +210,19 @@ export async function GET() {
         }
       } else if (['ready_for_review', 'in_review', 'done'].includes(stmt.status)) {
         // Check if there are pending suggestions
-        const suggestions = extractionLog?.suggestions || []
-        const pendingCount = suggestions.filter(s => !s.status || s.status === 'pending').length
-        const highCount = suggestions.filter(
+        const pendingCount = pendingSuggCount
+        const highCount = allSuggestions.filter(
           s => (!s.status || s.status === 'pending') && (s.confidence ?? 0) >= 90
         ).length
 
         pendingTotal += pendingCount
         highConfidenceCount += highCount
 
-        // Accumulate PM aggregates
+        // Accumulate PM aggregates (live from suggestions)
         if (pmAggregates[stmt.payment_method_id]) {
-          pmAggregates[stmt.payment_method_id].extracted += extracted
-          pmAggregates[stmt.payment_method_id].matched += matched
-          pmAggregates[stmt.payment_method_id].newCount += newCount
+          pmAggregates[stmt.payment_method_id].extracted += allSuggestions.length
+          pmAggregates[stmt.payment_method_id].matched += approvedCount
+          pmAggregates[stmt.payment_method_id].newCount += pendingCount + rejectedCount
           pmAggregates[stmt.payment_method_id].statementsCount += 1
         }
 

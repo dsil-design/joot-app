@@ -500,8 +500,10 @@ export function useReviewQueueFilters(
 
   const [filters, setFilters] = React.useState<ReviewQueueFilters>(() => {
     const urlFilters = searchParams ? parseUrlParams(searchParams) : {}
-    // Default to the current calendar month when no date range is in the URL.
-    const dateRange = urlFilters.dateRange ?? initialFilters.dateRange ?? getMonthRange()
+    // When drilling into a specific statement, skip the month default so past-month
+    // items aren't filtered out. Otherwise default to the current calendar month.
+    const hasStatementFilter = !!(urlFilters.statementUploadId || initialFilters.statementUploadId)
+    const dateRange = urlFilters.dateRange ?? initialFilters.dateRange ?? (hasStatementFilter ? undefined : getMonthRange())
     return { ...defaultFilters, ...initialFilters, ...urlFilters, dateRange }
   })
 
