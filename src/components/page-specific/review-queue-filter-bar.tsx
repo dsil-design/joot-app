@@ -500,12 +500,22 @@ export function useReviewQueueFilters(
 
   const [filters, setFilters] = React.useState<ReviewQueueFilters>(() => {
     const urlFilters = searchParams ? parseUrlParams(searchParams) : {}
-    // When drilling into a specific statement, skip the month default so past-month
-    // items aren't filtered out. Otherwise default to the current calendar month.
-    const hasStatementFilter = !!(urlFilters.statementUploadId || initialFilters.statementUploadId)
-    const dateRange = urlFilters.dateRange ?? initialFilters.dateRange ?? (hasStatementFilter ? undefined : getMonthRange())
+    const dateRange = urlFilters.dateRange ?? initialFilters.dateRange ?? getMonthRange()
     return { ...defaultFilters, ...initialFilters, ...urlFilters, dateRange }
   })
+
+  // useSearchParams() returns empty params during SSR, so the useState initializer
+  // above always defaults dateRange to the current month. Re-sync once the client
+  // has the real URL: when a statementUploadId is present, clear the date filter so
+  // past-month items aren't hidden.
+  const stmtIdFromUrl = searchParams?.get('statementUploadId') ?? ''
+  React.useEffect(() => {
+    if (stmtIdFromUrl) {
+      setFilters(f => ({ ...f, statementUploadId: stmtIdFromUrl, dateRange: undefined }))
+    }
+  // Run whenever the statement ID in the URL changes (including first client render).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stmtIdFromUrl])
 
   return [filters, setFilters]
 }
