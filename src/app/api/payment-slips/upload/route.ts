@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
         .select('id, filename, uploaded_at')
         .eq('user_id', user.id)
         .eq('file_hash', body.file_hash)
+        .neq('status', 'failed')
         .limit(1)
         .single()
 
