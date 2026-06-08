@@ -86,6 +86,7 @@ export async function backfillSlipTransactionMatches(
     let best: { tx: SlipTxn; daysDiff: number } | null = null
     for (const tx of txns) {
       if (usedTransactionIds.has(tx.id)) continue
+      if (item.rejectedTransactionIds?.includes(tx.id)) continue
       if (tx.original_currency !== item.statementTransaction.currency) continue
       const amountDiff = Math.abs(
         Math.abs(tx.amount) - Math.abs(item.statementTransaction.amount)

@@ -37,7 +37,7 @@ export async function fetchEmailQueueItems(
       classification, order_id, extraction_confidence,
       match_confidence, matched_transaction_id, status,
       vendor_id, parser_key, payment_card_last_four, payment_card_type,
-      vendor_name_raw, rejected_pair_keys, manual_pair_keys
+      vendor_name_raw, rejected_pair_keys, manual_pair_keys, rejected_transaction_ids
     `)
     .eq('user_id', userId)
     .in('status', ['pending_review', 'ready_to_import', 'waiting_for_statement', 'waiting_for_email', 'waiting_for_slip', 'matched', 'imported', 'skipped'])
@@ -357,6 +357,7 @@ export async function fetchEmailQueueItems(
       status: queueStatus,
       waitingForStatement: isWaitingForStatement || undefined,
       rejectedPairKeys: ((row as { rejected_pair_keys?: string[] }).rejected_pair_keys) || undefined,
+      rejectedTransactionIds: ((row as { rejected_transaction_ids?: string[] }).rejected_transaction_ids) || undefined,
       manualPairKeys: ((row as { manual_pair_keys?: string[] }).manual_pair_keys) || undefined,
       extraEmailIds: bundleExtras,
       source: 'email',

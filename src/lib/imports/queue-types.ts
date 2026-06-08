@@ -130,6 +130,8 @@ export interface QueueItem {
   waitingForStatement?: boolean
   /** For email items: statement-suggestion composite keys this email has been rejected from pairing with */
   rejectedPairKeys?: string[]
+  /** For email items: transaction IDs the user has rejected as a match for this email */
+  rejectedTransactionIds?: string[]
   /** Counterpart composite keys this source has been manually paired with by the user */
   manualPairKeys?: string[]
   /** Additional email_transactions.id values attached to this queue item via the
