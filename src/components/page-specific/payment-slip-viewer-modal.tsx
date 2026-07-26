@@ -28,31 +28,70 @@ export function PaymentSlipViewerModal({
   const [fileUrl, setFileUrl] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  // Tracks an object URL created for a client-side HEIC->JPEG conversion so we
+  // can revoke it and avoid leaking memory.
+  const objectUrlRef = React.useRef<string | null>(null)
+
+  const revokeObjectUrl = React.useCallback(() => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current)
+      objectUrlRef.current = null
+    }
+  }, [])
 
   const fetchFile = React.useCallback(async () => {
     setIsLoading(true)
     setError(null)
+    revokeObjectUrl()
 
     try {
       const response = await fetch(`/api/payment-slips/${slipId}/file`)
       if (!response.ok) throw new Error('Failed to fetch payment slip file')
       const data = await response.json()
-      setFileUrl(data.url)
+
+      const signedUrl: string = data.url
+      const fileType: string | null = data.fileType ?? null
+      // Browsers can't decode HEIC (the iPhone default) in an <img> tag, so the
+      // preview would render blank. Detect it by MIME type or extension — HEIC
+      // uploads often arrive with an empty/octet-stream MIME type — and convert
+      // to a JPEG the browser can display.
+      const isHeic =
+        fileType?.toLowerCase() === 'image/heic' ||
+        filename.toLowerCase().endsWith('.heic') ||
+        filename.toLowerCase().endsWith('.heif')
+
+      if (isHeic) {
+        const heic2any = (await import('heic2any')).default
+        const srcResponse = await fetch(signedUrl)
+        if (!srcResponse.ok) throw new Error('Failed to download payment slip')
+        const heicBlob = await srcResponse.blob()
+        const converted = await heic2any({ blob: heicBlob, toType: 'image/jpeg', quality: 0.9 })
+        const jpegBlob = Array.isArray(converted) ? converted[0] : converted
+        const objectUrl = URL.createObjectURL(jpegBlob)
+        objectUrlRef.current = objectUrl
+        setFileUrl(objectUrl)
+      } else {
+        setFileUrl(signedUrl)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setIsLoading(false)
     }
-  }, [slipId])
+  }, [slipId, filename, revokeObjectUrl])
 
   React.useEffect(() => {
     if (!open) {
+      revokeObjectUrl()
       setFileUrl(null)
       setError(null)
       return
     }
     fetchFile()
-  }, [open, fetchFile])
+  }, [open, fetchFile, revokeObjectUrl])
+
+  // Revoke any outstanding object URL when the component unmounts.
+  React.useEffect(() => revokeObjectUrl, [revokeObjectUrl])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
