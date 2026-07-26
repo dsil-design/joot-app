@@ -319,6 +319,14 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
             emailDate={data.mergedEmailData?.metadata.emailDate ?? null}
           />
         )}
+        {previewModal?.type === "payment_slip" && (
+          <PaymentSlipViewerModal
+            open
+            onOpenChange={(open) => { if (!open) setPreviewModal(null) }}
+            slipId={previewModal.slipId}
+            filename={previewModal.filename}
+          />
+        )}
       </div>
     )
   }
