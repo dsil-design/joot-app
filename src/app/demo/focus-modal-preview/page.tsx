@@ -14,7 +14,7 @@ import type { MatchCardData } from "@/components/page-specific/match-card/types"
 
 const items: MatchCardData[] = [
   {
-    id: "merged:email:00000000-0000-0000-0000-000000000001:statement:00000000-0000-0000-0000-000000000002:0",
+    id: "merged:00000000-0000-0000-0000-000000000001+stmt:00000000-0000-0000-0000-000000000002:0",
     confidence: 92,
     confidenceLevel: "high",
     reasons: [],
@@ -52,7 +52,7 @@ const items: MatchCardData[] = [
     },
   },
   {
-    id: "merged_slip_email_stmt:slip:00000000-0000-0000-0000-000000000010:email:00000000-0000-0000-0000-000000000011:statement:00000000-0000-0000-0000-000000000012:0",
+    id: "merged:slip:00000000-0000-0000-0000-000000000010+email:00000000-0000-0000-0000-000000000011+stmt:00000000-0000-0000-0000-000000000012:0",
     confidence: 88,
     confidenceLevel: "high",
     reasons: [],
