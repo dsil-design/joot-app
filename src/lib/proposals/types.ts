@@ -4,9 +4,27 @@
 
 // ── Per-field confidence ─────────────────────────────────────────────────
 
+/**
+ * Where a field's value came from, which decides whether a later layer
+ * (the LLM) is allowed to overrule it.
+ *
+ * - `arithmetic` — derived from the source document's own numbers: the amount,
+ *   the currency, the posting date, or the sign of the amount read against the
+ *   account type. These are facts, not opinions, and the LLM may never
+ *   override them.
+ * - `inferred`   — derived from a heuristic over real signals (learned
+ *   mappings, classification, vendor history). Overridable by a
+ *   higher-confidence layer.
+ * - `default`    — a fallback used when nothing was known. Freely overridable.
+ *
+ * Optional so proposals persisted before this field existed still parse.
+ */
+export type ConfidenceSource = 'arithmetic' | 'inferred' | 'default'
+
 export interface FieldConfidence {
   score: number    // 0-100
   reasoning: string
+  source?: ConfidenceSource
 }
 
 export type FieldConfidenceMap = Record<string, FieldConfidence>
@@ -22,6 +40,13 @@ export interface ProposedField<T> {
 export interface TransactionProposal {
   id: string
   overallConfidence: number
+  /**
+   * Confidence in the guessed fields only (vendor, description, tags).
+   * overallConfidence blends in amount/currency/date — which score 95-100 by
+   * construction — so it cannot separate good enrichment from bad; this can.
+   * Null for proposals generated before the split.
+   */
+  enrichmentConfidence?: number | null
   generatedAt: string
   engine: 'rule_based' | 'llm' | 'hybrid'
   status: 'pending' | 'accepted' | 'modified' | 'rejected' | 'stale'
@@ -72,6 +97,8 @@ export interface ProposalEngineResult {
   fields: ProposedFields
   fieldConfidence: FieldConfidenceMap
   overallConfidence: number
+  /** Confidence over vendor/description/tags only — see TransactionProposal. */
+  enrichmentConfidence: number
   engine: ProposalEngine
   llmModel?: string
   llmPromptTokens?: number
@@ -100,6 +127,7 @@ export interface TransactionProposalRow {
   proposed_tag_ids?: string[] | null
   field_confidence: FieldConfidenceMap
   overall_confidence: number
+  enrichment_confidence?: number | null
   engine: ProposalEngine
   llm_model?: string | null
   llm_prompt_tokens?: number | null
@@ -130,6 +158,12 @@ export interface ProposalGenerateResponse {
   ruleOnly: number
   llmEnhanced: number
   durationMs: number
+  /**
+   * Composite ids that failed generation this pass. Callers can retry just
+   * these (POST the same endpoint with `compositeIds`) instead of a partial
+   * failure silently vanishing into the `errors` count.
+   */
+  failedCompositeIds: string[]
 }
 
 // ── Past corrections (feedback learning) ─────────────────────────────────
@@ -154,6 +188,13 @@ export interface PastCorrection {
   /** Resolved vendor name (when field is vendor_id) */
   originalVendorName?: string
   correctedVendorName?: string
+  /**
+   * Amount context of the transaction the correction was made on. A
+   * description corrected to "Rent" on a ฿3,500 transfer must not be reused
+   * on a ฿400 one — without the amount there is nothing to gate on.
+   */
+  amount?: number
+  currency?: string
   /** When the correction was made */
   correctedAt: string
 }
@@ -195,6 +236,15 @@ export interface VendorDescriptionPattern {
   count: number
   frequency: number // 0-1
   totalTransactions: number
+  /**
+   * Historical amount band for this pattern (absolute amounts in
+   * `currency`, the dominant currency among the pattern's transactions).
+   * Reusing a learned description on an amount far outside this band is how
+   * a ฿45 transfer got labeled "Property Rent" — gate on it.
+   */
+  minAmount?: number
+  maxAmount?: number
+  currency?: string
 }
 
 export interface RecentTransaction {

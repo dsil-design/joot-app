@@ -19,6 +19,8 @@ import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour, findPaym
 import { findMappingMatch, isBankParser } from '@/lib/services/vendor-recipient-mapping'
 import { findStatementDescriptionMatch } from '@/lib/services/statement-description-learning'
 import { calculateDaysDiff } from '@/lib/matching/date-matcher'
+import { isCardPaymentDescription } from '@/lib/matching/transfer-descriptions'
+import { calculateEnrichmentConfidence } from './confidence'
 
 /**
  * Generate a rule-based proposal for a single queue item.
@@ -62,6 +64,7 @@ export function generateRuleProposal(
     fields,
     fieldConfidence,
     overallConfidence,
+    enrichmentConfidence: calculateEnrichmentConfidence(fieldConfidence),
     engine: 'rule_based',
     durationMs: Date.now() - startTime,
   }
@@ -77,7 +80,11 @@ function proposeAmount(
   fields.amount = Math.abs(item.amount)
   // Merged items (both sources agree) -> 100, single source -> 95
   const score = item.sourceType === 'merged' ? 100 : 95
-  fc.amount = { score, reasoning: item.sourceType === 'merged' ? 'Both sources agree on amount' : 'Direct from import source' }
+  fc.amount = {
+    score,
+    reasoning: item.sourceType === 'merged' ? 'Both sources agree on amount' : 'Direct from import source',
+    source: 'arithmetic',
+  }
 }
 
 function proposeCurrency(
@@ -87,7 +94,11 @@ function proposeCurrency(
 ) {
   fields.currency = item.currency
   const score = item.sourceType === 'merged' ? 100 : 95
-  fc.currency = { score, reasoning: item.sourceType === 'merged' ? 'Both sources agree on currency' : 'Direct from import source' }
+  fc.currency = {
+    score,
+    reasoning: item.sourceType === 'merged' ? 'Both sources agree on currency' : 'Direct from import source',
+    source: 'arithmetic',
+  }
 }
 
 function proposeDate(
@@ -99,7 +110,7 @@ function proposeDate(
   // Priority 1: User-specified correct date from rejection feedback
   if (item.correctedDate) {
     fields.date = item.correctedDate
-    fc.date = { score: 100, reasoning: 'User-corrected date from rejection feedback' }
+    fc.date = { score: 100, reasoning: 'User-corrected date from rejection feedback', source: 'arithmetic' }
     return
   }
 
@@ -107,16 +118,16 @@ function proposeDate(
   const pref = findDatePreference(item, context)
   if (pref?.preferEmail && item.emailDate) {
     fields.date = item.emailDate
-    fc.date = { score: pref.confidence, reasoning: `Learned: ${item.parserKey} email dates preferred (${pref.confidence}% confidence)` }
+    fc.date = { score: pref.confidence, reasoning: `Learned: ${item.parserKey} email dates preferred (${pref.confidence}% confidence)`, source: 'inferred' }
     return
   }
 
   // Priority 3: Statement date authoritative (existing behavior)
   fields.date = item.date
   if (item.sourceType === 'statement' || item.sourceType === 'merged') {
-    fc.date = { score: 100, reasoning: 'Statement date (authoritative)' }
+    fc.date = { score: 100, reasoning: 'Statement date (authoritative)', source: 'arithmetic' }
   } else {
-    fc.date = { score: 90, reasoning: 'Email-only date (may vary by timezone)' }
+    fc.date = { score: 90, reasoning: 'Email-only date (may vary by timezone)', source: 'arithmetic' }
   }
 }
 
@@ -177,6 +188,7 @@ function proposeTransactionType(
     fc.transaction_type = {
       score: 95,
       reasoning: `Payment slip detected as ${item.detectedDirection} based on sender/recipient bank account matching`,
+      source: 'arithmetic',
     }
     return
   }
@@ -199,6 +211,7 @@ function proposeTransactionType(
       fc.transaction_type = {
         score: 85,
         reasoning: `Bank transfer where sender and recipient names match — likely self-transfer`,
+        source: 'inferred',
       }
       return
     }
@@ -207,21 +220,68 @@ function proposeTransactionType(
   // Email classification signals
   if (item.classification === 'refund_notification') {
     fields.transactionType = 'income'
-    fc.transaction_type = { score: 90, reasoning: 'Email classified as refund notification' }
+    fc.transaction_type = { score: 90, reasoning: 'Email classified as refund notification', source: 'inferred' }
     return
   }
 
-  // Credit card: positive = expense, negative = refund
-  if (item.amount > 0) {
-    fields.transactionType = 'expense'
-    fc.transaction_type = { score: 95, reasoning: 'Positive amount on statement indicates expense' }
-    return
-  }
+  // Sign-based derivation. What a sign means depends on the account the row
+  // came from: on a credit card a negative row is usually a payment toward the
+  // card (a transfer between the user's own accounts) or a refund — never
+  // income — while on a bank account negative means money arriving.
+  const pmType = context.paymentMethods.find((pm) => pm.id === item.paymentMethodId)?.type
 
-  if (item.amount < 0) {
-    fields.transactionType = 'income'
-    fc.transaction_type = { score: 90, reasoning: 'Negative amount indicates refund/credit' }
-    return
+  if (pmType === 'credit_card') {
+    if (item.amount > 0) {
+      fields.transactionType = 'expense'
+      fc.transaction_type = { score: 95, reasoning: 'Positive amount on credit card indicates a charge', source: 'arithmetic' }
+      return
+    }
+    if (item.amount < 0) {
+      if (isCardPaymentDescription(item.description)) {
+        fields.transactionType = 'transfer'
+        fc.transaction_type = {
+          score: 95,
+          reasoning: 'Card-payment description on a negative credit-card row — payment toward the card balance, not income',
+          source: 'arithmetic',
+        }
+      } else {
+        fields.transactionType = 'income'
+        fc.transaction_type = { score: 90, reasoning: 'Negative amount on credit card indicates refund/credit', source: 'arithmetic' }
+      }
+      return
+    }
+  } else if (pmType === 'bank_account' || pmType === 'debit_card') {
+    if (item.amount > 0) {
+      if (isCardPaymentDescription(item.description)) {
+        fields.transactionType = 'transfer'
+        fc.transaction_type = {
+          score: 95,
+          reasoning: 'Card-payment description on an outgoing bank row — funding leg of a credit-card payment',
+          source: 'arithmetic',
+        }
+      } else {
+        fields.transactionType = 'expense'
+        fc.transaction_type = { score: 95, reasoning: 'Positive amount on bank account indicates money out', source: 'arithmetic' }
+      }
+      return
+    }
+    if (item.amount < 0) {
+      fields.transactionType = 'income'
+      fc.transaction_type = { score: 90, reasoning: 'Negative amount on bank account indicates money in', source: 'arithmetic' }
+      return
+    }
+  } else {
+    // Unknown account type — fall back to the generic sign convention
+    if (item.amount > 0) {
+      fields.transactionType = 'expense'
+      fc.transaction_type = { score: 95, reasoning: 'Positive amount on statement indicates expense', source: 'arithmetic' }
+      return
+    }
+    if (item.amount < 0) {
+      fields.transactionType = 'income'
+      fc.transaction_type = { score: 90, reasoning: 'Negative amount indicates refund/credit', source: 'arithmetic' }
+      return
+    }
   }
 
   // Historical vendor pattern
@@ -234,7 +294,7 @@ function proposeTransactionType(
       const incomeRatio = incomeCount / vendorTxns.length
       if (incomeRatio > 0.8) {
         fields.transactionType = 'income'
-        fc.transaction_type = { score: 75, reasoning: `Vendor has ${Math.round(incomeRatio * 100)}% income transactions` }
+        fc.transaction_type = { score: 75, reasoning: `Vendor has ${Math.round(incomeRatio * 100)}% income transactions`, source: 'inferred' }
         return
       }
     }
@@ -242,7 +302,7 @@ function proposeTransactionType(
 
   // Default: expense
   fields.transactionType = 'expense'
-  fc.transaction_type = { score: 80, reasoning: 'Default: most transactions are expenses' }
+  fc.transaction_type = { score: 80, reasoning: 'Default: most transactions are expenses', source: 'default' }
 }
 
 function proposePaymentMethod(
@@ -469,9 +529,11 @@ function proposeVendor(
     return
   }
 
-  // Strategy 4: Suggest a clean vendor name (no match found)
+  // Strategy 4: Suggest a clean vendor name (no match found). Always emit a
+  // suggestion — a proposal with neither a vendor id nor a name suggestion
+  // renders as "(new) —" and would create a nameless vendor if accepted.
   const suggestedName = suggestVendorName(item.description)
-  if (suggestedName && suggestedName !== item.description) {
+  if (suggestedName) {
     fields.vendorId = null
     fields.vendorNameSuggestion = suggestedName
     fc.vendor_id = { score: 30, reasoning: `No vendor match; suggested: "${suggestedName}"` }
@@ -557,7 +619,15 @@ function proposeDescription(
     const isSameVendor = fields.vendorId && descCorrection.vendorId
       && descCorrection.vendorId === fields.vendorId
 
-    if (isSameSender || isSameVendor) {
+    // Amount gate: a description corrected on a ฿3,500 transfer ("Monthly
+    // Rent") must not be reused on a ฿400 one just because the sender matches.
+    const amountPlausible = isAmountPlausibleForPattern(item, {
+      minAmount: descCorrection.amount,
+      maxAmount: descCorrection.amount,
+      currency: descCorrection.currency,
+    })
+
+    if ((isSameSender || isSameVendor) && amountPlausible) {
       fields.description = descCorrection.correctedValue
       const matchType = isSameSender ? 'same sender' : 'same vendor'
       fc.description = {
@@ -616,7 +686,11 @@ function proposeDescription(
   }
 
   // Strategy 4: Vendor description pattern analysis
-  // If vendor is matched and has a dominant description pattern, use it
+  // If vendor is matched and has a dominant description pattern, use it —
+  // but only when the new amount is plausible for that pattern. A learned
+  // "Monthly Rent" applied to a ฿45 row is confidently specific and false,
+  // which is worse than a blank: a reviewer skimming a queue will accept it.
+  let rejectedPattern: string | null = null
   if (fields.vendorId) {
     const patterns = context.vendorDescriptionPatterns
       .filter((p) => p.vendorId === fields.vendorId)
@@ -624,9 +698,13 @@ function proposeDescription(
 
     if (patterns.length > 0) {
       const topPattern = patterns[0]
+      const plausible = isAmountPlausibleForPattern(item, topPattern)
+      if (!plausible) {
+        rejectedPattern = topPattern.description
+      }
 
       // High-frequency pattern: >80% of transactions use same description (3+ txns)
-      if (topPattern.frequency >= 0.8 && topPattern.totalTransactions >= 3) {
+      if (plausible && topPattern.frequency >= 0.8 && topPattern.totalTransactions >= 3) {
         fields.description = topPattern.description
         fc.description = {
           score: 90,
@@ -636,7 +714,7 @@ function proposeDescription(
       }
 
       // Moderate-frequency pattern: >50% with 3+ uses
-      if (topPattern.frequency >= 0.5 && topPattern.count >= 3) {
+      if (plausible && topPattern.frequency >= 0.5 && topPattern.count >= 3) {
         fields.description = topPattern.description
         fc.description = {
           score: 80,
@@ -658,7 +736,37 @@ function proposeDescription(
 
   // Strategy 6: Clean statement description
   fields.description = cleanDescription(item.description)
-  fc.description = { score: 75, reasoning: 'Cleaned statement description' }
+  if (rejectedPattern) {
+    fc.description = {
+      score: 60,
+      reasoning: `Cleaned statement description (learned pattern "${rejectedPattern}" rejected: amount ${Math.abs(item.amount)} ${item.currency} outside its historical range)`,
+    }
+  } else {
+    fc.description = { score: 75, reasoning: 'Cleaned statement description' }
+  }
+}
+
+/**
+ * Whether the item's amount is plausible for a learned description pattern.
+ *
+ * First cut: same order of magnitude as the pattern's historical band,
+ * compared only within the same currency (amounts across currencies are not
+ * comparable). Patterns without amount history are allowed through.
+ */
+const AMOUNT_BAND_TOLERANCE = 3
+
+function isAmountPlausibleForPattern(
+  item: ProposalInput,
+  pattern: { minAmount?: number; maxAmount?: number; currency?: string }
+): boolean {
+  if (pattern.minAmount == null || pattern.maxAmount == null || !pattern.currency) return true
+  if (pattern.currency !== item.currency) return true
+
+  const amount = Math.abs(item.amount)
+  if (amount === 0) return true
+
+  return amount >= pattern.minAmount / AMOUNT_BAND_TOLERANCE
+    && amount <= pattern.maxAmount * AMOUNT_BAND_TOLERANCE
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────

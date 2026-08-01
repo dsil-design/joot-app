@@ -150,6 +150,12 @@ export interface MatchCardData {
   statementTransaction: StatementTransaction
   matchedTransaction?: MatchedTransaction
   confidence: number
+  /**
+   * Confidence that `matchedTransaction` is this same payment. Distinct from
+   * `confidence`, which on a merged card scores the email↔statement pairing
+   * instead — displaying one as the other made a weak auto-link look certain.
+   */
+  transactionMatchConfidence?: number
   confidenceLevel: ConfidenceLevel
   reasons: string[]
   isNew: boolean

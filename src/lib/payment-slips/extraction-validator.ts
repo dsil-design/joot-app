@@ -8,6 +8,19 @@
 import type { PaymentSlipExtraction } from './types'
 import { parseThaiSlipDate } from './thai-date-parser'
 
+/**
+ * Ceiling for a single unverified vision pass.
+ *
+ * Every field this validator checks (amount, amount_raw, amount_characters)
+ * comes from ONE model response, so internal consistency can only catch
+ * transcription slips — it cannot catch a confidently-wrong reading (the
+ * ฿237 slip stored as ฿23,700 at confidence 100 was internally consistent).
+ * Scores above this cap are reserved for external corroboration, i.e. a
+ * matching statement row (see statement-cross-check.ts), and this cap must
+ * stay below the auto-approve threshold (95).
+ */
+export const SINGLE_PASS_CONFIDENCE_CAP = 85
+
 export interface ValidationResult {
   isValid: boolean
   confidence: number
@@ -109,7 +122,7 @@ export function validateExtraction(extraction: PaymentSlipExtraction): Validatio
 
   return {
     isValid: errors.length === 0,
-    confidence: Math.min(100, confidence),
+    confidence: Math.min(SINGLE_PASS_CONFIDENCE_CAP, confidence),
     warnings,
     errors,
     correctedDate,

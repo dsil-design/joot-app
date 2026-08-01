@@ -131,9 +131,6 @@ export function UploadPaymentSlipDialog({
           continue
         }
 
-        // Trigger processing (fire-and-forget)
-        fetch(`/api/payment-slips/${data.upload_id}/process`, { method: 'POST' }).catch(() => {})
-
         setFiles(prev => prev.map((f, idx) => idx === i
           ? { ...f, status: 'done', slipId: data.upload_id } : f))
       } catch (err) {
@@ -141,6 +138,26 @@ export function UploadPaymentSlipDialog({
           ? { ...f, status: 'error', error: err instanceof Error ? err.message : 'Failed' } : f))
       }
     }
+
+    // Extraction runs server-side in bounded batches instead of one
+    // fire-and-forget request per slip — a bulk drop that outran the AI
+    // rate limit once killed 45 slips in one go. Loop until drained.
+    void (async () => {
+      try {
+        for (let guard = 0; guard < 50; guard++) {
+          const res = await fetch('/api/payment-slips/process-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scope: 'pending' }),
+          })
+          if (!res.ok) break
+          const { remaining } = await res.json()
+          if (!remaining) break
+        }
+      } catch {
+        // Slips stay 'pending' and can be reprocessed from the slips page
+      }
+    })()
 
     setIsProcessing(false)
     onUploadComplete?.()

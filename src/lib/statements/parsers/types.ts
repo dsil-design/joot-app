@@ -90,6 +90,12 @@ export interface StatementSummary {
   /** Total purchases and charges */
   purchasesAndCharges?: number;
 
+  /** Total charges (parser-reported; used by the zero-row guardrails) */
+  totalCharges?: number;
+
+  /** Total credits (parser-reported; used by the zero-row guardrails) */
+  totalCredits?: number;
+
   /** Fees charged */
   fees?: number;
 

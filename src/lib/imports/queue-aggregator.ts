@@ -23,6 +23,20 @@ export async function aggregateQueueItems(
   )
   const allItems = [...statementItems, ...emailItems, ...paymentSlipItems]
 
+  // Snapshot every transaction-link score before any merging happens. Merged
+  // cards are built at a dozen sites that each inherit `matchedTransaction`
+  // from one of their sources; rather than requiring every one of them to
+  // remember to copy the link's score too, the score is restored from this
+  // map once at the end. Missing it is what let a merged card present its
+  // email↔statement pairing confidence as the transaction-match confidence.
+  const linkScoreByTransactionId = new Map<string, number>()
+  for (const item of allItems) {
+    const txnId = item.matchedTransaction?.id
+    if (txnId && item.transactionMatchConfidence != null) {
+      linkScoreByTransactionId.set(txnId, item.transactionMatchConfidence)
+    }
+  }
+
   // ── Phase -1: same-type extras (multi-email / multi-slip enrichment) ──
   // Some queue items represent a single transaction sourced from multiple
   // emails or slips of the same type — e.g. a Lazada order where each item
@@ -221,6 +235,55 @@ export async function aggregateQueueItems(
     }
   }
 
+  // ── Phase 0.5: duplicate-email collapse ────────────────────────────
+  // A vendor's own receipt/invoice email and the bank's transfer-confirmation
+  // email often describe ONE payment (Bliss Clean: two ฿2,782 payments, two
+  // slips, two KBANK rows — but three cards, because the invoice email formed
+  // its own card next to the K PLUS confirmation's card; approving all three
+  // would invent a phantom ฿2,782). Collapse such email pairs BEFORE any
+  // pairing: keep the bank confirmation as the card (it carries structured
+  // transfer data and matches statement rows) and attach the vendor email as
+  // evidence rather than dropping it.
+  if (filters.sourceFilter === 'all' || filters.sourceFilter === 'merged') {
+    const isBankConfirmation = (item: QueueItem): boolean => {
+      const c = item.emailMetadata?.classification
+      return c === 'bank_transfer_confirmation' || c === 'bank_transfer'
+    }
+    const pendingEmails = allItems.filter(i => i.source === 'email' && i.status === 'pending')
+    const bankConfirmations = pendingEmails.filter(isBankConfirmation)
+
+    if (bankConfirmations.length > 0) {
+      const absorbedIds = new Set<string>()
+
+      for (const bank of bankConfirmations) {
+        const bankTx = bank.statementTransaction
+        const vendorEmail = pendingEmails.find(v => {
+          if (v.id === bank.id || absorbedIds.has(v.id) || isBankConfirmation(v)) return false
+          const tx = v.statementTransaction
+          if (tx.currency !== bankTx.currency) return false
+          if (Math.abs(Math.abs(tx.amount) - Math.abs(bankTx.amount)) > 0.01) return false
+          return calculateDaysDiff(tx.date, bankTx.date) <= 1
+        })
+
+        if (vendorEmail) {
+          absorbedIds.add(vendorEmail.id)
+          const vendorEmailId = vendorEmail.id.replace(/^email:/, '')
+          bank.extraEmailIds = [...(bank.extraEmailIds || []), vendorEmailId]
+          bank.reasons = [
+            ...bank.reasons,
+            `Vendor email "${vendorEmail.emailMetadata?.subject || vendorEmail.statementTransaction.description}" describes the same payment — attached as evidence`,
+          ]
+        }
+      }
+
+      if (absorbedIds.size > 0) {
+        const remaining = allItems.filter(i => !absorbedIds.has(i.id))
+        allItems.length = 0
+        allItems.push(...remaining)
+      }
+    }
+  }
+
   // Cross-source pairing
   if (filters.sourceFilter === 'all' || filters.sourceFilter === 'merged') {
     // Only email and statement items participate in cross-source pairing.
@@ -291,7 +354,8 @@ export async function aggregateQueueItems(
         const emailMeta: EmailMetadata = emailItem?.emailMetadata ?? {}
 
         // Inherit matched transaction from either source (prefer statement)
-        const inheritedMatch = stmtItem?.matchedTransaction ?? emailItem?.matchedTransaction
+        const matchSource = stmtItem?.matchedTransaction ? stmtItem : emailItem?.matchedTransaction ? emailItem : undefined
+        const inheritedMatch = matchSource?.matchedTransaction
         const hasDbMatch = !!inheritedMatch
         const crossSourceReasons = pair.usedForeignAmountSignal
           ? [
@@ -302,9 +366,14 @@ export async function aggregateQueueItems(
               `Cross-source match: email (${pair.emailCandidate.currency}) + statement (${pair.statementCandidate.currency})`,
               `Amount diff: ${pair.percentDiff.toFixed(1)}% after conversion`,
             ]
-        // If a DB transaction match exists, include the original match reasons
-        if (hasDbMatch && stmtItem?.reasons?.length) {
-          crossSourceReasons.push(...stmtItem.reasons)
+        // If a DB transaction match exists, include the reasons from whichever
+        // item actually carries that match. Reading only the statement item
+        // silently dropped the explanation whenever the match came from the
+        // email side — including the one breadcrumb that flags a heuristic
+        // auto-link, leaving the card showing only cross-source reasons that
+        // say nothing about the transaction it claims to match.
+        if (hasDbMatch && matchSource?.reasons?.length) {
+          crossSourceReasons.push(...matchSource.reasons)
         }
 
         unpaired.push({
@@ -324,6 +393,9 @@ export async function aggregateQueueItems(
             foreignExchangeRate: stmtItem?.statementTransaction.foreignExchangeRate,
           },
           matchedTransaction: inheritedMatch,
+          // Keep the link's own score. The card's `confidence` below measures
+          // the email↔statement pairing, which is a different claim entirely.
+          transactionMatchConfidence: matchSource?.transactionMatchConfidence,
           // Foreign-amount-sourced matches are exact-match strength (the rate
           // came straight from Visa, not our exchange_rates approximation), so
           // promote them above the 95-cap used for FX-converted matches.
@@ -814,6 +886,14 @@ export async function aggregateQueueItems(
       const remaining = allItems.filter(item => !dedupedIds.has(item.id))
       allItems.length = 0
       allItems.push(...remaining, ...mergedDedup)
+    }
+  }
+
+  // Restore each card's transaction-link score (see the snapshot above).
+  for (const item of allItems) {
+    const txnId = item.matchedTransaction?.id
+    if (txnId && item.transactionMatchConfidence == null) {
+      item.transactionMatchConfidence = linkScoreByTransactionId.get(txnId)
     }
   }
 

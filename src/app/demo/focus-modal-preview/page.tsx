@@ -14,6 +14,53 @@ import type { MatchCardData } from "@/components/page-specific/match-card/types"
 
 const items: MatchCardData[] = [
   {
+    // Reproduces the Grab/Nidnoi mis-link: a cross-source card whose pairing
+    // is sound (99%) carrying a weak, differently-denominated transaction
+    // claim. Exercises the split reject actions, the separate confidence
+    // label, and the cross-currency amount delta.
+    id: "merged:00000000-0000-0000-0000-0000000000a1+stmt:00000000-0000-0000-0000-0000000000a2:17",
+    confidence: 99,
+    transactionMatchConfidence: 80,
+    confidenceLevel: "high",
+    reasons: [
+      "Cross-source match: email (THB) ↔ statement original THB (USD settlement)",
+      "Direct match against statement's printed foreign amount — diff 0.00% (no FX lookup)",
+      "Auto-linked: matches existing transaction created from a payment slip (amount and date only — verify before approving)",
+    ],
+    isNew: false,
+    status: "pending",
+    source: "merged",
+    statementTransaction: {
+      date: "2026-05-23",
+      description: "WWW.grab.COM Bangkok",
+      amount: 4.27,
+      currency: "USD",
+      sourceFilename: "chase-sapphire-may.pdf",
+    },
+    matchedTransaction: {
+      id: "00000000-0000-0000-0000-0000000000a3",
+      date: "2026-05-25",
+      amount: 139,
+      currency: "THB",
+      vendor_name: "Nidnoi",
+      description: "Acai bowl",
+      payment_method_name: "KBANK - Kasikorn Bank Account",
+    },
+    mergedEmailData: {
+      date: "2026-05-23",
+      description: "Meal: GrabFood order",
+      amount: 139,
+      currency: "THB",
+      metadata: {
+        subject: "Your Grab E-Receipt",
+        fromName: "Grab",
+        fromAddress: "no-reply@grab.com",
+        vendorNameRaw: "GrabFood",
+        parserKey: "grab",
+      },
+    },
+  },
+  {
     id: "merged:00000000-0000-0000-0000-000000000001+stmt:00000000-0000-0000-0000-000000000002:0",
     confidence: 92,
     confidenceLevel: "high",
@@ -152,6 +199,7 @@ export default function FocusModalPreviewPage() {
         onIndexChange={setIndex}
         onApprove={() => {}}
         onReject={() => {}}
+        onRejectTransactionMatch={() => {}}
         onLinkManually={() => {}}
         onCreateTransaction={async () => {}}
         isProcessing={() => false}

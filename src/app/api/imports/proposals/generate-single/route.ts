@@ -6,6 +6,7 @@ import {
   prefetchRuleEngineContext,
   getProposalsForItems,
   transformProposalRow,
+  resolveVendorNameSuggestion,
 } from '@/lib/proposals/proposal-service'
 import { generateHybridProposal } from '@/lib/proposals/hybrid-engine'
 import { fetchStatementQueueItems } from '@/lib/imports/statement-queue-builder'
@@ -220,11 +221,12 @@ export async function POST(request: NextRequest) {
       proposed_transaction_type: engineResult.fields.transactionType || null,
       proposed_date: engineResult.fields.date || null,
       proposed_vendor_id: engineResult.fields.vendorId || null,
-      proposed_vendor_name_suggestion: engineResult.fields.vendorNameSuggestion || null,
+      proposed_vendor_name_suggestion: resolveVendorNameSuggestion(proposalInput, engineResult),
       proposed_payment_method_id: engineResult.fields.paymentMethodId || null,
       proposed_tag_ids: engineResult.fields.tagIds || [],
       field_confidence: engineResult.fieldConfidence,
       overall_confidence: engineResult.overallConfidence,
+      enrichment_confidence: engineResult.enrichmentConfidence,
       engine: engineResult.engine,
       llm_model: engineResult.llmModel || null,
       llm_prompt_tokens: engineResult.llmPromptTokens || null,

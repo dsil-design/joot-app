@@ -27,6 +27,28 @@ import type {
 } from './types'
 import { fetchMappings } from '@/lib/services/vendor-recipient-mapping'
 import { fetchStatementDescriptionMappings } from '@/lib/services/statement-description-learning'
+import { suggestVendorName } from './vendor-matcher'
+
+/**
+ * A proposal must always carry a vendor id or a non-empty name suggestion —
+ * otherwise the card renders "(new) —" and accepting it creates a nameless
+ * vendor. Falls back to a cleaned description-derived name.
+ *
+ * Exported so every upsert path (batch service, single-proposal route) can
+ * apply the same invariant.
+ */
+export function resolveVendorNameSuggestion(
+  item: ProposalInput,
+  result: ProposalEngineResult
+): string | null {
+  if (result.fields.vendorId) return result.fields.vendorNameSuggestion?.trim() || null
+
+  const suggestion = result.fields.vendorNameSuggestion?.trim()
+  if (suggestion) return suggestion
+
+  const fallback = suggestVendorName(result.fields.description || item.description || '').trim()
+  return fallback || null
+}
 
 /**
  * Pre-fetch all reference data needed by the rule engine.
@@ -275,6 +297,8 @@ async function fetchPastCorrections(
     .select(`
       proposed_description,
       proposed_vendor_id,
+      proposed_amount,
+      proposed_currency,
       user_modifications,
       accepted_at,
       email_transaction_id,
@@ -361,6 +385,8 @@ async function fetchPastCorrections(
         vendorId: p.proposed_vendor_id || undefined,
         originalValue: change.from,
         correctedValue: change.to,
+        amount: p.proposed_amount != null ? Math.abs(Number(p.proposed_amount)) : undefined,
+        currency: p.proposed_currency || undefined,
         correctedAt: p.accepted_at || '',
       }
 
@@ -398,6 +424,7 @@ export async function generateAndStoreProposals(
     ruleOnly: 0,
     llmEnhanced: 0,
     durationMs: 0,
+    failedCompositeIds: [],
   }
 
   if (items.length === 0) {
@@ -450,7 +477,7 @@ export async function generateAndStoreProposals(
       })
     )
 
-    for (const result of results) {
+    results.forEach((result, j) => {
       if (result.status === 'fulfilled') {
         response.generated++
         if (result.value.engine === 'rule_based') response.ruleOnly++
@@ -458,8 +485,9 @@ export async function generateAndStoreProposals(
       } else {
         console.error('Error generating proposal:', result.reason)
         response.errors++
+        response.failedCompositeIds.push(batch[j].compositeId)
       }
-    }
+    })
   }
 
   response.durationMs = Date.now() - startTime
@@ -491,11 +519,12 @@ async function upsertProposal(
     proposed_transaction_type: result.fields.transactionType || null,
     proposed_date: result.fields.date || null,
     proposed_vendor_id: result.fields.vendorId || null,
-    proposed_vendor_name_suggestion: result.fields.vendorNameSuggestion || null,
+    proposed_vendor_name_suggestion: resolveVendorNameSuggestion(item, result),
     proposed_payment_method_id: result.fields.paymentMethodId || null,
     proposed_tag_ids: result.fields.tagIds || [],
     field_confidence: result.fieldConfidence,
     overall_confidence: result.overallConfidence,
+    enrichment_confidence: result.enrichmentConfidence,
     engine: result.engine,
     llm_model: result.llmModel || null,
     llm_prompt_tokens: result.llmPromptTokens || null,
@@ -609,6 +638,7 @@ export function transformProposalRow(
   const proposal: TransactionProposal = {
     id: row.id,
     overallConfidence: row.overall_confidence,
+    enrichmentConfidence: row.enrichment_confidence ?? null,
     generatedAt: row.created_at,
     engine: row.engine,
     status: row.status,
@@ -736,8 +766,9 @@ function buildVendorDescriptionPatterns(
 ): VendorDescriptionPattern[] {
   const vendorNameMap = new Map(vendors.map((v) => [v.id, v.name]))
 
-  // Group descriptions by vendor
-  const vendorDescs = new Map<string, Map<string, number>>()
+  // Group descriptions by vendor, tracking the amounts each pattern was
+  // historically used for (per currency) so reuse can be amount-gated.
+  const vendorDescs = new Map<string, Map<string, { count: number; amounts: Map<string, number[]> }>>()
   const vendorTotals = new Map<string, number>()
 
   for (const tx of transactions) {
@@ -748,7 +779,15 @@ function buildVendorDescriptionPatterns(
       descMap = new Map()
       vendorDescs.set(tx.vendorId, descMap)
     }
-    descMap.set(tx.description, (descMap.get(tx.description) || 0) + 1)
+    let entry = descMap.get(tx.description)
+    if (!entry) {
+      entry = { count: 0, amounts: new Map() }
+      descMap.set(tx.description, entry)
+    }
+    entry.count++
+    const currencyAmounts = entry.amounts.get(tx.currency) || []
+    currencyAmounts.push(Math.abs(tx.amount))
+    entry.amounts.set(tx.currency, currencyAmounts)
   }
 
   const results: VendorDescriptionPattern[] = []
@@ -757,14 +796,25 @@ function buildVendorDescriptionPatterns(
     const totalTxns = vendorTotals.get(vendorId) || 1
     const vendorName = vendorNameMap.get(vendorId) || 'Unknown'
 
-    for (const [description, count] of descMap) {
+    for (const [description, entry] of descMap) {
+      // Amount band in the pattern's dominant currency
+      let dominant: { currency: string; amounts: number[] } | null = null
+      for (const [currency, amounts] of entry.amounts) {
+        if (!dominant || amounts.length > dominant.amounts.length) {
+          dominant = { currency, amounts }
+        }
+      }
+
       results.push({
         vendorId,
         vendorName,
         description,
-        count,
-        frequency: count / totalTxns,
+        count: entry.count,
+        frequency: entry.count / totalTxns,
         totalTransactions: totalTxns,
+        minAmount: dominant ? Math.min(...dominant.amounts) : undefined,
+        maxAmount: dominant ? Math.max(...dominant.amounts) : undefined,
+        currency: dominant?.currency,
       })
     }
   }

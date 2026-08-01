@@ -131,7 +131,9 @@ export function MatchCard({
       <CardContent className="py-2 space-y-3">
         <MatchCardPanels data={data} onRejectSource={onRejectSource} />
         {data.isNew && data.proposal && (
-          <ProposalConfidenceBar score={data.proposal.overallConfidence} />
+          <ProposalConfidenceBar
+            score={data.proposal.enrichmentConfidence ?? data.proposal.overallConfidence}
+          />
         )}
         <MatchCardReasons reasons={data.reasons} isNew={data.isNew} />
         {/* Bundle / extras indicator — always visible when extras are present

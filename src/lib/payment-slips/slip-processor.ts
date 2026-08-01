@@ -11,9 +11,15 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
+import { isRetryableAiError } from '@/lib/email/ai-client'
 import { extractFromPaymentSlip } from './vision-extractor'
 import { validateExtraction } from './extraction-validator'
 import { detectDirection } from './direction-detector'
+import {
+  crossCheckSlipAgainstStatements,
+  CORROBORATION_BONUS,
+  CONTRADICTED_CONFIDENCE_CAP,
+} from './statement-cross-check'
 import type { PaymentSlipExtraction, SlipProcessingResult } from './types'
 
 type ImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
@@ -118,6 +124,34 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
     // 4. Detect direction
     const directionResult = await detectDirection(supabase, upload.user_id, extraction)
 
+    // 4b. Cross-check against the account's statement. The vision model can
+    // read an amount confidently wrong and stay internally consistent; only
+    // the ledger of record can catch that. Corroboration lifts confidence
+    // above the single-pass cap; a statement that covers the date but has no
+    // counterpart row flags the slip for verification instead.
+    const crossCheck = await crossCheckSlipAgainstStatements(
+      supabase,
+      upload.user_id,
+      directionResult.paymentMethodId,
+      {
+        amount: extraction.amount,
+        fee: extraction.fee,
+        date: extraction.date,
+        direction: directionResult.direction,
+      }
+    )
+
+    let finalConfidence = validation.confidence
+    const crossCheckWarnings: string[] = []
+    if (crossCheck.outcome === 'corroborated') {
+      finalConfidence = Math.min(100, finalConfidence + CORROBORATION_BONUS)
+    } else if (crossCheck.outcome === 'no_matching_row') {
+      finalConfidence = Math.min(finalConfidence, CONTRADICTED_CONFIDENCE_CAP)
+      crossCheckWarnings.push(
+        `Needs verification: no ${extraction.amount} THB row (±2 days) in the matching account's statement — the extracted amount may be misread`
+      )
+    }
+
     // 5. Match against existing transactions
     const matchResult = await findMatchingTransaction(supabase, upload.user_id, extraction)
 
@@ -128,11 +162,17 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
         status: 'ready_for_review',
         extraction_completed_at: new Date().toISOString(),
         extraction_data: extraction as unknown as Record<string, unknown>,
-        extraction_confidence: validation.confidence,
+        extraction_confidence: finalConfidence,
         extraction_log: {
-          warnings: validation.warnings,
+          warnings: [...validation.warnings, ...crossCheckWarnings],
           date_raw: extraction.date_raw ?? null,
           date_corrected: validation.correctedDate ?? null,
+          statement_cross_check: {
+            outcome: crossCheck.outcome,
+            rows_checked: crossCheck.rowsChecked,
+            matched_row: crossCheck.matchedRow ?? null,
+            needs_verification: crossCheck.outcome === 'no_matching_row',
+          },
           direction_detection: {
             result: directionResult.direction,
             confidence: directionResult.confidence,
@@ -183,7 +223,7 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
     return {
       success: true,
       extraction,
-      confidence: validation.confidence,
+      confidence: finalConfidence,
       direction: directionResult.direction,
       matchedTransactionId: matchResult.transactionId,
       matchConfidence: matchResult.confidence,
@@ -193,7 +233,9 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown processing error'
-    await updateFailed(supabase, uploadId, errorMsg)
+    // Transient failures (rate limit, overload, timeout) are marked retryable
+    // so a whole failed batch can be reprocessed in bulk later.
+    await updateFailed(supabase, uploadId, errorMsg, undefined, isRetryableAiError(error))
     throw error
   }
 }
@@ -202,7 +244,8 @@ async function updateFailed(
   supabase: ReturnType<typeof createClient>,
   uploadId: string,
   error: string,
-  visionResult?: { promptTokens: number; responseTokens: number; durationMs: number }
+  visionResult?: { promptTokens: number; responseTokens: number; durationMs: number },
+  retryable = false
 ) {
   await supabase
     .from('payment_slip_uploads')
@@ -210,6 +253,7 @@ async function updateFailed(
       status: 'failed',
       extraction_completed_at: new Date().toISOString(),
       extraction_error: error,
+      extraction_log: { retryable },
       ...(visionResult && {
         ai_prompt_tokens: visionResult.promptTokens,
         ai_response_tokens: visionResult.responseTokens,

@@ -60,6 +60,7 @@ import {
   ExternalLink,
   CheckCircle2,
   Ban,
+  Unlink,
   ArrowRight,
   Receipt,
 } from "lucide-react"
@@ -75,6 +76,13 @@ interface ReviewFocusModalProps {
   onIndexChange: (index: number) => void
   onApprove: (id: string) => void
   onReject: (id: string) => void
+  /**
+   * Reject only the claim that this card is an existing Joot transaction.
+   * Distinct from onReject, which rejects the card itself — including the
+   * pairing between its sources, which is usually not what the user means
+   * when they disagree with a transaction match.
+   */
+  onRejectTransactionMatch: (id: string) => void
   onLinkManually: (id: string) => void
   onCreateTransaction: (
     compositeId: string,
@@ -587,12 +595,14 @@ function MatchedTransactionPanel({
   data,
   onApprove,
   onReject,
+  onRejectTransactionMatch,
   onLinkManually,
   isProcessing,
 }: {
   data: MatchCardData
   onApprove: () => void
   onReject: () => void
+  onRejectTransactionMatch: () => void
   onLinkManually: () => void
   isProcessing: boolean
 }) {
@@ -602,11 +612,16 @@ function MatchedTransactionPanel({
         data.statementTransaction.amount,
         data.statementTransaction.currency,
         data.matchedTransaction.date,
-        data.matchedTransaction.amount
+        data.matchedTransaction.amount,
+        data.matchedTransaction.currency
       )
     : null
 
-  const confidenceLevel = getConfidenceLevel(data.confidence)
+  // The score for THIS link, not the card's overall confidence — on a merged
+  // card the latter measures whether the email and statement row are the same
+  // payment, which says nothing about the transaction being claimed here.
+  const matchConfidence = data.transactionMatchConfidence
+  const confidenceLevel = getConfidenceLevel(matchConfidence ?? 0)
   const barColor =
     confidenceLevel === "high"
       ? "[&>div]:bg-green-500"
@@ -660,17 +675,23 @@ function MatchedTransactionPanel({
             </div>
           )}
 
-          {/* Confidence bar */}
-          <div className="space-y-1 pt-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Match Confidence</span>
-              <span className="text-xs font-medium text-muted-foreground">{data.confidence}%</span>
+          {/* Confidence in the transaction link specifically */}
+          {matchConfidence != null ? (
+            <div className="space-y-1 pt-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Transaction Match Confidence</span>
+                <span className="text-xs font-medium text-muted-foreground">{matchConfidence}%</span>
+              </div>
+              <Progress
+                value={matchConfidence}
+                className={`h-1.5 [&>div]:transition-none ${barColor}`}
+              />
             </div>
-            <Progress
-              value={data.confidence}
-              className={`h-1.5 [&>div]:transition-none ${barColor}`}
-            />
-          </div>
+          ) : data.matchedTransaction ? (
+            <p className="pt-2 text-xs text-muted-foreground">
+              This link was not scored — verify it before approving.
+            </p>
+          ) : null}
 
           {/* Match reasons */}
           {data.reasons && data.reasons.length > 0 && (
@@ -691,14 +712,33 @@ function MatchedTransactionPanel({
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="sticky bottom-0 bg-background border-t px-5 py-3 shrink-0 flex items-center gap-3">
+      {/* Actions.
+          Two different disagreements, two different buttons. "Not this
+          transaction" keeps the card and its source pairing and only drops
+          the transaction claim; "Reject" discards the card itself. Offering
+          only the latter meant a wrong transaction match could not be
+          refused without also severing a correct email↔statement pairing. */}
+      <div className="sticky bottom-0 bg-background border-t px-5 py-3 shrink-0 flex items-center gap-2">
+        {data.matchedTransaction && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRejectTransactionMatch}
+            disabled={isProcessing}
+            className="text-muted-foreground"
+            title="This is a real payment, but not this Joot transaction. Keeps the card and its sources; re-reviews it as new."
+          >
+            <Unlink className="h-3.5 w-3.5 mr-1.5" />
+            Not this transaction
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
           onClick={onReject}
           disabled={isProcessing}
           className="text-muted-foreground"
+          title="Discard this card — it isn't a payment that belongs in Joot."
         >
           <Ban className="h-3.5 w-3.5 mr-1.5" />
           Reject
@@ -741,6 +781,7 @@ export function ReviewFocusModal({
   onIndexChange,
   onApprove,
   onReject,
+  onRejectTransactionMatch,
   onLinkManually,
   onCreateTransaction,
   isProcessing,
@@ -1510,6 +1551,7 @@ export function ReviewFocusModal({
                 data={item}
                 onApprove={() => onApprove(item.id)}
                 onReject={() => onReject(item.id)}
+                onRejectTransactionMatch={() => onRejectTransactionMatch(item.id)}
                 onLinkManually={() => onLinkManually(item.id)}
                 isProcessing={isProcessing(item.id)}
               />

@@ -417,6 +417,57 @@ export default function ReviewQueuePage() {
     setGenerationModalOpen(true)
   }, [])
 
+  // Whole-window proposal generation: covers every unmatched item in the
+  // active filter window server-side (idempotent — existing proposals are
+  // skipped), not just the page currently loaded. Partial failures are
+  // retried once by composite id; anything still failing is reported.
+  const [isGeneratingWindow, setIsGeneratingWindow] = React.useState(false)
+  const handleGenerateWindow = React.useCallback(async () => {
+    setIsGeneratingWindow(true)
+    try {
+      const res = await fetch("/api/imports/proposals/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildFilterBody()),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Generation failed")
+
+      let generated: number = data.generated || 0
+      const skipped: number = data.skipped || 0
+      let failedIds: string[] = data.failedCompositeIds || []
+
+      if (failedIds.length > 0) {
+        const retry = await fetch("/api/imports/proposals/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ compositeIds: failedIds, force: true }),
+        })
+        if (retry.ok) {
+          const retryData = await retry.json()
+          generated += retryData.generated || 0
+          failedIds = retryData.failedCompositeIds || []
+        }
+      }
+
+      if (failedIds.length > 0) {
+        toast.warning(`Generated ${generated} proposals; ${failedIds.length} failed`, {
+          description: "Failed items were left without proposals — run again to retry them.",
+        })
+      } else {
+        toast.success(`Generated ${generated} proposal${generated === 1 ? "" : "s"}`, {
+          description: skipped > 0 ? `${skipped} already had proposals` : undefined,
+        })
+      }
+      refresh()
+    } catch (e) {
+      console.error("Whole-window generation failed:", e)
+      toast.error("Proposal generation failed")
+    } finally {
+      setIsGeneratingWindow(false)
+    }
+  }, [buildFilterBody, refresh])
+
   const { createAndLink } = useCreateAndLink(linkToExisting)
   const { acceptProposal } = useProposalAccept()
 
@@ -503,7 +554,7 @@ export default function ReviewQueuePage() {
       }
       if (result.outcome === 'ready') {
         toast.success('Proposal generated', {
-          description: `${result.proposal.overallConfidence}% confidence`,
+          description: `${result.proposal.enrichmentConfidence ?? result.proposal.overallConfidence}% enrichment confidence`,
         })
       } else {
         toast.info('No proposal could be generated')
@@ -839,12 +890,15 @@ export default function ReviewQueuePage() {
     (item) => item.status === "pending" && getConfidenceLevel(item.confidence) === "high"
   ).length
 
-  // High-confidence proposal items for batch quick create
+  // High-confidence proposal items for batch quick create. Gates on
+  // enrichment confidence (vendor/description/tags — the guessed fields);
+  // the blended overall score is inflated by amount/currency/date and once
+  // admitted a sign-inverted ฿302k proposal at 82.
   const quickCreateItems = newItems.filter(
     (item) =>
       item.status === "pending" &&
       item.proposal &&
-      item.proposal.overallConfidence >= 85
+      (item.proposal.enrichmentConfidence ?? item.proposal.overallConfidence) >= 85
   )
 
   // Pending items for focused review mode — fetched independently to avoid pagination limits
@@ -898,6 +952,28 @@ export default function ReviewQueuePage() {
     reject(id)
     handleFocusItemRemove(id)
   }, [reject, handleFocusItemRemove])
+
+  // Rejects only the transaction claim. The card stays in the queue and its
+  // sources stay paired — it comes back as a new transaction to review.
+  const handleRejectTransactionMatch = React.useCallback(async (id: string) => {
+    try {
+      const res = await fetch("/api/imports/reject-transaction-match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ compositeId: id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Failed to reject the transaction match")
+      toast.success("Match removed", {
+        description: "The sources stay paired — this is back in the queue as a new transaction.",
+      })
+      handleFocusItemRemove(id)
+      refresh()
+    } catch (e) {
+      console.error("Reject transaction match failed:", e)
+      toast.error(e instanceof Error ? e.message : "Failed to reject the transaction match")
+    }
+  }, [handleFocusItemRemove, refresh])
 
   const handleRejectSource = React.useCallback(
     (id: string, source: 'email' | 'statement' | 'slip') => {
@@ -978,14 +1054,14 @@ export default function ReviewQueuePage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => openGenerationModal(newItems.map(toProgressItem))}
-            disabled={isLoading || generationModalOpen || newItems.length === 0}
-            title="Generate AI proposals for unmatched items currently in view"
+            onClick={handleGenerateWindow}
+            disabled={isLoading || isGeneratingWindow || generationModalOpen}
+            title="Generate AI proposals for every unmatched item in the active filter window"
             className="text-muted-foreground hover:text-foreground"
           >
-            <Sparkles className={`h-4 w-4 sm:mr-1.5 ${generationModalOpen ? "animate-pulse" : ""}`} />
+            <Sparkles className={`h-4 w-4 sm:mr-1.5 ${isGeneratingWindow ? "animate-pulse" : ""}`} />
             <span className="hidden sm:inline text-xs">
-              {generationModalOpen ? "Generating..." : "Proposals"}
+              {isGeneratingWindow ? "Generating..." : "Proposals"}
             </span>
           </Button>
           <Button
@@ -1265,6 +1341,7 @@ export default function ReviewQueuePage() {
         onIndexChange={setReviewFocusIndex}
         onApprove={handleFocusApprove}
         onReject={handleFocusReject}
+        onRejectTransactionMatch={handleRejectTransactionMatch}
         onLinkManually={handleLinkManually}
         onCreateTransaction={async (compositeId, txData, meta) => {
           await handleCreateConfirm(compositeId, txData, meta)

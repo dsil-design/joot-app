@@ -881,7 +881,8 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
           data.statementTransaction.amount,
           data.statementTransaction.currency,
           data.matchedTransaction.date,
-          data.matchedTransaction.amount
+          data.matchedTransaction.amount,
+          data.matchedTransaction.currency
         )
       : null
 
@@ -1115,6 +1116,14 @@ function ProposalPanel({
 /**
  * Confidence bar shown below panels on proposal cards.
  */
+/**
+ * Shows the proposal's ENRICHMENT confidence — vendor/description/tags, the
+ * fields the engine actually guessed. Deliberately not the blended
+ * overall_confidence, which is dominated by amount/currency/date (facts that
+ * were never in doubt) and cannot separate good enrichment from bad. Match
+ * confidence (source agreement) is a separate signal shown on the card
+ * header and is the only thing bulk approval gates on.
+ */
 export function ProposalConfidenceBar({
   score,
 }: {
@@ -1130,13 +1139,13 @@ export function ProposalConfidenceBar({
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Proposal Confidence</span>
+        <span className="text-xs text-muted-foreground">Enrichment Confidence</span>
         <span className="text-xs font-medium text-muted-foreground">{score}%</span>
       </div>
       <Progress
         value={score}
         className={`h-1.5 [&>div]:transition-none ${barColor}`}
-        aria-label={`Proposal confidence: ${score} out of 100`}
+        aria-label={`Enrichment confidence (vendor, description, tags): ${score} out of 100`}
       />
     </div>
   )
