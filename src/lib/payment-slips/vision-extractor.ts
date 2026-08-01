@@ -6,10 +6,23 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk'
-import { AI_MODEL } from '@/lib/email/ai-client'
+import { withAiRetries } from '@/lib/email/ai-client'
 import type { PaymentSlipExtraction } from './types'
 
+/**
+ * Vision extraction uses its own model, deliberately decoupled from the
+ * cheaper text model used for email classification (AI_MODEL in
+ * lib/email/ai-client). Amount extraction from slip images is the one place
+ * in this system where a misread silently becomes money — a hallucinated
+ * digit passes every downstream consistency check because all fields come
+ * from the same model response. Use the strongest available model here.
+ */
+export const VISION_MODEL = process.env.ANTHROPIC_VISION_MODEL || 'claude-opus-5'
+
 const VISION_TIMEOUT_MS = 60000
+// The model thinks by default; max_tokens caps thinking + response together,
+// so leave headroom beyond the ~500-token JSON payload.
+const VISION_MAX_TOKENS = 4096
 
 const EXTRACTION_PROMPT = `You are analyzing a Thai bank payment slip (transfer receipt) image.
 
@@ -97,12 +110,14 @@ export async function extractFromPaymentSlip(
     throw new Error('ANTHROPIC_API_KEY not configured')
   }
 
-  const client = new Anthropic({ apiKey, timeout: VISION_TIMEOUT_MS })
+  // Per-attempt timeout; retries with retry-after-aware backoff are handled
+  // by withAiRetries so a rate-limited bulk upload recovers instead of dying.
+  const client = new Anthropic({ apiKey, timeout: VISION_TIMEOUT_MS, maxRetries: 0 })
 
   const startTime = Date.now()
-  const result = await client.messages.create({
-    model: AI_MODEL,
-    max_tokens: 1024,
+  const result = await withAiRetries(() => client.messages.create({
+    model: VISION_MODEL,
+    max_tokens: VISION_MAX_TOKENS,
     messages: [
       {
         role: 'user',
@@ -122,7 +137,7 @@ export async function extractFromPaymentSlip(
         ],
       },
     ],
-  })
+  }))
   const durationMs = Date.now() - startTime
 
   const textBlock = result.content.find((block) => block.type === 'text')

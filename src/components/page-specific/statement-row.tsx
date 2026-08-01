@@ -58,6 +58,17 @@ export function StatementRow({ statement, paymentMethodType, onProcess }: Statem
               <TypeIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
               <span className="text-sm font-medium truncate">{statement.filename}</span>
               {getStatusBadge(statement.status)}
+              {/* A 0-row extraction with nothing confirming the statement is
+                  genuinely empty must not silently count as coverage */}
+              {extracted === 0 && ['ready_for_review', 'in_review', 'done'].includes(statement.status) && (
+                <Badge
+                  variant="outline"
+                  className="border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300"
+                  title="0 rows were extracted. Confirm the account was genuinely quiet — an empty statement and a parser that failed to read the layout look identical."
+                >
+                  0 rows — confirm
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               {formatPeriod(statement.statement_period_start, statement.statement_period_end)}

@@ -123,6 +123,17 @@ export interface QueueItem {
     payment_method_name?: string
   }
   confidence: number
+  /**
+   * Confidence that `matchedTransaction` is the same payment as this card.
+   *
+   * Deliberately separate from `confidence`, which on a merged card measures
+   * something else entirely — that the email and the statement row are the
+   * same payment. Merging used to overwrite the one with the other, so a
+   * weak auto-link inherited the 99% earned by the cross-source pairing and
+   * was presented as near-certain. Undefined when there is no matched
+   * transaction, or when the link predates this field.
+   */
+  transactionMatchConfidence?: number
   confidenceLevel: 'high' | 'medium' | 'low' | 'none'
   reasons: string[]
   isNew: boolean
@@ -168,6 +179,13 @@ export interface Suggestion {
   reasons: string[]
   is_new: boolean
   status?: 'pending' | 'approved' | 'rejected'
+  /**
+   * Transactions the user explicitly rejected as a match for this row.
+   * Recorded by /api/imports/reject-transaction-match so matching never
+   * re-proposes a link the user has already turned down — without having to
+   * reject the row itself to make it stick.
+   */
+  rejected_transaction_ids?: string[]
   /**
    * Optional foreign-currency reference data extracted from the statement
    * (e.g. Chase shows the original THB/VND amount + Visa rate). This is

@@ -162,9 +162,14 @@ export async function fetchStatementQueueItems(
         },
         matchedTransaction: matchedTransactionData,
         confidence: suggestion.confidence,
+        // For a statement row the stored confidence IS the transaction-match
+        // score — the statement matcher produced it by scoring this row
+        // against existing transactions.
+        transactionMatchConfidence: matchedTransactionData ? suggestion.confidence : undefined,
         confidenceLevel,
         reasons: suggestion.reasons,
         isNew: suggestion.is_new,
+        rejectedTransactionIds: suggestion.rejected_transaction_ids,
         status: suggestion.status || 'pending',
         source: 'statement',
       })

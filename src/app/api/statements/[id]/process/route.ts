@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { processStatement, getProcessingStatus } from '@/lib/statements/statement-processor'
 import { resolveWaitingEmailTransactions } from '@/lib/email/waiting-resolver'
+import { fetchStatementQueueItems } from '@/lib/imports/statement-queue-builder'
+import { generateAndStoreProposals } from '@/lib/proposals/proposal-service'
+import type { ProposalInput } from '@/lib/proposals/types'
 
 /**
  * POST /api/statements/[id]/process
@@ -348,6 +351,55 @@ async function processStatementAsync(
       } catch (resolveError) {
         // Non-fatal: don't fail the statement processing
         console.error('Error resolving waiting email transactions:', resolveError)
+      }
+
+      // Whole-statement proposal generation: every new (unmatched) row gets a
+      // proposal as soon as the statement finishes processing, instead of
+      // waiting for someone to trigger generation per item. Idempotent —
+      // rows that already have a proposal are skipped.
+      try {
+        const items = await fetchStatementQueueItems(serviceClient, userId, {
+          statementUploadId: statementId,
+        })
+        const inputs: ProposalInput[] = items
+          .filter((item) => item.isNew && item.status === 'pending')
+          .map((item) => {
+            const parts = item.id.split(':')
+            return {
+              compositeId: item.id,
+              sourceType: 'statement' as const,
+              statementUploadId: statementId,
+              suggestionIndex: parseInt(parts[2], 10),
+              description: item.statementTransaction.description,
+              amount: item.statementTransaction.amount,
+              currency: item.statementTransaction.currency,
+              date: item.statementTransaction.date,
+              paymentMethodId: item.paymentMethod?.id,
+              paymentMethodName: item.paymentMethod?.name,
+            }
+          })
+
+        if (inputs.length > 0) {
+          const genResult = await generateAndStoreProposals(serviceClient, userId, inputs)
+          await serviceClient
+            .from('import_activities')
+            .insert({
+              user_id: userId,
+              activity_type: 'statement_processed',
+              statement_upload_id: statementId,
+              description: `Generated ${genResult.generated} proposal(s) for ${filename}`,
+              transactions_affected: genResult.generated,
+              metadata: {
+                generated: genResult.generated,
+                skipped: genResult.skipped,
+                errors: genResult.errors,
+                failed_composite_ids: genResult.failedCompositeIds,
+              },
+            })
+        }
+      } catch (proposalError) {
+        // Non-fatal: proposals can be generated later from the Review page
+        console.error('Error generating proposals after statement processing:', proposalError)
       }
     } else {
       await serviceClient

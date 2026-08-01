@@ -6,6 +6,7 @@
  */
 
 import { callAi, AI_MODEL } from '@/lib/email/ai-client'
+import { calculateEnrichmentConfidence } from './confidence'
 import type {
   ProposalInput,
   ProposalEngineResult,
@@ -14,6 +15,7 @@ import type {
   RuleEngineContext,
   RecentTransaction,
   PastCorrection,
+  VendorDescriptionPattern,
 } from './types'
 
 interface LLMProposalResponse {
@@ -60,7 +62,11 @@ export async function generateLLMProposal(
   // Find relevant past corrections for this item
   const relevantCorrections = findRelevantCorrections(item, context.pastCorrections)
 
-  const prompt = buildPrompt(item, similarTxns, topVendors, context.paymentMethods, topTags, context.vendorDescriptionPatterns, relevantCorrections, item.rejectionFeedback)
+  // Account type decides what the amount's sign means; the prompt states the
+  // convention explicitly so the model can't invert it.
+  const accountType = context.paymentMethods.find((pm) => pm.id === item.paymentMethodId)?.type
+
+  const prompt = buildPrompt(item, similarTxns, topVendors, context.paymentMethods, topTags, context.vendorDescriptionPatterns, relevantCorrections, item.rejectionFeedback, accountType)
 
   const { data, tokenUsage } = await callAi<LLMProposalResponse>(prompt)
 
@@ -107,8 +113,13 @@ export async function generateLLMProposal(
   if (data.transaction_type) {
     fields.transactionType = data.transaction_type
     fieldConfidence.transaction_type = {
-      score: data.confidence.transaction_type || 80,
+      // The model's self-scored confidence is not comparable to a rule-derived
+      // one — an inverted sign reading can arrive at 95+. Cap it below every
+      // signal-backed rule score so it can only beat the rule engine's
+      // no-arithmetic default (80), never an arithmetic or classified type.
+      score: Math.min(data.confidence.transaction_type || 80, 85),
       reasoning: data.reasoning.transaction_type || 'AI-classified transaction type',
+      source: 'inferred',
     }
   }
 
@@ -148,6 +159,7 @@ export async function generateLLMProposal(
     fields,
     fieldConfidence,
     overallConfidence: totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 50,
+    enrichmentConfidence: calculateEnrichmentConfidence(fieldConfidence),
     engine: 'llm',
     llmModel: AI_MODEL,
     llmPromptTokens: tokenUsage.promptTokens,
@@ -162,9 +174,10 @@ function buildPrompt(
   vendors: Array<{ id: string; name: string }>,
   paymentMethods: Array<{ id: string; name: string }>,
   tags: Array<{ id: string; name: string }>,
-  vendorDescriptionPatterns?: Array<{ vendorId: string; vendorName: string; description: string; count: number; frequency: number }>,
+  vendorDescriptionPatterns?: VendorDescriptionPattern[],
   pastCorrections?: PastCorrection[],
-  rejectionFeedback?: string[]
+  rejectionFeedback?: string[],
+  accountType?: string
 ): string {
   const parts: string[] = []
 
@@ -178,6 +191,7 @@ function buildPrompt(
   parts.push(`- Amount: ${item.amount} ${item.currency}`)
   parts.push(`- Date: ${item.date}`)
   parts.push(`- Source: ${item.sourceType}`)
+  if (accountType) parts.push(`- Account type: ${accountType}`)
   if (item.parserKey) parts.push(`- Parser key: ${item.parserKey}`)
   if (item.paymentCardLastFour) parts.push(`- Payment card: ${item.paymentCardType || 'card'} ending ${item.paymentCardLastFour}`)
   if (item.senderName) parts.push(`- Sender: ${item.senderName}`)
@@ -238,9 +252,13 @@ function buildPrompt(
     if (topPatterns.length > 0) {
       parts.push('')
       parts.push(`## Vendor Description Patterns (established conventions)`)
-      parts.push(`These are the user's preferred description formats for each vendor. Match these patterns when possible:`)
+      parts.push(`These are the user's preferred description formats for each vendor, with the amount range each was historically used for.`)
+      parts.push(`Reuse a pattern ONLY when this transaction's amount is in the same range (same order of magnitude). A ฿45 transfer labelled "Monthly Rent" because the vendor once received rent is WRONG — when the amount doesn't fit, write a neutral description from the raw data instead.`)
       for (const p of topPatterns) {
-        parts.push(`- ${p.vendorName}: "${p.description}" (used ${p.count}x, ${Math.round(p.frequency * 100)}%)`)
+        const range = p.minAmount != null && p.maxAmount != null && p.currency
+          ? `, typical amount ${p.minAmount}–${p.maxAmount} ${p.currency}`
+          : ''
+        parts.push(`- ${p.vendorName}: "${p.description}" (used ${p.count}x, ${Math.round(p.frequency * 100)}%${range})`)
       }
     }
   }
@@ -249,13 +267,14 @@ function buildPrompt(
   if (pastCorrections && pastCorrections.length > 0) {
     parts.push('')
     parts.push(`## User Corrections (learn from these)`)
-    parts.push(`The user has previously corrected proposals. Apply the same corrections to similar items:`)
+    parts.push(`The user has previously corrected proposals. Apply the same corrections to similar items — but ONLY when this transaction's amount is in the same range as the corrected one. Do not label a small transfer "Rent" because a rent-sized transfer from the same sender was once corrected to that.`)
     for (const c of pastCorrections) {
+      const amountCtx = c.amount != null && c.currency ? ` (on a ${c.amount} ${c.currency} transaction)` : ''
       if (c.field === 'vendor_id' && c.correctedVendorName) {
         const from = c.originalVendorName || String(c.originalValue || 'none')
-        parts.push(`- Description "${c.sourceDescription}"${c.fromAddress ? ` from ${c.fromAddress}` : ''}: corrected vendor from "${from}" to "${c.correctedVendorName}"`)
+        parts.push(`- Description "${c.sourceDescription}"${c.fromAddress ? ` from ${c.fromAddress}` : ''}: corrected vendor from "${from}" to "${c.correctedVendorName}"${amountCtx}`)
       } else if (c.field === 'description') {
-        parts.push(`- Corrected description from "${c.originalValue}" to "${c.correctedValue}"${c.fromAddress ? ` (sender: ${c.fromAddress})` : ''}`)
+        parts.push(`- Corrected description from "${c.originalValue}" to "${c.correctedValue}"${c.fromAddress ? ` (sender: ${c.fromAddress})` : ''}${amountCtx}`)
       } else if (c.field === 'tag_ids') {
         parts.push(`- Corrected tags for "${c.sourceDescription}": ${JSON.stringify(c.correctedValue)}`)
       } else if (c.field === 'payment_method_id') {
@@ -315,7 +334,10 @@ function buildPrompt(
   parts.push(`## Instructions`)
   parts.push(`1. Match the description to an existing vendor if possible (use the vendor ID). If no match, suggest a clean vendor name.`)
   parts.push(`2. Write a clean, human-readable description following the Description Conventions above. If similar historical transactions exist, follow their description style.`)
-  parts.push(`3. Classify as "expense" or "income".`)
+  parts.push(`3. Classify as "expense", "income", or "transfer". The amount's SIGN is ground truth — never reinterpret it:`)
+  parts.push(`   - Bank/debit accounts: POSITIVE = money leaving the account (expense); NEGATIVE = money arriving (income).`)
+  parts.push(`   - Credit cards: POSITIVE = a charge (expense); NEGATIVE = a refund/credit or a payment toward the card balance — NEVER income.`)
+  parts.push(`   - A row that is one leg of a movement between the user's own accounts (e.g. "AUTOMATIC PAYMENT - THANK YOU", autopay, card payment) is a "transfer".`)
   parts.push(`4. Suggest a payment method if you can determine one. If a payment card (last 4 digits or type) is provided, match it to a payment method that has matching card details.`)
   parts.push(`5. Suggest up to 3 relevant tags.`)
   parts.push(`6. For each field, provide a confidence score (0-100) and brief reasoning.`)
@@ -325,7 +347,7 @@ function buildPrompt(
   parts.push(`  "vendor_id": "uuid or null",`)
   parts.push(`  "vendor_name": "suggested name if no vendor_id match",`)
   parts.push(`  "description": "clean description",`)
-  parts.push(`  "transaction_type": "expense" or "income",`)
+  parts.push(`  "transaction_type": "expense" | "income" | "transfer",`)
   parts.push(`  "payment_method_id": "uuid or null",`)
   parts.push(`  "tag_ids": ["uuid1", "uuid2"],`)
   parts.push(`  "confidence": { "vendor": 80, "description": 90, "transaction_type": 95, "payment_method": 60, "tags": 70 },`)

@@ -538,14 +538,34 @@ export class StatementProcessor {
     // This includes storing the parsed transactions and match suggestions
     // for later review in the review queue
 
+    // Zero extracted rows is ambiguous: a genuinely quiet account and a
+    // parser that failed to read the layout look identical. A parsed summary
+    // showing no activity is positive evidence of emptiness; without it, the
+    // extraction needs human confirmation and must not silently count as
+    // coverage for its period. (Zero rows WITH summary activity already
+    // throws earlier — that case is a definite parser miss.)
+    const summaryData = parseResult.summary;
+    const summaryConfirmsEmpty =
+      !!summaryData &&
+      Math.abs(summaryData.totalCharges ?? 0) <= 0.005 &&
+      Math.abs(summaryData.totalCredits ?? 0) <= 0.005;
+    const zeroRowsUnconfirmed =
+      result.transactionsExtracted === 0 && !summaryConfirmsEmpty;
+
     const extractionData = {
       parser_used: parseResult.parserKey,
       page_count: parseResult.pageCount,
       confidence: parseResult.confidence,
+      zero_rows_needs_confirmation: zeroRowsUnconfirmed || undefined,
       period_start: parseResult.period?.startDate ? formatLocalDate(parseResult.period.startDate) : undefined,
       period_end: parseResult.period?.endDate ? formatLocalDate(parseResult.period.endDate) : undefined,
       summary: parseResult.summary,
-      warnings: parseResult.warnings,
+      warnings: zeroRowsUnconfirmed
+        ? [
+            ...(parseResult.warnings ?? []),
+            'Extracted 0 rows and the summary does not confirm the statement is empty — confirm this account was genuinely quiet before treating the period as covered.',
+          ]
+        : parseResult.warnings,
       transactions: parseResult.transactions.map(t => ({
         date: formatLocalDate(t.transactionDate),
         description: t.description,

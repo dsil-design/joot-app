@@ -145,7 +145,9 @@ export function MatchCardActions({
     // Proposal-aware action buttons for new/unmatched items
     const isNewWithProposal = (variant === "new-transaction" || (variant === "merged-match" && !hasMatchedTransaction)) && proposal
     if (isNewWithProposal) {
-      const confidence = proposal.overallConfidence
+      // Quick Create gates on enrichment confidence — the guessed fields —
+      // never on the blended overall score, which amount/currency/date inflate.
+      const confidence = proposal.enrichmentConfidence ?? proposal.overallConfidence
       return (
         <>
           {confidence >= 85 && (

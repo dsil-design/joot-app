@@ -1520,6 +1520,14 @@ CREATE TABLE public.transaction_proposals (
   -- Per-field confidence and reasoning
   field_confidence JSONB NOT NULL DEFAULT '{}',
   overall_confidence INTEGER NOT NULL DEFAULT 0,
+  -- Confidence in the guessed fields only (vendor, description, tags).
+  -- overall_confidence blends in amount/currency/date, which score 95-100 by
+  -- construction, so it cannot separate good enrichment from bad. Bulk
+  -- approval gates on the queue item's match confidence, never on either of
+  -- these. NULL for proposals generated before this column existed.
+  enrichment_confidence INTEGER CHECK (
+    enrichment_confidence IS NULL OR (enrichment_confidence >= 0 AND enrichment_confidence <= 100)
+  ),
 
   -- Engine metadata
   engine TEXT NOT NULL CHECK (engine IN ('rule_based', 'llm', 'hybrid')),

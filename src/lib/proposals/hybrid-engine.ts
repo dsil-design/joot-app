@@ -7,6 +7,7 @@
 
 import { generateRuleProposal } from './rule-engine'
 import { generateLLMProposal } from './llm-engine'
+import { calculateEnrichmentConfidence } from './confidence'
 import { isAiAvailable } from '@/lib/email/ai-client'
 import type {
   ProposalInput,
@@ -74,9 +75,12 @@ function calculateKeyFieldAverage(fc: FieldConfidenceMap): number {
 
 /**
  * Merge rule and LLM results. LLM only upgrades fields where it has
- * higher confidence than the rule engine.
+ * higher confidence than the rule engine, and never fields the rule
+ * engine derived arithmetically from the source document.
+ *
+ * Exported for tests.
  */
-function mergeResults(
+export function mergeResults(
   rule: ProposalEngineResult,
   llm: ProposalEngineResult
 ): ProposalEngineResult {
@@ -87,6 +91,13 @@ function mergeResults(
   // For each field in LLM result, check if it upgrades the rule result
   for (const [field, llmConf] of Object.entries(llm.fieldConfidence)) {
     const ruleConf = rule.fieldConfidence[field]
+
+    // Arithmetic-derived fields (amount, currency, date, and a transaction
+    // type read off the amount's sign) are ground truth from the source
+    // document. The LLM's self-reported confidence is an opinion and may
+    // never overrule them, whatever score it claims.
+    if (ruleConf?.source === 'arithmetic') continue
+
     if (!ruleConf || llmConf.score > ruleConf.score) {
       // LLM has higher confidence — use its value
       mergedConfidence[field] = llmConf
@@ -127,6 +138,7 @@ function mergeResults(
     fields: mergedFields,
     fieldConfidence: mergedConfidence,
     overallConfidence: totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0,
+    enrichmentConfidence: calculateEnrichmentConfidence(mergedConfidence),
     engine: usedLlm ? 'hybrid' : 'rule_based',
     llmModel: usedLlm ? llm.llmModel : undefined,
     llmPromptTokens: usedLlm ? llm.llmPromptTokens : undefined,

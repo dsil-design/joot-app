@@ -13,7 +13,13 @@ export const MAX_BODY_LENGTH = 8000;
 export const MAX_ATTACHMENT_TEXT_LENGTH = 12000;
 /** When a PDF is present, the email body is supplementary — keep it short. */
 export const MAX_BODY_LENGTH_WITH_ATTACHMENT = 2000;
+/** Timeout per API attempt — NOT per overall operation. A rate-limited call
+ * gets a fresh window on each retry, so backoff can actually complete. */
 export const REQUEST_TIMEOUT_MS = 15000;
+/** Total attempts (first call + retries) for retryable failures. */
+const MAX_ATTEMPTS = 5;
+const BASE_RETRY_DELAY_MS = 2000;
+const MAX_RETRY_DELAY_MS = 60000;
 
 /**
  * Token usage metadata returned alongside parsed AI responses
@@ -33,8 +39,60 @@ export interface AiCallResult<T> {
 }
 
 /**
- * Call Claude API with timeout and JSON response parsing.
- * Returns parsed data, token usage, and call duration.
+ * Whether an AI call failure is worth retrying (rate limit, overload,
+ * server error, connection failure/timeout) versus a permanent one
+ * (bad request, auth) that will fail identically on every attempt.
+ */
+export function isRetryableAiError(error: unknown): boolean {
+  if (error instanceof Anthropic.APIConnectionError) return true; // includes per-attempt timeouts
+  if (error instanceof Anthropic.APIError) {
+    const status = error.status;
+    return status === 408 || status === 409 || status === 429 || (typeof status === 'number' && status >= 500);
+  }
+  return false;
+}
+
+/** Delay before the next attempt: honor `retry-after` when the API sent one,
+ * otherwise exponential backoff with jitter. */
+function retryDelayMs(error: unknown, attempt: number): number {
+  if (error instanceof Anthropic.APIError) {
+    const retryAfter = Number(error.headers?.get?.('retry-after'));
+    if (!isNaN(retryAfter) && retryAfter >= 0) {
+      return Math.min(retryAfter * 1000, MAX_RETRY_DELAY_MS);
+    }
+  }
+  const backoff = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+  const jitter = Math.random() * 500;
+  return Math.min(backoff + jitter, MAX_RETRY_DELAY_MS);
+}
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Run an API call with retries. The timeout is enforced per attempt by the
+ * SDK client (see callAi), never by racing the whole operation — racing
+ * rejects the promise before any meaningful backoff can complete, which is
+ * how a bulk upload once turned one rate-limit burst into 45 dead slips.
+ */
+export async function withAiRetries<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableAiError(error) || attempt === MAX_ATTEMPTS) {
+        throw error;
+      }
+      await sleep(retryDelayMs(error, attempt));
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * Call Claude API with per-attempt timeout, retry with backoff, and JSON
+ * response parsing. Returns parsed data, token usage, and call duration.
  */
 export async function callAi<T>(prompt: string): Promise<AiCallResult<T>> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -42,15 +100,12 @@ export async function callAi<T>(prompt: string): Promise<AiCallResult<T>> {
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
 
-  const client = new Anthropic({ apiKey });
-
-  // Race between API call and timeout
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('Claude API timeout')), REQUEST_TIMEOUT_MS);
-  });
+  // Per-attempt timeout on the client; retries are handled by withAiRetries
+  // so retry-after delays longer than the SDK's internal policy are honored.
+  const client = new Anthropic({ apiKey, timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 });
 
   const startTime = Date.now();
-  const result = await Promise.race([
+  const result = await withAiRetries(() =>
     client.messages.create({
       model: AI_MODEL,
       max_tokens: 1024,
@@ -60,9 +115,8 @@ export async function callAi<T>(prompt: string): Promise<AiCallResult<T>> {
           content: prompt + '\n\nIMPORTANT: Respond with ONLY valid JSON, no markdown code fences or extra text.',
         },
       ],
-    }),
-    timeoutPromise,
-  ]);
+    })
+  );
   const durationMs = Date.now() - startTime;
 
   // Extract text from response

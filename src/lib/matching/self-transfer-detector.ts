@@ -5,14 +5,21 @@
  * represent the same self-transfer (money moved between the user's own accounts).
  *
  * Matching criteria:
- * - Same absolute amount
- * - One is a debit (charge), one is a credit
- * - Same date (±1 day tolerance for timezone/processing delays)
- * - Different payment methods (different bank accounts)
+ * - Same absolute amount, opposite signs (one leg is money out, the other money in)
+ * - Different payment methods (different accounts)
+ * - Close dates: ±1 day for same-type account pairs; ±5 days for a
+ *   credit-card ↔ bank-account pair, because an autopay debits the funding
+ *   account days after the card posts the payment
  */
 
 import { calculateDaysDiff } from '@/lib/matching/date-matcher'
+import { isCardPaymentDescription } from '@/lib/matching/transfer-descriptions'
 import type { QueueItem } from '@/lib/imports/queue-types'
+
+/** Window for two accounts of the same type (e.g. bank → bank). */
+const SAME_TYPE_WINDOW_DAYS = 1
+/** Window for a credit-card payment: card posts the payment days before the bank leg settles. */
+const CARD_BANK_WINDOW_DAYS = 5
 
 export interface SelfTransferPair {
   /** The debit-side queue item (money leaving one account) */
@@ -23,13 +30,18 @@ export interface SelfTransferPair {
   daysDiff: number
 }
 
+function isCardBankPair(a?: string, b?: string): boolean {
+  const bankLike = (t?: string) => t === 'bank_account' || t === 'debit_card'
+  return (a === 'credit_card' && bankLike(b)) || (b === 'credit_card' && bankLike(a))
+}
+
 /**
  * Find self-transfer pairs among pending statement items.
  *
- * Algorithm: For each debit (positive amount = charge), find a matching
- * credit (negative amount or credit-type entry) with same absolute amount,
- * close date, and different payment method. Greedy 1:1 matching, preferring
- * tightest date match.
+ * Algorithm: for each item, find an item on a different payment method with
+ * the same absolute amount and the opposite sign, within the date window for
+ * that account-type combination. Greedy 1:1 matching, preferring pairs whose
+ * descriptions both read as card payments, then the tightest date match.
  */
 export function findSelfTransferPairs(
   statementItems: QueueItem[]
@@ -64,8 +76,11 @@ export function findSelfTransferPairs(
     const amount = item.statementTransaction.amount
     const currency = item.statementTransaction.currency
     const pmId = item.paymentMethod?.id ?? 'none'
+    if (amount === 0) continue
 
-    let bestMatch: { candidate: QueueItem; daysDiff: number } | null = null
+    const itemIsCardPayment = isCardPaymentDescription(item.statementTransaction.description)
+
+    let bestMatch: { candidate: QueueItem; daysDiff: number; descMatch: boolean } | null = null
 
     // Search items from OTHER payment methods
     for (const [otherPmId, otherItems] of byPaymentMethod) {
@@ -76,21 +91,40 @@ export function findSelfTransferPairs(
 
         // Must be same currency and same absolute amount
         if (candidate.statementTransaction.currency !== currency) continue
-        const amountDiff = Math.abs(
-          Math.abs(candidate.statementTransaction.amount) - Math.abs(amount)
-        )
+        const candidateAmount = candidate.statementTransaction.amount
+        const amountDiff = Math.abs(Math.abs(candidateAmount) - Math.abs(amount))
         if (amountDiff > 0.01) continue
 
-        // Must be within ±1 day
+        // The two legs of a transfer point in opposite directions. Two
+        // same-direction rows of equal size (e.g. two identical purchases on
+        // different cards) are not a transfer.
+        if (candidateAmount === 0) continue
+        if (Math.sign(candidateAmount) === Math.sign(amount)) continue
+
+        // Date window depends on the account types involved
+        const descMatch = itemIsCardPayment &&
+          isCardPaymentDescription(candidate.statementTransaction.description)
+        let windowDays = isCardBankPair(item.paymentMethodType, candidate.paymentMethodType)
+          ? CARD_BANK_WINDOW_DAYS
+          : SAME_TYPE_WINDOW_DAYS
+        // When both descriptions read as a card payment the pairing is
+        // near-certain even when account types are missing/unknown — allow
+        // the wide window on the description evidence alone.
+        if (descMatch) windowDays = Math.max(windowDays, CARD_BANK_WINDOW_DAYS)
+
         const daysDiff = calculateDaysDiff(
           item.statementTransaction.date,
           candidate.statementTransaction.date
         )
-        if (daysDiff > 1) continue
+        if (daysDiff > windowDays) continue
 
-        // Prefer tightest date match
-        if (!bestMatch || daysDiff < bestMatch.daysDiff) {
-          bestMatch = { candidate, daysDiff }
+        // Prefer description-confirmed card-payment pairs, then tightest date
+        if (
+          !bestMatch ||
+          (descMatch && !bestMatch.descMatch) ||
+          (descMatch === bestMatch.descMatch && daysDiff < bestMatch.daysDiff)
+        ) {
+          bestMatch = { candidate, daysDiff, descMatch }
         }
       }
     }
@@ -99,11 +133,12 @@ export function findSelfTransferPairs(
       usedIds.add(item.id)
       usedIds.add(bestMatch.candidate.id)
 
-      // Determine which is debit and which is credit based on description hints
-      // or just use item order (first found = debit side)
+      // The positive leg is money leaving an account (bank rows are signed
+      // positive-out; a card's payment leg is negative), so it is the debit side.
+      const itemIsDebit = amount > 0
       pairs.push({
-        debitItem: item,
-        creditItem: bestMatch.candidate,
+        debitItem: itemIsDebit ? item : bestMatch.candidate,
+        creditItem: itemIsDebit ? bestMatch.candidate : item,
         daysDiff: bestMatch.daysDiff,
       })
     }

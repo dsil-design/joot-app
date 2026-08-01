@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
     // different composite_id by this aggregation pass (e.g., a slip-only proposal
     // is now part of a 3-way slip+email+statement group), mark the old proposal
     // 'stale' so it stops surfacing as a separate card. Fire-and-forget.
-    void reconcileStaleProposals(supabase, user.id, result.items).catch((err) => {
+    void reconcileStaleProposals(supabase, user.id, result.items, filters).catch((err) => {
       console.error('Failed to reconcile stale proposals:', err)
     })
 
@@ -196,16 +196,24 @@ export async function GET(request: NextRequest) {
  * temporal race where a slip is reviewed (and proposal generated) before its
  * matching email/statement arrived — once they arrive and the aggregator
  * regroups, the old proposal becomes stale.
+ *
+ * A proposal whose sources are ABSENT from the current item set entirely is
+ * stale too — such proposals render nowhere yet sit in the skip set and
+ * block regeneration forever. Absence is only trusted when this query was an
+ * unfiltered view whose date window actually covered the proposal's date;
+ * otherwise every filtered query would mark everything stale.
  */
 async function reconcileStaleProposals(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-  currentItems: QueueItem[]
+  currentItems: QueueItem[],
+  filters: QueueFilters
 ): Promise<void> {
   // Build maps from each source identifier → current composite_id that owns it.
   const stmtToComposite = new Map<string, string>()
   const emailToComposite = new Map<string, string>()
   const slipToComposite = new Map<string, string>()
+  const itemStatusById = new Map(currentItems.map((i) => [i.id, i.status as string]))
 
   for (const item of currentItems) {
     const parsed = parseImportId(item.id)
@@ -247,32 +255,74 @@ async function reconcileStaleProposals(
   // Fetch all pending proposals for this user with their source refs.
   const { data: pending, error } = await supabase
     .from('transaction_proposals')
-    .select('composite_id, statement_upload_id, suggestion_index, email_transaction_id, payment_slip_upload_id')
+    .select('composite_id, statement_upload_id, suggestion_index, email_transaction_id, payment_slip_upload_id, proposed_date')
     .eq('user_id', userId)
     .eq('status', 'pending')
 
   if (error || !pending || pending.length === 0) return
+
+  // Absence from the item set only means "stale" when nothing was filtered
+  // out of this query except (possibly) a date window — the whole difficulty
+  // is not mistaking a filtered view for the world.
+  const isUnfilteredView =
+    filters.sourceFilter === 'all' &&
+    filters.statusFilter === 'all' &&
+    filters.currencyFilter === 'all' &&
+    filters.confidenceFilter === 'all' &&
+    !filters.searchQuery &&
+    !filters.statementUploadId
 
   const staleIds: string[] = []
   for (const p of pending) {
     // For each source the proposal owns, check whether it's now in a current
     // item with a DIFFERENT composite_id. If any source has moved, mark stale.
     let regrouped = false
+    let anySourcePresent = false
+    let hasSourceRef = false
 
     if (p.statement_upload_id && p.suggestion_index !== null && p.suggestion_index !== undefined) {
+      hasSourceRef = true
       const owner = stmtToComposite.get(`${p.statement_upload_id}:${p.suggestion_index}`)
+      if (owner) anySourcePresent = true
       if (owner && owner !== p.composite_id) regrouped = true
     }
     if (!regrouped && p.email_transaction_id) {
+      hasSourceRef = true
       const owner = emailToComposite.get(p.email_transaction_id)
+      if (owner) anySourcePresent = true
       if (owner && owner !== p.composite_id) regrouped = true
     }
     if (!regrouped && p.payment_slip_upload_id) {
+      hasSourceRef = true
       const owner = slipToComposite.get(p.payment_slip_upload_id)
+      if (owner) anySourcePresent = true
       if (owner && owner !== p.composite_id) regrouped = true
     }
 
-    if (regrouped) staleIds.push(p.composite_id)
+    if (regrouped) {
+      staleIds.push(p.composite_id)
+      continue
+    }
+
+    if (isUnfilteredView && hasSourceRef && p.proposed_date) {
+      const inWindow =
+        (!filters.fromDate || p.proposed_date >= filters.fromDate) &&
+        (!filters.toDate || p.proposed_date <= filters.toDate)
+
+      if (inWindow) {
+        // Sources absent from the current item set entirely → orphaned.
+        if (!anySourcePresent) {
+          staleIds.push(p.composite_id)
+          continue
+        }
+        // Card exists but was resolved without this proposal (e.g. a backfill
+        // auto-linked it) — the pending proposal renders nowhere.
+        const cardStatus = itemStatusById.get(p.composite_id)
+        if (cardStatus && cardStatus !== 'pending' && cardStatus !== 'unset') {
+          staleIds.push(p.composite_id)
+        }
+      }
+    }
   }
 
   if (staleIds.length > 0) {

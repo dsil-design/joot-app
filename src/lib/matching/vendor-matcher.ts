@@ -389,6 +389,74 @@ export function isLikelyMatch(vendor1: string, vendor2: string): boolean {
   return result.isMatch;
 }
 
+// US state + Canadian province codes that trail merchant descriptors
+const STATE_PROVINCE_CODES = new Set([
+  'al','ak','az','ar','ca','co','ct','de','fl','ga','hi','id','il','in','ia','ks','ky','la','me','md',
+  'ma','mi','mn','ms','mo','mt','ne','nv','nh','nj','nm','ny','nc','nd','oh','ok','or','pa','ri','sc',
+  'sd','tn','tx','ut','vt','va','wa','wv','wi','wy','dc',
+  'on','qc','bc','ab','mb','sk','ns','nb','nl','pe',
+]);
+
+// City/province names that appear as merchant-descriptor suffixes. Skewed to
+// where these statements actually come from (Thailand + Florida trips).
+const LOCATION_NAMES = new Set([
+  'bangkok','chiangmai','chiang','mai','nonthaburi','lamphun','phuket','pattaya','thailand',
+  'venice','ellenton','sarasota','kissimmee','orlando','tampa','bradenton','nokomis','osprey',
+  'mississauga','toronto','florida',
+  'lake','buena','vi','vista', // "LAKE BUENA VI FL" truncations
+]);
+
+// IATA airport codes seen as descriptor prefixes (airport merchants)
+const AIRPORT_CODES = new Set(['yyz','bkk','cnx','ewr','jfk','lga','srq','mco','tpa','yvr','nrt','hkt','dmk','sfo','lax']);
+
+/**
+ * Strip payment-processor noise, store numbers, location suffixes, and
+ * airport-code prefixes from a merchant descriptor.
+ *
+ * This is the shared cleanup used both by the transaction-matching layer
+ * (this module) and the proposal engine's vendor matcher — the same store
+ * once produced two vendors ("Walmart" from `WM SUPERCENTER #769`, a new
+ * "Wal-Mart 0769 Venice" from `WAL-MART #0769 VENICE FL`) because each
+ * matcher normalized differently.
+ */
+export function cleanMerchantDescriptor(description: string): string {
+  const cleaned = description
+    // Payment-processor prefixes: TST*, SQ *, AMZN*, PAYPAL*, WWW., HTTPS://, leading "& "
+    .replace(/^\s*&\s+/, '')
+    .replace(/^(SQ|TST|AMZN|PAYPAL|PP|PY)\s*\*\s*/i, '')
+    .replace(/^(WWW\.|HTTPS?:\/\/(WWW\.)?)/i, '')
+    // Amazon order codes: MKTPL*CP9543HH3, Amzn.com/bill
+    .replace(/\bMKTPL\s*\*?[A-Z0-9]*/i, 'MKTPL')
+    .replace(/\bAmzn\.com\/bill\b/i, '')
+    // Phone numbers: 888-274-5343 (before bare digit runs, which would
+    // otherwise eat the area code and leave the rest attached)
+    .replace(/\b\d{3}[- ]\d{3}[- ]\d{4}\b/g, '')
+    // Store numbers: "#769", "# 769", "-108", standalone digit runs
+    .replace(/\s*#\s*\d+/g, '')
+    .replace(/\s+-\s*\d+\b/g, '')
+    .replace(/\s+\d{3,}\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Trailing state/province code, then trailing location-name tokens
+  const tokens = cleaned.split(' ');
+  while (tokens.length > 1) {
+    const last = tokens[tokens.length - 1].toLowerCase().replace(/[^a-z]/g, '');
+    if (STATE_PROVINCE_CODES.has(last) || LOCATION_NAMES.has(last)) {
+      tokens.pop();
+    } else {
+      break;
+    }
+  }
+
+  // Leading airport code ("YYZ BOCCONE BY MASSIMO")
+  if (tokens.length > 1 && AIRPORT_CODES.has(tokens[0].toLowerCase())) {
+    tokens.shift();
+  }
+
+  return tokens.join(' ').trim() || description.trim();
+}
+
 /**
  * Extract core vendor name from statement description
  * Removes transaction codes, dates, and other noise
@@ -410,8 +478,9 @@ export function extractVendorFromDescription(description: string): string {
   // Only match sequences with at least 4 digits in a row
   vendor = vendor.replace(/\s+[A-Z]*\d{4,}[A-Z0-9]*/gi, '');
 
-  // Remove trailing location codes (2 letter state codes)
-  vendor = vendor.replace(/\s+[A-Z]{2}\s*$/i, '');
+  // Shared merchant cleanup: processor prefixes, store numbers,
+  // city/state suffixes, airport codes
+  vendor = cleanMerchantDescriptor(vendor);
 
   // Clean up
   return normalizeVendorName(vendor);

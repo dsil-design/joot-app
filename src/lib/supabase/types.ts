@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ai_analysis_runs: {
@@ -519,6 +494,92 @@ export type Database = {
           },
           {
             foreignKeyName: "email_groups_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_sub_orders: {
+        Row: {
+          amount: number
+          arrival_date: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          email_transaction_id: string
+          id: string
+          match_confidence: number | null
+          match_method: string | null
+          matched_at: string | null
+          matched_transaction_id: string | null
+          order_id: string | null
+          position: number
+          rejected_transaction_ids: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          arrival_date?: string | null
+          created_at?: string
+          currency: string
+          description?: string | null
+          email_transaction_id: string
+          id?: string
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_at?: string | null
+          matched_transaction_id?: string | null
+          order_id?: string | null
+          position?: number
+          rejected_transaction_ids?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          arrival_date?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          email_transaction_id?: string
+          id?: string
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_at?: string | null
+          matched_transaction_id?: string | null
+          order_id?: string | null
+          position?: number
+          rejected_transaction_ids?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sub_orders_email_transaction_id_fkey"
+            columns: ["email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_hub_unified"
+            referencedColumns: ["email_transaction_id"]
+          },
+          {
+            foreignKeyName: "email_sub_orders_email_transaction_id_fkey"
+            columns: ["email_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "email_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_sub_orders_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_sub_orders_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1698,6 +1759,7 @@ export type Database = {
           created_transaction_id: string | null
           email_transaction_id: string | null
           engine: string
+          enrichment_confidence: number | null
           field_confidence: Json
           generation_duration_ms: number | null
           id: string
@@ -1732,6 +1794,7 @@ export type Database = {
           created_transaction_id?: string | null
           email_transaction_id?: string | null
           engine: string
+          enrichment_confidence?: number | null
           field_confidence?: Json
           generation_duration_ms?: number | null
           id?: string
@@ -1768,6 +1831,7 @@ export type Database = {
           created_transaction_id?: string | null
           email_transaction_id?: string | null
           engine?: string
+          enrichment_confidence?: number | null
           field_confidence?: Json
           generation_duration_ms?: number | null
           id?: string
@@ -2731,9 +2795,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       currency_type: [

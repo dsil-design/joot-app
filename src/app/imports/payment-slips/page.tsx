@@ -161,14 +161,19 @@ export default function PaymentSlipsPage() {
   const reprocessSelected = useCallback(async () => {
     setIsReprocessing(true)
     try {
-      await Promise.all(
-        Array.from(selectedIds).map(id =>
-          fetch(`/api/payment-slips/${id}/process`, { method: 'POST' })
-        )
-      )
+      // Server-side batches with bounded concurrency — firing one request
+      // per slip in parallel outruns the AI rate limit on large selections.
+      const ids = Array.from(selectedIds)
+      for (let offset = 0; offset < ids.length; offset += 5) {
+        await fetch('/api/payment-slips/process-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: ids.slice(offset, offset + 5) }),
+        })
+        reset()
+      }
       clearSelection()
-      // Brief delay then refresh to show updated statuses
-      setTimeout(() => reset(), 1000)
+      reset()
     } catch {
       // error is handled by the hook
     } finally {

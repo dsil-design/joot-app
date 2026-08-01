@@ -2,8 +2,24 @@
  * Vendor Fuzzy Matching Utility (Server-Side)
  *
  * Multi-strategy vendor matching for import descriptions.
+ *
+ * Guard rails (added after an audit found confident false positives like
+ * `AUTOMATIC PAYMENT - THANK YOU` → "Thank You Cafe" and
+ * `TST* FOXTAIL COFFEE` → a person named Nidnoi):
+ *
+ * - Descriptors are cleaned with the shared merchant normalizer first
+ *   (processor prefixes, store numbers, city/state suffixes, airport codes).
+ * - Generic tokens (payment words, bank names, place names, meal-category
+ *   words) are stopworded out before scoring — they cannot carry a match.
+ * - A match must share at least one DISTINCTIVE token; raw edit distance on
+ *   short merchant strings matches coincidental character overlap and may
+ *   never establish a match on its own.
+ * - The admission floor is 0.55 (was 0.3). Below it we propose a cleaned
+ *   NEW vendor name instead: a blank is recoverable, but a wrong vendor
+ *   corrupts the history later proposals learn from.
  */
 
+import { cleanMerchantDescriptor } from '@/lib/matching/vendor-matcher'
 import type { VendorRecord, RecentTransaction } from './types'
 
 export interface VendorMatchResult {
@@ -13,6 +29,32 @@ export interface VendorMatchResult {
   reasoning: string
   alternatives: Array<{ id: string; name: string; confidence: number }>
 }
+
+/** Minimum blended score for a candidate to be admitted at all. */
+const ADMISSION_FLOOR = 0.55
+
+/**
+ * Tokens that must never carry a vendor match on their own: transaction
+ * phrasing, bank/processor names, geography, and the meal/category prefixes
+ * from Joot's description conventions ("Coffee: X", "Dinner: Y").
+ */
+const GENERIC_TOKENS = new Set([
+  // transaction phrasing
+  'payment', 'payments', 'automatic', 'autopay', 'thank', 'you', 'trf', 'pos', 'atm',
+  'transfer', 'promptpay', 'purchase', 'debit', 'credit', 'card', 'direct', 'online',
+  'bill', 'fee', 'from', 'to', 'mr', 'mrs', 'ms', 'miss', 'co', 'ltd', 'inc', 'llc',
+  'the', 'and', 'www', 'com', 'http', 'https', 'store', 'shop',
+  // banks / processors
+  'kbank', 'kasikorn', 'scb', 'ktb', 'bbl', 'krungthai', 'krungsri', 'chase', 'pnc',
+  'amex', 'visa', 'mastercard', 'paypal', 'wise', 'bank',
+  // geography (statement suffixes)
+  'bangkok', 'chiangmai', 'chiangma', 'chiang', 'mai', 'nonthaburi', 'lamphun', 'phuket', 'thailand',
+  'venice', 'ellenton', 'sarasota', 'kissimmee', 'orlando', 'tampa', 'mississauga',
+  'toronto', 'florida',
+  // category words from description conventions
+  'coffee', 'breakfast', 'lunch', 'dinner', 'meal', 'taxi', 'groceries', 'grocery',
+  'rent', 'massage', 'hotel', 'flight', 'cleaning', 'service', 'monthly', 'weekly',
+])
 
 /**
  * Normalize a string for comparison: lowercase, strip punctuation/special chars
@@ -35,24 +77,43 @@ function tokenize(s: string): string[] {
 }
 
 /**
- * Compute token overlap score between two strings (0-1)
+ * Tokens that are allowed to carry a match: not generic, not pure digits.
+ */
+function distinctiveTokens(s: string): string[] {
+  return tokenize(s).filter((t) => !GENERIC_TOKENS.has(t) && !/^\d+$/.test(t))
+}
+
+function tokensShare(ta: string, tb: string): boolean {
+  if (ta === tb) return true
+  // Only allow substring containment for tokens >= 4 chars
+  // to prevent short tokens like "pa" matching "payment"
+  const shorter = ta.length <= tb.length ? ta : tb
+  const longer = ta.length <= tb.length ? tb : ta
+  return shorter.length >= 4 && longer.includes(shorter)
+}
+
+/**
+ * True when the two strings share at least one distinctive token — the
+ * precondition for any fuzzy match.
+ */
+function sharesDistinctiveToken(a: string, b: string): boolean {
+  const tokensA = distinctiveTokens(a)
+  const tokensB = distinctiveTokens(b)
+  return tokensA.some((ta) => tokensB.some((tb) => tokensShare(ta, tb)))
+}
+
+/**
+ * Compute token overlap score between two strings (0-1), over distinctive
+ * tokens only — generic tokens neither help nor hurt.
  */
 function tokenOverlap(a: string, b: string): number {
-  const tokensA = tokenize(a)
-  const tokensB = tokenize(b)
+  const tokensA = distinctiveTokens(a)
+  const tokensB = distinctiveTokens(b)
   if (tokensA.length === 0 || tokensB.length === 0) return 0
 
   let matches = 0
   for (const ta of tokensA) {
-    if (tokensB.some((tb) => {
-      // Exact token match
-      if (ta === tb) return true
-      // Only allow substring containment for tokens >= 4 chars
-      // to prevent short tokens like "pa" matching "payment"
-      const shorter = ta.length <= tb.length ? ta : tb
-      const longer = ta.length <= tb.length ? tb : ta
-      return shorter.length >= 4 && longer.includes(shorter)
-    })) {
+    if (tokensB.some((tb) => tokensShare(ta, tb))) {
       matches++
     }
   }
@@ -98,8 +159,18 @@ function levenshteinSimilarity(a: string, b: string): number {
  * Score a vendor against a description using multiple strategies
  */
 function scoreVendor(description: string, vendorName: string): number {
-  const normDesc = normalize(description)
+  // Strip processor prefixes, store numbers, and location suffixes before
+  // scoring — `WM SUPERCENTER #769 VENICE FL` should score as `WM SUPERCENTER`
+  const cleanedDesc = cleanMerchantDescriptor(description)
+  const normDesc = normalize(cleanedDesc)
   const normVendor = normalize(vendorName)
+
+  // No shared distinctive token → no match, whatever the edit distance says.
+  // Levenshtein on short merchant strings rewards coincidental character
+  // overlap ("AWN(1201 CENTRAL CHIANGMA" once matched the city "Chiangmai").
+  if (!sharesDistinctiveToken(cleanedDesc, vendorName)) {
+    return 0
+  }
 
   // Exact containment (highest signal)
   // Guard: short vendor names (< 4 chars) must match as whole words to avoid
@@ -117,11 +188,12 @@ function scoreVendor(description: string, vendorName: string): number {
     return 0.9
   }
 
-  // Token overlap
-  const overlap = tokenOverlap(description, vendorName)
+  // Token overlap over distinctive tokens
+  const overlap = tokenOverlap(cleanedDesc, vendorName)
 
-  // Levenshtein similarity (useful for typos/abbreviations)
-  const levSim = levenshteinSimilarity(description, vendorName)
+  // Levenshtein similarity (useful for typos/abbreviations) — capped as a
+  // secondary signal; it can support a token match, never establish one
+  const levSim = levenshteinSimilarity(cleanedDesc, vendorName)
 
   // Weighted combination
   return Math.max(overlap * 0.7 + levSim * 0.3, levSim * 0.5 + overlap * 0.5)
@@ -147,7 +219,7 @@ export function matchVendor(
       score: scoreVendor(description, v.name),
       txCount: v.transactionCount,
     }))
-    .filter((v) => v.score > 0.3)
+    .filter((v) => v.score >= ADMISSION_FLOOR)
     .sort((a, b) => {
       // Sort by score first, then by transaction count as tiebreaker
       if (Math.abs(a.score - b.score) > 0.05) return b.score - a.score
@@ -205,7 +277,9 @@ function findHistoricalVendor(
 ): { id: string; name: string; score: number; txCount: number } | null {
   if (transactions.length === 0) return null
 
-  // Find transactions with similar descriptions
+  // Find transactions with similar descriptions. scoreVendor requires a
+  // shared distinctive token, so category words ("Coffee: …", "Dinner: …")
+  // can no longer chain a merchant to an unrelated vendor's history.
   const matches = transactions
     .filter((tx) => tx.vendorId && tx.vendorName)
     .map((tx) => ({
@@ -213,7 +287,7 @@ function findHistoricalVendor(
       vendorName: tx.vendorName!,
       score: scoreVendor(description, tx.description),
     }))
-    .filter((m) => m.score > 0.4)
+    .filter((m) => m.score >= ADMISSION_FLOOR)
 
   if (matches.length === 0) return null
 
@@ -242,18 +316,16 @@ function findHistoricalVendor(
 }
 
 /**
- * Suggest a clean vendor name from a cryptic statement description
+ * Suggest a clean vendor name from a cryptic statement description.
+ * Uses the same shared merchant cleanup as matching, so the suggested name
+ * for `WAL-MART #0769 VENICE FL` is "Wal-Mart", not "Wal-Mart 0769 Venice".
  */
 export function suggestVendorName(description: string): string {
-  let cleaned = description
-    // Remove common prefixes (card transaction indicators)
-    .replace(/^(SQ\s*\*|TST\s*\*|AMZN\s*\*|PAYPAL\s*\*)/i, '')
+  let cleaned = cleanMerchantDescriptor(description)
     // Remove trailing reference numbers
     .replace(/\s+\d{4,}.*$/, '')
     // Remove dates
     .replace(/\s+\d{1,2}\/\d{1,2}\s*$/, '')
-    // Remove city/state suffixes
-    .replace(/\s+(US|CA|NY|TX|FL|IL)\s*$/i, '')
     // Clean up
     .replace(/[*#]+/g, ' ')
     .replace(/\s+/g, ' ')

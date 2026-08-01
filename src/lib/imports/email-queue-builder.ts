@@ -18,6 +18,22 @@ interface EmailFilters {
   manualPairOverlapKeys?: string[]
 }
 
+/**
+ * ai_classification values that describe no payment. See
+ * docs/classification-rules.md — the rules exist; the queue must honour them.
+ * (Real payments misclassified here can still surface via manual pairing.)
+ */
+const NON_TRANSACTION_CLASSIFICATIONS = new Set([
+  'upcoming_charge_notice',
+  'invoice_available',
+  'delivery_status',
+  'order_status',
+  'account_notification',
+  'marketing_promotional',
+  'otp_verification',
+  'other_non_transaction',
+])
+
 function addOneDayUTC(dateStr: string): string {
   const d = new Date(`${dateStr}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() + 1)
@@ -34,7 +50,7 @@ export async function fetchEmailQueueItems(
     .select(`
       id, user_id, subject, from_name, from_address, email_date,
       transaction_date, description, amount, currency,
-      classification, order_id, extraction_confidence,
+      classification, ai_classification, ai_suggested_skip, order_id, extraction_confidence,
       match_confidence, matched_transaction_id, status,
       vendor_id, parser_key, payment_card_last_four, payment_card_type,
       vendor_name_raw, rejected_pair_keys, manual_pair_keys, rejected_transaction_ids
@@ -68,14 +84,27 @@ export async function fetchEmailQueueItems(
     emailQuery = emailQuery.overlaps('manual_pair_keys', filters.manualPairOverlapKeys)
   }
 
-  const { data: emailRows, error: emailError } = await emailQuery
+  const { data: emailRowsRaw, error: emailError } = await emailQuery
 
   if (emailError) {
     console.error('Failed to fetch email transactions:', emailError)
     return []
   }
 
-  if (!emailRows) return []
+  if (!emailRowsRaw) return []
+
+  // Non-transaction emails (statement-available notices, marketing,
+  // promotional credits, delivery updates) describe no payment and must not
+  // occupy the review queue. The AI classifier already labels them — honour
+  // it. Emails the user has matched or manually paired stay visible.
+  const emailRows = emailRowsRaw.filter((r) => {
+    if (r.status !== 'pending_review') return true
+    if (r.matched_transaction_id) return true
+    if ((r.manual_pair_keys || []).length > 0) return true
+    if (r.ai_suggested_skip) return false
+    if (r.ai_classification && NON_TRANSACTION_CLASSIFICATIONS.has(r.ai_classification)) return false
+    return true
+  })
 
   // Fetch matched transactions (batched to avoid URL-length errors with large ID sets)
   const emailMatchedIds = emailRows
@@ -351,6 +380,7 @@ export async function fetchEmailQueueItems(
       },
       matchedTransaction: matchedTransactionData,
       confidence,
+      transactionMatchConfidence: matchedTransactionData ? confidence : undefined,
       confidenceLevel,
       reasons,
       isNew,
