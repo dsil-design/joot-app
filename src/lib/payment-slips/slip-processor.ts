@@ -14,6 +14,11 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { isRetryableAiError } from '@/lib/email/ai-client'
 import { extractFromPaymentSlip } from './vision-extractor'
 import { findDuplicateByReference, duplicateWarning } from './duplicate-detector'
+import {
+  selectTransactionMatch,
+  ambiguousMatchWarning,
+  type MatchSelection,
+} from './transaction-matcher'
 import { validateExtraction } from './extraction-validator'
 import { detectDirection } from './direction-detector'
 import {
@@ -154,7 +159,11 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
     }
 
     // 5. Match against existing transactions
-    const matchResult = await findMatchingTransaction(supabase, upload.user_id, extraction)
+    const matchResult = await findMatchingTransaction(supabase, upload.user_id, uploadId, extraction)
+    const matchWarnings =
+      matchResult.reason === 'ambiguous'
+        ? [ambiguousMatchWarning(matchResult, extraction.amount)]
+        : []
 
     // 5b. Is this the same payment as a slip already in the account? The
     // bank reference is unique per transfer, but only exists once the image
@@ -180,7 +189,16 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
         extraction_confidence: finalConfidence,
         duplicate_of_slip_id: duplicate?.slipId ?? null,
         extraction_log: {
-          warnings: [...validation.warnings, ...crossCheckWarnings, ...duplicateWarnings],
+          warnings: [
+            ...validation.warnings,
+            ...crossCheckWarnings,
+            ...duplicateWarnings,
+            ...matchWarnings,
+          ],
+          transaction_match: {
+            reason: matchResult.reason,
+            tied_transaction_ids: matchResult.tiedTransactionIds ?? null,
+          },
           date_raw: extraction.date_raw ?? null,
           date_corrected: validation.correctedDate ?? null,
           duplicate_of: duplicate
@@ -292,16 +310,20 @@ async function updateFailed(
 }
 
 /**
- * Find an existing transaction that matches this payment slip.
- * Simple matching by amount + date (±1 day).
+ * Find the existing transaction this payment slip belongs to.
+ *
+ * Fetches candidates within ±1 day and delegates the choice to
+ * selectTransactionMatch, which prefers the same-day row and refuses to guess
+ * between equally-good ones.
  */
 async function findMatchingTransaction(
   supabase: SupabaseClient,
   userId: string,
+  uploadId: string,
   extraction: PaymentSlipExtraction
-): Promise<{ transactionId: string | null; confidence: number | null }> {
+): Promise<MatchSelection> {
   if (!extraction.amount || !extraction.date) {
-    return { transactionId: null, confidence: null }
+    return { transactionId: null, confidence: null, reason: 'no_candidate' }
   }
 
   const txDate = new Date(extraction.date)
@@ -322,21 +344,24 @@ async function findMatchingTransaction(
     .lte('transaction_date', formatDate(dayAfter))
 
   if (!candidates || candidates.length === 0) {
-    return { transactionId: null, confidence: null }
+    return { transactionId: null, confidence: null, reason: 'no_candidate' }
   }
 
-  // Find exact or near amount match
-  for (const tx of candidates) {
-    const diff = Math.abs(Number(tx.amount) - extraction.amount)
-    if (diff < 0.01) {
-      // Exact match
-      const dateExact = tx.transaction_date === extraction.date
-      return {
-        transactionId: tx.id,
-        confidence: dateExact ? 95 : 85,
-      }
-    }
-  }
+  // Which of these are already spoken for by another slip? Only needed to
+  // break a tie, so it is fetched once and passed in rather than queried per
+  // candidate.
+  const { data: linked } = await supabase
+    .from('payment_slip_uploads')
+    .select('matched_transaction_id')
+    .eq('user_id', userId)
+    .neq('id', uploadId)
+    .in('matched_transaction_id', candidates.map((c) => c.id))
 
-  return { transactionId: null, confidence: null }
+  const linkedIds = new Set(
+    ((linked as { matched_transaction_id: string | null }[] | null) || [])
+      .map((r) => r.matched_transaction_id)
+      .filter((id): id is string => Boolean(id))
+  )
+
+  return selectTransactionMatch(candidates, { amount: extraction.amount, date: extraction.date }, linkedIds)
 }
