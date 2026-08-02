@@ -14,6 +14,15 @@
  * - A match must share at least one DISTINCTIVE token; raw edit distance on
  *   short merchant strings matches coincidental character overlap and may
  *   never establish a match on its own.
+ * - Nothing matches on a bare substring any more, at either level: containment
+ *   is whole-token, and two tokens meet only outright. A second audit over the
+ *   real vendor_name_raw corpus found `HEALTHLINK CO.,LTD.` → "Link",
+ *   `American Express` → "Eric", `HomePro Online Shopping` → "Hopp",
+ *   `MoonPay` → "Moon", all at 0.87–0.9.
+ * - Exact name equality outranks containment, so the most specific vendor
+ *   wins: "Grab Taxi" beats "Grab", "Xfinity" beats "Xfinity Live".
+ * - The fuzzy tier needs real token overlap, not just one shared word plus a
+ *   flattering edit distance ("Turkish Airlines" → "United Airlines").
  * - The admission floor is 0.55 (was 0.3). Below it we propose a cleaned
  *   NEW vendor name instead: a blank is recoverable, but a wrong vendor
  *   corrupts the history later proposals learn from.
@@ -34,6 +43,29 @@ export interface VendorMatchResult {
 const ADMISSION_FLOOR = 0.55
 
 /**
+ * Score tiers. EXACT clears CONTAINMENT by more than the 0.05 tolerance the
+ * candidate sort treats as a tie, so an exactly-named vendor always wins
+ * outright rather than falling through to the transaction-count tiebreak.
+ */
+const EXACT_SCORE = 0.98
+const CONTAINMENT_SCORE = 0.9
+
+/**
+ * Minimum distinctive-token overlap for the fuzzy tier. Below it the two names
+ * agree on one word and disagree on the rest — "American Express" vs "Kerry
+ * Express", "Turkish Airlines" vs "United Airlines", "Jennifer Siller" vs
+ * "Jennifer Stewart" — which is a different entity, not a typo.
+ *
+ * Swept against both live corpora before being set here. At 0.6 it drops five
+ * matches on the email corpus, all five wrong, and costs nothing on the 168
+ * statement rows whose linked transaction gives a known-correct vendor. Going
+ * further to 0.67 buys one more (`Provincial Electricity Authority` vs the
+ * waterworks) but loses two real matches, `BEST WINE CHIANGMAI` → "Best Wine
+ * and Spirit" and `TELLO MOBILE TELLO.COM GA` → "My Tello".
+ */
+const FUZZY_OVERLAP_FLOOR = 0.6
+
+/**
  * Tokens that must never carry a vendor match on their own: transaction
  * phrasing, bank/processor names, geography, and the meal/category prefixes
  * from Joot's description conventions ("Coffee: X", "Dinner: Y").
@@ -48,12 +80,17 @@ const GENERIC_TOKENS = new Set([
   'kbank', 'kasikorn', 'scb', 'ktb', 'bbl', 'krungthai', 'krungsri', 'chase', 'pnc',
   'amex', 'visa', 'mastercard', 'paypal', 'wise', 'bank',
   // geography (statement suffixes)
-  'bangkok', 'chiangmai', 'chiangma', 'chiang', 'mai', 'nonthaburi', 'lamphun', 'phuket', 'thailand',
+  'bangkok', 'chiangmai', 'chiangma', 'chiang', 'mai', 'nana', 'nonthaburi', 'lamphun', 'phuket', 'thailand',
   'venice', 'ellenton', 'sarasota', 'kissimmee', 'orlando', 'tampa', 'mississauga',
   'toronto', 'florida',
   // category words from description conventions
   'coffee', 'breakfast', 'lunch', 'dinner', 'meal', 'taxi', 'groceries', 'grocery',
   'rent', 'massage', 'hotel', 'flight', 'cleaning', 'service', 'monthly', 'weekly',
+  // category nouns that appear inside the legal entity names Thai bank emails
+  // carry ("(A/C Name: PRANAKORN FOOD CO.,LTD.)") and inside statement
+  // descriptors ("SCT-SUANPLGRN MARKET BANGKOK") — a vendor named only "Food"
+  // / "House" / "Restaurant" / "Market" may not claim those rows
+  'food', 'foods', 'restaurant', 'house', 'home', 'market',
 ])
 
 /**
@@ -83,13 +120,26 @@ function distinctiveTokens(s: string): string[] {
   return tokenize(s).filter((t) => !GENERIC_TOKENS.has(t) && !/^\d+$/.test(t))
 }
 
+/**
+ * Fold a token to its comparison form: a trailing "s" is dropped so plurals
+ * and normalized possessives still meet ("mcdonalds" = "mcdonald" from
+ * "McDonald's", "foods" = "food").
+ */
+function foldToken(t: string): string {
+  return t.length >= 4 && t.endsWith('s') ? t.slice(0, -1) : t
+}
+
+/**
+ * Tokens match only outright (modulo a trailing "s"). Substring containment
+ * used to count here — that is what let "link" carry `HEALTHLINK`, "eric"
+ * carry `American Express`, "hopp" carry `HomePro Online Shopping`, and
+ * "moon" carry `MoonPay`. Across the real vendor_name_raw corpus it bought
+ * exactly one true match and a dozen coincidences, so it is gone; a merchant
+ * whose name merely concatenates a known brand now falls through to a NEW
+ * vendor suggestion instead of being filed under the wrong one.
+ */
 function tokensShare(ta: string, tb: string): boolean {
-  if (ta === tb) return true
-  // Only allow substring containment for tokens >= 4 chars
-  // to prevent short tokens like "pa" matching "payment"
-  const shorter = ta.length <= tb.length ? ta : tb
-  const longer = ta.length <= tb.length ? tb : ta
-  return shorter.length >= 4 && longer.includes(shorter)
+  return foldToken(ta) === foldToken(tb)
 }
 
 /**
@@ -155,48 +205,74 @@ function levenshteinSimilarity(a: string, b: string): number {
   return 1 - levenshtein(na, nb) / maxLen
 }
 
+interface VendorScore {
+  score: number
+  /**
+   * Length of the vendor name that matched verbatim, 0 for fuzzy matches.
+   * Breaks ties between equally-scored candidates so the most specific name
+   * wins: "Juneko House" over "House", "GrabFood" over "Grab".
+   */
+  specificity: number
+}
+
+const NO_MATCH: VendorScore = { score: 0, specificity: 0 }
+
 /**
  * Score a vendor against a description using multiple strategies
  */
-function scoreVendor(description: string, vendorName: string): number {
+function scoreVendor(description: string, vendorName: string): VendorScore {
   // Strip processor prefixes, store numbers, and location suffixes before
   // scoring — `WM SUPERCENTER #769 VENICE FL` should score as `WM SUPERCENTER`
   const cleanedDesc = cleanMerchantDescriptor(description)
   const normDesc = normalize(cleanedDesc)
   const normVendor = normalize(vendorName)
+  if (!normDesc || !normVendor) return NO_MATCH
+
+  // Same name (ignoring spacing) — the strongest signal there is, and the only
+  // one strong enough to stand without a distinctive token: `WAL-MART #0769
+  // VENICE FL` → "Walmart". Ranked above containment so the most specific
+  // vendor wins the row: "Grab Taxi" over "Grab", "Xfinity" over "Xfinity Live".
+  if (normDesc === normVendor || normDesc.replace(/ /g, '') === normVendor.replace(/ /g, '')) {
+    return { score: EXACT_SCORE, specificity: normVendor.length }
+  }
 
   // No shared distinctive token → no match, whatever the edit distance says.
   // Levenshtein on short merchant strings rewards coincidental character
   // overlap ("AWN(1201 CENTRAL CHIANGMA" once matched the city "Chiangmai").
   if (!sharesDistinctiveToken(cleanedDesc, vendorName)) {
-    return 0
+    return NO_MATCH
   }
 
-  // Exact containment (highest signal)
-  // Guard: short vendor names (< 4 chars) must match as whole words to avoid
-  // false positives (e.g. vendor "PA" matching "payment", "mpay", etc.)
-  if (normVendor.length >= 4 && normDesc.includes(normVendor)) {
-    return 0.9
+  // Whole-token containment. Both sides are space-padded so a vendor name can
+  // only match on token boundaries — " link " is not inside " healthlink ",
+  // " eric " is not inside " american express ", " hopp " is not inside
+  // " homepro online shopping ". Raw substring containment scored all three at
+  // 0.9 and short-circuited every guard below.
+  if (` ${normDesc} `.includes(` ${normVendor} `)) {
+    return { score: CONTAINMENT_SCORE, specificity: normVendor.length }
   }
-  if (normVendor.length < 4 && normVendor.length > 0) {
-    const wordBoundary = new RegExp(`\\b${normVendor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`)
-    if (wordBoundary.test(normDesc)) {
-      return 0.9
-    }
-  }
-  if (normDesc.length >= 4 && normVendor.includes(normDesc)) {
-    return 0.9
-  }
+
+  // A description contained in a LONGER vendor name gets no containment credit:
+  // the vendor is more specific than the row, and its extra tokens are
+  // unexplained ("Citizens Bank" is not "Citizens Bank Park"). Such pairs fall
+  // through to the fuzzy blend below, which prices the unmatched tokens in.
 
   // Token overlap over distinctive tokens
   const overlap = tokenOverlap(cleanedDesc, vendorName)
+
+  // One shared word against several unshared ones is a different entity, not a
+  // near-miss on the same one — no edit distance may rescue it.
+  if (overlap < FUZZY_OVERLAP_FLOOR) return NO_MATCH
 
   // Levenshtein similarity (useful for typos/abbreviations) — capped as a
   // secondary signal; it can support a token match, never establish one
   const levSim = levenshteinSimilarity(cleanedDesc, vendorName)
 
   // Weighted combination
-  return Math.max(overlap * 0.7 + levSim * 0.3, levSim * 0.5 + overlap * 0.5)
+  return {
+    score: Math.max(overlap * 0.7 + levSim * 0.3, levSim * 0.5 + overlap * 0.5),
+    specificity: 0,
+  }
 }
 
 /**
@@ -216,13 +292,15 @@ export function matchVendor(
     .map((v) => ({
       id: v.id,
       name: v.name,
-      score: scoreVendor(description, v.name),
+      ...scoreVendor(description, v.name),
       txCount: v.transactionCount,
     }))
     .filter((v) => v.score >= ADMISSION_FLOOR)
     .sort((a, b) => {
-      // Sort by score first, then by transaction count as tiebreaker
+      // Score first, then the more specific name (so "Rally House" beats
+      // "House" on the same row), then transaction count
       if (Math.abs(a.score - b.score) > 0.05) return b.score - a.score
+      if (a.specificity !== b.specificity) return b.specificity - a.specificity
       return b.txCount - a.txCount
     })
 
@@ -230,7 +308,7 @@ export function matchVendor(
   const historicalMatch = findHistoricalVendor(description, recentTransactions)
 
   // Combine results
-  let best = scored[0] || null
+  let best: { id: string; name: string; score: number; txCount: number } | null = scored[0] || null
   if (historicalMatch) {
     // If historical match is stronger, use it
     if (!best || historicalMatch.score > best.score) {
@@ -251,7 +329,9 @@ export function matchVendor(
     }))
 
   let reasoning: string
-  if (best.score >= 0.9) {
+  if (best.score >= EXACT_SCORE) {
+    reasoning = `Exact match: '${normalize(description)}' is '${best.name}'`
+  } else if (best.score >= CONTAINMENT_SCORE) {
     reasoning = `Exact match: '${normalize(description)}' contains '${best.name}'`
   } else if (historicalMatch && historicalMatch.id === best.id) {
     reasoning = `Historical: similar descriptions matched to '${best.name}'`
@@ -285,7 +365,7 @@ function findHistoricalVendor(
     .map((tx) => ({
       vendorId: tx.vendorId!,
       vendorName: tx.vendorName!,
-      score: scoreVendor(description, tx.description),
+      score: scoreVendor(description, tx.description).score,
     }))
     .filter((m) => m.score >= ADMISSION_FLOOR)
 
