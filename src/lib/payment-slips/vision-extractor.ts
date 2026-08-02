@@ -24,6 +24,66 @@ const VISION_TIMEOUT_MS = 60000
 // The model thinks by default; max_tokens caps thinking + response together,
 // so leave headroom beyond the ~500-token JSON payload.
 const VISION_MAX_TOKENS = 4096
+/** Ceiling for the escalation applied when a response comes back truncated. */
+const VISION_MAX_TOKENS_CEILING = 16384
+
+/**
+ * A response that arrived but could not be used — truncated, missing its text
+ * block, or not valid JSON.
+ *
+ * Marked retryable so `withAiRetries` re-asks and, if every attempt fails, the
+ * slip lands in the `failed-retryable` recovery scope instead of being dead.
+ * The model is non-deterministic: the same image that produced
+ * "Unterminated string in JSON at position 2888" parsed cleanly on a re-ask.
+ */
+export class VisionResponseError extends Error {
+  readonly retryable = true
+  constructor(message: string) {
+    super(message)
+    this.name = 'VisionResponseError'
+  }
+}
+
+/**
+ * Pull the extraction out of a model response, or say precisely why it could
+ * not be used.
+ */
+export function parseVisionResponse(response: {
+  stop_reason?: string | null
+  content: Array<{ type: string; text?: string }>
+}): PaymentSlipExtraction {
+  if (response.stop_reason === 'max_tokens') {
+    throw new VisionResponseError(
+      'Vision response hit the token limit before the JSON was complete'
+    )
+  }
+
+  const textBlock = response.content.find((block) => block.type === 'text')
+  if (!textBlock || typeof textBlock.text !== 'string') {
+    throw new VisionResponseError('No text content in Claude Vision response')
+  }
+
+  // Strip markdown code fences if present
+  let text = textBlock.text.trim()
+  if (text.startsWith('```')) {
+    text = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
+  }
+
+  let parsed: PaymentSlipExtraction
+  try {
+    parsed = JSON.parse(text) as PaymentSlipExtraction
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : 'parse failed'
+    throw new VisionResponseError(
+      `Vision response was not valid JSON (${detail}); received ${text.length} characters`
+    )
+  }
+
+  // Normalise before anything reads the extraction: the model salts strings
+  // with zero-width characters, which made two slips of the same payment carry
+  // references that compared unequal.
+  return normalizeExtractionText(parsed)
+}
 
 const EXTRACTION_PROMPT = `You are analyzing a Thai bank payment slip (transfer receipt) image.
 
@@ -116,46 +176,46 @@ export async function extractFromPaymentSlip(
   const client = new Anthropic({ apiKey, timeout: VISION_TIMEOUT_MS, maxRetries: 0 })
 
   const startTime = Date.now()
-  const result = await withAiRetries(() => client.messages.create({
-    model: VISION_MODEL,
-    max_tokens: VISION_MAX_TOKENS,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: mediaType,
-              data: imageBase64,
+
+  // The parse happens inside the retry, so a malformed or truncated response
+  // is re-asked with backoff like any other transient failure. It used to sit
+  // outside: the API call succeeded, JSON.parse threw, and the slip died with
+  // "Unterminated string in JSON at position 2888" and no way back — the error
+  // was not an APIError, so it was never marked retryable.
+  let attempt = 0
+  const { response, extraction } = await withAiRetries(async () => {
+    attempt++
+    // A truncated response means thinking plus JSON outgrew the budget, so a
+    // retry gets more room rather than re-asking under the same ceiling.
+    const maxTokens = Math.min(VISION_MAX_TOKENS * attempt, VISION_MAX_TOKENS_CEILING)
+
+    const response = await client.messages.create({
+      model: VISION_MODEL,
+      max_tokens: maxTokens,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mediaType,
+                data: imageBase64,
+              },
             },
-          },
-          {
-            type: 'text',
-            text: EXTRACTION_PROMPT,
-          },
-        ],
-      },
-    ],
-  }))
+            {
+              type: 'text',
+              text: EXTRACTION_PROMPT,
+            },
+          ],
+        },
+      ],
+    })
+
+    return { response, extraction: parseVisionResponse(response) }
+  })
   const durationMs = Date.now() - startTime
-
-  const textBlock = result.content.find((block) => block.type === 'text')
-  if (!textBlock || textBlock.type !== 'text') {
-    throw new Error('No text content in Claude Vision response')
-  }
-
-  // Strip markdown code fences if present
-  let text = textBlock.text.trim()
-  if (text.startsWith('```')) {
-    text = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
-  }
-
-  // Normalise before anything reads the extraction: the model salts strings
-  // with zero-width characters, which made two slips of the same payment carry
-  // references that compared unequal.
-  const extraction = normalizeExtractionText(JSON.parse(text) as PaymentSlipExtraction)
 
   // Cross-check: parse amount_characters to derive the real amount.
   // The character-by-character reading is more reliable than the model's
@@ -177,8 +237,8 @@ export async function extractFromPaymentSlip(
 
   return {
     extraction,
-    promptTokens: result.usage?.input_tokens ?? 0,
-    responseTokens: result.usage?.output_tokens ?? 0,
+    promptTokens: response.usage?.input_tokens ?? 0,
+    responseTokens: response.usage?.output_tokens ?? 0,
     durationMs,
   }
 }

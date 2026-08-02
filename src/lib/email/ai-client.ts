@@ -49,6 +49,19 @@ export function isRetryableAiError(error: unknown): boolean {
     const status = error.status;
     return status === 408 || status === 409 || status === 429 || (typeof status === 'number' && status >= 500);
   }
+  // Errors that opt in by carrying `retryable`. A malformed or truncated model
+  // response is the case that matters: the call succeeded, so no API-level
+  // check catches it, but the model is non-deterministic and a re-ask usually
+  // parses. Without this a single bad response killed the slip permanently —
+  // it was not an APIError, so recovery scopes keyed on `retryable` skipped it
+  // and IMG_1613.JPG stayed dead through every recovery pass.
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { retryable?: unknown }).retryable === true
+  ) {
+    return true;
+  }
   return false;
 }
 
