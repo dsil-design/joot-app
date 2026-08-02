@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { Suggestion } from '@/lib/imports/queue-types'
 import type { Json } from '@/lib/supabase/types'
+import { hasDirectionConflict } from '@/lib/matching/direction-guard'
 
 interface RematchStats {
   statementsChecked: number
   statementSuggestionsRematched: number
   statementNewMatchesFound: number
+  /** Stored matches cleared because they violated currency or direction. */
+  statementMatchesDropped: number
   emailsChecked: number
   emailNewMatchesFound: number
   slipsChecked: number
@@ -49,6 +52,7 @@ export async function POST(request: NextRequest) {
       statementsChecked: 0,
       statementSuggestionsRematched: 0,
       statementNewMatchesFound: 0,
+      statementMatchesDropped: 0,
       emailsChecked: 0,
       emailNewMatchesFound: 0,
       slipsChecked: 0,
@@ -124,60 +128,128 @@ async function rematchStatementSuggestions(
     const suggestions = extractionLog?.suggestions
     if (!suggestions || suggestions.length === 0) continue
 
+    // Raw parsed rows sit alongside the suggestions and are index-aligned with
+    // them. They carry the parser's `type`, which stored suggestions predating
+    // the serialization fix do not — so this is how direction is recovered for
+    // matches written before that change.
+    const rawRows = (extractionLog as { transactions?: { type?: string }[] } | null)?.transactions
+
+    const passesFilters = (s: Suggestion) => {
+      if (filters.currency && s.currency !== filters.currency) return false
+      if (filters.from && s.transaction_date < filters.from) return false
+      if (filters.to && s.transaction_date > filters.to) return false
+      return true
+    }
+
     // Find suggestions worth re-matching: pending AND (unmatched or low confidence)
     const rematchIndices: number[] = []
+    // Pending suggestions that already carry a match, to be re-validated against
+    // the hard guards. These are invisible to the re-match pass above — it only
+    // looks at unmatched or sub-55 rows, and only ever raises confidence — so a
+    // wrong match stored at 90 or 95 could never be corrected by any existing
+    // path short of reprocessing the statement, which destroys approval history.
+    const validateIndices: number[] = []
     for (let i = 0; i < suggestions.length; i++) {
       const s = suggestions[i]
       if (s.status && s.status !== 'pending') continue
+      if (!passesFilters(s)) continue
       if (s.is_new || (s.confidence > 0 && s.confidence < 55)) {
-        // Apply currency filter
-        if (filters.currency && s.currency !== filters.currency) continue
-        // Apply date range filter
-        if (filters.from && s.transaction_date < filters.from) continue
-        if (filters.to && s.transaction_date > filters.to) continue
         rematchIndices.push(i)
+      } else if (s.matched_transaction_id) {
+        validateIndices.push(i)
       }
     }
 
-    if (rematchIndices.length === 0) continue
+    if (rematchIndices.length === 0 && validateIndices.length === 0) continue
     stats.statementsChecked++
 
+    let updated = false
+
+    // ── Pass 1: drop stored matches that violate a hard guard ────────────────
+    // Currency and direction disagreements are impossible, not merely unlikely,
+    // so a failing link can be cleared without needing a better candidate to
+    // replace it. Only the suggestion's own matching metadata is rewritten —
+    // the transaction and its `source_statement_upload_id` back-pointer are
+    // untouched, and non-pending rows were already excluded, so decisions the
+    // user has made stay intact.
+    if (validateIndices.length > 0) {
+      const linkedIds = [...new Set(validateIndices.map(i => suggestions[i].matched_transaction_id!))]
+      const { data: linked } = await supabase
+        .from('transactions')
+        .select('id, original_currency, transaction_type')
+        .eq('user_id', userId)
+        .in('id', linkedIds)
+      const linkedById = new Map((linked ?? []).map(t => [t.id, t]))
+
+      for (const idx of validateIndices) {
+        const s = suggestions[idx]
+        const tx = linkedById.get(s.matched_transaction_id!)
+        if (!tx) continue // transaction deleted or not visible — leave it alone
+
+        const currencyConflict =
+          (tx.original_currency ?? '').toUpperCase() !== (s.currency ?? '').toUpperCase()
+        const directionConflict = hasDirectionConflict({
+          // Prefer the suggestion's own type (present on statements processed
+          // after the serialization fix); fall back to the index-aligned raw row.
+          rowType: s.type ?? rawRows?.[idx]?.type,
+          rowDescription: s.description,
+          transactionType: tx.transaction_type,
+        })
+        if (!currencyConflict && !directionConflict) continue
+
+        const reason = currencyConflict
+          ? `Match dropped: statement row is ${s.currency} but the transaction is ${tx.original_currency}`
+          : 'Match dropped: the statement row and the transaction move money in opposite directions'
+
+        const { matched_transaction_id: _dropped, ...rest } = s
+        suggestions[idx] = {
+          ...rest,
+          confidence: 0,
+          reasons: [reason],
+          is_new: true,
+        }
+        stats.statementMatchesDropped++
+        updated = true
+      }
+    }
+
+    // ── Pass 2: look for new matches (existing upgrade-only behaviour) ───────
     // Determine date range for candidate lookup (widen by 7 days for tolerance)
     const dates = rematchIndices.map(i => suggestions[i].transaction_date).filter(Boolean)
-    if (dates.length === 0) continue
 
-    const sortedDates = [...dates].sort()
-    const startDate = shiftDate(sortedDates[0], -7)
-    const endDate = shiftDate(sortedDates[sortedDates.length - 1], 7)
+    if (dates.length > 0) {
+      const sortedDates = [...dates].sort()
+      const startDate = shiftDate(sortedDates[0], -7)
+      const endDate = shiftDate(sortedDates[sortedDates.length - 1], 7)
 
-    // Fetch candidate transactions
-    const { data: candidates } = await supabase
-      .from('transactions')
-      .select('id, amount, original_currency, transaction_date, description, vendors(name)')
-      .eq('user_id', userId)
-      .gte('transaction_date', startDate)
-      .lte('transaction_date', endDate)
-      .limit(300)
+      // Fetch candidate transactions
+      const { data: candidates } = await supabase
+        .from('transactions')
+        .select('id, amount, original_currency, transaction_date, transaction_type, description, vendors(name)')
+        .eq('user_id', userId)
+        .gte('transaction_date', startDate)
+        .lte('transaction_date', endDate)
+        .limit(300)
 
-    if (!candidates || candidates.length === 0) continue
+      if (candidates && candidates.length > 0) {
+        // Re-match each eligible suggestion
+        for (const idx of rematchIndices) {
+          const s = suggestions[idx]
+          stats.statementSuggestionsRematched++
 
-    // Re-match each eligible suggestion
-    let updated = false
-    for (const idx of rematchIndices) {
-      const s = suggestions[idx]
-      stats.statementSuggestionsRematched++
-
-      const match = findBestStatementMatch(s, candidates)
-      if (match && match.confidence > s.confidence) {
-        suggestions[idx] = {
-          ...s,
-          matched_transaction_id: match.id,
-          confidence: match.confidence,
-          reasons: match.reasons,
-          is_new: false,
+          const match = findBestStatementMatch(s, candidates)
+          if (match && match.confidence > s.confidence) {
+            suggestions[idx] = {
+              ...s,
+              matched_transaction_id: match.id,
+              confidence: match.confidence,
+              reasons: match.reasons,
+              is_new: false,
+            }
+            stats.statementNewMatchesFound++
+            updated = true
+          }
         }
-        stats.statementNewMatchesFound++
-        updated = true
       }
     }
 
@@ -238,7 +310,7 @@ async function rematchEmailTransactions(
   // Fetch candidate transactions
   const { data: candidates } = await supabase
     .from('transactions')
-    .select('id, amount, original_currency, transaction_date, description, vendors(name)')
+    .select('id, amount, original_currency, transaction_date, transaction_type, description, vendors(name)')
     .eq('user_id', userId)
     .gte('transaction_date', startDate)
     .lte('transaction_date', endDate)
@@ -325,7 +397,7 @@ async function rematchPaymentSlips(
   // Fetch candidate transactions (THB only — matches initial slip matcher behavior)
   const { data: candidates } = await supabase
     .from('transactions')
-    .select('id, amount, original_currency, transaction_date, description, vendors(name)')
+    .select('id, amount, original_currency, transaction_date, transaction_type, description, vendors(name)')
     .eq('user_id', userId)
     .eq('original_currency', 'THB')
     .gte('transaction_date', startDate)
@@ -380,13 +452,15 @@ interface CandidateTx {
   amount: number
   original_currency: string
   transaction_date: string
+  transaction_type?: string | null
   description: string | null
   vendors: { name: string } | null
 }
 
 function findBestStatementMatch(
   suggestion: Suggestion,
-  candidates: CandidateTx[]
+  candidates: CandidateTx[],
+  rowType?: string
 ): { id: string; confidence: number; reasons: string[] } | null {
   return findBestMatch(
     {
@@ -394,13 +468,14 @@ function findBestStatementMatch(
       currency: suggestion.currency,
       date: suggestion.transaction_date,
       description: suggestion.description,
+      rowType,
     },
     candidates
   )
 }
 
 function findBestMatch(
-  source: { amount: number; currency: string; date: string; description: string },
+  source: { amount: number; currency: string; date: string; description: string; rowType?: string },
   candidates: CandidateTx[]
 ): { id: string; confidence: number; reasons: string[] } | null {
   let best: { id: string; confidence: number; reasons: string[] } | null = null
@@ -411,6 +486,18 @@ function findBestMatch(
   for (const tx of candidates) {
     // Same currency check
     if (tx.original_currency !== source.currency) continue
+
+    // Same guard the validation pass applies, so this pass can never create a
+    // match the next run would immediately drop.
+    if (
+      hasDirectionConflict({
+        rowType: source.rowType,
+        rowDescription: source.description,
+        transactionType: tx.transaction_type,
+      })
+    ) {
+      continue
+    }
 
     const amountMatch = Math.abs(Number(tx.amount)) === Math.abs(source.amount)
     if (!amountMatch) continue
