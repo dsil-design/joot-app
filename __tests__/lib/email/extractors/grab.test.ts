@@ -399,6 +399,99 @@ describe('extractAmount', () => {
     const result = extractAmount('Your order has been delivered');
     expect(result).toBeNull();
   });
+
+  // Regression: May 2026 review queue. Each of these layouts extracted a
+  // number that existed in the email but was not the amount charged, which
+  // then mismatched against an unrelated transaction and left the real
+  // statement row orphaned in the queue.
+  describe('layouts that previously extracted the wrong figure', () => {
+    it('takes Total Paid, not the pre-discount Fare, on a ride receipt', () => {
+      // 23 May 2026, GrabTaxi. Chase settled ฿205; the parser returned ฿227.
+      const body = [
+        'Hope you enjoyed your ride! Picked up on 23 May 2026',
+        'Total Paid ฿ 205',
+        'Breakdown Fare ฿ 227 Platform Fee ฿ 20* Promo ฿ -48 Foreign payment fee ฿ 6*',
+        'Total Paid ฿ 205 (*VAT Item)',
+        'Total Amount of goods and services that subject to VAT (inclusive VAT) ฿ 26',
+        'Paid by 0599 ฿ 205',
+      ].join(' ');
+      expect(extractAmount(body)!.amount).toBe(205);
+    });
+
+    it('reads a bare total under an "Amount (THB)" column header', () => {
+      // 25 May 2026 late-delivery apology. The only ฿ figure is the goodwill
+      // voucher; the order total is bare. The parser returned ฿15.
+      const body = [
+        "We're really sorry your order took longer than it should have.",
+        "As a token of our apology, here's a ฿15 voucher for your next order.",
+        'Order breakdown Merchant Wave Acai and Smoothie Status Completed',
+        'Description Amount (THB)',
+        '1x Coco Peanut Butter Acai Smoothie Bowl 248.00',
+        '1x Coco Peanut Butter Acai Smoothie Bowl 139.00',
+        'Service Fee Delivery Fee 51.00',
+        'Total 410.00',
+      ].join(' ');
+      expect(extractAmount(body)!.amount).toBe(410);
+    });
+
+    it('recognises the GrabMart total label "ทั้งหมด"', () => {
+      // 27 May 2026. No label the parser knew, so it took the largest figure —
+      // the ฿533 pre-discount subtotal instead of the ฿521 charged.
+      const body = [
+        'ขอบคุณที่ซื้อสินค้ากับเรา! ทั้งหมด ฿ 521 สั่งซื้อด้วย GrabMart',
+        'ราคาคำสั่งซื้อ ฿ 533 ค่าจัดส่ง ฿ 18 GMANSC - ฿ 30',
+        'ค่าธุรกรรมต่างประเทศ (3%) 1 ฿ 15 ทั้งหมด ฿ 521',
+        'รวมมูลค่าสินค้าและบริการ ที่ต้องเสียภาษีมูลค่าเพิ่ม ฿ 15',
+      ].join(' ');
+      expect(extractAmount(body)!.amount).toBe(521);
+    });
+
+    it('measures label-to-amount distance on visible text, not markup', () => {
+      // Real bodies arrive as HTML with empty text_body. Table markup between
+      // the label and its figure used to exhaust the match window, so the
+      // labeled-total pass found nothing at all.
+      const body =
+        '<table><tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;' +
+        'color:#1a1a1a;padding:12px 16px 12px 16px;border-bottom:1px solid #eeeeee">' +
+        'TOTAL</td><td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;' +
+        'text-align:right;padding:12px 16px 12px 16px">&#3647; 41</td></tr></table>';
+      const result = extractAmount(body);
+      expect(result!.amount).toBe(41);
+    });
+
+    it('reads a Vietnamese receipt whose symbol follows the number', () => {
+      // Grab VN prints "501280₫", not "₫501280". Matching only the prefix
+      // form left this to the fallback, which picked up the "₫ 3x" of the
+      // next line and reported the meal as ₫3.
+      const body = [
+        'Chúc bạn ngon miệng! Tổng cộng 501280₫',
+        'Chi tiết Số lượng: 3x Cheese Beef Burger 147000₫ 3x Premium Chicken Mayo Burger 303000₫',
+        'Tổng tạm tính 450000₫ Cước phí giao hàng 26000₫ BẠN TRẢ 501280₫',
+      ].join(' ');
+      const result = extractAmount(body);
+      expect(result!.amount).toBe(501280);
+    });
+
+    it('treats a dot as a thousands separator in dong', () => {
+      // "99.840" is ₫99,840 — not ₫99.84. VND has no minor unit.
+      const body = 'Hope you enjoyed your ride! Total Paid VND 99.840 Breakdown Fare 96.000 Promo -9.000';
+      const result = extractAmount(body);
+      expect(result!.amount).toBe(99840);
+      expect(result!.amount).not.toBe(99.84);
+    });
+
+    it('still reads a comma as a thousands separator in baht', () => {
+      expect(extractAmount('Total ฿1,283')!.amount).toBe(1283);
+      expect(extractAmount('Total ฿1,283.50')!.amount).toBe(1283.5);
+    });
+
+    it('extracts nothing rather than guessing on an itemised receipt with no total', () => {
+      // Booking a component as if it were the total is worse than surfacing
+      // the email as missing an amount.
+      const body = 'Fare ฿ 227 Platform Fee ฿ 20 Promo ฿ -48';
+      expect(extractAmount(body)).toBeNull();
+    });
+  });
 });
 
 describe('extractOrderId', () => {

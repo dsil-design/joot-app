@@ -292,10 +292,37 @@ export async function aggregateQueueItems(
     const pendingItems = allItems.filter(item =>
       item.status === 'pending' && (item.source === 'email' || item.source === 'statement')
     )
-    const pairCandidates: PairCandidate[] = pendingItems.map(item => {
+    const pairCandidates: PairCandidate[] = pendingItems.flatMap((item): PairCandidate[] => {
       if (item.source === 'email') {
         const emailId = item.id.replace(/^email:/, '')
-        return {
+
+        // An order email that settles as several card charges (Amazon bills
+        // per shipment, not per order) offers one candidate *per shipment*
+        // rather than one for the order total. Pairing is 1:1 by construction
+        // — an email claims a statement row and both are retired — so a
+        // $420.87 order email could never pair with the $361.61, $38.47 and
+        // $20.79 rows that actually make it up. All three sat in the review
+        // queue as evidence-free statement lines while their receipt sat one
+        // table away, already parsed into `email_sub_orders`.
+        const subOrders = item.emailMetadata?.subOrders ?? []
+        if (subOrders.length >= 2) {
+          return subOrders.map(sub => ({
+            source: 'email' as const,
+            emailId,
+            subOrderId: sub.id,
+            subOrderPosition: sub.position,
+            subOrderCount: subOrders.length,
+            subOrderDescription: sub.description,
+            subOrderOrderId: sub.orderId,
+            date: item.statementTransaction.date,
+            amount: sub.amount,
+            currency: sub.currency ?? item.statementTransaction.currency,
+            description: sub.description ?? item.statementTransaction.description,
+            rejectedPairKeys: item.rejectedPairKeys,
+          }))
+        }
+
+        return [{
           source: 'email' as const,
           emailId,
           date: item.statementTransaction.date,
@@ -303,10 +330,10 @@ export async function aggregateQueueItems(
           currency: item.statementTransaction.currency,
           description: item.statementTransaction.description,
           rejectedPairKeys: item.rejectedPairKeys,
-        }
+        }]
       } else {
         const parts = item.id.replace(/^stmt:/, '').split(':')
-        return {
+        return [{
           source: 'statement' as const,
           statementId: parts[0],
           statementIndex: parseInt(parts[1], 10),
@@ -320,11 +347,45 @@ export async function aggregateQueueItems(
           // match against an email in that currency.
           foreignAmount: item.statementTransaction.foreignAmount,
           foreignCurrency: item.statementTransaction.foreignCurrency,
-        }
+        }]
       }
     })
 
-    const pairs = await findCrossSourcePairs(supabase, pairCandidates)
+    let pairs = await findCrossSourcePairs(supabase, pairCandidates)
+
+    // Sub-order pairing is all-or-nothing per email.
+    //
+    // A paired email is retired from the queue as a whole — there is one card
+    // per email, not one per shipment. So if two of an order's three shipments
+    // found statement rows and the third did not, keeping the two would retire
+    // the email while its third shipment still has no evidence anywhere:
+    // money quietly leaving the queue, which is the one failure mode worse
+    // than an unmatched row. Unless every shipment pairs, drop them all and
+    // let the email and the rows stand alone, exactly as before.
+    const expectedSubOrders = new Map<string, number>()
+    for (const candidate of pairCandidates) {
+      if (candidate.source === 'email' && (candidate.subOrderCount ?? 0) >= 2) {
+        expectedSubOrders.set(candidate.emailId!, candidate.subOrderCount!)
+      }
+    }
+    if (expectedSubOrders.size > 0) {
+      const pairedPerEmail = new Map<string, number>()
+      for (const pair of pairs) {
+        const { emailId, subOrderId } = pair.emailCandidate
+        if (!subOrderId || !emailId) continue
+        pairedPerEmail.set(emailId, (pairedPerEmail.get(emailId) ?? 0) + 1)
+      }
+      const incomplete = new Set(
+        [...expectedSubOrders]
+          .filter(([emailId, expected]) => (pairedPerEmail.get(emailId) ?? 0) !== expected)
+          .map(([emailId]) => emailId),
+      )
+      if (incomplete.size > 0) {
+        pairs = pairs.filter(
+          pair => !(pair.emailCandidate.subOrderId && incomplete.has(pair.emailCandidate.emailId!)),
+        )
+      }
+    }
 
     if (pairs.length > 0) {
       const pairedEmailIds = new Set(pairs.map(p => `email:${p.emailCandidate.emailId}`))
@@ -357,6 +418,8 @@ export async function aggregateQueueItems(
         const matchSource = stmtItem?.matchedTransaction ? stmtItem : emailItem?.matchedTransaction ? emailItem : undefined
         const inheritedMatch = matchSource?.matchedTransaction
         const hasDbMatch = !!inheritedMatch
+        const sub = pair.emailCandidate
+        const isSubOrder = sub.subOrderCount !== undefined && sub.subOrderCount >= 2
         const crossSourceReasons = pair.usedForeignAmountSignal
           ? [
               `Cross-source match: email (${pair.emailCandidate.currency}) ↔ statement original ${pair.statementCandidate.foreignCurrency} (${pair.statementCandidate.currency} settlement)`,
@@ -366,6 +429,13 @@ export async function aggregateQueueItems(
               `Cross-source match: email (${pair.emailCandidate.currency}) + statement (${pair.statementCandidate.currency})`,
               `Amount diff: ${pair.percentDiff.toFixed(1)}% after conversion`,
             ]
+        // Say out loud that this card is one shipment of a larger order, so
+        // approving all of them doesn't read as double-counting the email.
+        if (isSubOrder) {
+          crossSourceReasons.unshift(
+            `Shipment ${(sub.subOrderPosition ?? 0) + 1} of ${sub.subOrderCount} on one order email${sub.subOrderOrderId ? ` (order ${sub.subOrderOrderId})` : ''} — the card was billed once per shipment`,
+          )
+        }
         // If a DB transaction match exists, include the reasons from whichever
         // item actually carries that match. Reading only the statement item
         // silently dropped the explanation whenever the match came from the
