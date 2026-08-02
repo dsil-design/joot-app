@@ -14,6 +14,7 @@ interface Suggestion {
   reasons: string[]
   is_new: boolean
   status?: 'pending' | 'approved' | 'rejected'
+  rejected_transaction_ids?: string[]
 }
 
 interface ExtractionLog {
@@ -143,7 +144,23 @@ export async function POST(request: NextRequest) {
     // the user has rejected as a pairing for that slip.
     const slipRejectedPairKeys = new Map<string, string[]>()
 
+    // Map of emailId → statement pair keys to REMOVE from rejected_pair_keys.
+    // Re-queueing a merged card means "put this card back", not "these two
+    // sources are not the same payment": leaving the key behind would restore
+    // the statement row only for the pairer to refuse to re-merge it, so the
+    // email and the row return as two unrelated cards forever.
+    const emailClearedPairKeys = new Map<string, string[]>()
+
     const addEmailPairKey = (emailId: string, key: string) => {
+      // On a top-level re-queue the pairing is being restored, not rejected.
+      // A surgical reject (`rejectSource`) is the opposite statement — the user
+      // named a source that does not belong — so it always records the key.
+      if (isRequeue && !rejectSource) {
+        const cleared = emailClearedPairKeys.get(emailId) || []
+        if (!cleared.includes(key)) cleared.push(key)
+        emailClearedPairKeys.set(emailId, cleared)
+        return
+      }
       const existing = emailRejectedPairKeys.get(emailId) || []
       if (!existing.includes(key)) existing.push(key)
       emailRejectedPairKeys.set(emailId, existing)
@@ -153,6 +170,15 @@ export async function POST(request: NextRequest) {
       if (!existing.includes(key)) existing.push(key)
       slipRejectedPairKeys.set(slipId, existing)
     }
+    /** Stored rejected_pair_keys with this request's additions and clearances applied. */
+    const nextPairKeys = (emailId: string, stored: string[]): string[] => {
+      const cleared = new Set(emailClearedPairKeys.get(emailId) || [])
+      const added = emailRejectedPairKeys.get(emailId) || []
+      return Array.from(new Set([...stored, ...added])).filter((k) => !cleared.has(k))
+    }
+    /** True when this request changes the email's rejected_pair_keys either way. */
+    const touchesPairKeys = (emailId: string): boolean =>
+      emailRejectedPairKeys.has(emailId) || emailClearedPairKeys.has(emailId)
 
     for (const id of idsToReject) {
       const parsed = parseImportId(id)
@@ -293,8 +319,39 @@ export async function POST(request: NextRequest) {
 
             const suggestion = suggestions[idx]
 
+            // An already-rejected suggestion is exactly what a re-queue has to
+            // undo. The UI rejects in two calls — the Reject button fires
+            // `nextStatus: 'skipped'` immediately, then the feedback toast's
+            // "put it back in the queue" fires `nextStatus: 'pending_review'`
+            // for the same id — so this guard used to make the second call a
+            // no-op on the statement side. The email came back alone while its
+            // statement row stayed rejected and invisible, which is how a
+            // paired Xfinity email + `COMCAST / XFINITY` charge ended up
+            // proposing a brand-new single-source transaction.
             if (suggestion.status === 'rejected') {
-              results.skipped++
+              if (!keepAlive) {
+                results.skipped++
+                continue
+              }
+              suggestion.status = 'pending'
+              // The link the user rejected on the way in must not come back
+              // with the row: remember it, then clear it so the restored row
+              // is an unmatched candidate again.
+              if (suggestion.matched_transaction_id) {
+                const alreadyRejected = suggestion.rejected_transaction_ids || []
+                if (!alreadyRejected.includes(suggestion.matched_transaction_id)) {
+                  suggestion.rejected_transaction_ids = [
+                    ...alreadyRejected,
+                    suggestion.matched_transaction_id,
+                  ]
+                }
+                suggestion.matched_transaction_id = undefined
+                suggestion.confidence = 0
+                suggestion.is_new = true
+                suggestion.reasons = []
+              }
+              hasChanges = true
+              results.rejected++
               continue
             }
 
@@ -383,8 +440,7 @@ export async function POST(request: NextRequest) {
           const existingRejected = (email.rejected_transaction_ids || []) as string[]
           const matchedId = email.matched_transaction_id as string
           const existingPairKeys = ((email as { rejected_pair_keys?: string[] }).rejected_pair_keys || []) as string[]
-          const newPairKeys = emailRejectedPairKeys.get(email.id) || []
-          const mergedPairKeys = Array.from(new Set([...existingPairKeys, ...newPairKeys]))
+          const mergedPairKeys = nextPairKeys(email.id, existingPairKeys)
           const updatePayload: Record<string, unknown> = {
             status: effectiveStatus,
             matched_transaction_id: null,
@@ -426,8 +482,8 @@ export async function POST(request: NextRequest) {
 
       if (emailsWithoutMatch.length > 0) {
         // Handle rejected_pair_keys for unmatched emails individually (need read-modify-write)
-        const emailsNeedingPairKeys = emailsWithoutMatch.filter((id) => emailRejectedPairKeys.has(id))
-        const emailsPlainUpdate = emailsWithoutMatch.filter((id) => !emailRejectedPairKeys.has(id))
+        const emailsNeedingPairKeys = emailsWithoutMatch.filter(touchesPairKeys)
+        const emailsPlainUpdate = emailsWithoutMatch.filter((id) => !touchesPairKeys(id))
 
         if (emailsPlainUpdate.length > 0) {
           const { data: updated, error: emailUpdateError } = await serviceClient
@@ -453,9 +509,7 @@ export async function POST(request: NextRequest) {
             .eq('user_id', user.id) as { data: Array<{ id: string; rejected_pair_keys?: string[] }> | null }
 
           for (const row of existing || []) {
-            const existingPairKeys = (row.rejected_pair_keys || []) as string[]
-            const newPairKeys = emailRejectedPairKeys.get(row.id) || []
-            const mergedPairKeys = Array.from(new Set([...existingPairKeys, ...newPairKeys]))
+            const mergedPairKeys = nextPairKeys(row.id, (row.rejected_pair_keys || []) as string[])
             const { error: updErr } = await serviceClient
               .from('email_transactions')
               .update({ status: effectiveStatus, rejected_pair_keys: mergedPairKeys } as Record<string, unknown>)

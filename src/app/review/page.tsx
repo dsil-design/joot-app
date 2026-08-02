@@ -745,7 +745,10 @@ export default function ReviewQueuePage() {
 
         // Handle next status
         if (nextStatus === "pending_review") {
-          // Re-queue: restore to pending and regenerate proposal with feedback
+          // Re-queue: restore to pending and regenerate proposal with feedback.
+          // The local item is only a stand-in — a merged card's sources are
+          // re-paired server-side, so re-aggregate rather than trust the copy
+          // the initial reject already mutated.
           for (const id of compositeIds) {
             updateItemByKey(id, (item) => ({
               ...item,
@@ -753,6 +756,7 @@ export default function ReviewQueuePage() {
             }))
             await handleRefreshProposal(id)
           }
+          refresh()
         } else {
           // "waiting_for_statement", "waiting_for_slip", or "skipped" — remove from active queue
           for (const id of compositeIds) {

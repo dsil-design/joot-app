@@ -574,9 +574,14 @@ function proposeTags(
     return
   }
 
-  // Find tags frequently used with this vendor
+  // Find tags frequently used with this vendor.
+  //
+  // `frequency` is now measured over the vendor's *tagged* transactions (see
+  // fetchVendorTagFrequency), so a majority there is a real convention. The
+  // second observation is what separates a convention from a one-off: without
+  // it a single stray tag on a first-time vendor scores a perfect 1.0.
   const vendorFreqs = context.vendorTagFrequency.filter(
-    (vtf) => vtf.vendorId === fields.vendorId && vtf.frequency > 0.5
+    (vtf) => vtf.vendorId === fields.vendorId && vtf.frequency > 0.5 && vtf.count >= 2
   )
 
   if (vendorFreqs.length === 0) {

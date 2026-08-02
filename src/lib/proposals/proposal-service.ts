@@ -218,42 +218,43 @@ async function fetchVendorTagFrequency(
   supabase: SupabaseClient,
   userId: string
 ): Promise<VendorTagFrequency[]> {
-  // Get vendor -> tag associations with frequency
-  const { data: txns } = await supabase
-    .from('transactions')
-    .select('id, vendor_id')
-    .eq('user_id', userId)
-    .not('vendor_id', 'is', null)
-
-  if (!txns || txns.length === 0) return []
-
-  const txIds = txns.map((t) => t.id)
+  // Read the tag links directly, joined to their transaction, rather than
+  // listing every transaction id and asking for its links. The old shape sent
+  // `.in('transaction_id', txIds.slice(0, 500))` — a silent cap that, against
+  // ~17k transactions carrying ~800 tag links, saw about 3% of the evidence and
+  // made vendor tag suggestions effectively impossible.
   const { data: tagLinks } = await supabase
     .from('transaction_tags')
-    .select('transaction_id, tag_id, tags(name)')
-    .in('transaction_id', txIds.slice(0, 500))
+    .select('transaction_id, tag_id, tags(name), transactions!inner(user_id, vendor_id)')
+    .eq('transactions.user_id', userId)
+    .not('transactions.vendor_id', 'is', null)
 
-  if (!tagLinks) return []
+  if (!tagLinks || tagLinks.length === 0) return []
 
-  // Build vendor -> tag frequency map
-  const vendorTxCount = new Map<string, number>()
+  // Denominator: the vendor's transactions the user has actually tagged.
+  //
+  // It used to be the vendor's total transaction count, which treats an
+  // untagged transaction as a vote against every tag. Tagging here is sparse
+  // and adopted late — Xfinity carries "Florida House" on 5 of 20 charges, all
+  // of them recent — so under the old denominator a settled, unambiguous habit
+  // scored 0.25 and never cleared the 50% bar. An untagged transaction is
+  // missing data, not a contrary signal.
+  const vendorTaggedTxns = new Map<string, Set<string>>()
   const vendorTagCount = new Map<string, Map<string, { name: string; count: number }>>()
 
-  for (const tx of txns) {
-    if (tx.vendor_id) {
-      vendorTxCount.set(tx.vendor_id, (vendorTxCount.get(tx.vendor_id) || 0) + 1)
-    }
-  }
-
-  // Map transaction_id -> vendor_id
-  const txVendorMap = new Map<string, string>()
-  for (const tx of txns) {
-    if (tx.vendor_id) txVendorMap.set(tx.id, tx.vendor_id)
-  }
-
   for (const link of tagLinks) {
-    const vendorId = txVendorMap.get(link.transaction_id)
+    const tx = embeddedOne<{ user_id: string; vendor_id: string | null }>(
+      (link as { transactions?: unknown }).transactions
+    )
+    const vendorId = tx?.vendor_id
     if (!vendorId) continue
+
+    let tagged = vendorTaggedTxns.get(vendorId)
+    if (!tagged) {
+      tagged = new Set()
+      vendorTaggedTxns.set(vendorId, tagged)
+    }
+    tagged.add(link.transaction_id)
 
     const tagName = embeddedOne<{ name: string }>(link.tags)?.name || ''
     let vendorMap = vendorTagCount.get(vendorId)
@@ -269,13 +270,13 @@ async function fetchVendorTagFrequency(
   // Build result
   const results: VendorTagFrequency[] = []
   for (const [vendorId, tagMap] of vendorTagCount) {
-    const totalTxns = vendorTxCount.get(vendorId) || 1
+    const taggedTxns = vendorTaggedTxns.get(vendorId)?.size || 1
     for (const [tagId, data] of tagMap) {
       results.push({
         vendorId,
         tagId,
         tagName: data.name,
-        frequency: data.count / totalTxns,
+        frequency: data.count / taggedTxns,
         count: data.count,
       })
     }
