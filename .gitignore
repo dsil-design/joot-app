@@ -57,6 +57,9 @@ database/*_migration.sql
 # Local Claude Code settings
 .claude/settings.local.json
 
+# Claude Code session worktrees (checkouts of other branches, never committed)
+.claude/worktrees/
+
 # Supabase CLI temp files
 supabase/.temp/
 
