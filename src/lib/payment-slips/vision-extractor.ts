@@ -8,6 +8,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { withAiRetries } from '@/lib/email/ai-client'
 import type { PaymentSlipExtraction } from './types'
+import { normalizeExtractionText } from './text-normalizer'
 
 /**
  * Vision extraction uses its own model, deliberately decoupled from the
@@ -151,7 +152,10 @@ export async function extractFromPaymentSlip(
     text = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
   }
 
-  const extraction = JSON.parse(text) as PaymentSlipExtraction
+  // Normalise before anything reads the extraction: the model salts strings
+  // with zero-width characters, which made two slips of the same payment carry
+  // references that compared unequal.
+  const extraction = normalizeExtractionText(JSON.parse(text) as PaymentSlipExtraction)
 
   // Cross-check: parse amount_characters to derive the real amount.
   // The character-by-character reading is more reliable than the model's
