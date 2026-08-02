@@ -152,6 +152,27 @@ function toSample(
   }
 }
 
+/**
+ * PostgREST caps a single response — 10,000 rows on this project — and the cap
+ * is silent: a truncated read is shaped exactly like a complete one. Every read
+ * that aggregates over the user's whole history has to page, or it reports a
+ * confident ratio computed from a slice of the evidence.
+ */
+const PAGE_SIZE = 1000
+
+async function fetchAllRows<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null }>
+): Promise<T[]> {
+  const rows: T[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data } = await page(from, from + PAGE_SIZE - 1)
+    if (!data || data.length === 0) break
+    rows.push(...data)
+    if (data.length < PAGE_SIZE) break
+  }
+  return rows
+}
+
 async function fetchVendors(supabase: SupabaseClient, userId: string): Promise<VendorRecord[]> {
   // Get vendors with transaction counts
   const { data: vendors } = await supabase
@@ -162,19 +183,23 @@ async function fetchVendors(supabase: SupabaseClient, userId: string): Promise<V
 
   if (!vendors) return []
 
-  // Get transaction counts per vendor
-  const { data: counts } = await supabase
-    .from('transactions')
-    .select('vendor_id')
-    .eq('user_id', userId)
-    .not('vendor_id', 'is', null)
+  // Get transaction counts per vendor. Paged: this account is past 16k
+  // vendor-attributed transactions, so a single request dropped a third of
+  // them and skewed both the match tiebreaker and the LLM's top-vendor list.
+  const counts = await fetchAllRows<{ vendor_id: string | null }>((from, to) =>
+    supabase
+      .from('transactions')
+      .select('vendor_id')
+      .eq('user_id', userId)
+      .not('vendor_id', 'is', null)
+      .order('id')
+      .range(from, to)
+  )
 
   const countMap = new Map<string, number>()
-  if (counts) {
-    for (const row of counts) {
-      if (row.vendor_id) {
-        countMap.set(row.vendor_id, (countMap.get(row.vendor_id) || 0) + 1)
-      }
+  for (const row of counts) {
+    if (row.vendor_id) {
+      countMap.set(row.vendor_id, (countMap.get(row.vendor_id) || 0) + 1)
     }
   }
 
@@ -208,15 +233,25 @@ async function fetchTags(supabase: SupabaseClient, userId: string): Promise<TagR
 
   if (!tags) return []
 
-  const { data: tagCounts } = await supabase
-    .from('transaction_tags')
-    .select('tag_id')
+  // Scoped to this user's transactions. The read used to have no user filter at
+  // all, and runs under the service role, so RLS was not there to catch it.
+  // Tag ids do not collide between users, so the counts it returned were right
+  // — but only because the other accounts had tagged nothing. The moment they
+  // do, their rows fill the response ahead of this user's and every usageCount
+  // here starts sliding toward zero, which is the order the LLM's tag list is
+  // built from. Paged for the same reason as the reads above.
+  const tagCounts = await fetchAllRows<{ tag_id: string }>((from, to) =>
+    supabase
+      .from('transaction_tags')
+      .select('tag_id, transactions!inner(user_id)')
+      .eq('transactions.user_id', userId)
+      .order('transaction_id')
+      .range(from, to)
+  )
 
   const countMap = new Map<string, number>()
-  if (tagCounts) {
-    for (const row of tagCounts) {
-      countMap.set(row.tag_id, (countMap.get(row.tag_id) || 0) + 1)
-    }
+  for (const row of tagCounts) {
+    countMap.set(row.tag_id, (countMap.get(row.tag_id) || 0) + 1)
   }
 
   return tags.map((t) => ({
@@ -286,15 +321,28 @@ async function fetchVendorTagFrequency(
   // Read the tag links directly, joined to their transaction, rather than
   // listing every transaction id and asking for its links. The old shape sent
   // `.in('transaction_id', txIds.slice(0, 500))` — a silent cap that, against
-  // ~17k transactions carrying ~800 tag links, saw about 3% of the evidence and
-  // made vendor tag suggestions effectively impossible.
-  const { data: tagLinks } = await supabase
-    .from('transaction_tags')
-    .select('transaction_id, tag_id, tags(name), transactions!inner(user_id, vendor_id)')
-    .eq('transactions.user_id', userId)
-    .not('transactions.vendor_id', 'is', null)
+  // 16.8k vendor-attributed transactions carrying 797 tag links, saw 12% of the
+  // evidence: measured over the full history 52 vendor/tag pairs clear the
+  // proposal threshold, and through that window not one of them did.
+  //
+  // Paged, so the cap cannot come back by a different door as the tag links
+  // grow past a single response.
+  const tagLinks = await fetchAllRows<{
+    transaction_id: string
+    tag_id: string
+    tags: unknown
+    transactions: unknown
+  }>((from, to) =>
+    supabase
+      .from('transaction_tags')
+      .select('transaction_id, tag_id, tags(name), transactions!inner(user_id, vendor_id)')
+      .eq('transactions.user_id', userId)
+      .not('transactions.vendor_id', 'is', null)
+      .order('transaction_id')
+      .range(from, to)
+  )
 
-  if (!tagLinks || tagLinks.length === 0) return []
+  if (tagLinks.length === 0) return []
 
   // Denominator: the vendor's transactions the user has actually tagged.
   //
