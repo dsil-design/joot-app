@@ -56,6 +56,10 @@ export function buildProposalInputFromQueueItem(item: QueueItem): ProposalInput 
     date: item.statementTransaction.date,
     paymentMethodId: item.paymentMethod?.id,
     paymentMethodName: item.paymentMethod?.name,
+    // Kept alongside `description` — on a merged card the line above resolves
+    // to the email's account of the purchase, and the merchant descriptor is
+    // the only thing that names where the money went.
+    statementDescription: item.statementTransaction.description,
     // Email-specific fields for the proposal engine
     subject: emailMeta?.subject,
     fromAddress: emailMeta?.fromAddress,

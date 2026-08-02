@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { formatLocalDate } from "@/lib/utils/date-helpers"
 import { useVendorSearch } from "@/hooks/use-vendor-search"
+import { resolveVendorFromSignals } from "@/lib/proposals/vendor-prefill"
 import { usePaymentMethodOptions, useTagOptions } from "@/hooks"
 import { toast } from "sonner"
 
@@ -372,8 +373,8 @@ export function CreateFromImportDialog({
         pmResolvedForItemRef.current = data.compositeId
       }
 
-      // Priority 3: Smart pre-fills from AI hints (async)
-      if (data.smartHints) {
+      // Priority 3: Smart pre-fills from the parsed sources (async)
+      {
         const hints = data.smartHints
         let cancelled = false
         cancelPrefillRef.current = () => {
@@ -384,8 +385,11 @@ export function CreateFromImportDialog({
             resolvedPm ? ["paymentMethod"] : []
           )
 
-          // 1. Resolve vendor
-          if (hints.vendorId) {
+          // 1. Resolve vendor. An exact name match used to be the only way a
+          // raw name could resolve, which "Amazon.com" (vendor: "Amazon") and
+          // "Lazada Thailand" (vendor: "Lazada") never satisfy — the shared
+          // resolver searches on name fragments and scores the candidates.
+          if (hints?.vendorId) {
             const vendorData = await getVendorById(hints.vendorId)
             if (cancelled) return
             if (vendorData) {
@@ -393,23 +397,26 @@ export function CreateFromImportDialog({
               setVendorLabel(vendorData.name)
               prefilledFields.add("vendor")
             }
-          } else if (hints.vendorNameRaw) {
-            const results = await searchVendors(hints.vendorNameRaw, 5)
-            if (cancelled) return
-            const exactMatch = results.find(
-              (v) =>
-                v.name.toLowerCase() === hints.vendorNameRaw!.toLowerCase()
+          } else {
+            const match = await resolveVendorFromSignals(
+              {
+                vendorNameRaw: hints?.vendorNameRaw,
+                statementDescription: data.description,
+              },
+              searchVendors
             )
-            if (exactMatch) {
-              setVendor(exactMatch.id)
-              setVendorLabel(exactMatch.name)
+            if (cancelled) return
+            if (match) {
+              setVendor(match.id)
+              setVendorLabel(match.name)
               prefilledFields.add("vendor")
+              setFieldReasoning((prev) => ({ ...prev, vendor: match.reasoning }))
             }
           }
 
           // 2. Pre-fill description only from dedicated parsers with high confidence
           if (
-            hints.description &&
+            hints?.description &&
             hints.parserKey &&
             hints.parserKey !== "ai-fallback" &&
             (hints.extractionConfidence ?? 0) >= 75

@@ -14,6 +14,7 @@ import { fetchEmailQueueItems } from '@/lib/imports/email-queue-builder'
 import { fetchPaymentSlipQueueItems } from '@/lib/imports/payment-slip-queue-builder'
 import { aggregateQueueItems } from '@/lib/imports/queue-aggregator'
 import { buildProposalInputFromQueueItem, attachExtraSourceContext } from '@/lib/proposals/queue-input'
+import { attachRetailOrderContext } from '@/lib/proposals/retail-order-context'
 import { parseImportId } from '@/lib/utils/import-id'
 import type { ProposalInput, RuleEngineContext } from '@/lib/proposals/types'
 import type { Json } from '@/lib/supabase/types'
@@ -78,6 +79,11 @@ export async function POST(request: NextRequest) {
     // Multi-source enrichment: load any extra emails / slips the user has
     // manually attached to this queue item so the LLM gets full context.
     await attachExtraSourceContext(supabase, user.id, [proposalInput], [targetItem])
+
+    // Online-retail orders: recover the full item list behind this charge so
+    // the description names what was bought rather than echoing one product's
+    // listing title.
+    await attachRetailOrderContext(supabase, user.id, [proposalInput])
 
     // Fetch prior rejection feedback for this item (stored in ai_feedback with compositeId in email_subject)
     const { data: priorFeedback } = await supabase

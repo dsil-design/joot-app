@@ -78,7 +78,7 @@ function parseArrivalDate(raw: string | undefined, referenceDate: Date): Date | 
   if (!Number.isFinite(day) || day < 1 || day > 31) return undefined;
   // Pick the year that places the arrival within ~120 days after referenceDate
   // (Amazon rarely promises arrivals more than a few months out).
-  let year = referenceDate.getUTCFullYear();
+  const year = referenceDate.getUTCFullYear();
   let candidate = new Date(Date.UTC(year, month, day));
   const diff = (candidate.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24);
   if (diff < -30) {
@@ -133,6 +133,103 @@ function firstItemName(blockText: string): string | undefined {
   const m = blockText.match(/\n\*\s+([^\n]+?)(?:\n|$)/);
   if (!m) return undefined;
   return m[1].trim().slice(0, 120);
+}
+
+/** One product line inside a sub-order block. */
+export interface AmazonLineItem {
+  name: string;
+  quantity: number;
+  amount?: number;
+  currency?: string;
+}
+
+/**
+ * Every product line in one sub-order block, not just the first.
+ *
+ * `firstItemName` above is all the stored `description` ever needed — but a
+ * shipment of four tank tops reads as one tank top when only the first bullet
+ * survives, and both shipments of the same order end up with an identical
+ * description. Description proposals need the whole list.
+ *
+ * Block layout, repeating per item:
+ *
+ *   * TACVASEN Workout Shirts for Men ... Mulled Teal XL
+ *     Quantity: 1
+ *     18.98 USD
+ */
+export function extractBlockLineItems(blockText: string): AmazonLineItem[] {
+  const items: AmazonLineItem[] = [];
+  const lines = blockText.split(/\r?\n/);
+
+  for (let i = 0; i < lines.length; i++) {
+    const bullet = lines[i].match(/^\s*\*\s+(.*\S)\s*$/);
+    if (!bullet) continue;
+
+    let name = bullet[1].trim();
+    let quantity = 1;
+    let amount: number | undefined;
+    let currency: string | undefined;
+
+    // Walk the block until the next bullet, picking up the quantity and price
+    // Amazon prints under the name. Anything else indented is a continuation
+    // of a wrapped product name.
+    for (let j = i + 1; j < lines.length; j++) {
+      const line = lines[j];
+      if (/^\s*\*\s+/.test(line)) break;
+      const text = line.trim();
+      if (!text) continue;
+      if (/^grand\s*total/i.test(text)) break;
+
+      const qty = text.match(/^quantity:\s*(\d+)$/i);
+      if (qty) {
+        quantity = parseInt(qty[1], 10) || 1;
+        continue;
+      }
+      const price = text.match(/^([\d.,]+)\s+([A-Z]{3})$/);
+      if (price) {
+        const parsed = parseAmount(price[1]);
+        if (parsed !== null) {
+          amount = parsed;
+          currency = price[2].toUpperCase();
+        }
+        continue;
+      }
+      // Only treat trailing text as a wrapped name before any qty/price was
+      // seen — after those, we're into the next section of the block.
+      if (amount === undefined && quantity === 1 && name.length < 200) {
+        name = `${name} ${text}`.trim();
+      }
+    }
+
+    if (name) items.push({ name: name.slice(0, 200), quantity, amount, currency });
+  }
+
+  return items;
+}
+
+/**
+ * Sub-order blocks with their full item lists, keyed by the block's own
+ * Grand Total so a caller holding a single charge can pick the shipment it
+ * belongs to.
+ */
+export interface AmazonSubOrderItems {
+  orderId: string;
+  amount: number | null;
+  currency: string | null;
+  items: AmazonLineItem[];
+}
+
+export function extractSubOrderLineItems(body: string): AmazonSubOrderItems[] {
+  return splitIntoSubOrderBlocks(body).map((block) => {
+    GRAND_TOTAL_REGEX.lastIndex = 0;
+    const gt = GRAND_TOTAL_REGEX.exec(block.text);
+    return {
+      orderId: block.orderId,
+      amount: gt ? parseAmount(gt[1]) : null,
+      currency: gt ? gt[2].toUpperCase() : null,
+      items: extractBlockLineItems(block.text),
+    };
+  });
 }
 
 function extractSubOrders(body: string, referenceDate: Date): ExtractedSubOrder[] {

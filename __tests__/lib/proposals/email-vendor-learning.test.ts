@@ -108,6 +108,7 @@ describe('a learned mapping drives the next proposal', () => {
         },
       ],
       statementDescriptionMappings: [],
+      autoTagRules: [],
     }
 
     const input: ProposalInput = {

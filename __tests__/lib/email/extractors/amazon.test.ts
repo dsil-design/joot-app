@@ -12,6 +12,8 @@ import {
   amazonParser,
   splitIntoSubOrderBlocks,
   parseArrivalDate,
+  extractBlockLineItems,
+  extractSubOrderLineItems,
 } from '@/lib/email/extractors/amazon';
 import type { RawEmailData, ExtractionResult } from '@/lib/email/types';
 
@@ -183,6 +185,97 @@ describe('amazonParser', () => {
       const ref = new Date('2026-11-30T00:00:00Z');
       const d = parseArrivalDate('Arriving February 3', ref);
       expect(d?.toISOString().slice(0, 10)).toBe('2027-02-03');
+    });
+  });
+
+  // The stored `description` keeps only the first bullet of a block, so a
+  // four-item shipment reads as one item and two shipments of the same order
+  // get identical descriptions. Proposals need the whole list.
+  describe('line item extraction', () => {
+    const TWO_SHIPMENTS = [
+      'Thanks for your order, Dennis!',
+      '',
+      'Arriving Sunday',
+      '',
+      'Order #',
+      '112-1724587-8668253',
+      '',
+      '* TACVASEN Workout Shirts for Men Muscle Tank Top Mens Sleeveless Gym Tee Mulled Teal XL',
+      '  Quantity: 1',
+      '  18.98 USD',
+      '',
+      'Grand Total:',
+      '20.31 USD',
+      '',
+      'Arriving tomorrow',
+      '',
+      'Order #',
+      '112-5357774-2145062',
+      '',
+      '* TACVASEN Workout Shirts for Men Muscle Tank Top Grey XL',
+      '  Quantity: 1',
+      '  14.99 USD',
+      '',
+      '* TACVASEN Tank Tops Men Sleeveless Tee Shirts Navy XL',
+      '  Quantity: 2',
+      '  14.99 USD',
+      '',
+      '* TACVASEN Mens Tank Tops Quick Dry Sleeveless Shirts Black XL',
+      '  Quantity: 1',
+      '  9.99 USD',
+      '',
+      'Grand Total:',
+      '55.45 USD',
+      '',
+    ].join('\n');
+
+    it('reads every bullet in a block, with quantity and price', () => {
+      const items = extractBlockLineItems(TWO_SHIPMENTS);
+
+      expect(items).toHaveLength(4);
+      expect(items[2]).toMatchObject({ quantity: 2, amount: 14.99, currency: 'USD' });
+      expect(items[3].name).toContain('Quick Dry');
+    });
+
+    it('scopes items to the shipment that produced each charge', () => {
+      const blocks = extractSubOrderLineItems(TWO_SHIPMENTS);
+
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0]).toMatchObject({ orderId: '112-1724587-8668253', amount: 20.31 });
+      expect(blocks[0].items).toHaveLength(1);
+      expect(blocks[1]).toMatchObject({ orderId: '112-5357774-2145062', amount: 55.45 });
+      expect(blocks[1].items).toHaveLength(3);
+    });
+
+    it('never carries the Grand Total into an item name', () => {
+      const blocks = extractSubOrderLineItems(TWO_SHIPMENTS);
+      for (const block of blocks) {
+        for (const item of block.items) {
+          expect(item.name).not.toMatch(/grand total/i);
+        }
+      }
+    });
+
+    it('recovers every item across the real 3-shipment order', () => {
+      const body = fs.readFileSync(
+        path.resolve(__dirname, '../../../fixtures/emails/amazon/three-sub-orders.txt'),
+        'utf8',
+      );
+      const blocks = extractSubOrderLineItems(body);
+
+      expect(blocks).toHaveLength(3);
+      const total = blocks.reduce((n, b) => n + b.items.length, 0);
+      expect(total).toBe(13);
+      // Every item name is a real product line, not a stray body fragment.
+      for (const block of blocks) {
+        for (const item of block.items) {
+          expect(item.name.length).toBeGreaterThan(5);
+        }
+      }
+    });
+
+    it('returns nothing for a body with no bullets', () => {
+      expect(extractBlockLineItems('Order #\n112-0000000-0000000\n\nGrand Total:\n10.00 USD')).toEqual([]);
     });
   });
 });

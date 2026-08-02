@@ -22,6 +22,12 @@ import { evaluateAutoTagRules } from '@/lib/services/auto-tag-rules'
 import { calculateDaysDiff } from '@/lib/matching/date-matcher'
 import { isCardPaymentDescription } from '@/lib/matching/transfer-descriptions'
 import { calculateEnrichmentConfidence } from './confidence'
+import {
+  isRetailOrder,
+  isRawProductListing,
+  isPlaceholderOrderDescription,
+  fallbackRetailDescription,
+} from './retail-descriptions'
 
 /**
  * Generate a rule-based proposal for a single queue item.
@@ -693,6 +699,63 @@ function proposeDescription(
     }
   }
 
+  // Strategy 1b: Online-retail orders (Amazon, Lazada, …).
+  //
+  // These parsers extract the seller's product-listing title verbatim —
+  // "TACVASEN Workout Shirts for Men Muscle Tank Top Mens Sleeveless Shirts
+  // Gym Top Dry Fit UPF 50+ …" — or a "(2 sub-orders)" stand-in when they
+  // couldn't name the goods at all. Neither is a description, and letting
+  // Strategy 2 hand one through at 90% both wrote it into the ledger and put
+  // it out of the LLM layer's reach (the merge only lets a higher score win).
+  //
+  // So: condense what we can deterministically, and score it low enough that
+  // the hybrid engine escalates. The condensed form is the floor, not the
+  // goal — it's what ships when no LLM is available.
+  //
+  // Only for cards with a receipt behind them: a statement-only row's
+  // description is a merchant descriptor, not a product title, and the
+  // existing vendor-pattern and cleanup strategies already handle those.
+  const hasReceipt = item.sourceType === 'email' || item.sourceType === 'merged'
+  if (hasReceipt && isRetailOrder(item)) {
+    const items = item.retailOrderItems ?? []
+    const isPlaceholder = isPlaceholderOrderDescription(item.description)
+    // These parsers store one product's title and nothing else, so a
+    // multi-item shipment is misdescribed by construction, and anything this
+    // long is a listing title whether or not the generic heuristic is sure of
+    // it. Both are cheap to escalate and expensive to get wrong.
+    const needsWork =
+      isPlaceholder ||
+      items.length > 1 ||
+      item.description.trim().length > 55 ||
+      isRawProductListing(item.description)
+
+    if (needsWork) {
+      const fallback = fallbackRetailDescription(item.description, item.retailOrderItems)
+      const itemCount = item.retailOrderItems?.length ?? 0
+
+      if (fallback) {
+        fields.description = fallback
+        fc.description = {
+          score: 45,
+          reasoning: itemCount > 0
+            ? `Summarized ${itemCount} item${itemCount === 1 ? '' : 's'} from the ${item.parserKey} order; needs AI review to match the vendor's description style`
+            : `Condensed ${item.parserKey} product-listing title; needs AI review to match the vendor's description style`,
+          source: 'inferred',
+        }
+      } else {
+        // A placeholder with no items recovered — there is nothing to say.
+        // Leave the raw text but score it as the non-answer it is.
+        fields.description = item.description
+        fc.description = {
+          score: 25,
+          reasoning: `'${item.parserKey}' parser could not name the goods on this order`,
+          source: 'default',
+        }
+      }
+      return
+    }
+  }
+
   // Strategy 2: Email with dedicated parser → use parser description.
   //
   // Known structured parsers (Grab, Bangkok Bank, etc.) build descriptions
@@ -790,15 +853,55 @@ function proposeDescription(
   // the cleaned statement description below.)
 
   // Strategy 6: Clean statement description
-  fields.description = cleanDescription(item.description)
-  if (rejectedPattern) {
+  const cleaned = cleanDescription(item.description)
+  fields.description = cleaned
+
+  // What the cleanup actually produced decides the score, and a rejected
+  // pattern only adds to the explanation. Checking `rejectedPattern` first
+  // made the descriptor test unreachable on exactly the rows that need it:
+  // an Amazon charge both rejects a learned pattern (amounts vary per order)
+  // and cleans up to "AMAZON MKTPL BJ3IM3GE1 Amzn.com/bill WA".
+  const patternNote = rejectedPattern
+    ? ` (learned pattern "${rejectedPattern}" rejected: amount ${Math.abs(item.amount)} ${item.currency} outside its historical range)`
+    : ''
+
+  if (looksLikeMachineDescriptor(cleaned)) {
+    // Title-casing "AMAZON MKTPL*BJ3IM3GE1 Amzn.com/bill WA" does not make it
+    // a description — the authorization code and the processor's routing text
+    // are still there, and scoring that 75 both proposed it and outranked
+    // anything the LLM could suggest instead.
+    fc.description = {
+      score: 45,
+      reasoning: `Statement descriptor still carries processor codes after cleanup — no readable description available from the row alone${patternNote}`,
+      source: 'default',
+    }
+  } else if (rejectedPattern) {
     fc.description = {
       score: 60,
-      reasoning: `Cleaned statement description (learned pattern "${rejectedPattern}" rejected: amount ${Math.abs(item.amount)} ${item.currency} outside its historical range)`,
+      reasoning: `Cleaned statement description${patternNote}`,
     }
   } else {
     fc.description = { score: 75, reasoning: 'Cleaned statement description' }
   }
+}
+
+/**
+ * Whether a cleaned description still reads as processor output rather than
+ * as a merchant name: an authorization/reference code, a store number, or a
+ * payment gateway's own routing text.
+ */
+function looksLikeMachineDescriptor(description: string): boolean {
+  const d = description.trim()
+  if (!d) return false
+
+  // Mixed letters-and-digits run of 6+ — "BJ3IM3GE1", "BV3AR0KY1".
+  if (/\b(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{6,}\b/.test(d)) return true
+  // Store/terminal numbers: "Wawa 5216", "#0769".
+  if (/#\s*\d{3,}/.test(d) || /\b\d{4,}\b/.test(d)) return true
+  // Gateway routing text left behind by the cleanup.
+  if (/\b(?:amzn\.com\/bill|\.com\*|2c2p|paypal\s*\*|sq\s*\*|tst\s*\*)/i.test(d)) return true
+
+  return false
 }
 
 /**
