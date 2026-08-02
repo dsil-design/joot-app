@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
         transaction_date, amount, currency, sender_name, recipient_name,
         bank_detected, memo, detected_direction,
         extraction_confidence, extraction_error, extraction_started_at,
-        matched_transaction_id, match_confidence,
+        matched_transaction_id, match_confidence, duplicate_of_slip_id,
         uploaded_at, created_at
       `)
       .eq('user_id', user.id)

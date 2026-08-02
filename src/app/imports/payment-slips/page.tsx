@@ -21,6 +21,7 @@ import { PaymentSlipsFilterBar } from '@/components/page-specific/payment-slips-
 import { usePaymentSlipFilters } from '@/hooks/use-payment-slips-filters'
 import { LoadMoreTrigger } from '@/hooks/use-infinite-scroll'
 import { usePaymentSlips, fetchAllFilteredSlipIds } from '@/hooks/use-payment-slips'
+import { getSlipBadge } from '@/lib/payment-slips/slip-badge'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -69,26 +70,6 @@ function SlipDeleteDialog({
       </AlertDialogContent>
     </AlertDialog>
   )
-}
-
-/**
- * Derive a single user-facing badge from the two independent status fields
- * on a payment slip:
- *   - `status`       — extraction pipeline state (pending/processing/ready_for_review/done/failed)
- *   - `review_status` — user's review decision (pending/approved/rejected)
- *
- * Pipeline states that block review (processing, pending, failed) take
- * precedence. Once extraction is done, we surface the review state so the
- * list matches what the detail page shows.
- */
-function getSlipBadge(slip: { status: string; review_status: string }): { label: string; className: string } {
-  if (slip.status === 'failed') return { label: 'Failed', className: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' }
-  if (slip.status === 'processing') return { label: 'Processing', className: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' }
-  if (slip.status === 'pending') return { label: 'Pending', className: 'bg-muted text-muted-foreground' }
-  // Extraction done — show review state
-  if (slip.review_status === 'approved') return { label: 'Approved', className: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300' }
-  if (slip.review_status === 'rejected') return { label: 'Rejected', className: 'bg-muted text-muted-foreground' }
-  return { label: 'Ready', className: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' }
 }
 
 const bankNames: Record<string, string> = {

@@ -123,6 +123,9 @@ export function buildDrainDeps(
           extraction_confidence: null,
           matched_transaction_id: null,
           match_confidence: null,
+          // Re-derived by extraction; a stale link would outlive the slip it
+          // pointed at being deleted or re-reviewed.
+          duplicate_of_slip_id: null,
         })
         .eq('user_id', userId)
         .in('id', ids)

@@ -13,6 +13,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { isRetryableAiError } from '@/lib/email/ai-client'
 import { extractFromPaymentSlip } from './vision-extractor'
+import { findDuplicateByReference, duplicateWarning } from './duplicate-detector'
 import { validateExtraction } from './extraction-validator'
 import { detectDirection } from './direction-detector'
 import {
@@ -155,6 +156,18 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
     // 5. Match against existing transactions
     const matchResult = await findMatchingTransaction(supabase, upload.user_id, extraction)
 
+    // 5b. Is this the same payment as a slip already in the account? The
+    // bank reference is unique per transfer, but only exists once the image
+    // has been read — so this is the earliest point the check can run. Upload
+    // time only has the file hash, which a re-exported photo defeats.
+    const duplicate = await findDuplicateByReference(
+      supabase,
+      upload.user_id,
+      extraction.transaction_reference,
+      uploadId
+    )
+    const duplicateWarnings = duplicate ? [duplicateWarning(duplicate)] : []
+
     // 6. Save results. The outcome is checked: an unchecked write here let
     // IMG_1602.JPG sit at `processing` from April to August while every caller
     // was told extraction had succeeded.
@@ -165,10 +178,19 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
         extraction_completed_at: new Date().toISOString(),
         extraction_data: extraction as unknown as Record<string, unknown>,
         extraction_confidence: finalConfidence,
+        duplicate_of_slip_id: duplicate?.slipId ?? null,
         extraction_log: {
-          warnings: [...validation.warnings, ...crossCheckWarnings],
+          warnings: [...validation.warnings, ...crossCheckWarnings, ...duplicateWarnings],
           date_raw: extraction.date_raw ?? null,
           date_corrected: validation.correctedDate ?? null,
+          duplicate_of: duplicate
+            ? {
+                slip_id: duplicate.slipId,
+                filename: duplicate.filename,
+                review_status: duplicate.reviewStatus,
+                reference: extraction.transaction_reference,
+              }
+            : null,
           statement_cross_check: {
             outcome: crossCheck.outcome,
             rows_checked: crossCheck.rowsChecked,

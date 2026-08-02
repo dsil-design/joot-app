@@ -18,6 +18,8 @@ export interface PaymentSlip {
   detected_direction: string | null
   extraction_confidence: number | null
   extraction_error: string | null
+  /** Set when this slip is a copy of a payment already in the account. */
+  duplicate_of_slip_id: string | null
   uploaded_at: string
 }
 

@@ -1149,6 +1149,9 @@ CREATE TABLE public.payment_slip_uploads (
   recipient_account TEXT,
   transaction_reference TEXT,
   bank_reference TEXT,
+  -- Set when extraction finds an earlier slip with the same bank
+  -- transaction_reference. The referenced slip is the original.
+  duplicate_of_slip_id UUID REFERENCES payment_slip_uploads(id) ON DELETE SET NULL,
   memo TEXT,
   bank_detected TEXT,
   transfer_type TEXT,
@@ -1211,6 +1214,8 @@ CREATE INDEX idx_payment_slip_uploads_file_hash ON public.payment_slip_uploads(f
 CREATE UNIQUE INDEX idx_payment_slip_uploads_user_file_hash_unique
   ON public.payment_slip_uploads(user_id, file_hash)
   WHERE file_hash IS NOT NULL;
+CREATE INDEX idx_payment_slip_uploads_duplicate_of ON public.payment_slip_uploads(user_id, duplicate_of_slip_id)
+  WHERE duplicate_of_slip_id IS NOT NULL;
 CREATE INDEX idx_payment_slip_uploads_transaction_ref ON public.payment_slip_uploads(transaction_reference)
   WHERE transaction_reference IS NOT NULL;
 
