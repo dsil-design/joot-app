@@ -487,7 +487,7 @@ function extractPaymentCard(body: string): { lastFour: string; cardType: string 
 /**
  * Grab Email Parser implementation
  */
-export const grabParser: EmailParser = {
+export const grabParser = {
   key: 'grab',
   name: 'Grab Receipt Parser',
 
@@ -612,7 +612,7 @@ export const grabParser: EmailParser = {
       errors: errors.length > 0 ? errors : undefined,
     };
   },
-};
+} satisfies EmailParser;
 
 // Export helper functions for testing
 export {

@@ -215,7 +215,7 @@ function buildDescription(body: string, subject: string): string {
 /**
  * Bolt Email Parser implementation
  */
-export const boltParser: EmailParser = {
+export const boltParser = {
   key: 'bolt',
   name: 'Bolt Ride Receipt Parser',
 
@@ -329,7 +329,7 @@ export const boltParser: EmailParser = {
       errors: errors.length > 0 ? errors : undefined,
     };
   },
-};
+} satisfies EmailParser;
 
 // Export helper functions for testing
 export {

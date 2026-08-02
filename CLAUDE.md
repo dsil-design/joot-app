@@ -111,7 +111,21 @@ If a design requires functionality not technically possible:
 When making schema changes:
 1. Create migration: `./database/new-migration.sh description_here`
 2. Update `database/schema.sql` to reflect final state
-3. Regenerate types: `npx supabase gen types typescript --linked > src/lib/supabase/types.ts`
+3. Regenerate types into the **generated** file, never `types.ts`:
+
+```bash
+npx supabase gen types typescript --linked > src/lib/supabase/database.types.ts
+```
+
+`src/lib/supabase/types.ts` is hand-written — it re-exports the generated types
+and adds the derived aliases (`Transaction`, `CurrencyType`,
+`TransactionWithVendorAndPayment`, …). Generating over it wipes those, which is
+how ~20 modules ended up importing names that no longer existed.
+
+Check the output before trusting it: on failure the CLI writes its error to
+stdout **and exits 0**, so a `>` redirect silently replaces the file with
+something like `{"_tag":"Error",...}`. Generate to a temp file, confirm it looks
+like TypeScript, then move it into place.
 
 ## Deployment
 
