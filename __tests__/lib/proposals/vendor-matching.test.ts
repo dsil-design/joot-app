@@ -45,6 +45,104 @@ describe('matchVendor — audit false positives stay dead', () => {
     expect(result?.vendorName).toBe('Walmart')
   })
 
+  // Second audit: every pair below came from running matchVendor over the real
+  // email_transactions.vendor_name_raw values. Each one was a raw substring of
+  // the description scoring 0.9 and being proposed today.
+  it.each([
+    ['HEALTHLINK CO.,LTD. BRANCH 1', 'Link'],
+    ['SCB มณี SHOP (JUNEKO HOUSE)', 'House'],
+    ['ชาบูกุ ฮอทพอท เรสโตรองท์ (A/C Name: SHABUGU HOTPOT RESTAURANT CO.,LTD.)', 'Restaurant'],
+    ['ก๋วยเตี๋ยวเรือพระนคร อนุสาวรีย์ชัยสมรภูมิ (A/C Name: PRANAKORN FOOD CO.,LTD.)', 'Food'],
+    ['BEACHWALK BY MANASOTA KEY HOMEOWNERS ASSOCIATION INC', 'HOME'],
+    ['บมจ.โฮม โปรดักส์ เซ็นเตอร์ (A/C Name: HOME PRODUCT CENTER PUBLIC COMPANY LIMITED)', 'HOME'],
+    ['คลังโมบายล์ (A/C Name: KLUNG MOBILE CO.,LTD.)', 'Mobil'],
+    ['HomePro Online Shopping', 'Hopp'],
+    ['American Express', 'Eric'],
+    ['American International Tax Advisers Co., Ltd.', 'Eric'],
+    ['ACTING SUB LT. SIRIKHWAN KHAMPHILO', 'Phil'],
+    ['NUCHSARA JAIA', 'Sara'],
+    ['DANUCHIN ANAN', 'Uchi'],
+    ['MoonPay', 'Moon'],
+    // category noun / district name claiming a whole-token match; the linked
+    // transactions say Starbucks and McDonald's
+    ['280 SCT-SUANPLGRN MARKET BANGKOK', 'Market'],
+    ['MCD-00178GRAND FIVE NANA BANGKOK', 'Nana'],
+  ])('does not match "%s" to vendor "%s" on a bare substring', (description, vendorName) => {
+    const result = matchVendor(description, [vendor('v1', vendorName)], noHistory)
+    expect(result).toBeNull()
+  })
+
+  it.each([
+    ['SCB มณี SHOP (JUNEKO HOUSE)', 'House', 'Juneko House'],
+    ['ชาบูกุ ฮอทพอท เรสโตรองท์ (A/C Name: SHABUGU HOTPOT RESTAURANT CO.,LTD.)', 'Restaurant', 'Shabugu'],
+    ['คลังโมบายล์ (A/C Name: KLUNG MOBILE CO.,LTD.)', 'Mobil', 'Klung Mobile'],
+    ['CHIANGMAI RALLY HOUSE (A/C Name: CHIANGMAI RALLY HOUSE CO.,LTD.)', 'House', 'Rally House'],
+    ['PWA-PROVINCIAL WATERWORKS AUTHORITY', 'PWA', 'Provincial Waterworks Authority'],
+  ])('matches "%s" to the specific vendor, not "%s"', (description, generic, specific) => {
+    const result = matchVendor(
+      description,
+      // the generic vendor carries the higher transaction count, so only
+      // specificity — not the tiebreak — can pick the right one
+      [vendor('v-generic', generic, 50), vendor('v-specific', specific, 1)],
+      noHistory
+    )
+    expect(result?.vendorName).toBe(specific)
+  })
+
+  it('does not collapse the distinct Grab vendors into "Grab"', () => {
+    const grabVendors = [
+      vendor('v-grab', 'Grab', 200),
+      vendor('v-grab-taxi', 'Grab Taxi', 3),
+      vendor('v-grabfood', 'GrabFood', 3),
+      vendor('v-grabmart', 'GrabMart', 1),
+    ]
+    expect(matchVendor('Grab Taxi', grabVendors, noHistory)?.vendorName).toBe('Grab Taxi')
+    expect(matchVendor('GrabFood', grabVendors, noHistory)?.vendorName).toBe('GrabFood')
+    expect(matchVendor('GrabMart', grabVendors, noHistory)?.vendorName).toBe('GrabMart')
+    expect(matchVendor('Grab', grabVendors, noHistory)?.vendorName).toBe('Grab')
+    expect(
+      matchVendor('Grab (GrabFood) - O\'Briens Irish Sandwich Cafe', grabVendors, noHistory)?.vendorName
+    ).toBe('GrabFood')
+  })
+
+  it('prefers the exactly-named vendor over a longer one containing it', () => {
+    const vendors = [vendor('v-xfinity-live', 'Xfinity Live', 40), vendor('v-xfinity', 'Xfinity', 2)]
+    expect(matchVendor('Xfinity', vendors, noHistory)?.vendorName).toBe('Xfinity')
+  })
+
+  it('does not claim a row for a vendor whose extra tokens are unexplained', () => {
+    // the vendor is more specific than the row, and its extra tokens are
+    // nowhere in it: "Citizens Bank" (the bank) is not "Citizens Bank Park"
+    // (the ballpark)
+    expect(matchVendor('Citizens Bank', [vendor('v-park', 'Citizens Bank Park')], noHistory)).toBeNull()
+    expect(matchVendor('Xfinity', [vendor('v-live', 'Xfinity Live')], noHistory)).toBeNull()
+  })
+
+  // One shared word and the rest different is a different entity. Each pair
+  // below scored 56–61% off the shared word plus a flattering edit distance.
+  it.each([
+    ['American Express', 'Kerry Express'],
+    ['Turkish Airlines', 'United Airlines'],
+    ['Jennifer Siller', 'Jennifer Stewart'],
+    ['Peoples Gas', 'People bar'],
+  ])('does not match "%s" to "%s" on one shared word', (description, vendorName) => {
+    expect(matchVendor(description, [vendor('v1', vendorName)], noHistory)).toBeNull()
+  })
+
+  // …but the fuzzy tier still has to earn its keep. Both rows below are real
+  // statement descriptions whose linked transaction confirms the vendor.
+  it('keeps the fuzzy matches that ground truth confirms', () => {
+    expect(
+      matchVendor('UNITED 0164390707915 UNITED.COM TX', [vendor('v-ua', 'United Airlines')], noHistory)?.vendorName
+    ).toBe('United Airlines')
+    expect(
+      matchVendor('BEST WINE CHIANGMAI', [vendor('v-bw', 'Best Wine and Spirit')], noHistory)?.vendorName
+    ).toBe('Best Wine and Spirit')
+    expect(
+      matchVendor('TELLO MOBILE TELLO.COM GA', [vendor('v-tello', 'My Tello')], noHistory)?.vendorName
+    ).toBe('My Tello')
+  })
+
   it('category words cannot chain a merchant to an unrelated vendor history', () => {
     const history: RecentTransaction[] = [
       {
