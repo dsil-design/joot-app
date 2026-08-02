@@ -58,7 +58,7 @@ interface Currency {
   currency_symbol: string
 }
 
-type PaymentMethodType = 'credit_card' | 'bank_account' | 'debit_card' | 'other'
+export type PaymentMethodType = 'credit_card' | 'bank_account' | 'debit_card' | 'other'
 
 const paymentMethodTypeOptions: { value: PaymentMethodType; label: string }[] = [
   { value: 'credit_card', label: 'Credit Card' },

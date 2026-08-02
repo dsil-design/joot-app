@@ -5,6 +5,7 @@ import {
   applyUsdConversion,
 } from '@/lib/utils/convert-transactions-to-usd'
 import { TrendChartCard } from '@/components/ui/trend-chart-card'
+import type { Transaction } from '@/lib/supabase/types'
 
 interface TrendChartSectionProps {
   userId: string
@@ -15,12 +16,11 @@ export async function TrendChartSection({ userId }: TrendChartSectionProps) {
 
   // Helper function to fetch all transactions with automatic pagination
   async function fetchAllTransactions(startDate?: string) {
-    let allTransactions: Array<{
-      transaction_date: string
-      transaction_type: 'income' | 'expense'
-      amount: number
-      original_currency: string
-    }> = []
+    // Derived from the generated row type so it can't drift from the select
+    // below (a hand-written shape here had gone stale).
+    let allTransactions: Array<
+      Pick<Transaction, 'transaction_date' | 'transaction_type' | 'amount' | 'original_currency'>
+    > = []
 
     const pageSize = 1000
     let page = 0

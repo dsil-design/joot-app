@@ -22,31 +22,36 @@ export interface DecisionEvent {
   sourceType: 'statement' | 'email' | 'payment_slip' | 'merged' | 'merged_slip_email' | 'merged_slip_stmt' | 'merged_slip_email_stmt' | 'self_transfer'
   compositeId: string
 
+  // Every optional field below accepts null as well as undefined: callers read
+  // these straight off nullable database columns, and recordDecision already
+  // normalizes both to null before inserting. Requiring `?? undefined` at each
+  // call site would add noise without changing behaviour.
+
   // Source identifiers
-  statementUploadId?: string
-  suggestionIndex?: number
-  emailTransactionId?: string
-  paymentSlipId?: string
-  transactionId?: string
+  statementUploadId?: string | null
+  suggestionIndex?: number | null
+  emailTransactionId?: string | null
+  paymentSlipId?: string | null
+  transactionId?: string | null
 
   // Source data
-  statementDescription?: string
-  emailFromAddress?: string
-  emailVendorNameRaw?: string
-  emailParserKey?: string
-  slipCounterpartyName?: string
-  amount?: number
-  currency?: string
+  statementDescription?: string | null
+  emailFromAddress?: string | null
+  emailVendorNameRaw?: string | null
+  emailParserKey?: string | null
+  slipCounterpartyName?: string | null
+  amount?: number | null
+  currency?: string | null
 
   // Decision outcome
-  vendorId?: string
-  paymentMethodId?: string
-  tagIds?: string[]
-  matchConfidence?: number
-  wasAutoMatched?: boolean
+  vendorId?: string | null
+  paymentMethodId?: string | null
+  tagIds?: string[] | null
+  matchConfidence?: number | null
+  wasAutoMatched?: boolean | null
 
   // For rejections
-  rejectedTransactionId?: string
+  rejectedTransactionId?: string | null
 }
 
 /**

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { asCurrency, asTransactionType } from '@/lib/supabase/enums'
 import Anthropic from '@anthropic-ai/sdk'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 const CHAT_MODEL = 'claude-haiku-4-5-20251001'
+
 
 const SYSTEM_PROMPT = `You are Joot Assistant, an AI helper for a personal finance tracking app called Joot. You have access to the user's transaction data, vendors, payment methods, tags, and email imports.
 
@@ -139,8 +141,10 @@ async function executeSearchTransactions(
   if (params.date_to) query = query.lte('transaction_date', params.date_to as string)
   if (params.min_amount) query = query.gte('amount', params.min_amount as number)
   if (params.max_amount) query = query.lte('amount', params.max_amount as number)
-  if (params.currency) query = query.eq('original_currency', params.currency as string)
-  if (params.transaction_type) query = query.eq('transaction_type', params.transaction_type as string)
+  const currency = asCurrency(params.currency)
+  if (currency) query = query.eq('original_currency', currency)
+  const transactionType = asTransactionType(params.transaction_type)
+  if (transactionType) query = query.eq('transaction_type', transactionType)
 
   const { data, error } = await query
 
@@ -223,8 +227,10 @@ async function executeGetSpendingSummary(
     .gte('transaction_date', params.date_from as string)
     .lte('transaction_date', params.date_to as string)
 
-  if (params.transaction_type) query = query.eq('transaction_type', params.transaction_type as string)
-  if (params.currency) query = query.eq('original_currency', params.currency as string)
+  const txnType = asTransactionType(params.transaction_type)
+  if (txnType) query = query.eq('transaction_type', txnType)
+  const curr = asCurrency(params.currency)
+  if (curr) query = query.eq('original_currency', curr)
 
   const { data, error } = await query
   if (error) return { error: error.message }
@@ -358,19 +364,21 @@ async function executeSearchEmailTransactions(
   supabase: Awaited<ReturnType<typeof createClient>>,
   params: Record<string, unknown>
 ) {
+  // Columns are on email_transactions itself — there is no `emails` foreign key
+  // to embed through, and the vendor/category/skip fields are named
+  // vendor_name_raw / classification / status.
   let query = supabase
     .from('email_transactions')
     .select(`
-      id, vendor_name, amount, currency, transaction_date, category,
-      is_skipped, created_at,
-      emails(subject, from_address),
+      id, vendor_name_raw, amount, currency, transaction_date, classification,
+      status, subject, from_address, created_at,
       transactions(id, amount, description, vendors(name))
     `)
     .order('transaction_date', { ascending: false })
     .limit(Math.min(Number(params.limit) || 20, 50))
 
   if (params.vendor_name) {
-    query = query.ilike('vendor_name', `%${params.vendor_name}%`)
+    query = query.ilike('vendor_name_raw', `%${params.vendor_name}%`)
   }
 
   const { data, error } = await query
@@ -381,33 +389,26 @@ async function executeSearchEmailTransactions(
   // Post-filter by email subject or from_address
   if (params.email_subject) {
     const search = (params.email_subject as string).toLowerCase()
-    results = results.filter((et) => {
-      const email = et.emails as unknown as { subject: string; from_address: string } | null
-      return email?.subject?.toLowerCase().includes(search)
-    })
+    results = results.filter((et) => et.subject?.toLowerCase().includes(search))
   }
   if (params.from_address) {
     const search = (params.from_address as string).toLowerCase()
-    results = results.filter((et) => {
-      const email = et.emails as unknown as { subject: string; from_address: string } | null
-      return email?.from_address?.toLowerCase().includes(search)
-    })
+    results = results.filter((et) => et.from_address?.toLowerCase().includes(search))
   }
 
   return {
     count: results.length,
     email_transactions: results.map((et) => {
-      const email = et.emails as unknown as { subject: string; from_address: string } | null
       const linkedTx = et.transactions as unknown as Array<{ id: string; amount: number; description: string; vendors: { name: string } | null }> | null
       return {
-        vendor_name: et.vendor_name,
+        vendor_name: et.vendor_name_raw,
         amount: et.amount,
         currency: et.currency,
         date: et.transaction_date,
-        category: et.category,
-        is_skipped: et.is_skipped,
-        email_subject: email?.subject,
-        email_from: email?.from_address,
+        category: et.classification,
+        is_skipped: et.status === 'skipped',
+        email_subject: et.subject,
+        email_from: et.from_address,
         linked_transactions: (linkedTx || []).map((tx) => ({
           amount: tx.amount,
           description: tx.description,
@@ -438,7 +439,14 @@ async function executeRunSqlQuery(
     }
   }
 
-  const { data, error } = await supabase.rpc('run_readonly_query', { query_text: query })
+  // `run_readonly_query` is an optional database function that may not be
+  // provisioned — it is deliberately absent from schema.sql (the error branch
+  // below handles that case), so it is not in the generated Database types.
+  const rpc = supabase.rpc as unknown as (
+    fn: string,
+    args: Record<string, unknown>
+  ) => Promise<{ data: unknown; error: { message: string } | null }>
+  const { data, error } = await rpc('run_readonly_query', { query_text: query })
 
   if (error) {
     // If the RPC doesn't exist, fall back to explaining
@@ -528,16 +536,20 @@ export async function POST(request: NextRequest) {
     // Tool use loop - keep calling tools until we get a final text response
     while (response.stop_reason === 'tool_use') {
       const assistantContent = response.content
+      // `assistantContent` is ContentBlock[] (a response type); the predicate
+      // previously narrowed to ContentBlockParam, which is the *request* union
+      // and not assignable to it — so `id`/`name`/`input` never resolved.
       const toolUseBlocks = assistantContent.filter(
-        (block): block is Anthropic.ContentBlockParam & { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> } =>
-          block.type === 'tool_use'
+        (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use'
       )
 
       const toolResults: Anthropic.ToolResultBlockParam[] = []
 
       for (const toolUse of toolUseBlocks) {
         try {
-          const result = await executeTool(supabase, toolUse.name, toolUse.input)
+          // Tool inputs are model-generated JSON, so the SDK types them `unknown`.
+          const toolInput = (toolUse.input ?? {}) as Record<string, unknown>
+          const result = await executeTool(supabase, toolUse.name, toolInput)
           toolResults.push({
             type: 'tool_result',
             tool_use_id: toolUse.id,

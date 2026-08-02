@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { asCurrency } from "@/lib/supabase/enums"
 
 export const dynamic = "force-dynamic"
 
@@ -101,7 +102,8 @@ export async function GET(request: NextRequest) {
           case "none": idsQuery = idsQuery.is("source_email_transaction_id", null).is("source_statement_upload_id", null).is("source_payment_slip_id", null); break
         }
       }
-      if (filters.amountCurrency) idsQuery = idsQuery.eq("original_currency", filters.amountCurrency)
+      const idsCurrency = asCurrency(filters.amountCurrency)
+      if (idsCurrency) idsQuery = idsQuery.eq("original_currency", idsCurrency)
       if (filters.amountMin !== undefined && !isNaN(filters.amountMin)) idsQuery = idsQuery.gte("amount", filters.amountMin)
       if (filters.amountMax !== undefined && !isNaN(filters.amountMax)) idsQuery = idsQuery.lte("amount", filters.amountMax)
 
@@ -274,7 +276,8 @@ export async function GET(request: NextRequest) {
 
     // Apply amount range filter
     if (filters.amountCurrency) {
-      query = query.eq("original_currency", filters.amountCurrency)
+      const listCurrency = asCurrency(filters.amountCurrency)
+      if (listCurrency) query = query.eq("original_currency", listCurrency)
     }
     if (filters.amountMin !== undefined && !isNaN(filters.amountMin)) {
       query = query.gte("amount", filters.amountMin)
@@ -382,7 +385,8 @@ export async function GET(request: NextRequest) {
 
     // Apply amount range filter to totals
     if (filters.amountCurrency) {
-      totalsQuery = totalsQuery.eq("original_currency", filters.amountCurrency)
+      const totalsCurrency = asCurrency(filters.amountCurrency)
+      if (totalsCurrency) totalsQuery = totalsQuery.eq("original_currency", totalsCurrency)
     }
     if (filters.amountMin !== undefined && !isNaN(filters.amountMin)) {
       totalsQuery = totalsQuery.gte("amount", filters.amountMin)

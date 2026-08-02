@@ -269,13 +269,18 @@ export interface AiClassificationResult {
   /** AI's reasoning for the classification and skip decision */
   reasoning: string;
 
-  /** Hint for email consolidation (grouping related emails) */
+  /**
+   * Hint for email consolidation (grouping related emails).
+   *
+   * Fields accept null as well as undefined: this comes back as model-produced
+   * JSON, where an unknown value is emitted as null rather than omitted.
+   */
   related_transaction_hint?: {
-    vendor_name?: string;
-    amount?: number;
-    currency?: string;
-    approximate_date?: string;
-    reference_id?: string;
+    vendor_name?: string | null;
+    amount?: number | null;
+    currency?: string | null;
+    approximate_date?: string | null;
+    reference_id?: string | null;
   } | null;
 
   /** Token usage from the Claude API call (for journal logging) */

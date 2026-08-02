@@ -11,7 +11,8 @@ interface StatementDetailHeaderProps {
   period: { start: string | null; end: string | null }
   status: string
   filename: string
-  uploadedAt?: string
+  // Nullable in the database; the render guards on it below.
+  uploadedAt?: string | null
   stats: {
     extracted: number
     matched: number

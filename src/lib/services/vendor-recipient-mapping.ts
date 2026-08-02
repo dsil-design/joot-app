@@ -6,6 +6,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { embeddedOne } from '@/lib/supabase/embedded'
 
 export interface VendorRecipientMapping {
   recipientNameNormalized: string
@@ -105,7 +106,7 @@ export async function fetchMappings(
   return data.map((row) => ({
     recipientNameNormalized: row.recipient_name_normalized,
     vendorId: row.vendor_id,
-    vendorName: (row.vendors as { name: string } | null)?.name || undefined,
+    vendorName: embeddedOne<{ name: string }>(row.vendors)?.name || undefined,
     parserKey: row.parser_key,
     matchCount: row.match_count,
   }))

@@ -471,8 +471,12 @@ function proposeVendor(
   }
 
   // Strategy 1c: Learned statement description mapping
+  // ProposalSourceType is 'statement' | 'email' | 'merged' | 'payment_slip' — it
+  // has no slip-merged variants, so a 'merged_slip_stmt' comparison here could
+  // never be true. Slip+statement cards therefore don't pick up learned
+  // description mappings; widening the union is a separate change.
   if (context.statementDescriptionMappings.length > 0 && (
-    item.sourceType === 'statement' || item.sourceType === 'merged' || item.sourceType === 'merged_slip_stmt'
+    item.sourceType === 'statement' || item.sourceType === 'merged'
   )) {
     const descMapping = findStatementDescriptionMatch(
       item.description,

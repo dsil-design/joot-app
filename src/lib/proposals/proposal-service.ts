@@ -28,6 +28,7 @@ import type {
 import { fetchMappings } from '@/lib/services/vendor-recipient-mapping'
 import { fetchStatementDescriptionMappings } from '@/lib/services/statement-description-learning'
 import { suggestVendorName } from './vendor-matcher'
+import { embeddedOne } from '@/lib/supabase/embedded'
 
 /**
  * A proposal must always carry a vendor id or a non-empty name suggestion —
@@ -206,7 +207,7 @@ async function fetchRecentTransactions(
     currency: tx.original_currency,
     date: tx.transaction_date,
     vendorId: tx.vendor_id || undefined,
-    vendorName: (tx.vendors as { name: string } | null)?.name || undefined,
+    vendorName: embeddedOne<{ name: string }>(tx.vendors)?.name || undefined,
     paymentMethodId: tx.payment_method_id || undefined,
     transactionType: tx.transaction_type as 'expense' | 'income' | 'transfer',
     tagIds: tagMap.get(tx.id) || [],
@@ -254,7 +255,7 @@ async function fetchVendorTagFrequency(
     const vendorId = txVendorMap.get(link.transaction_id)
     if (!vendorId) continue
 
-    const tagName = (link.tags as { name: string } | null)?.name || ''
+    const tagName = embeddedOne<{ name: string }>(link.tags)?.name || ''
     let vendorMap = vendorTagCount.get(vendorId)
     if (!vendorMap) {
       vendorMap = new Map()
@@ -609,7 +610,7 @@ export async function markStaleProposals(
 ): Promise<number> {
   let query = supabase
     .from('transaction_proposals')
-    .update({ status: 'stale' })
+    .update({ status: 'stale' }, { count: 'exact' })
     .eq('user_id', userId)
     .eq('status', 'pending')
 
@@ -617,7 +618,7 @@ export async function markStaleProposals(
     query = query.in('composite_id', compositeIds)
   }
 
-  const { count } = await query.select('id', { count: 'exact', head: true })
+  const { count } = await query
   return count || 0
 }
 
@@ -688,7 +689,7 @@ export function transformProposalRow(
 
     proposal.vendor = {
       value: {
-        id: row.proposed_vendor_id,
+        id: row.proposed_vendor_id ?? null,
         name: vendorName,
       },
       confidence: fc.vendor_id?.score ?? 0,

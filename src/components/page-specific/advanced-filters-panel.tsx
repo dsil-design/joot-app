@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { CURRENCY_CONFIG_FALLBACK } from "@/lib/utils/currency-symbols-sync"
+import type { DateRange } from "react-day-picker"
 
 type TransactionType = "all" | "expense" | "income" | "transfer"
 type SourceType = "any" | "email" | "statement" | "none"

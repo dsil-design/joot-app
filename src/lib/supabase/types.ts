@@ -45,13 +45,25 @@ export type UserUpdate = TablesUpdate<'users'>
 // ── Joined shapes ────────────────────────────────────────────────────────
 
 /**
- * A transaction with its vendor and payment method joined in. `payment_method`
- * is the flattened name some callers project alongside the joined row.
+ * A transaction with its related rows joined in.
+ *
+ * Both shapes are present because the transaction hooks reshape what Supabase
+ * returns: the select yields `vendors` / `payment_methods` / `transaction_tags`,
+ * and the hooks then attach `vendor`, `payment_method` and a flattened `tags`
+ * array. Components read the flattened form.
  */
 export type TransactionWithVendorAndPayment = Tables<'transactions'> & {
+  // As returned by the Supabase select.
   vendors?: Tables<'vendors'> | null
   payment_methods?: Tables<'payment_methods'> | null
-  payment_method?: string
+  // As attached by the hooks. `payment_method` is the joined row, not a name.
+  vendor?: Tables<'vendors'> | null
+  payment_method?: Tables<'payment_methods'> | null
+  tags?: Tables<'tags'>[]
+  // Import provenance shown on the transaction detail page, per
+  // docs/transaction-source-references-spec.md.
+  emailSource?: EmailSourceData | null
+  statementSource?: StatementSourceData | null
 }
 
 /**

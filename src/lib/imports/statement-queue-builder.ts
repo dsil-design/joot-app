@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import { makeStatementId } from '@/lib/utils/import-id'
 import type { QueueItem, Suggestion } from './queue-types'
 import { fetchMatchedTransactions } from './fetch-matched-transactions'
+import { embeddedOne } from '@/lib/supabase/embedded'
 
 /**
  * Normalize an ISO timestamp or date string to YYYY-MM-DD.
@@ -110,7 +111,7 @@ export async function fetchStatementQueueItems(
 
     const extractionLog = statement.extraction_log as { suggestions?: Suggestion[] } | null
     const suggestions = extractionLog?.suggestions || []
-    const pm = statement.payment_methods as { id: string; name: string; type?: string } | null
+    const pm = embeddedOne<{ id: string; name: string; type?: string }>(statement.payment_methods)
 
     for (let i = 0; i < suggestions.length; i++) {
       const suggestion = suggestions[i]

@@ -15,6 +15,8 @@ import { fetchPaymentSlipQueueItems } from '@/lib/imports/payment-slip-queue-bui
 import { aggregateQueueItems } from '@/lib/imports/queue-aggregator'
 import { parseImportId } from '@/lib/utils/import-id'
 import type { ProposalInput, RuleEngineContext } from '@/lib/proposals/types'
+import type { Json } from '@/lib/supabase/types'
+import { asCurrency } from '@/lib/supabase/enums'
 
 /**
  * POST /api/imports/proposals/generate-single
@@ -217,14 +219,17 @@ export async function POST(request: NextRequest) {
       payment_slip_upload_id: proposalInput.paymentSlipUploadId || null,
       proposed_description: engineResult.fields.description || null,
       proposed_amount: engineResult.fields.amount ?? null,
-      proposed_currency: engineResult.fields.currency || null,
+      // Enum-typed column — the engine's currency is a plain string, so it has
+      // to be checked against the enum before it can be stored.
+      proposed_currency: asCurrency(engineResult.fields.currency),
       proposed_transaction_type: engineResult.fields.transactionType || null,
       proposed_date: engineResult.fields.date || null,
       proposed_vendor_id: engineResult.fields.vendorId || null,
       proposed_vendor_name_suggestion: resolveVendorNameSuggestion(proposalInput, engineResult),
       proposed_payment_method_id: engineResult.fields.paymentMethodId || null,
       proposed_tag_ids: engineResult.fields.tagIds || [],
-      field_confidence: engineResult.fieldConfidence,
+      // jsonb column — see note on the Json cast below.
+      field_confidence: engineResult.fieldConfidence as unknown as Json,
       overall_confidence: engineResult.overallConfidence,
       enrichment_confidence: engineResult.enrichmentConfidence,
       engine: engineResult.engine,
