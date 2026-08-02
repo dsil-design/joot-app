@@ -27,6 +27,15 @@ function normalizeRecipientName(name: string): string {
 }
 
 /**
+ * Shared counterparty normalizer.
+ *
+ * Exported so auto-tag rules match names the same way vendor learning does —
+ * two normalizers would drift and a rule would silently stop matching a name
+ * the mapping layer still recognizes.
+ */
+export const normalizeCounterpartyName = normalizeRecipientName
+
+/**
  * Check if a parser key belongs to a bank transfer parser.
  */
 export function isBankParser(parserKey: string | null | undefined): boolean {

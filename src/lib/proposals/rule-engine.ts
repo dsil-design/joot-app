@@ -18,6 +18,7 @@ import { matchVendor, suggestVendorName } from './vendor-matcher'
 import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour, findPaymentMethodByBankDetected } from './payment-method-mapper'
 import { findMappingMatch, isBankParser } from '@/lib/services/vendor-recipient-mapping'
 import { findStatementDescriptionMatch } from '@/lib/services/statement-description-learning'
+import { evaluateAutoTagRules } from '@/lib/services/auto-tag-rules'
 import { calculateDaysDiff } from '@/lib/matching/date-matcher'
 import { isCardPaymentDescription } from '@/lib/matching/transfer-descriptions'
 import { calculateEnrichmentConfidence } from './confidence'
@@ -553,6 +554,51 @@ function proposeTags(
   fields: ProposedFields,
   fc: FieldConfidenceMap
 ) {
+  // Inferred strategies run first and write into fields/fc as before.
+  proposeInferredTags(item, context, fields, fc)
+
+  // User-authored rules are then unioned on top. Deliberately additive: a rule
+  // saying "always tag Nidnoi reimbursement" must not erase a correctly
+  // inferred "groceries" tag on the same transaction.
+  const ruleMatch = evaluateAutoTagRules(
+    context.autoTagRules || [],
+    item,
+    fields.vendorId,
+    fields.transactionType,
+    new Set(context.tags.map((t) => t.id))
+  )
+  if (!ruleMatch) return
+
+  const existing = fields.tagIds || []
+  const added = ruleMatch.tagIds.filter((id) => !existing.includes(id))
+  fields.tagIds = [...existing, ...added]
+  fields.autoTagRuleIds = ruleMatch.ruleIds
+
+  const ruleTagNames = ruleMatch.tagIds
+    .map((id) => context.tags.find((t) => t.id === id)?.name)
+    .filter(Boolean)
+    .join(', ')
+
+  const priorReasoning = added.length < ruleMatch.tagIds.length || existing.length > 0
+    ? ` (kept: ${existing
+        .map((id) => context.tags.find((t) => t.id === id)?.name)
+        .filter(Boolean)
+        .join(', ')})`
+    : ''
+
+  fc.tag_ids = {
+    score: 98,
+    reasoning: `Auto-tag ${ruleMatch.labels.join(' + ')}: ${ruleTagNames}${priorReasoning}`,
+    source: 'user_rule',
+  }
+}
+
+function proposeInferredTags(
+  item: ProposalInput,
+  context: RuleEngineContext,
+  fields: ProposedFields,
+  fc: FieldConfidenceMap
+) {
   // Strategy 0: Past corrections — user previously corrected tags for similar items
   const tagCorrection = findBestCorrection(item, context, 'tag_ids')
   if (tagCorrection && Array.isArray(tagCorrection.correctedValue)) {
@@ -574,9 +620,14 @@ function proposeTags(
     return
   }
 
-  // Find tags frequently used with this vendor
+  // Find tags frequently used with this vendor.
+  //
+  // `frequency` is now measured over the vendor's *tagged* transactions (see
+  // fetchVendorTagFrequency), so a majority there is a real convention. The
+  // second observation is what separates a convention from a one-off: without
+  // it a single stray tag on a first-time vendor scores a perfect 1.0.
   const vendorFreqs = context.vendorTagFrequency.filter(
-    (vtf) => vtf.vendorId === fields.vendorId && vtf.frequency > 0.5
+    (vtf) => vtf.vendorId === fields.vendorId && vtf.frequency > 0.5 && vtf.count >= 2
   )
 
   if (vendorFreqs.length === 0) {
