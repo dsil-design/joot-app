@@ -812,6 +812,10 @@ export function ReviewFocusModal({
   // Id of the item whose payment method has already been pre-filled
   const pmResolvedForItemRef = React.useRef<string | null>(null)
 
+  // Invalidates the in-flight vendor lookup for the item being navigated away
+  // from, so its result can never land in the next item's form.
+  const cancelPrefillRef = React.useRef<(() => void) | null>(null)
+
   // Proposal-derived suggestions
   const proposal = item?.proposal
   const vendorAlternatives = proposal?.vendor?.value.alternatives?.slice(0, 3) || []
@@ -837,6 +841,7 @@ export function ReviewFocusModal({
     if (!open || !item) return
 
     // Reset
+    cancelPrefillRef.current?.()
     setAiPrefilled(new Set())
     setFieldReasoning({})
     proposalValuesRef.current = {}
@@ -941,11 +946,23 @@ export function ReviewFocusModal({
     }
 
     if (meta || hintFields.size > 0) {
+      // Vendor resolution is a network round-trip, and the user can step to the
+      // next item with an arrow key long before it lands. Without this guard an
+      // in-flight lookup for the previous card wrote its vendor into the form
+      // that had already been reset for the current one — which is how an
+      // Xfinity bill was presented, zap and all, as a "smart pre-fill" of
+      // Lazada. Stale resolutions are dropped instead.
+      let cancelled = false
+      cancelPrefillRef.current = () => {
+        cancelled = true
+      }
+
       const resolve = async () => {
         const prefilledFields = new Set<string>(hintFields)
 
         if (meta?.vendorId) {
           const vendorData = await getVendorById(meta.vendorId)
+          if (cancelled) return
           if (vendorData) {
             setVendor(vendorData.id)
             setVendorLabel(vendorData.name)
@@ -961,6 +978,7 @@ export function ReviewFocusModal({
           const candidates = new Map<string, { id: string; name: string; transactionCount: number }>()
           for (const q of Array.from(new Set(queries))) {
             const results = await searchVendors(q, 10)
+            if (cancelled) return
             for (const v of results) {
               candidates.set(v.id, { id: v.id, name: v.name, transactionCount: 0 })
             }
@@ -973,6 +991,7 @@ export function ReviewFocusModal({
           }
         }
 
+        if (cancelled) return
         if (prefilledFields.size > 0) {
           setAiPrefilled(prefilledFields)
         }
