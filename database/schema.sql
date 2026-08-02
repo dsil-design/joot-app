@@ -1152,7 +1152,7 @@ CREATE TABLE public.payment_slip_uploads (
   memo TEXT,
   bank_detected TEXT,
   transfer_type TEXT,
-  detected_direction TEXT CHECK (detected_direction IS NULL OR detected_direction IN ('expense', 'income')),
+  detected_direction TEXT CHECK (detected_direction IS NULL OR detected_direction IN ('expense', 'income', 'transfer')),
   payment_method_id UUID REFERENCES public.payment_methods(id) ON DELETE SET NULL,
 
   -- Full extraction data from Claude Vision
