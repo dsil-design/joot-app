@@ -155,8 +155,10 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
     // 5. Match against existing transactions
     const matchResult = await findMatchingTransaction(supabase, upload.user_id, extraction)
 
-    // 6. Save results
-    await supabase
+    // 6. Save results. The outcome is checked: an unchecked write here let
+    // IMG_1602.JPG sit at `processing` from April to August while every caller
+    // was told extraction had succeeded.
+    const { error: saveError } = await supabase
       .from('payment_slip_uploads')
       .update({
         status: 'ready_for_review',
@@ -206,6 +208,10 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
         ai_duration_ms: visionResult.durationMs,
       })
       .eq('id', uploadId)
+
+    if (saveError) {
+      throw new Error(`Failed to save extraction result: ${saveError.message}`)
+    }
 
     // Log activity
     await supabase

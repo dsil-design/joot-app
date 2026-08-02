@@ -50,11 +50,15 @@ export function UploadPaymentSlipDialog({
   const router = useRouter()
   const [files, setFiles] = useState<FileUploadStatus[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isExtracting, setIsExtracting] = useState(false)
+  const [extractionError, setExtractionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
       setFiles([])
       setIsProcessing(false)
+      setIsExtracting(false)
+      setExtractionError(null)
     }
   }, [open])
 
@@ -77,6 +81,7 @@ export function UploadPaymentSlipDialog({
   const processAllFiles = useCallback(async () => {
     if (files.length === 0) return
     setIsProcessing(true)
+    setExtractionError(null)
 
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -139,25 +144,33 @@ export function UploadPaymentSlipDialog({
       }
     }
 
-    // Extraction runs server-side in bounded batches instead of one
-    // fire-and-forget request per slip — a bulk drop that outran the AI
-    // rate limit once killed 45 slips in one go. Loop until drained.
-    void (async () => {
-      try {
-        for (let guard = 0; guard < 50; guard++) {
-          const res = await fetch('/api/payment-slips/process-batch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ scope: 'pending' }),
-          })
-          if (!res.ok) break
-          const { remaining } = await res.json()
-          if (!remaining) break
+    // The server drains the whole queue in one request, so extraction finishes
+    // even if this page goes away mid-flight. A previous version looped from
+    // here in a fire-and-forget IIFE and left 15 of 20 slips at 'pending' when
+    // the loop stopped after its first batch — silently, because both exit
+    // branches swallowed the failure.
+    setIsExtracting(true)
+    try {
+      for (let guard = 0; guard < 50; guard++) {
+        const res = await fetch('/api/payment-slips/process-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scope: 'pending' }),
+        })
+        if (!res.ok) {
+          throw new Error(`Extraction request failed (${res.status})`)
         }
-      } catch {
-        // Slips stay 'pending' and can be reprocessed from the slips page
+        // Non-zero only when a queue outlasts the server's time budget.
+        const { remaining } = await res.json()
+        if (!remaining) break
       }
-    })()
+    } catch (err) {
+      setExtractionError(
+        err instanceof Error ? err.message : 'Extraction failed'
+      )
+    } finally {
+      setIsExtracting(false)
+    }
 
     setIsProcessing(false)
     onUploadComplete?.()
@@ -167,7 +180,14 @@ export function UploadPaymentSlipDialog({
     setFiles(prev => prev.filter((_, i) => i !== index))
   }, [])
 
-  const allDone = files.length > 0 && files.every(f => f.status === 'done' || f.status === 'error')
+  // Extraction is part of "done" — surfacing the success panel while the
+  // server is still extracting is what invited people to navigate away
+  // mid-drain back when the drain depended on this page staying open.
+  const allDone =
+    files.length > 0 &&
+    files.every(f => f.status === 'done' || f.status === 'error') &&
+    !isProcessing &&
+    !isExtracting
   const doneCount = files.filter(f => f.status === 'done').length
   const hasFiles = files.length > 0
 
@@ -263,7 +283,9 @@ export function UploadPaymentSlipDialog({
                 Clear
               </Button>
               <Button size="sm" onClick={processAllFiles} disabled={isProcessing || files.every(f => f.status !== 'pending')}>
-                {isProcessing ? (
+                {isExtracting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Extracting...</>
+                ) : isProcessing ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading...</>
                 ) : (
                   <><Upload className="h-4 w-4 mr-2" />Upload {files.filter(f => f.status === 'pending').length} file{files.filter(f => f.status === 'pending').length !== 1 ? 's' : ''}</>
@@ -272,10 +294,30 @@ export function UploadPaymentSlipDialog({
             </div>
           )}
 
+          {isExtracting && (
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
+              <Loader2 className="h-4 w-4 animate-spin text-amber-500 dark:text-amber-400 shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Extracting {doneCount} slip{doneCount !== 1 ? 's' : ''}&hellip; this runs on
+                the server, so you can safely close this window.
+              </p>
+            </div>
+          )}
+
+          {extractionError && !isExtracting && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-3 py-2">
+              <XCircle className="h-4 w-4 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700 dark:text-red-300">
+                Uploads saved, but extraction stopped: {extractionError}. Select the
+                affected slips on the payment slips page and choose Reprocess.
+              </p>
+            </div>
+          )}
+
           {allDone && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-green-600 dark:text-green-400 font-medium">
-                {doneCount} slip{doneCount !== 1 ? 's' : ''} uploaded and processing
+                {doneCount} slip{doneCount !== 1 ? 's' : ''} uploaded and processed
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => {

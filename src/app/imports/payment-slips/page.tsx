@@ -161,21 +161,28 @@ export default function PaymentSlipsPage() {
   const reprocessSelected = useCallback(async () => {
     setIsReprocessing(true)
     try {
-      // Server-side batches with bounded concurrency — firing one request
-      // per slip in parallel outruns the AI rate limit on large selections.
+      // One request drains the whole selection: the server batches it with
+      // bounded concurrency so the AI rate limit still holds, and the work
+      // survives this page going away mid-run.
       const ids = Array.from(selectedIds)
-      for (let offset = 0; offset < ids.length; offset += 5) {
-        await fetch('/api/payment-slips/process-batch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: ids.slice(offset, offset + 5) }),
-        })
-        reset()
+      const res = await fetch('/api/payment-slips/process-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      if (!res.ok) throw new Error(`Reprocess failed (${res.status})`)
+      const { processed, failed, remaining } = await res.json()
+      if (failed > 0) {
+        toast.warning(`Reprocessed ${processed} slip${processed !== 1 ? 's' : ''}, ${failed} failed`)
+      } else if (remaining > 0) {
+        toast.info(`Reprocessed ${processed} slip${processed !== 1 ? 's' : ''}, ${remaining} still queued — run again to continue`)
+      } else {
+        toast.success(`Reprocessed ${processed} slip${processed !== 1 ? 's' : ''}`)
       }
       clearSelection()
       reset()
-    } catch {
-      // error is handled by the hook
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to reprocess slips')
     } finally {
       setIsReprocessing(false)
     }
