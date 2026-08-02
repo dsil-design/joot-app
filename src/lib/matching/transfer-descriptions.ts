@@ -40,3 +40,36 @@ export function isCardPaymentDescription(description: string | null | undefined)
   if (!description) return false
   return CARD_PAYMENT_PATTERNS.some((re) => re.test(description))
 }
+
+/**
+ * Phrases that identify a row as one leg of a transfer between two accounts the
+ * user owns (as opposed to a card payment, above).
+ *
+ * Same design rule as CARD_PAYMENT_PATTERNS: full banking idioms, and each one
+ * anchored on an account-number token where possible, so ordinary descriptions
+ * containing the word "transfer" (Thai bank rows say "TRF. PROMPTPAY" for
+ * everyday person-to-person payments) do not match.
+ */
+const INTER_ACCOUNT_TRANSFER_PATTERNS: RegExp[] = [
+  /\bonline\s*transfer\b/i,
+  /\btransfer\s+(?:from|to)\s+x+\d{3,}/i,
+  /\bovft\b/i,
+]
+
+/**
+ * True when a statement description reads as one leg of a transfer between the
+ * user's own accounts.
+ *
+ * Both legs are booked once, on the funding side, so the receiving row's
+ * direction legitimately disagrees with the transaction's `expense` type. Any
+ * direction check must skip these or it severs correct links — measured on live
+ * data, this exempts exactly the two `Online Transfer From XXXX5668` rows that
+ * pair with the user's own "Florida House" / "FL House Savings" transfers, and
+ * nothing else.
+ */
+export function isInterAccountTransferDescription(
+  description: string | null | undefined
+): boolean {
+  if (!description) return false
+  return INTER_ACCOUNT_TRANSFER_PATTERNS.some((re) => re.test(description))
+}
