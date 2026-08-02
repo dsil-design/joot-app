@@ -350,7 +350,8 @@ describe('Chase Sapphire Statement Parser', () => {
 
   describe('extractForeignDetails', () => {
     it('should extract foreign currency details', () => {
-      const details = extractForeignDetails(FOREIGN_TRANSACTION_TEXT.trim().split('\n'), 0);
+      // 340 THB x 0.02941 = $10.00, matching the row — the block belongs here.
+      const details = extractForeignDetails(FOREIGN_TRANSACTION_TEXT.trim().split('\n'), 0, 10.0);
 
       expect(details).not.toBeUndefined();
       expect(details!.originalAmount).toBe(340.0);
@@ -365,7 +366,8 @@ describe('Chase Sapphire Statement Parser', () => {
           'DONG',
           '5,643,000 X 0.000037997 (EXCHG RATE)',
         ],
-        0
+        0,
+        214.36
       );
 
       expect(details!.originalAmount).toBe(5643000);
@@ -376,7 +378,8 @@ describe('Chase Sapphire Statement Parser', () => {
     it('should tolerate a posting date in front of the currency word', () => {
       const details = extractForeignDetails(
         ['12/05  GRAB* BANGKOK TH  10.00', '12/06 BAHT', '340.00 X 0.02941 (EXCHG RATE)'],
-        0
+        0,
+        10.0
       );
 
       expect(details!.originalCurrency).toBe('THB');
@@ -385,7 +388,8 @@ describe('Chase Sapphire Statement Parser', () => {
     it('should fall back to the raw word for a currency not in the map', () => {
       const details = extractForeignDetails(
         ['12/05  SOME MERCHANT  10.00', 'KRONA', '105.00 X 0.0952 (EXCHG RATE)'],
-        0
+        0,
+        10.0
       );
 
       expect(details!.originalCurrency).toBe('KRONA');
@@ -394,7 +398,8 @@ describe('Chase Sapphire Statement Parser', () => {
     it('should ignore a domestic USD line, which Chase still prints with a rate', () => {
       const details = extractForeignDetails(
         ['12/05  US MERCHANT  10.00', 'USD', '10.00 X 1.0 (EXCHG RATE)'],
-        0
+        0,
+        10.0
       );
 
       expect(details).toBeUndefined();
@@ -403,7 +408,8 @@ describe('Chase Sapphire Statement Parser', () => {
     it('should return undefined when a rate line has no currency word', () => {
       const details = extractForeignDetails(
         ['12/05  US MERCHANT  10.00', '10.00 X 1.0 (EXCHG RATE)'],
-        0
+        0,
+        10.0
       );
 
       expect(details).toBeUndefined();
@@ -412,7 +418,8 @@ describe('Chase Sapphire Statement Parser', () => {
     it('should not treat a section header as a currency word', () => {
       const details = extractForeignDetails(
         ['12/05  US MERCHANT  10.00', 'PURCHASES', '340.00 X 0.02941 (EXCHG RATE)'],
-        0
+        0,
+        10.0
       );
 
       expect(details).toBeUndefined();
@@ -420,8 +427,53 @@ describe('Chase Sapphire Statement Parser', () => {
 
     it('should return undefined if no foreign details', () => {
       const lines = ['12/05  STARBUCKS SEATTLE WA                         5.75'];
-      const details = extractForeignDetails(lines, 0);
+      const details = extractForeignDetails(lines, 0, 5.75);
       expect(details).toBeUndefined();
+    });
+
+    it('should accept a block whose arithmetic reproduces the row amount', () => {
+      // Real Chase 3-line shape: merchant line, currency word, rate line.
+      // 340 THB x 0.02941 = $10.00, matching the row.
+      const lines = [
+        '12/05  GRAB* BANGKOK TH                            10.00',
+        '12/06  BAHT',
+        '340.00 X 0.02941 (EXCHG RATE)',
+      ];
+      const details = extractForeignDetails(lines, 0, 10.0);
+
+      expect(details).toBeDefined();
+      expect(details!.originalAmount).toBe(340.0);
+      expect(details!.originalCurrency).toBe('THB');
+    });
+
+    it('should reject a block copied from the following row', () => {
+      // The scan window reaches into the next row, so a US-domestic charge can
+      // pick up a block that belongs to a neighbouring foreign one. Here
+      // 11,021 THB x 0.030693 = $338.27 — the AMERICAN INTERNATIONAL BANGKOK
+      // charge on the next line — not the $100 Anthropic subscription. 22 such
+      // blocks exist in real statements; the true owner keeps its own copy, so
+      // rejecting the duplicate loses nothing.
+      const lines = [
+        '12/01  ANTHROPIC* CLAUDE SUB ANTHROPIC.COM CA     100.00',
+        '12/02  BAHT',
+        '11021.00 X 0.030693222 (EXCHG RATE)',
+      ];
+      const details = extractForeignDetails(lines, 0, 100.0);
+
+      expect(details).toBeUndefined();
+    });
+
+    it('should keep the block on the row it actually belongs to', () => {
+      const lines = [
+        '12/02  AMERICAN INTERNATIONAL BANGKOK             338.27',
+        '12/02  BAHT',
+        '11021.00 X 0.030693222 (EXCHG RATE)',
+      ];
+      const details = extractForeignDetails(lines, 0, 338.27);
+
+      expect(details).toBeDefined();
+      expect(details!.originalAmount).toBe(11021.0);
+      expect(details!.originalCurrency).toBe('THB');
     });
   });
 

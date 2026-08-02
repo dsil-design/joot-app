@@ -19,6 +19,7 @@ import type {
   StatementSummary,
   ParseOptions,
 } from './types';
+import { foreignBlockReconciles } from '../foreign-amount';
 
 // Chase identifier patterns
 const CHASE_IDENTIFIERS = [
@@ -270,7 +271,8 @@ function determineTransactionType(
  */
 function extractForeignDetails(
   lines: string[],
-  currentIndex: number
+  currentIndex: number,
+  rowAmount: number
 ): ParsedStatementTransaction['foreignTransaction'] | undefined {
   let currencyWord: string | undefined;
 
@@ -324,6 +326,20 @@ function extractForeignDetails(
       // but with no currency word. Skip it — there's no foreign info to capture.
       if (!currencyWord) return undefined;
       if (Math.abs(exchangeRate - 1) < 1e-9 && currencyWord === 'USD') {
+        return undefined;
+      }
+
+      // The scan window reaches into the following rows, so a US-domestic
+      // charge can pick up the block belonging to the next line. Accept it only
+      // if the arithmetic reproduces this row's own amount — the true owner
+      // keeps its copy, so rejecting a duplicate loses nothing.
+      if (
+        !foreignBlockReconciles({
+          rowAmount,
+          originalAmount,
+          exchangeRate,
+        })
+      ) {
         return undefined;
       }
 
@@ -545,7 +561,7 @@ function parseTransactions(
         }
 
         // Check for foreign transaction
-        const foreignDetails = extractForeignDetails(lines, i);
+        const foreignDetails = extractForeignDetails(lines, i, transaction.amount);
         if (foreignDetails) {
           transaction.foreignTransaction = foreignDetails;
         }
@@ -600,7 +616,7 @@ function parseTransactions(
             }
 
             // Check for foreign transaction details on following lines
-            const foreignDetails = extractForeignDetails(lines, i);
+            const foreignDetails = extractForeignDetails(lines, i, transaction.amount);
             if (foreignDetails) {
               transaction.foreignTransaction = foreignDetails;
             }

@@ -3,6 +3,7 @@ import { makeStatementId } from '@/lib/utils/import-id'
 import type { QueueItem, Suggestion } from './queue-types'
 import { fetchMatchedTransactions } from './fetch-matched-transactions'
 import { embeddedOne } from '@/lib/supabase/embedded'
+import { foreignBlockReconciles } from '@/lib/statements/foreign-amount'
 
 /**
  * Normalize an ISO timestamp or date string to YYYY-MM-DD.
@@ -157,9 +158,26 @@ export async function fetchStatementQueueItems(
           amount: suggestion.amount,
           currency: suggestion.currency,
           sourceFilename: statement.filename,
-          foreignAmount: suggestion.foreign_transaction?.originalAmount,
-          foreignCurrency: suggestion.foreign_transaction?.originalCurrency,
-          foreignExchangeRate: suggestion.foreign_transaction?.exchangeRate,
+          // Surface the printed foreign block only if its arithmetic reproduces
+          // this row's settled amount. The Chase parser scans following lines to
+          // find the block and could attach the next row's copy to a US-domestic
+          // charge; 22 stored rows carry one. Suppressing them here covers every
+          // consumer at once — the cross-source pairer, which treats a printed
+          // foreign amount as authoritative and ranks it above FX-converted
+          // candidates, and the review card, which renders "Originally ฿X" as
+          // fact. The parser-side fix stops new ones; this neutralises those
+          // already extracted, without reprocessing.
+          ...(foreignBlockReconciles({
+            rowAmount: suggestion.amount,
+            originalAmount: suggestion.foreign_transaction?.originalAmount,
+            exchangeRate: suggestion.foreign_transaction?.exchangeRate,
+          })
+            ? {
+                foreignAmount: suggestion.foreign_transaction?.originalAmount,
+                foreignCurrency: suggestion.foreign_transaction?.originalCurrency,
+                foreignExchangeRate: suggestion.foreign_transaction?.exchangeRate,
+              }
+            : {}),
         },
         matchedTransaction: matchedTransactionData,
         confidence: suggestion.confidence,
