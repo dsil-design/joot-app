@@ -5,6 +5,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { fetchAutoTagRules, recordRuleUsage } from '@/lib/services/auto-tag-rules'
 import { generateHybridProposal } from './hybrid-engine'
 import { parseImportId } from '@/lib/utils/import-id'
 import type {
@@ -60,7 +61,7 @@ export async function prefetchRuleEngineContext(
   userId: string,
   dateRange?: { from: string; to: string }
 ): Promise<RuleEngineContext> {
-  const [vendors, paymentMethods, tags, recentTxns, vendorTagFreqs, pastCorrections, vendorRecipientMappings, statementDescriptionMappings] = await Promise.all([
+  const [vendors, paymentMethods, tags, recentTxns, vendorTagFreqs, pastCorrections, vendorRecipientMappings, statementDescriptionMappings, autoTagRules] = await Promise.all([
     fetchVendors(supabase, userId),
     fetchPaymentMethods(supabase, userId),
     fetchTags(supabase, userId),
@@ -69,6 +70,7 @@ export async function prefetchRuleEngineContext(
     fetchPastCorrections(supabase, userId),
     fetchVendorRecipientMappings(supabase, userId),
     fetchStatementDescriptionMappingsForContext(supabase, userId),
+    fetchAutoTagRules(supabase, userId),
   ])
 
   // Build vendor description patterns from recent transactions
@@ -84,6 +86,7 @@ export async function prefetchRuleEngineContext(
     pastCorrections,
     vendorRecipientMappings,
     statementDescriptionMappings,
+    autoTagRules,
   }
 }
 
@@ -460,6 +463,10 @@ export async function generateAndStoreProposals(
     return true
   })
 
+  // Auto-tag rules that fired across the whole run, counted once per proposal
+  // they contributed to.
+  const firedRuleIds: string[] = []
+
   // Process in parallel batches of 5
   const BATCH_SIZE = 5
   for (let i = 0; i < itemsToProcess.length; i += BATCH_SIZE) {
@@ -483,6 +490,7 @@ export async function generateAndStoreProposals(
         response.generated++
         if (result.value.engine === 'rule_based') response.ruleOnly++
         else response.llmEnhanced++
+        firedRuleIds.push(...(result.value.fields.autoTagRuleIds || []))
       } else {
         console.error('Error generating proposal:', result.reason)
         response.errors++
@@ -490,6 +498,9 @@ export async function generateAndStoreProposals(
       }
     })
   }
+
+  // Fire-and-forget: a failed counter update must not fail the generation run.
+  await recordRuleUsage(supabase, firedRuleIds)
 
   response.durationMs = Date.now() - startTime
   return response

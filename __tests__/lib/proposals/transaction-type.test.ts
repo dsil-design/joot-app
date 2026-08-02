@@ -36,6 +36,7 @@ function makeContext(): RuleEngineContext {
     pastCorrections: [],
     vendorRecipientMappings: [],
     statementDescriptionMappings: [],
+    autoTagRules: [],
   }
 }
 
