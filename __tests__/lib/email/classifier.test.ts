@@ -71,8 +71,8 @@ describe('Email Classifier', () => {
         message_id: 'test-3',
         uid: 3,
         folder: 'INBOX',
-        subject: 'Transfer Notification',
-        from_address: 'bualuang@bangkokbank.com',
+        subject: 'Funds Transfer Confirmation',
+        from_address: 'bualuangmbanking@bangkokbank.com',
         from_name: 'Bangkok Bank',
         email_date: new Date(),
         text_body: 'Your transfer was successful',
@@ -92,8 +92,10 @@ describe('Email Classifier', () => {
         message_id: 'test-4',
         uid: 4,
         folder: 'INBOX',
-        subject: 'Your receipt from Unknown Store',
-        from_address: 'noreply@unknown.com',
+        // Deliberately avoids "receipt from" — that is Stripe's subject
+        // pattern, and a subject match alone is enough to claim an email.
+        subject: 'Your receipt is attached',
+        from_address: 'noreply@unknown-merchant.example',
         from_name: 'Unknown',
         email_date: new Date(),
         text_body: 'Thank you for your purchase',

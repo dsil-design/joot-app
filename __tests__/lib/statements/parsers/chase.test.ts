@@ -61,9 +61,12 @@ INTEREST CHARGED
 None this period
 `;
 
+// Real Chase foreign-transaction layout: the charge line, then the currency
+// word on its own line, then the original amount and rate.
 const FOREIGN_TRANSACTION_TEXT = `
 12/05  GRAB* BANGKOK TH                            10.00
-       Foreign currency: 340.00 THB at exchange rate 0.02941
+BAHT
+340.00 X 0.02941 (EXCHG RATE)
 `;
 
 const MULTI_PAGE_STATEMENT = `
@@ -347,16 +350,72 @@ describe('Chase Sapphire Statement Parser', () => {
 
   describe('extractForeignDetails', () => {
     it('should extract foreign currency details', () => {
-      const lines = [
-        '12/05  GRAB* BANGKOK TH                            10.00',
-        'Foreign currency: 340.00 THB at exchange rate 0.02941',
-      ];
-      const details = extractForeignDetails(lines, 0);
+      const details = extractForeignDetails(FOREIGN_TRANSACTION_TEXT.trim().split('\n'), 0);
 
       expect(details).not.toBeUndefined();
       expect(details!.originalAmount).toBe(340.0);
       expect(details!.originalCurrency).toBe('THB');
       expect(details!.exchangeRate).toBe(0.02941);
+    });
+
+    it('should map currency words to ISO codes and strip thousands separators', () => {
+      const details = extractForeignDetails(
+        [
+          '11/28  SHOPEE HANOI VN                             214.36',
+          'DONG',
+          '5,643,000 X 0.000037997 (EXCHG RATE)',
+        ],
+        0
+      );
+
+      expect(details!.originalAmount).toBe(5643000);
+      expect(details!.originalCurrency).toBe('VND');
+      expect(details!.exchangeRate).toBe(0.000037997);
+    });
+
+    it('should tolerate a posting date in front of the currency word', () => {
+      const details = extractForeignDetails(
+        ['12/05  GRAB* BANGKOK TH  10.00', '12/06 BAHT', '340.00 X 0.02941 (EXCHG RATE)'],
+        0
+      );
+
+      expect(details!.originalCurrency).toBe('THB');
+    });
+
+    it('should fall back to the raw word for a currency not in the map', () => {
+      const details = extractForeignDetails(
+        ['12/05  SOME MERCHANT  10.00', 'KRONA', '105.00 X 0.0952 (EXCHG RATE)'],
+        0
+      );
+
+      expect(details!.originalCurrency).toBe('KRONA');
+    });
+
+    it('should ignore a domestic USD line, which Chase still prints with a rate', () => {
+      const details = extractForeignDetails(
+        ['12/05  US MERCHANT  10.00', 'USD', '10.00 X 1.0 (EXCHG RATE)'],
+        0
+      );
+
+      expect(details).toBeUndefined();
+    });
+
+    it('should return undefined when a rate line has no currency word', () => {
+      const details = extractForeignDetails(
+        ['12/05  US MERCHANT  10.00', '10.00 X 1.0 (EXCHG RATE)'],
+        0
+      );
+
+      expect(details).toBeUndefined();
+    });
+
+    it('should not treat a section header as a currency word', () => {
+      const details = extractForeignDetails(
+        ['12/05  US MERCHANT  10.00', 'PURCHASES', '340.00 X 0.02941 (EXCHG RATE)'],
+        0
+      );
+
+      expect(details).toBeUndefined();
     });
 
     it('should return undefined if no foreign details', () => {
@@ -576,9 +635,10 @@ describe('Chase Sapphire Statement Parser', () => {
 
         PURCHASES
 
-        12/05  GRAB* BANGKOK TH                            10.00
-        Foreign currency: 340.00 THB at exchange rate 0.02941
-      `;
+12/05  GRAB* BANGKOK TH                            10.00
+BAHT
+340.00 X 0.02941 (EXCHG RATE)
+`;
       const result = chaseParser.parse(foreignStatement);
 
       const grabTx = result.transactions.find((t) => t.description.includes('GRAB'));

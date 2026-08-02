@@ -128,6 +128,20 @@ describe('StatementProcessor', () => {
             }),
           };
         }
+        // The processor infers a parser from the payment method name before
+        // extracting; without this branch the `{}` fallback below throws.
+        if (table === 'payment_methods') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({
+                  data: { name: 'Chase Sapphire Reserve' },
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
         if (table === 'transactions') {
           return {
             select: jest.fn().mockReturnValue({

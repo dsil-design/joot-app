@@ -137,16 +137,29 @@ describe('American Express Statement Parser', () => {
       expect(amexParser.canParse('American Express Statement')).toBe(true);
     });
 
+    // A single weak identifier is deliberately not enough. Card-product names
+    // and the bare word "amex" show up in other issuers' statements (an "Amex
+    // Epayment" ACH line on a PNC statement, for one), so claiming those would
+    // hand the file to the wrong parser. Real Amex statements always carry the
+    // issuer name alongside the product name.
     it('should recognize AMEX statements', () => {
-      expect(amexParser.canParse('Your AMEX card statement')).toBe(true);
+      expect(amexParser.canParse('American Express\nYour AMEX card statement')).toBe(true);
     });
 
     it('should recognize Platinum Card statements', () => {
-      expect(amexParser.canParse('Platinum Card Statement')).toBe(true);
+      expect(amexParser.canParse('American Express\nPlatinum Card Statement')).toBe(true);
     });
 
     it('should recognize Gold Card statements', () => {
-      expect(amexParser.canParse('Gold Card Statement')).toBe(true);
+      expect(amexParser.canParse('Member Since 2015\nGold Card Statement')).toBe(true);
+    });
+
+    it.each([
+      ['a card product name alone', 'Platinum Card Statement'],
+      ['the bare word amex', 'Your AMEX card statement'],
+      ['an Amex ACH line on another issuer statement', 'PNC Bank Statement\nAmex Epayment ACH'],
+    ])('should not claim a statement on %s', (_label, text) => {
+      expect(amexParser.canParse(text)).toBe(false);
     });
 
     it('should recognize statements with americanexpress.com', () => {
@@ -157,10 +170,10 @@ describe('American Express Statement Parser', () => {
       expect(amexParser.canParse('Membership Rewards Points Summary')).toBe(true);
     });
 
-    it('should recognize co-branded cards', () => {
-      expect(amexParser.canParse('Delta SkyMiles Credit Card')).toBe(true);
-      expect(amexParser.canParse('Hilton Honors Card')).toBe(true);
-      expect(amexParser.canParse('Marriott Bonvoy Card')).toBe(true);
+    it('should recognize co-branded cards alongside the issuer name', () => {
+      expect(amexParser.canParse('American Express\nDelta SkyMiles Credit Card')).toBe(true);
+      expect(amexParser.canParse('American Express\nHilton Honors Card')).toBe(true);
+      expect(amexParser.canParse('American Express\nMarriott Bonvoy Card')).toBe(true);
     });
 
     it('should not match non-Amex statements', () => {

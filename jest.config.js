@@ -1,3 +1,9 @@
+// Pin the suite's timezone so a local run predicts CI. Vercel and the GitHub
+// runner are both UTC; developers here are UTC+7, and several date paths read
+// local calendar components, so an unpinned suite passes in one place and fails
+// in the other. Set before the test environment initializes.
+process.env.TZ = 'UTC';
+
 /** @type {import('jest').Config} */
 const config = {
   preset: 'ts-jest',

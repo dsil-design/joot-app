@@ -458,10 +458,16 @@ describe('Confidence Scoring', () => {
 
       const result = calculateConfidenceScore(data);
 
-      // Score: 0 (required incomplete) + 0 (amount invalid) + 20 (date) + 10 (vendor) = 30
-      // Required fields check fails because amount is 0 (falsy in the check)
-      expect(result.totalScore).toBeLessThan(55);
-      expect(result.level).toBe('low');
+      // Score: 40 (required fields — `amount !== undefined`, so a zero amount
+      // still counts as present) + 0 (amount not > 0) + 20 (date) + 10 (vendor).
+      // The zero amount costs the Amount component but not Required Fields, so
+      // this lands in `medium` and routes to pending_review rather than `low`.
+      expect(result.totalScore).toBe(70);
+      expect(result.level).toBe('medium');
+
+      const amountComponent = result.components.find((c) => c.name === 'Amount');
+      expect(amountComponent!.satisfied).toBe(false);
+      expect(amountComponent!.earnedPoints).toBe(0);
     });
   });
 });
