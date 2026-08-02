@@ -43,6 +43,11 @@ export interface SmartPreFillHints {
   description?: string
   /** Extraction confidence (0-100) */
   extractionConfidence?: number
+  /** Card digits printed on the receipt email (e.g. Grab's "•••• 1234") */
+  paymentCardLastFour?: string
+  paymentCardType?: string
+  /** bank_detected from payment-slip extraction (e.g. 'kbank') */
+  bankDetected?: string
 }
 
 /**
@@ -54,7 +59,9 @@ export interface CreateFromImportData {
   amount: number
   currency: string
   date: string
+  /** Payment method that owns the statement/slip this row was imported from */
   paymentMethodId?: string
+  paymentMethodName?: string
   /** AI-driven smart pre-fill hints */
   smartHints?: SmartPreFillHints
   /** Smart transaction proposal */
@@ -103,7 +110,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { PARSER_PAYMENT_METHOD_MAP } from "@/lib/proposals/payment-method-mapper"
+import { resolvePaymentMethodFromSignals } from "@/lib/proposals/payment-method-mapper"
 import type { TransactionProposal } from "@/lib/proposals/types"
 import { parseImportId } from "@/lib/utils/import-id"
 
@@ -215,6 +222,7 @@ export function CreateFromImportDialog({
   const { searchVendors, getVendorById, createVendor } = useVendorSearch()
   const {
     options: paymentOptions,
+    paymentMethods: paymentRecords,
     addCustomOption: addPaymentMethod,
     loading: paymentsLoading,
   } = usePaymentMethodOptions()
@@ -234,9 +242,32 @@ export function CreateFromImportDialog({
     })
   }, [])
 
-  // Keep a ref to paymentOptions so the effect doesn't re-trigger on every render
-  const paymentOptionsRef = React.useRef(paymentOptions)
-  paymentOptionsRef.current = paymentOptions
+  // Keep a ref to the payment methods so the effect doesn't re-trigger on every render
+  const paymentRecordsRef = React.useRef(paymentRecords)
+  paymentRecordsRef.current = paymentRecords
+
+  // Composite id whose payment method has already been pre-filled, so the
+  // retry effect fires once per item and never re-fills a cleared field.
+  const pmResolvedForItemRef = React.useRef<string | null>(null)
+
+  /**
+   * Everything the sources say about which account paid: the statement or slip
+   * the row came from first, then the receipt's own card digits / parser.
+   */
+  const paymentSignals = React.useMemo(
+    () => ({
+      sourcePaymentMethod: data?.paymentMethodId
+        ? { id: data.paymentMethodId, name: data.paymentMethodName || "" }
+        : null,
+      cardLastFour: data?.smartHints?.paymentCardLastFour,
+      cardType: data?.smartHints?.paymentCardType,
+      parserKey: data?.smartHints?.parserKey,
+      bankDetected: data?.smartHints?.bankDetected,
+    }),
+    [data]
+  )
+  const paymentSignalsRef = React.useRef(paymentSignals)
+  paymentSignalsRef.current = paymentSignals
 
   // Pre-fill form when data changes
   React.useEffect(() => {
@@ -257,6 +288,7 @@ export function CreateFromImportDialog({
       setVendorLabel("")
       setTags([])
       setTransactionType("expense")
+      pmResolvedForItemRef.current = null
 
       // Priority 1: Pre-fill from proposal (richer data)
       if (data.proposal) {
@@ -296,6 +328,7 @@ export function CreateFromImportDialog({
           prefilledFields.add("paymentMethod")
           reasoning.paymentMethod = p.paymentMethod.reasoning
           originalValues.paymentMethod = p.paymentMethod.value.id
+          pmResolvedForItemRef.current = data.compositeId
         }
 
         // Tags
@@ -319,11 +352,26 @@ export function CreateFromImportDialog({
         return // Skip smartHints when proposal is available
       }
 
-      // Priority 2: Smart pre-fills from AI hints (async)
+      // Priority 2: the account behind the sources — the statement/slip this
+      // row was imported from, else the receipt's card digits or parser.
+      const resolvedPm = resolvePaymentMethodFromSignals(
+        paymentSignalsRef.current,
+        paymentRecordsRef.current
+      )
+      if (resolvedPm) {
+        setPaymentMethod(resolvedPm.id)
+        setAiPrefilled((prev) => new Set([...prev, "paymentMethod"]))
+        setFieldReasoning((prev) => ({ ...prev, paymentMethod: resolvedPm.reasoning }))
+        pmResolvedForItemRef.current = data.compositeId
+      }
+
+      // Priority 3: Smart pre-fills from AI hints (async)
       if (data.smartHints) {
         const hints = data.smartHints
         const resolve = async () => {
-          const prefilledFields = new Set<string>()
+          const prefilledFields = new Set<string>(
+            resolvedPm ? ["paymentMethod"] : []
+          )
 
           // 1. Resolve vendor
           if (hints.vendorId) {
@@ -346,19 +394,7 @@ export function CreateFromImportDialog({
             }
           }
 
-          // 2. Resolve payment method by parser key
-          if (hints.parserKey && PARSER_PAYMENT_METHOD_MAP[hints.parserKey]) {
-            const patterns = PARSER_PAYMENT_METHOD_MAP[hints.parserKey]
-            const matched = paymentOptionsRef.current.find((opt) =>
-              patterns.some((p) => opt.label.toLowerCase().includes(p))
-            )
-            if (matched) {
-              setPaymentMethod(matched.value)
-              prefilledFields.add("paymentMethod")
-            }
-          }
-
-          // 3. Pre-fill description only from dedicated parsers with high confidence
+          // 2. Pre-fill description only from dedicated parsers with high confidence
           if (
             hints.description &&
             hints.parserKey &&
@@ -378,20 +414,18 @@ export function CreateFromImportDialog({
     }
   }, [data, open, getVendorById, searchVendors])
 
-  // Retry payment method pre-fill once options finish loading
+  // Second pass at the payment method: covers the payment methods arriving
+  // after the pre-fill effect ran, and a proposal that named none of its own.
   React.useEffect(() => {
-    if (!open || !data?.smartHints?.parserKey || paymentsLoading || paymentMethod) return
-    const parserKey = data.smartHints.parserKey
-    const patterns = PARSER_PAYMENT_METHOD_MAP[parserKey]
-    if (!patterns) return
-    const matched = paymentOptions.find((opt) =>
-      patterns.some((p) => opt.label.toLowerCase().includes(p))
-    )
-    if (matched) {
-      setPaymentMethod(matched.value)
-      setAiPrefilled((prev) => new Set([...prev, "paymentMethod"]))
-    }
-  }, [open, data, paymentsLoading, paymentOptions, paymentMethod])
+    if (!open || !data || paymentsLoading) return
+    if (pmResolvedForItemRef.current === data.compositeId) return
+    const resolved = resolvePaymentMethodFromSignals(paymentSignals, paymentRecords)
+    if (!resolved) return
+    pmResolvedForItemRef.current = data.compositeId
+    setPaymentMethod(resolved.id)
+    setAiPrefilled((prev) => new Set([...prev, "paymentMethod"]))
+    setFieldReasoning((prev) => ({ ...prev, paymentMethod: resolved.reasoning }))
+  }, [open, data, paymentsLoading, paymentSignals, paymentRecords])
 
   // Reset on close
   React.useEffect(() => {

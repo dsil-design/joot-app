@@ -62,6 +62,8 @@ const items: MatchCardData[] = [
   },
   {
     id: "merged:00000000-0000-0000-0000-000000000001+stmt:00000000-0000-0000-0000-000000000002:0",
+    // The account the statement belongs to — what payment-method pre-fill reads.
+    paymentMethod: { id: "pm-chase", name: "Chase Sapphire Reserve" },
     confidence: 92,
     confidenceLevel: "high",
     reasons: [],
@@ -163,6 +165,7 @@ const items: MatchCardData[] = [
   },
   {
     id: "statement:00000000-0000-0000-0000-000000000030:0",
+    paymentMethod: { id: "pm-chase", name: "Chase Sapphire Reserve" },
     confidence: 60,
     confidenceLevel: "medium",
     reasons: [],

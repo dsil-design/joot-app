@@ -17,6 +17,7 @@ import {
   type EmailMetadata,
   type MergedEmailData,
   type MergedPaymentSlipData,
+  type PaymentSlipMetadata,
   type CrossCurrencyInfo,
 } from "@/components/page-specific/match-card"
 import {
@@ -162,6 +163,7 @@ async function fetchMatches(
       source?: ImportSource
       emailMetadata?: EmailMetadata
       mergedEmailData?: MergedEmailData
+      paymentSlipMetadata?: PaymentSlipMetadata
       mergedPaymentSlipData?: MergedPaymentSlipData
       crossCurrencyInfo?: CrossCurrencyInfo
       proposal?: TransactionProposal
@@ -171,6 +173,7 @@ async function fetchMatches(
       rejectedPairKeys?: string[]
     }) => ({
       id: item.id,
+      paymentMethod: item.paymentMethod,
       statementTransaction: item.statementTransaction,
       matchedTransaction: item.matchedTransaction,
       confidence: item.confidence,
@@ -184,6 +187,7 @@ async function fetchMatches(
       source: item.source,
       emailMetadata: item.emailMetadata,
       mergedEmailData: item.mergedEmailData,
+      paymentSlipMetadata: item.paymentSlipMetadata,
       mergedPaymentSlipData: item.mergedPaymentSlipData,
       crossCurrencyInfo: item.crossCurrencyInfo,
       proposal: item.proposal,
@@ -474,12 +478,27 @@ export default function ReviewQueuePage() {
   const handleCreateAsNew = (id: string) => {
     const item = items.find((i) => i.id === id)
     if (!item) return
+    const emailMeta = item.emailMetadata || item.mergedEmailData?.metadata
+    const slipMeta = item.paymentSlipMetadata || item.mergedPaymentSlipData?.metadata
     setCreateDialogData({
       compositeId: id,
       description: item.statementTransaction.description,
       amount: item.statementTransaction.amount,
       currency: item.statementTransaction.currency,
       date: item.statementTransaction.date,
+      // The statement/slip a row came from is an account, so it names the
+      // payment method outright — the receipt email only names the merchant.
+      paymentMethodId: item.paymentMethod?.id,
+      paymentMethodName: item.paymentMethod?.name,
+      smartHints: {
+        vendorId: emailMeta?.vendorId,
+        vendorNameRaw: emailMeta?.vendorNameRaw,
+        parserKey: emailMeta?.parserKey,
+        extractionConfidence: emailMeta?.extractionConfidence,
+        paymentCardLastFour: emailMeta?.paymentCardLastFour,
+        paymentCardType: emailMeta?.paymentCardType,
+        bankDetected: slipMeta?.bankDetected,
+      },
       proposal: item.proposal,
     })
     setCreateDialogOpen(true)
@@ -790,7 +809,10 @@ export default function ReviewQueuePage() {
         currency: p.currency?.value || item.statementTransaction.currency,
         date: p.date?.value || item.statementTransaction.date,
         vendorId: p.vendor?.value.id || undefined,
-        paymentMethodId: p.paymentMethod?.value.id || undefined,
+        // Fall back to the account the statement/slip belongs to: a proposal
+        // that named no payment method shouldn't create an unassigned charge
+        // when the source document already says which account paid.
+        paymentMethodId: p.paymentMethod?.value.id || item.paymentMethod?.id || undefined,
         tagIds: p.tags?.value.map((t) => t.id) || undefined,
         transactionType: p.transactionType?.value || "expense",
       }

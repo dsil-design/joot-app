@@ -39,7 +39,10 @@ import { getParserTag } from "@/lib/utils/parser-tags"
 import { parseImportId } from "@/lib/utils/import-id"
 import { getSlipLink, getEmailLink, getStatementLink } from "@/lib/utils/import-source-links"
 import { formatLocalDate } from "@/lib/utils/date-helpers"
-import { PARSER_PAYMENT_METHOD_MAP } from "@/lib/proposals/payment-method-mapper"
+import {
+  paymentMethodSignalsFromItem,
+  resolvePaymentMethodFromSignals,
+} from "@/lib/proposals/payment-method-mapper"
 import { matchVendor } from "@/lib/proposals/vendor-matcher"
 import { getConfidenceLevel } from "@/components/ui/confidence-indicator"
 import Link from "next/link"
@@ -793,6 +796,7 @@ export function ReviewFocusModal({
   const { searchVendors, getVendorById, createVendor } = useVendorSearch()
   const {
     options: paymentOptions,
+    paymentMethods: paymentRecords,
     addCustomOption: addPaymentMethod,
     loading: paymentsLoading,
   } = usePaymentMethodOptions()
@@ -802,8 +806,11 @@ export function ReviewFocusModal({
     loading: tagsLoading,
   } = useTagOptions()
 
-  const paymentOptionsRef = React.useRef(paymentOptions)
-  paymentOptionsRef.current = paymentOptions
+  const paymentRecordsRef = React.useRef(paymentRecords)
+  paymentRecordsRef.current = paymentRecords
+
+  // Id of the item whose payment method has already been pre-filled
+  const pmResolvedForItemRef = React.useRef<string | null>(null)
 
   // Proposal-derived suggestions
   const proposal = item?.proposal
@@ -833,6 +840,10 @@ export function ReviewFocusModal({
     setAiPrefilled(new Set())
     setFieldReasoning({})
     proposalValuesRef.current = {}
+    // Cleared here and stamped once this item's payment method has been
+    // resolved, so the retry effect below fires exactly once per item — a user
+    // who deliberately clears the field doesn't get it filled straight back in.
+    pmResolvedForItemRef.current = null
 
     // Base pre-fill from source data
     setDescription(item.statementTransaction.description)
@@ -876,6 +887,7 @@ export function ReviewFocusModal({
         prefilledFields.add("paymentMethod")
         reasoning.paymentMethod = p.paymentMethod.reasoning
         originalValues.paymentMethod = p.paymentMethod.value.id
+        pmResolvedForItemRef.current = item.id
       }
       if (p.tags?.value && p.tags.value.length > 0) {
         setTags(p.tags.value.map((t) => t.id))
@@ -914,6 +926,20 @@ export function ReviewFocusModal({
       hintFields.add("description")
     }
 
+    // Payment method: the account behind the sources. Resolved from the
+    // statement/slip the row was imported from first, then from the receipt's
+    // own card digits or parser — same order the proposal engine uses.
+    const resolvedPm = resolvePaymentMethodFromSignals(
+      paymentMethodSignalsFromItem(item),
+      paymentRecordsRef.current
+    )
+    if (resolvedPm) {
+      setPaymentMethod(resolvedPm.id)
+      hintFields.add("paymentMethod")
+      setFieldReasoning((prev) => ({ ...prev, paymentMethod: resolvedPm.reasoning }))
+      pmResolvedForItemRef.current = item.id
+    }
+
     if (meta || hintFields.size > 0) {
       const resolve = async () => {
         const prefilledFields = new Set<string>(hintFields)
@@ -947,17 +973,6 @@ export function ReviewFocusModal({
           }
         }
 
-        if (meta?.parserKey && PARSER_PAYMENT_METHOD_MAP[meta.parserKey]) {
-          const patterns = PARSER_PAYMENT_METHOD_MAP[meta.parserKey]
-          const matched = paymentOptionsRef.current.find((opt) =>
-            patterns.some((p) => opt.label.toLowerCase().includes(p))
-          )
-          if (matched) {
-            setPaymentMethod(matched.value)
-            prefilledFields.add("paymentMethod")
-          }
-        }
-
         if (prefilledFields.size > 0) {
           setAiPrefilled(prefilledFields)
         }
@@ -966,21 +981,22 @@ export function ReviewFocusModal({
     }
   }, [open, item?.id, getVendorById, searchVendors]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Retry payment method pre-fill when options load
+  // Second pass at the payment method: covers both the payment methods
+  // arriving after the pre-fill effect ran, and a proposal that produced no
+  // payment method of its own — the account behind the sources still applies.
   React.useEffect(() => {
-    if (!open || !item || paymentsLoading || paymentMethod) return
-    const meta = item.emailMetadata || item.mergedEmailData?.metadata
-    if (!meta?.parserKey) return
-    const patterns = PARSER_PAYMENT_METHOD_MAP[meta.parserKey]
-    if (!patterns) return
-    const matched = paymentOptions.find((opt) =>
-      patterns.some((p) => opt.label.toLowerCase().includes(p))
+    if (!open || !item || paymentsLoading) return
+    if (pmResolvedForItemRef.current === item.id) return
+    const resolved = resolvePaymentMethodFromSignals(
+      paymentMethodSignalsFromItem(item),
+      paymentRecords
     )
-    if (matched) {
-      setPaymentMethod(matched.value)
-      setAiPrefilled((prev) => new Set([...prev, "paymentMethod"]))
-    }
-  }, [open, item?.id, paymentsLoading, paymentOptions, paymentMethod]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!resolved) return
+    pmResolvedForItemRef.current = item.id
+    setPaymentMethod(resolved.id)
+    setAiPrefilled((prev) => new Set([...prev, "paymentMethod"]))
+    setFieldReasoning((prev) => ({ ...prev, paymentMethod: resolved.reasoning }))
+  }, [open, item?.id, paymentsLoading, paymentRecords]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Navigation ──
 

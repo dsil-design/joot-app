@@ -147,6 +147,12 @@ export interface MergedPaymentSlipData {
 
 export interface MatchCardData {
   id: string
+  /**
+   * The payment method that owns the statement or slip this item came from.
+   * Carried through from the queue item so pre-fill can use the account the
+   * document belongs to — the receipt email only names the merchant.
+   */
+  paymentMethod?: { id: string; name: string } | null
   statementTransaction: StatementTransaction
   matchedTransaction?: MatchedTransaction
   confidence: number
@@ -165,6 +171,8 @@ export interface MatchCardData {
   emailMetadata?: EmailMetadata
   mergedEmailData?: MergedEmailData
   crossCurrencyInfo?: CrossCurrencyInfo
+  /** Slip metadata for standalone payment-slip cards. */
+  paymentSlipMetadata?: PaymentSlipMetadata
   mergedPaymentSlipData?: MergedPaymentSlipData
   proposal?: TransactionProposal
   proposalModified?: boolean
