@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { Suggestion } from '@/lib/imports/queue-types'
+import type { Json } from '@/lib/supabase/types'
 
 interface RematchStats {
   statementsChecked: number
@@ -185,7 +186,9 @@ async function rematchStatementSuggestions(
       await supabase
         .from('statement_uploads')
         .update({
-          extraction_log: { ...extractionLog, suggestions },
+          // Valid JSON, but the typed shape has no index signature and so
+          // isn't assignable to the generated Json union.
+          extraction_log: { ...extractionLog, suggestions } as unknown as Json,
         })
         .eq('id', statement.id)
     }

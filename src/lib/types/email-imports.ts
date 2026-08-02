@@ -103,13 +103,16 @@ export function aiClassificationToCoarse(aiClassification: AiClassification): Em
  * Check if an AI classification represents a likely transaction
  */
 export function isTransactionClassification(aiClassification: AiClassification): boolean {
-  return [
+  // Annotated so the array widens to the full union — an unannotated literal
+  // narrows to just these five members and rejects the parameter type.
+  const transactional: readonly AiClassification[] = [
     AI_CLASSIFICATION.TRANSACTION_RECEIPT,
     AI_CLASSIFICATION.SUBSCRIPTION_CHARGE,
     AI_CLASSIFICATION.BANK_TRANSFER_CONFIRMATION,
     AI_CLASSIFICATION.BILL_PAYMENT_CONFIRMATION,
     AI_CLASSIFICATION.REFUND_NOTIFICATION,
-  ].includes(aiClassification);
+  ];
+  return transactional.includes(aiClassification);
 }
 
 /** Auto-skip threshold: require this many feedback entries before auto-skipping */

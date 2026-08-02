@@ -5,6 +5,7 @@ import { CONFIDENCE_THRESHOLDS } from '@/lib/matching/match-scorer'
 import { groupRowsIntoBundles } from '@/lib/matching/email-bundler'
 import { scoreBundleAgainstTargets } from '@/lib/matching/bundle-scorer'
 import { loadSubOrders, autoMatchSubOrders } from './sub-order-matcher'
+import { embeddedOne } from '@/lib/supabase/embedded'
 
 interface ResolveResult {
   resolved: number
@@ -68,7 +69,7 @@ export async function resolveWaitingEmailTransactions(
     amount: Number(tx.amount),
     currency: tx.original_currency,
     date: tx.transaction_date,
-    vendor: (tx.vendors as { name: string } | null)?.name || tx.description || '',
+    vendor: embeddedOne<{ name: string }>(tx.vendors)?.name || tx.description || '',
     description: tx.description || undefined,
   }))
 
@@ -131,7 +132,7 @@ export async function resolveWaitingEmailTransactions(
     if (bundledIds.has(email.id)) continue
     if (!email.amount || !email.transaction_date) continue
 
-    const vendorName = (email.vendors as { name: string } | null)?.name || email.vendor_name_raw || ''
+    const vendorName = embeddedOne<{ name: string }>(email.vendors)?.name || email.vendor_name_raw || ''
 
     // Sub-order email (e.g. Amazon split shipment): match each sub-order
     // independently against the candidate statement lines. The

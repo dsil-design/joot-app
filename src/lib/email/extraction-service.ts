@@ -69,6 +69,7 @@ import { appleParser } from './extractors/apple';
 import { stripeParser } from './extractors/stripe';
 import { citizensBankParser } from './extractors/citizens-bank';
 import { aiFallbackParser } from './extractors/ai-fallback';
+import { embeddedOne } from '@/lib/supabase/embedded'
 
 /**
  * Registry of available email parsers
@@ -424,7 +425,7 @@ export class EmailExtractionService {
         amount: Number(tx.amount),
         currency: tx.original_currency,
         date: tx.transaction_date,
-        vendor: (tx.vendors as { name: string } | null)?.name || tx.description || '',
+        vendor: embeddedOne<{ name: string }>(tx.vendors)?.name || tx.description || '',
         description: tx.description || undefined,
       }));
 

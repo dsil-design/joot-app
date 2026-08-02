@@ -15,6 +15,9 @@ export interface PaymentSlipExtraction {
   time: string | null     // HH:MM (24hr)
   amount: number
   amount_raw: string | null // Raw amount string as shown on the slip (e.g. "117.00")
+  // Character-by-character reading the prompt asks for, used to cross-check
+  // `amount` (e.g. "1,1,7,.,0,0").
+  amount_characters?: string | null
   fee: number
   currency: 'THB'
   sender_name: string

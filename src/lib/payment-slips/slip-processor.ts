@@ -10,7 +10,7 @@
  * 6. Saves results to database
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { isRetryableAiError } from '@/lib/email/ai-client'
 import { extractFromPaymentSlip } from './vision-extractor'
 import { validateExtraction } from './extraction-validator'
@@ -241,7 +241,7 @@ export async function processPaymentSlip(uploadId: string): Promise<SlipProcessi
 }
 
 async function updateFailed(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   uploadId: string,
   error: string,
   visionResult?: { promptTokens: number; responseTokens: number; durationMs: number },
@@ -268,7 +268,7 @@ async function updateFailed(
  * Simple matching by amount + date (±1 day).
  */
 async function findMatchingTransaction(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   userId: string,
   extraction: PaymentSlipExtraction
 ): Promise<{ transactionId: string | null; confidence: number | null }> {

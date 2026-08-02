@@ -12,6 +12,7 @@ import { createServiceRoleClient } from '../supabase/server';
 import { callAi, isAiAvailable } from './ai-client';
 import { getJournalEntriesSince } from './ai-journal-service';
 import { getDecisionCountSince } from '../services/decision-learning';
+import type { Json } from '@/lib/supabase/types'
 
 // ============================================================================
 // TYPES
@@ -357,7 +358,8 @@ export async function runAnalysis(
         severity: i.severity,
         title: i.title,
         description: i.description,
-        evidence: i.evidence,
+        // jsonb column: Record<string, unknown> isn't assignable to Json.
+        evidence: i.evidence as unknown as Json,
         target_sender: i.target_sender || null,
         email_count: i.email_count || null,
         format_consistency_pct: i.format_consistency_pct || null,
@@ -375,8 +377,8 @@ export async function runAnalysis(
         status: 'completed',
         journal_entries_analyzed: entriesAnalyzed,
         journal_to: new Date().toISOString(),
-        summary,
-        patterns,
+        summary: summary as unknown as Json,
+        patterns: patterns as unknown as Json,
         recommendations: { insights: insights.map((i) => ({ type: i.insight_type, title: i.title, severity: i.severity })) },
         duration_ms: durationMs,
         ai_calls_made: aiCallsMade,

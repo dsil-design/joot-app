@@ -165,7 +165,9 @@ export class EmailSyncService {
       // For initial sync (lastUid = 0), use SINCE filter based on earliest transaction date
       // For incremental sync, fetch messages newer than last synced UID
       const emails: EmailInsertData[] = [];
-      let uidsToFetch: number[];
+      // ImapFlow.search() resolves to `false` when the search fails; the guard
+      // below already treats that as "nothing to sync".
+      let uidsToFetch: number[] | false;
 
       if (lastUid > 0) {
         // Incremental sync: fetch messages newer than last synced UID

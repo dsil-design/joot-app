@@ -570,7 +570,9 @@ function parseTransactions(
     }
 
     // Channel = non-digit characters before the first decimal number (balance)
-    const channelBalanceMatch = rest.match(/^([^\d]+)([\d,]+\.\d{2})(.*)/s);
+    // [\s\S] rather than `.` with the /s flag: dotAll needs an ES2018 target
+    // and this project targets ES2017. Behaviour is identical.
+    const channelBalanceMatch = rest.match(/^([^\d]+)([\d,]+\.\d{2})([\s\S]*)/);
     if (!channelBalanceMatch) continue;
 
     const channel = channelBalanceMatch[1].trim();

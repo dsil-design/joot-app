@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PaymentMethodsSettings } from '@/components/page-specific/payment-methods-settings'
+import type { PaymentMethodType } from '@/components/page-specific/payment-methods-settings'
 
 export default async function PaymentMethodsPage() {
   const supabase = await createClient()
@@ -51,6 +52,9 @@ export default async function PaymentMethodsPage() {
     ...method,
     transactionCount: countsByMethod[method.id] || 0,
     preferred_currency: method.preferred_currency,
+    // The column is free-form TEXT; the settings component types it as the set
+    // of kinds it renders specially, so narrow once here at the boundary.
+    type: method.type as PaymentMethodType | null,
   }))
 
   // Get count of transactions without payment method from our in-memory counts

@@ -10,6 +10,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { embeddedOne } from '@/lib/supabase/embedded'
 
 export interface StatementDescriptionMapping {
   descriptionNormalized: string
@@ -151,7 +152,7 @@ export async function fetchStatementDescriptionMappings(
   return data.map((row) => ({
     descriptionNormalized: row.description_normalized,
     vendorId: row.vendor_id,
-    vendorName: (row.vendors as { name: string } | null)?.name || undefined,
+    vendorName: embeddedOne<{ name: string }>(row.vendors)?.name || undefined,
     paymentMethodId: row.payment_method_id,
     matchCount: row.match_count,
   }))

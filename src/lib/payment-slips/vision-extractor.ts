@@ -156,7 +156,7 @@ export async function extractFromPaymentSlip(
   // Cross-check: parse amount_characters to derive the real amount.
   // The character-by-character reading is more reliable than the model's
   // direct numeric interpretation, since it forces careful OCR of each glyph.
-  const amountChars = (extraction as Record<string, unknown>).amount_characters
+  const amountChars = extraction.amount_characters
   if (typeof amountChars === 'string' && amountChars.length > 0) {
     // Reconstruct the number: "1,1,7,.,0,0" → "117.00", "1,COMMA,5,0,0,.,0,0" → "1,500.00"
     const reconstructed = amountChars

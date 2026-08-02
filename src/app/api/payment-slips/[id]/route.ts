@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import type { Json } from '@/lib/supabase/types'
 
 /** Editable fields on a payment slip */
 const EDITABLE_FIELDS = [
@@ -142,7 +143,9 @@ export async function PATCH(
           activity_type: 'slip_corrected',
           payment_slip_upload_id: id,
           description: `Corrected payment slip fields: ${fieldNames}`,
-          metadata: { corrections },
+          // jsonb column: valid JSON, but the typed shape has no index
+          // signature and so isn't assignable to the generated Json union.
+          metadata: { corrections } as unknown as Json,
           transactions_affected: 0,
           total_amount: updated.amount,
           currency: updated.currency || 'THB',

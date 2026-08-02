@@ -28,6 +28,7 @@ import { persistSubOrders, autoMatchSubOrders } from '../../src/lib/email/sub-or
 import { normalizeICloudRelay } from '../../src/lib/email/icloud-relay';
 import type { RawEmailData } from '../../src/lib/email/types';
 import type { TargetTransaction } from '../../src/lib/matching/match-scorer';
+import { embeddedOne } from '../../src/lib/supabase/embedded'
 
 const APPLY = process.argv.includes('--apply');
 const idArgIdx = process.argv.indexOf('--id');
@@ -111,7 +112,7 @@ async function loadCandidateTransactions(userId: string, dateStr: string): Promi
     amount: Number(tx.amount),
     currency: tx.original_currency as string,
     date: tx.transaction_date as string,
-    vendor: (tx.vendors as { name: string } | null)?.name || tx.description || '',
+    vendor: embeddedOne<{ name: string }>(tx.vendors)?.name || tx.description || '',
     description: (tx.description as string) || undefined,
   }));
 }
