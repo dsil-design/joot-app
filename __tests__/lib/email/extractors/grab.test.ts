@@ -453,13 +453,23 @@ describe('getFoodType', () => {
     expect(getFoodType(evening, '7-Eleven')).toBe('Snack');
   });
 
+  // getFoodType reads getUTCHours() and adds 7 for Thai local time, so these
+  // instants must be pinned to UTC. A bare 'YYYY-MM-DDTHH:MM:SS' literal is
+  // parsed as *local* time and the meal boundaries then move with the machine's
+  // timezone — this passed in UTC+7 and returned 'Meal' on a UTC CI runner.
   it('should return time-based type for regular restaurants', () => {
-    const morning = new Date('2025-11-15T08:00:00');
-    const lunch = new Date('2025-11-15T12:00:00');
-    const dinner = new Date('2025-11-15T19:00:00');
+    const morning = new Date('2025-11-15T01:00:00Z'); // 08:00 in Bangkok
+    const lunch = new Date('2025-11-15T05:00:00Z'); // 12:00 in Bangkok
+    const dinner = new Date('2025-11-15T12:00:00Z'); // 19:00 in Bangkok
 
     expect(getFoodType(morning, 'Regular Restaurant')).toBe('Breakfast');
     expect(getFoodType(lunch, 'Regular Restaurant')).toBe('Lunch');
     expect(getFoodType(dinner, 'Regular Restaurant')).toBe('Dinner');
+  });
+
+  it('should fall back to "Meal" between lunch and dinner', () => {
+    const afternoon = new Date('2025-11-15T09:00:00Z'); // 16:00 in Bangkok
+
+    expect(getFoodType(afternoon, 'Regular Restaurant')).toBe('Meal');
   });
 });
