@@ -180,6 +180,24 @@ export interface Suggestion {
   is_new: boolean
   status?: 'pending' | 'approved' | 'rejected'
   /**
+   * Time of day the row was posted, `HH:MM` (24hr), when the statement prints
+   * one. KBANK does on every row; the US parsers do not. Undefined on any
+   * statement extracted before this field was serialized, so every consumer
+   * must treat it as optional and never as a filter that can empty a candidate
+   * set — only as a tie-break among candidates already qualified on amount,
+   * currency and direction.
+   */
+  transaction_time?: string
+  /**
+   * The parser's own direction assertion for this row. Prefer it over the sign
+   * of `amount`: rows extracted before the PNC sign fix carry a rotted sign
+   * alongside a correct type, so reading direction from the sign rejects links
+   * that are in fact correct.
+   */
+  type?: 'charge' | 'credit' | 'payment' | 'fee' | 'interest' | 'adjustment'
+  /** Bank reference for the row, when the statement prints one. */
+  reference_number?: string
+  /**
    * Transactions the user explicitly rejected as a match for this row.
    * Recorded by /api/imports/reject-transaction-match so matching never
    * re-proposes a link the user has already turned down — without having to

@@ -12,6 +12,7 @@ import {
   Eye,
   Sparkles,
   RefreshCw,
+  Unlink,
 } from "lucide-react"
 import type { MatchCardVariant, MatchCardCallbacks } from "./types"
 import type { TransactionProposal } from "@/lib/proposals/types"
@@ -287,6 +288,24 @@ export function MatchCardActions({
     const actions = VARIANT_ACTIONS[effectiveVariant]
     return (
       <>
+        {/* Refusing the transaction claim without discarding the card. Shown
+            whenever a card asserts a specific Joot transaction — the variant
+            doesn't matter, the presence of the claim does. Without it the only
+            way to refuse a wrong link from the list is Reject, which also
+            severs a correct email↔statement pairing. */}
+        {hasMatchedTransaction && callbacks.onRejectTransactionMatch && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => callbacks.onRejectTransactionMatch?.(id)}
+            disabled={loading}
+            className="text-muted-foreground"
+            title="This is a real payment, but not this Joot transaction. Keeps the card and its sources; re-reviews it as new."
+          >
+            <Unlink className="h-4 w-4" />
+            Not this transaction
+          </Button>
+        )}
         {actions.map((action) => {
           const handler = callbacks[action.callbackKey] as
             | ((id: string) => void)

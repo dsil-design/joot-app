@@ -506,56 +506,115 @@ export async function aggregateQueueItems(
       const pairedItemIds = new Set<string>()
       const mergedSlipItems: QueueItem[] = []
 
+      // Decide every slip's counterpart up front, globally.
+      //
+      // Each branch below already picks the closest candidate by date, but it
+      // picks for one slip at a time and marks the winner used — so the slip
+      // that happens to be processed first claims a row a later slip needed
+      // more, permanently. With several same-amount transfers on consecutive
+      // days that produces a rotation: on 2026-05-16/17/18 three 400 THB slips
+      // were attached to the wrong days' rows, each off by one, even though a
+      // perfect same-day assignment existed.
+      //
+      // Scoring every feasible (slip, counterpart) pair and claiming in order
+      // of date proximity removes the dependence on slip order. The tier keeps
+      // the existing preference for an email or 3-way counterpart over a bare
+      // statement row, so this changes which candidate a slip gets, never what
+      // kind of card is built from it.
+      const slipAssignment = new Map<string, { itemId: string; daysDiff: number }>()
+      {
+        type SlipPair = { slipId: string; itemId: string; tier: number; daysDiff: number }
+        const feasible: SlipPair[] = []
+
+        for (const slip of pendingSlips) {
+          const slipMeta = slip.paymentSlipMetadata
+          const isExpense = slipMeta?.detectedDirection !== 'income'
+          const rejectedKeys = new Set(slip.rejectedPairKeys || [])
+          const rejected = (candidate: QueueItem): boolean => {
+            if (rejectedKeys.size === 0) return false
+            if (candidate.source === 'email' || candidate.source === 'statement') {
+              return rejectedKeys.has(candidate.id)
+            }
+            if (candidate.source === 'merged') {
+              const p = parseImportId(candidate.id)
+              if (p?.type === 'merged') {
+                if (rejectedKeys.has(`email:${p.emailId}`)) return true
+                if (rejectedKeys.has(`stmt:${p.statementId}:${p.index}`)) return true
+              }
+            }
+            return false
+          }
+
+          for (const item of allItems) {
+            if (item.status !== 'pending') continue
+            // Tier 0 = email or 3-way counterpart (expense slips only),
+            // tier 1 = bare statement row. Mirrors the branch order below.
+            let tier: number
+            if (isExpense && (item.source === 'email' || item.source === 'merged')) {
+              if (item.source === 'merged' && !item.mergedEmailData) continue
+              tier = 0
+            } else if (item.source === 'statement') {
+              tier = 1
+            } else {
+              continue
+            }
+            if (rejected(item)) continue
+            if (item.statementTransaction.currency !== slip.statementTransaction.currency) continue
+            const amountDiff = Math.abs(
+              Math.abs(item.statementTransaction.amount) - Math.abs(slip.statementTransaction.amount)
+            )
+            if (amountDiff > 0.01) continue
+            const daysDiff = calculateDaysDiff(
+              slip.statementTransaction.date,
+              item.statementTransaction.date
+            )
+            if (daysDiff > 3) continue
+            feasible.push({ slipId: slip.id, itemId: item.id, tier, daysDiff })
+          }
+        }
+
+        feasible.sort((a, b) => {
+          if (a.tier !== b.tier) return a.tier - b.tier
+          if (a.daysDiff !== b.daysDiff) return a.daysDiff - b.daysDiff
+          // Deterministic final ordering so equal pairs never depend on the
+          // order rows came back from the database.
+          if (a.slipId !== b.slipId) return a.slipId < b.slipId ? -1 : 1
+          return a.itemId < b.itemId ? -1 : 1
+        })
+
+        const claimedItems = new Set<string>()
+        for (const pair of feasible) {
+          if (slipAssignment.has(pair.slipId) || claimedItems.has(pair.itemId)) continue
+          slipAssignment.set(pair.slipId, { itemId: pair.itemId, daysDiff: pair.daysDiff })
+          claimedItems.add(pair.itemId)
+        }
+      }
+
       for (const slip of pendingSlips) {
         const slipId = slip.id.replace(/^slip:/, '')
         const slipMeta = slip.paymentSlipMetadata
         const isExpense = slipMeta?.detectedDirection !== 'income'
 
-        // Surgical-reject support: if the user has rejected this slip from
-        // pairing with a specific counterpart, skip that counterpart here.
-        // Keys use the full composite-id format (`email:<id>`, `stmt:<id>:<idx>`).
-        // For a merged email+stmt candidate, either component being rejected
-        // disqualifies it.
-        const slipRejectedKeys = new Set(slip.rejectedPairKeys || [])
-        const isRejectedPair = (candidate: QueueItem): boolean => {
-          if (slipRejectedKeys.size === 0) return false
-          if (candidate.source === 'email' || candidate.source === 'statement') {
-            return slipRejectedKeys.has(candidate.id)
-          }
-          if (candidate.source === 'merged') {
-            const p = parseImportId(candidate.id)
-            if (p?.type === 'merged') {
-              if (slipRejectedKeys.has(`email:${p.emailId}`)) return true
-              if (slipRejectedKeys.has(`stmt:${p.statementId}:${p.index}`)) return true
-            }
-          }
-          return false
-        }
+        // Counterpart decided by the global assignment above. Surgical rejects
+        // (`rejectedPairKeys`) were already honoured there, so a counterpart the
+        // user turned down for this slip never reaches the branches below.
+        const assignedForSlip = slipAssignment.get(slip.id)
+        const assignedItem = assignedForSlip
+          ? allItems.find(item => item.id === assignedForSlip.itemId)
+          : undefined
 
         // Expense slips → try matching with emails (same THB amount, close date).
         // Also consider already-merged (email+statement) items from Phase 1 —
         // if the slip matches one of those, emit a 3-way slip+email+statement group.
         if (isExpense) {
-          const candidateEmails = allItems.filter(item =>
-            (item.source === 'email' || item.source === 'merged') &&
-            item.status === 'pending' && !pairedItemIds.has(item.id)
-          )
-
-          let bestEmailMatch: { item: QueueItem; daysDiff: number } | null = null
-          for (const email of candidateEmails) {
-            // For merged items, only consider those that actually carry email data
-            // (i.e., email+statement cross-source pairs — not self-transfers).
-            if (email.source === 'merged' && !email.mergedEmailData) continue
-            if (isRejectedPair(email)) continue
-            if (email.statementTransaction.currency !== slip.statementTransaction.currency) continue
-            const amountDiff = Math.abs(Math.abs(email.statementTransaction.amount) - Math.abs(slip.statementTransaction.amount))
-            if (amountDiff > 0.01) continue
-            const daysDiff = calculateDaysDiff(slip.statementTransaction.date, email.statementTransaction.date)
-            if (daysDiff > 3) continue
-            if (!bestEmailMatch || daysDiff < bestEmailMatch.daysDiff) {
-              bestEmailMatch = { item: email, daysDiff }
-            }
-          }
+          // Counterpart chosen by the global assignment above; taken here only
+          // if it is an email or 3-way item and still unclaimed.
+          const bestEmailMatch =
+            assignedItem &&
+            (assignedItem.source === 'email' || assignedItem.source === 'merged') &&
+            !pairedItemIds.has(assignedItem.id)
+              ? { item: assignedItem, daysDiff: assignedForSlip!.daysDiff }
+              : null
 
           // 3-way case: the best match is a pre-merged email+statement item
           if (bestEmailMatch && bestEmailMatch.item.source === 'merged') {
@@ -643,23 +702,14 @@ export async function aggregateQueueItems(
             continue
           }
 
-          // Expense slip didn't match any email — fall back to statement entries
-          const candidateStmtsForExpense = allItems.filter(item =>
-            item.source === 'statement' && item.status === 'pending' && !pairedItemIds.has(item.id)
-          )
-
-          let bestStmtMatchForExpense: { item: QueueItem; daysDiff: number } | null = null
-          for (const stmt of candidateStmtsForExpense) {
-            if (isRejectedPair(stmt)) continue
-            if (stmt.statementTransaction.currency !== slip.statementTransaction.currency) continue
-            const amountDiff = Math.abs(Math.abs(stmt.statementTransaction.amount) - Math.abs(slip.statementTransaction.amount))
-            if (amountDiff > 0.01) continue
-            const daysDiff = calculateDaysDiff(slip.statementTransaction.date, stmt.statementTransaction.date)
-            if (daysDiff > 3) continue
-            if (!bestStmtMatchForExpense || daysDiff < bestStmtMatchForExpense.daysDiff) {
-              bestStmtMatchForExpense = { item: stmt, daysDiff }
-            }
-          }
+          // Expense slip didn't match any email — fall back to the assigned
+          // statement row, if that is what the global assignment gave it.
+          const bestStmtMatchForExpense =
+            assignedItem &&
+            assignedItem.source === 'statement' &&
+            !pairedItemIds.has(assignedItem.id)
+              ? { item: assignedItem, daysDiff: assignedForSlip!.daysDiff }
+              : null
 
           if (bestStmtMatchForExpense) {
             const stmtParts = bestStmtMatchForExpense.item.id.replace(/^stmt:/, '').split(':')
@@ -700,22 +750,12 @@ export async function aggregateQueueItems(
 
         // Income slips → try matching with statement entries (same amount, close date)
         if (!isExpense) {
-          const candidateStmts = allItems.filter(item =>
-            item.source === 'statement' && item.status === 'pending' && !pairedItemIds.has(item.id)
-          )
-
-          let bestStmtMatch: { item: QueueItem; daysDiff: number } | null = null
-          for (const stmt of candidateStmts) {
-            if (isRejectedPair(stmt)) continue
-            if (stmt.statementTransaction.currency !== slip.statementTransaction.currency) continue
-            const amountDiff = Math.abs(Math.abs(stmt.statementTransaction.amount) - Math.abs(slip.statementTransaction.amount))
-            if (amountDiff > 0.01) continue
-            const daysDiff = calculateDaysDiff(slip.statementTransaction.date, stmt.statementTransaction.date)
-            if (daysDiff > 3) continue
-            if (!bestStmtMatch || daysDiff < bestStmtMatch.daysDiff) {
-              bestStmtMatch = { item: stmt, daysDiff }
-            }
-          }
+          const bestStmtMatch =
+            assignedItem &&
+            assignedItem.source === 'statement' &&
+            !pairedItemIds.has(assignedItem.id)
+              ? { item: assignedItem, daysDiff: assignedForSlip!.daysDiff }
+              : null
 
           if (bestStmtMatch) {
             const stmtParts = bestStmtMatch.item.id.replace(/^stmt:/, '').split(':')
@@ -782,8 +822,39 @@ export async function aggregateQueueItems(
     const dedupedIds = new Set<string>()
     const mergedDedup: QueueItem[] = []
 
-    for (const [, group] of byMatchedTxn) {
-      if (group.length < 2) continue
+    // Consolidation asserts that every member documents the SAME payment.
+    // Sharing a matched_transaction_id is not that assertion: upstream matchers
+    // write that field on amount and date alone, so a group can hold genuinely
+    // distinct payments — four ฿135 charges on four dates at two merchants, or a
+    // $100 USD subscription beside an incoming −฿100 transfer. Merging those
+    // emitted one card and dropped the rest from the queue entirely, where they
+    // could never be seen, reviewed or rejected. Admit only members that could
+    // plausibly be the same payment; eject the rest so they stay reviewable.
+    //
+    // Cross-currency members skip the amount test on purpose — a THB receipt
+    // email legitimately accompanies a USD statement row for one Grab order.
+    // Same-currency members must agree on magnitude, which is what separates
+    // four distinct ฿135 charges from four records of one.
+    const DEDUP_MAX_DAYS = 3
+    const isSamePaymentCandidate = (a: QueueItem, b: QueueItem): boolean => {
+      const da = Date.parse(String(a.statementTransaction.date).slice(0, 10) + 'T00:00:00Z')
+      const db = Date.parse(String(b.statementTransaction.date).slice(0, 10) + 'T00:00:00Z')
+      if (Number.isFinite(da) && Number.isFinite(db)) {
+        if (Math.abs(da - db) > DEDUP_MAX_DAYS * 86_400_000) return false
+      }
+      const ca = a.statementTransaction.currency
+      const cb = b.statementTransaction.currency
+      if (ca && cb && ca === cb) {
+        const aa = Math.abs(Number(a.statementTransaction.amount) || 0)
+        const ab = Math.abs(Number(b.statementTransaction.amount) || 0)
+        const scale = Math.max(aa, ab)
+        if (scale > 0 && Math.abs(aa - ab) / scale > 0.01) return false
+      }
+      return true
+    }
+
+    for (const [, fullGroup] of byMatchedTxn) {
+      if (fullGroup.length < 2) continue
 
       // Safety: this pass only understands bare statement/email/slip items.
       // When the group contains an already-merged item (built by Phase 0 or
@@ -795,7 +866,17 @@ export async function aggregateQueueItems(
       // user's deliberately-built merged card vanishes with no replacement.
       // Leaving the group untouched is strictly safer; worst case the user
       // sees two cards for the same txn instead of zero.
-      if (group.some(i => i.source === 'merged')) continue
+      if (fullGroup.some(i => i.source === 'merged')) continue
+
+      // Restrict the group to members that could be the same payment as the
+      // base. Ejected members are deliberately NOT added to dedupedIds, so they
+      // survive as their own cards instead of disappearing.
+      const groupBase =
+        fullGroup.find(i => i.source === 'statement') ??
+        fullGroup.find(i => i.source === 'email') ??
+        fullGroup[0]
+      const group = fullGroup.filter(i => i === groupBase || isSamePaymentCandidate(groupBase, i))
+      if (group.length < 2) continue
 
       // Pick the best item as the base (prefer statement, then email, then others)
       const stmtItem = group.find(i => i.source === 'statement')

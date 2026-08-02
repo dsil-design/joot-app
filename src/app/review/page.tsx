@@ -1021,6 +1021,7 @@ export default function ReviewQueuePage() {
       onApprove={handleApproveBundleAware}
       onReject={(id) => reject(id)}
       onRejectSource={handleRejectSource}
+      onRejectTransactionMatch={handleRejectTransactionMatch}
       onLinkManually={handleLinkManually}
       onImport={handleImport}
       onCreateAsNew={handleCreateAsNew}

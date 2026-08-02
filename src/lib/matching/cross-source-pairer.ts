@@ -69,11 +69,19 @@ export interface PairConfig {
 }
 
 /**
+ * Two amount scores this close are the same score. Percentage diffs are computed
+ * by division, so genuinely identical amounts can land a few ULPs apart rather
+ * than at exactly 0 — without this, such pairs would never reach the date
+ * tiebreak and would keep resolving by array order.
+ */
+const RANKING_EPSILON = 1e-9
+
+/**
  * Find cross-source pairs between email and statement candidates.
  *
  * Algorithm: O(n*m) greedy matching — for each email candidate, find the
- * statement candidate with the tightest percentage diff. Mark both as used
- * for 1:1 matching.
+ * statement candidate with the tightest percentage diff, breaking ties on date
+ * proximity. Mark both as used for 1:1 matching.
  */
 export async function findCrossSourcePairs(
   supabase: SupabaseClient,
@@ -154,27 +162,31 @@ export async function findCrossSourcePairs(
     }
   }
 
-  const results: PairResult[] = []
-  const usedStatements = new Set<number>()
+  // Every feasible (email, statement) pair, scored. Assignment is deferred to a
+  // second phase so the globally best pairs claim first — see the assignment
+  // loop below for why choosing greedily per email was not enough.
+  const feasiblePairs: {
+    emailIdx: number
+    email: PairCandidate
+    stmtIdx: number
+    stmt: PairCandidate
+    convertedAmount: number
+    rate: number
+    rateDate: string
+    percentDiff: number
+    rankingDiff: number
+    daysDiff: number
+    usedForeignSignal: boolean
+  }[] = []
 
-  for (const email of emailCandidates) {
-    let bestMatch: {
-      stmtIdx: number
-      stmt: PairCandidate
-      convertedAmount: number
-      rate: number
-      rateDate: string
-      percentDiff: number
-      usedForeignSignal: boolean
-    } | null = null
+  for (let ei = 0; ei < emailCandidates.length; ei++) {
+    const email = emailCandidates[ei]
 
     const rejectedKeys = email.rejectedPairKeys && email.rejectedPairKeys.length > 0
       ? new Set(email.rejectedPairKeys)
       : null
 
     for (let si = 0; si < statementCandidates.length; si++) {
-      if (usedStatements.has(si)) continue
-
       const stmt = statementCandidates[si]
 
       // Skip pairs the user has previously rejected for this email
@@ -265,35 +277,80 @@ export async function findCrossSourcePairs(
         : percentDiff
 
       // Pick tightest percentage diff (using ranking-adjusted value so that
-      // foreign-amount-sourced matches outrank marginally tighter FX matches).
-      const currentBestRanking = bestMatch
-        ? (bestMatch.usedForeignSignal ? bestMatch.percentDiff - 0.5 : bestMatch.percentDiff)
-        : Infinity
-      if (!bestMatch || _percentDiffForRanking < currentBestRanking) {
-        bestMatch = {
-          stmtIdx: si,
-          stmt,
-          convertedAmount,
-          rate,
-          rateDate,
-          percentDiff,
-          usedForeignSignal,
-        }
-      }
-    }
-
-    if (bestMatch) {
-      usedStatements.add(bestMatch.stmtIdx)
-      results.push({
-        emailCandidate: email,
-        statementCandidate: bestMatch.stmt,
-        convertedEmailAmount: bestMatch.convertedAmount,
-        rate: bestMatch.rate,
-        rateDate: bestMatch.rateDate,
-        percentDiff: bestMatch.percentDiff,
-        usedForeignAmountSignal: bestMatch.usedForeignSignal,
+      // foreign-amount-sourced matches outrank marginally tighter FX matches),
+      // breaking ties on date proximity.
+      //
+      // Amount alone cannot decide these. Dennis's spending is dense streams of
+      // identical round THB amounts, so every candidate in the window scores an
+      // exact 0.00% and the strict `<` below simply kept whichever row the
+      // database happened to return first. That produced crossed pairs — three
+      // 400 THB payments on the 16th, 17th and 18th, each attached to a
+      // different day's email — while a same-date assignment existed and was
+      // free. Measured across eight months: 60 of 752 cross-source cards were
+      // paired off-date when an unclaimed same-date row was available.
+      //
+      // Date proximity is a tiebreak, never a filter: it only chooses among
+      // candidates that already passed the amount test, so it cannot reject a
+      // pair that amount agreement would have accepted.
+      feasiblePairs.push({
+        emailIdx: ei,
+        email,
+        stmtIdx: si,
+        stmt,
+        convertedAmount,
+        rate,
+        rateDate,
+        percentDiff,
+        rankingDiff: _percentDiffForRanking,
+        daysDiff,
+        usedForeignSignal,
       })
     }
+  }
+
+  // Assign globally rather than per email.
+  //
+  // Choosing the best statement for each email in turn is order-dependent: the
+  // first email to be processed claims a row a later, better-matching email
+  // needed, and 1:1 marking makes that permanent. With dense streams of
+  // identical round THB amounts every candidate ties at 0.00% on amount, so the
+  // winner was effectively whichever row the database returned first. That
+  // produced crossed pairs — three 400 THB payments on the 16th, 17th and 18th
+  // each attached to a different day's email — while a same-date assignment
+  // existed and was free.
+  //
+  // Sorting every feasible pair by (amount tightness, date proximity) and
+  // claiming in that order makes the outcome independent of fetch order: the
+  // tightest, closest-dated pair in the whole set is assigned first, and each
+  // email and statement row can still be claimed only once.
+  feasiblePairs.sort((a, b) => {
+    if (Math.abs(a.rankingDiff - b.rankingDiff) > RANKING_EPSILON) {
+      return a.rankingDiff - b.rankingDiff
+    }
+    if (a.daysDiff !== b.daysDiff) return a.daysDiff - b.daysDiff
+    // Final tiebreak on input position, so equal-in-every-way pairs still
+    // resolve deterministically rather than by sort implementation.
+    if (a.emailIdx !== b.emailIdx) return a.emailIdx - b.emailIdx
+    return a.stmtIdx - b.stmtIdx
+  })
+
+  const results: PairResult[] = []
+  const usedStatements = new Set<number>()
+  const usedEmails = new Set<number>()
+
+  for (const pair of feasiblePairs) {
+    if (usedEmails.has(pair.emailIdx) || usedStatements.has(pair.stmtIdx)) continue
+    usedEmails.add(pair.emailIdx)
+    usedStatements.add(pair.stmtIdx)
+    results.push({
+      emailCandidate: pair.email,
+      statementCandidate: pair.stmt,
+      convertedEmailAmount: pair.convertedAmount,
+      rate: pair.rate,
+      rateDate: pair.rateDate,
+      percentDiff: pair.percentDiff,
+      usedForeignAmountSignal: pair.usedForeignSignal,
+    })
   }
 
   return results

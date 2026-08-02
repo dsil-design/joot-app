@@ -15,6 +15,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { processPDF, isValidPDF } from './pdf-extractor';
 import type { StatementParseResult, ParsedStatementTransaction } from './parsers/types';
+import { hasDirectionConflict } from '@/lib/matching/direction-guard';
 
 /**
  * Format a Date's LOCAL calendar components as YYYY-MM-DD.
@@ -449,7 +450,7 @@ export class StatementProcessor {
     // Get existing transactions for the user in the date range
     let query = this.supabase
       .from('transactions')
-      .select('id, amount, original_currency, transaction_date, vendor_id, vendors(name)')
+      .select('id, amount, original_currency, transaction_date, transaction_type, vendor_id, vendors(name)')
       .eq('user_id', userId);
 
     if (period) {
@@ -482,6 +483,33 @@ export class StatementProcessor {
       const statementDate = new Date(statementDateStr + 'T00:00:00Z');
 
       for (const dbTx of (existingTransactions || [])) {
+        // Equal numerals in different currencies are not the same money. Without
+        // this, a $1,000 transfer matched a ฿1,000 meal plan at confidence 95 —
+        // a ~35x error presented as near-certain. Amounts are only ever compared
+        // for exact equality below, so no legitimate cross-currency link is lost:
+        // that would require a rate of ~1.0. Cross-currency pairing is the
+        // cross-source pairer's job, which does it with real rates.
+        if (
+          (dbTx.original_currency ?? '').toUpperCase() !==
+          (statementTx.currency ?? '').toUpperCase()
+        ) {
+          continue;
+        }
+
+        // Money in and money out cannot be the same payment. Without this, an
+        // incoming ฿500 credit matched an outgoing ฿500 "Caddy Tip" at 95.
+        // See direction-guard.ts for why this reads the parser's `type` rather
+        // than the sign of `amount`, and which cases are deliberately exempt.
+        if (
+          hasDirectionConflict({
+            rowType: statementTx.type,
+            rowDescription: statementTx.description,
+            transactionType: dbTx.transaction_type,
+          })
+        ) {
+          continue;
+        }
+
         const amountMatch = Math.abs(dbTx.amount) === Math.abs(statementTx.amount);
 
         // Calculate day difference to handle timezone offsets
@@ -568,6 +596,12 @@ export class StatementProcessor {
         : parseResult.warnings,
       transactions: parseResult.transactions.map(t => ({
         date: formatLocalDate(t.transactionDate),
+        // KBANK prints a time on every row and the parser already reads it, but
+        // it was dropped here — so nothing downstream could ever see it. It is
+        // the only signal that separates same-day, same-direction, same-amount
+        // rows from each other, which amount+date cannot do.
+        time: t.transactionTime,
+        reference_number: t.referenceNumber,
         description: t.description,
         amount: t.amount,
         currency: t.currency,
@@ -577,6 +611,13 @@ export class StatementProcessor {
       })),
       suggestions: result.suggestions.map(s => ({
         transaction_date: formatLocalDate(s.statementTransaction.transactionDate),
+        // `type` is the parser's own direction assertion ('credit'/'charge').
+        // Prefer it over the sign of `amount`: statements extracted before the
+        // PNC sign fix carry a rotted sign but a correct type, so a sign-based
+        // reading of direction rejects links that are actually right.
+        transaction_time: s.statementTransaction.transactionTime,
+        type: s.statementTransaction.type,
+        reference_number: s.statementTransaction.referenceNumber,
         description: s.statementTransaction.description,
         amount: s.statementTransaction.amount,
         currency: s.statementTransaction.currency,

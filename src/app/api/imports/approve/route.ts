@@ -24,6 +24,35 @@ interface ExtractionLog {
 }
 
 /**
+ * Split a signed statement amount into the (always positive) magnitude stored on
+ * `transactions.amount` and the direction stored on `transaction_type`.
+ *
+ * Statement parsers share one convention (`parsers/types.ts`): positive = money
+ * out, negative = money in. These create paths previously inserted the raw
+ * signed amount with `transaction_type` hardcoded to 'expense', so approving an
+ * incoming row would have written a negative-amount "expense" — breaking the
+ * invariant that every amount in the ledger is positive, and double-counting the
+ * direction error into every total that sums it.
+ *
+ * Note this reads the sign. The parser's own `type` is the more reliable signal
+ * — rows extracted before the PNC sign fix carry a rotted sign alongside a
+ * correct type — but it is only present on suggestions serialized after that
+ * field was added, so the sign remains the only signal available for every
+ * statement processed before then. Prefer `type` here once older statements have
+ * been reprocessed.
+ */
+function splitSignedStatementAmount(raw: number | null | undefined): {
+  amount: number
+  transactionType: 'expense' | 'income'
+} {
+  const value = Number(raw) || 0
+  return {
+    amount: Math.abs(value),
+    transactionType: value < 0 ? 'income' : 'expense',
+  }
+}
+
+/**
  * POST /api/imports/approve
  *
  * Approves matches from the review queue.
@@ -257,13 +286,14 @@ export async function POST(request: NextRequest) {
               // persist it as informational reference data alongside the
               // settlement amount.
               const ft = (suggestion as { foreign_transaction?: { originalAmount: number; originalCurrency: string; exchangeRate?: number } }).foreign_transaction
+              const stmtSplit = splitSignedStatementAmount(suggestion.amount)
               const { data: newStmtTx, error: insertError } = await serviceClient
                 .from('transactions')
                 .insert({
                   user_id: user.id,
-                  amount: suggestion.amount,
+                  amount: stmtSplit.amount,
                   original_currency: (suggestion.currency || 'USD') as 'USD' | 'THB',
-                  transaction_type: 'expense' as const,
+                  transaction_type: stmtSplit.transactionType,
                   transaction_date: suggestion.transaction_date,
                   description: suggestion.description || 'Imported from statement',
                   source_statement_upload_id: statement.id,
@@ -372,7 +402,10 @@ export async function POST(request: NextRequest) {
               .from('transactions')
               .insert({
                 user_id: user.id,
-                amount: row.amount ?? 0,
+                // Defensive only: no email row has ever carried a negative
+                // amount (0 of 1,321), and emails have no documented sign
+                // convention, so the type is left alone rather than invented.
+                amount: Math.abs(Number(row.amount) || 0),
                 original_currency: (row.currency || 'USD') as 'USD' | 'THB',
                 transaction_type: 'expense' as const,
                 transaction_date: row.transaction_date ?? row.email_date?.split('T')[0] ?? new Date().toISOString().split('T')[0],
@@ -539,13 +572,14 @@ export async function POST(request: NextRequest) {
             // Create ONE transaction from statement data. Carry through Chase
             // foreign-currency reference info if present.
             const ftMerged = (suggestion as { foreign_transaction?: { originalAmount: number; originalCurrency: string; exchangeRate?: number } }).foreign_transaction
+            const mergedSplit = splitSignedStatementAmount(suggestion.amount)
             const { data: newTx, error: txError } = await serviceClient
               .from('transactions')
               .insert({
                 user_id: user.id,
-                amount: suggestion.amount,
+                amount: mergedSplit.amount,
                 original_currency: (suggestion.currency || 'USD') as 'USD' | 'THB',
-                transaction_type: 'expense' as const,
+                transaction_type: mergedSplit.transactionType,
                 transaction_date: suggestion.transaction_date,
                 description: suggestion.description || 'Imported from cross-source match',
                 source_email_transaction_id: merged.emailId,
