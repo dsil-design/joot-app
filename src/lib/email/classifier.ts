@@ -157,10 +157,12 @@ const PARSER_PATTERNS: ParserPattern[] = [
     key: 'lazada',
     name: 'Lazada Order Parser',
     classification: EMAIL_CLASSIFICATION.ORDER_CONFIRMATION,
-    senderPatterns: ['order@lazada.co.th', 'noreply@lazada.co.th', 'notification@lazada.co.th', 'orders@lazada.co.th'],
+    // Domain substrings, not exact addresses: live mail comes from subdomains
+    // (noreply@support.lazada.co.th), which no exact-address list matches.
+    senderPatterns: ['lazada.co.th', 'lazada.com'],
     subjectPatterns: [
-      'order confirmed', 'order has been confirmed', 'your order',
-      'has been shipped', 'delivered', 'lazada order', 'payment confirmed',
+      'order confirmed', 'order has been confirmed', 'we have received your order',
+      'your order', 'has been shipped', 'delivered', 'lazada order', 'payment confirmed',
     ],
     defaultPaymentContext: 'credit_card',
   },
