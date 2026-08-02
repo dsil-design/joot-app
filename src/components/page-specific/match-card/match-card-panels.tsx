@@ -31,51 +31,13 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { parseImportId } from "@/lib/utils/import-id"
+import { getSlipLink, getEmailLink, getStatementLink } from "@/lib/utils/import-source-links"
 import { StatementViewerModal } from "@/components/page-specific/statement-viewer-modal"
 import { PaymentSlipViewerModal } from "@/components/page-specific/payment-slip-viewer-modal"
 import { EmailViewerModal } from "@/components/page-specific/email-viewer-modal"
 import { cn } from "@/lib/utils"
 import { getParserTag } from "@/lib/utils/parser-tags"
 import type { MatchCardData, EmailMetadata, EmailSubOrderSummary, MergedPaymentSlipData } from "./types"
-
-/**
- * Build a link to the source page (statement or email) from the queue item ID.
- */
-function getSourceLink(id: string): string | null {
-  const parsed = parseImportId(id)
-  if (!parsed) return null
-  if (parsed.type === "statement") {
-    return `/imports/statements/${parsed.statementId}/results`
-  }
-  if (parsed.type === "email") {
-    return `/imports/emails/${parsed.emailId}`
-  }
-  if (parsed.type === "merged") {
-    // Default to statement for merged items
-    return `/imports/statements/${parsed.statementId}/results`
-  }
-  if (parsed.type === "payment_slip") {
-    return `/imports/payment-slips/${parsed.slipId}`
-  }
-  if (parsed.type === "merged_slip_email") {
-    return `/imports/payment-slips/${parsed.slipId}`
-  }
-  if (parsed.type === "merged_slip_stmt") {
-    return `/imports/payment-slips/${parsed.slipId}`
-  }
-  if (parsed.type === "merged_slip_email_stmt") {
-    return `/imports/payment-slips/${parsed.slipId}`
-  }
-  return null
-}
-
-function getMergedEmailLink(id: string): string | null {
-  const parsed = parseImportId(id)
-  if (parsed?.type === "merged" || parsed?.type === "merged_slip_email_stmt") {
-    return `/imports/emails/${parsed.emailId}`
-  }
-  return null
-}
 
 function SourceLabel({
   label,
@@ -492,7 +454,7 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
           <div className="space-y-1.5">
             <SourceLabel
               label="From Payment Slip"
-              href={getSourceLink(data.id)}
+              href={getSlipLink(data.id)}
               onPreview={openSlipPreview}
               onReject={rejectSlip}
             />
@@ -534,7 +496,7 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
             sourceLabel={
               <SourceLabel
                 label="From Email"
-                href={getMergedEmailLink(data.id)}
+                href={getEmailLink(data.id)}
                 onPreview={openEmailPreview}
                 onReject={rejectEmail}
               />
@@ -544,7 +506,7 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
 
           {/* Statement */}
           <div className="space-y-1.5 md:border-l md:pl-3">
-            <SourceLabel label="From Statement" href={null} onPreview={openStatementPreview} onReject={rejectStatement} />
+            <SourceLabel label="From Statement" href={getStatementLink(data.id)} onPreview={openStatementPreview} onReject={rejectStatement} />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(data.statementTransaction.date)}</span>
             </TransactionDetailRow>
@@ -649,7 +611,7 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
             sourceLabel={
               <SourceLabel
                 label="From Email"
-                href={getMergedEmailLink(data.id)}
+                href={getEmailLink(data.id)}
                 onPreview={openEmailPreview}
                 onReject={rejectEmail}
               />
@@ -659,7 +621,7 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
 
           {/* Right panel: Statement data */}
           <div className="space-y-1.5 md:border-l md:pl-3">
-            <SourceLabel label="From Statement" href={getSourceLink(data.id)} onPreview={openStatementPreview} onReject={rejectStatement} />
+            <SourceLabel label="From Statement" href={getStatementLink(data.id)} onPreview={openStatementPreview} onReject={rejectStatement} />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(data.statementTransaction.date)}</span>
             </TransactionDetailRow>
@@ -764,7 +726,7 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
           <div className="space-y-1.5">
             <SourceLabel
               label="From Payment Slip"
-              href={getSourceLink(data.id)}
+              href={getSlipLink(data.id)}
               onPreview={openSlipPreview}
               onReject={rejectSlip}
             />
@@ -802,7 +764,7 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
 
           {/* Right panel: Statement data */}
           <div className="space-y-1.5 md:border-l md:pl-3">
-            <SourceLabel label="From Statement" href={null} onPreview={openStatementPreview} onReject={rejectStatement} />
+            <SourceLabel label="From Statement" href={getStatementLink(data.id)} onPreview={openStatementPreview} onReject={rejectStatement} />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
               <span>{formatMatchDate(data.statementTransaction.date)}</span>
             </TransactionDetailRow>
@@ -915,7 +877,7 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
           sourceLabel={
             <SourceLabel
               label="From Email"
-              href={getSourceLink(data.id)}
+              href={getEmailLink(data.id)}
               onPreview={openEmailPreview}
             />
           }
@@ -925,7 +887,7 @@ export function MatchCardPanels({ data, onRejectSource }: MatchCardPanelsProps) 
         <div className="space-y-1.5">
           <SourceLabel
             label={isPaymentSlip ? "From Payment Slip" : "From Statement"}
-            href={getSourceLink(data.id)}
+            href={isPaymentSlip ? getSlipLink(data.id) : getStatementLink(data.id)}
             onPreview={isPaymentSlip ? openSlipPreview : openStatementPreview}
           />
           <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
