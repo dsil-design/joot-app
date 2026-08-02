@@ -18,6 +18,7 @@ import { matchVendor, suggestVendorName } from './vendor-matcher'
 import { findPaymentMethodByParserKey, findPaymentMethodByCardLastFour, findPaymentMethodByBankDetected } from './payment-method-mapper'
 import { findMappingMatch, isBankParser } from '@/lib/services/vendor-recipient-mapping'
 import { findStatementDescriptionMatch } from '@/lib/services/statement-description-learning'
+import { evaluateAutoTagRules } from '@/lib/services/auto-tag-rules'
 import { calculateDaysDiff } from '@/lib/matching/date-matcher'
 import { isCardPaymentDescription } from '@/lib/matching/transfer-descriptions'
 import { calculateEnrichmentConfidence } from './confidence'
@@ -559,6 +560,51 @@ function proposeTags(
   fields: ProposedFields,
   fc: FieldConfidenceMap
 ) {
+  // Inferred strategies run first and write into fields/fc as before.
+  proposeInferredTags(item, context, fields, fc)
+
+  // User-authored rules are then unioned on top. Deliberately additive: a rule
+  // saying "always tag Nidnoi reimbursement" must not erase a correctly
+  // inferred "groceries" tag on the same transaction.
+  const ruleMatch = evaluateAutoTagRules(
+    context.autoTagRules || [],
+    item,
+    fields.vendorId,
+    fields.transactionType,
+    new Set(context.tags.map((t) => t.id))
+  )
+  if (!ruleMatch) return
+
+  const existing = fields.tagIds || []
+  const added = ruleMatch.tagIds.filter((id) => !existing.includes(id))
+  fields.tagIds = [...existing, ...added]
+  fields.autoTagRuleIds = ruleMatch.ruleIds
+
+  const ruleTagNames = ruleMatch.tagIds
+    .map((id) => context.tags.find((t) => t.id === id)?.name)
+    .filter(Boolean)
+    .join(', ')
+
+  const priorReasoning = added.length < ruleMatch.tagIds.length || existing.length > 0
+    ? ` (kept: ${existing
+        .map((id) => context.tags.find((t) => t.id === id)?.name)
+        .filter(Boolean)
+        .join(', ')})`
+    : ''
+
+  fc.tag_ids = {
+    score: 98,
+    reasoning: `Auto-tag ${ruleMatch.labels.join(' + ')}: ${ruleTagNames}${priorReasoning}`,
+    source: 'user_rule',
+  }
+}
+
+function proposeInferredTags(
+  item: ProposalInput,
+  context: RuleEngineContext,
+  fields: ProposedFields,
+  fc: FieldConfidenceMap
+) {
   // Strategy 0: Past corrections — user previously corrected tags for similar items
   const tagCorrection = findBestCorrection(item, context, 'tag_ids')
   if (tagCorrection && Array.isArray(tagCorrection.correctedValue)) {
@@ -580,9 +626,14 @@ function proposeTags(
     return
   }
 
-  // Find tags frequently used with this vendor
+  // Find tags frequently used with this vendor.
+  //
+  // `frequency` is now measured over the vendor's *tagged* transactions (see
+  // fetchVendorTagFrequency), so a majority there is a real convention. The
+  // second observation is what separates a convention from a one-off: without
+  // it a single stray tag on a first-time vendor scores a perfect 1.0.
   const vendorFreqs = context.vendorTagFrequency.filter(
-    (vtf) => vtf.vendorId === fields.vendorId && vtf.frequency > 0.5
+    (vtf) => vtf.vendorId === fields.vendorId && vtf.frequency > 0.5 && vtf.count >= 2
   )
 
   if (vendorFreqs.length === 0) {
@@ -660,6 +711,7 @@ function proposeDescription(
   // So: condense what we can deterministically, and score it low enough that
   // the hybrid engine escalates. The condensed form is the floor, not the
   // goal — it's what ships when no LLM is available.
+  //
   // Only for cards with a receipt behind them: a statement-only row's
   // description is a merchant descriptor, not a product title, and the
   // existing vendor-pattern and cleanup strategies already handle those.
@@ -803,20 +855,30 @@ function proposeDescription(
   // Strategy 6: Clean statement description
   const cleaned = cleanDescription(item.description)
   fields.description = cleaned
-  if (rejectedPattern) {
-    fc.description = {
-      score: 60,
-      reasoning: `Cleaned statement description (learned pattern "${rejectedPattern}" rejected: amount ${Math.abs(item.amount)} ${item.currency} outside its historical range)`,
-    }
-  } else if (looksLikeMachineDescriptor(cleaned)) {
+
+  // What the cleanup actually produced decides the score, and a rejected
+  // pattern only adds to the explanation. Checking `rejectedPattern` first
+  // made the descriptor test unreachable on exactly the rows that need it:
+  // an Amazon charge both rejects a learned pattern (amounts vary per order)
+  // and cleans up to "AMAZON MKTPL BJ3IM3GE1 Amzn.com/bill WA".
+  const patternNote = rejectedPattern
+    ? ` (learned pattern "${rejectedPattern}" rejected: amount ${Math.abs(item.amount)} ${item.currency} outside its historical range)`
+    : ''
+
+  if (looksLikeMachineDescriptor(cleaned)) {
     // Title-casing "AMAZON MKTPL*BJ3IM3GE1 Amzn.com/bill WA" does not make it
     // a description — the authorization code and the processor's routing text
     // are still there, and scoring that 75 both proposed it and outranked
     // anything the LLM could suggest instead.
     fc.description = {
       score: 45,
-      reasoning: 'Statement descriptor still carries processor codes after cleanup — no readable description available from the row alone',
+      reasoning: `Statement descriptor still carries processor codes after cleanup — no readable description available from the row alone${patternNote}`,
       source: 'default',
+    }
+  } else if (rejectedPattern) {
+    fc.description = {
+      score: 60,
+      reasoning: `Cleaned statement description${patternNote}`,
     }
   } else {
     fc.description = { score: 75, reasoning: 'Cleaned statement description' }

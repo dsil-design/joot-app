@@ -251,6 +251,9 @@ export function CreateFromImportDialog({
   // retry effect fires once per item and never re-fills a cleared field.
   const pmResolvedForItemRef = React.useRef<string | null>(null)
 
+  // Invalidates the in-flight vendor lookup for the item being replaced.
+  const cancelPrefillRef = React.useRef<(() => void) | null>(null)
+
   /**
    * Everything the sources say about which account paid: the statement or slip
    * the row came from first, then the receipt's own card digits / parser.
@@ -273,6 +276,10 @@ export function CreateFromImportDialog({
   // Pre-fill form when data changes
   React.useEffect(() => {
     if (data && open) {
+      // Drop any vendor lookup still in flight for the previous item — its
+      // result would otherwise land in the form that was just reset for this
+      // one, presenting one card's vendor as this card's smart pre-fill.
+      cancelPrefillRef.current?.()
       // Reset AI flags
       setAiPrefilled(new Set())
       setFieldReasoning({})
@@ -369,6 +376,10 @@ export function CreateFromImportDialog({
       // Priority 3: Smart pre-fills from the parsed sources (async)
       {
         const hints = data.smartHints
+        let cancelled = false
+        cancelPrefillRef.current = () => {
+          cancelled = true
+        }
         const resolve = async () => {
           const prefilledFields = new Set<string>(
             resolvedPm ? ["paymentMethod"] : []
@@ -380,6 +391,7 @@ export function CreateFromImportDialog({
           // resolver searches on name fragments and scores the candidates.
           if (hints?.vendorId) {
             const vendorData = await getVendorById(hints.vendorId)
+            if (cancelled) return
             if (vendorData) {
               setVendor(vendorData.id)
               setVendorLabel(vendorData.name)
@@ -393,6 +405,7 @@ export function CreateFromImportDialog({
               },
               searchVendors
             )
+            if (cancelled) return
             if (match) {
               setVendor(match.id)
               setVendorLabel(match.name)
@@ -412,6 +425,7 @@ export function CreateFromImportDialog({
             prefilledFields.add("description")
           }
 
+          if (cancelled) return
           if (prefilledFields.size > 0) {
             setAiPrefilled(prefilledFields)
           }

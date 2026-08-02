@@ -122,7 +122,12 @@ export function mergeResults(
     // type read off the amount's sign) are ground truth from the source
     // document. The LLM's self-reported confidence is an opinion and may
     // never overrule them, whatever score it claims.
-    if (ruleConf?.source === 'arithmetic') continue
+    //
+    // User-authored auto-tag rules are protected for the same reason from the
+    // other direction: they are an explicit instruction, not an inference, so
+    // "always tag Nidnoi as reimbursement" must survive a confident LLM that
+    // would rather call it groceries.
+    if (ruleConf?.source === 'arithmetic' || ruleConf?.source === 'user_rule') continue
 
     if (!ruleConf || llmConf.score > ruleConf.score) {
       // LLM has higher confidence — use its value

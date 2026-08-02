@@ -7,6 +7,7 @@
 
 import { callAi, AI_MODEL } from '@/lib/email/ai-client'
 import { calculateEnrichmentConfidence } from './confidence'
+import { isRetailOrder } from './retail-descriptions'
 import type {
   ProposalInput,
   ProposalEngineResult,
@@ -129,10 +130,32 @@ export async function generateLLMProposal(
   }
 
   if (data.description) {
-    fields.description = data.description
-    fieldConfidence.description = {
-      score: data.confidence.description || 70,
-      reasoning: data.reasoning.description || 'AI-generated description',
+    // Guard, not a request. Told that a vendor's past descriptions are voice
+    // rather than evidence, the model still answered a bare
+    // "AMAZON MKTPL*BF2BM2GD2" row with "Magnesium, Tote Bag" — because a past
+    // Amazon charge happened to be for the same $71.78 and an exact amount
+    // match reads as proof. It isn't; marketplaces repeat totals constantly.
+    // Where the rule is checkable, check it rather than asking.
+    const reused =
+      vendorStyle && !hasGoodsEvidence(item)
+        ? vendorStyle.samples.find(
+            (s) => normalizeForReuseCheck(s.description) === normalizeForReuseCheck(data.description!)
+          )
+        : undefined
+
+    if (reused) {
+      fields.description = neutralVendorDescription(vendorStyle!.vendorName, item)
+      fieldConfidence.description = {
+        score: 55,
+        reasoning: `AI reused this vendor's past description "${reused.description}" on a row whose only source is a merchant descriptor — replaced with a neutral one`,
+        source: 'default',
+      }
+    } else {
+      fields.description = data.description
+      fieldConfidence.description = {
+        score: data.confidence.description || 70,
+        reasoning: data.reasoning.description || 'AI-generated description',
+      }
     }
   }
 
@@ -192,6 +215,40 @@ export async function generateLLMProposal(
     llmResponseTokens: tokenUsage.responseTokens,
     durationMs: totalDurationMs,
   }
+}
+
+/**
+ * Whether anything among this item's own sources says what was bought.
+ *
+ * A statement row carries a merchant descriptor and nothing else — the amount,
+ * the date, and where the money went. Nothing in it can name goods, so any
+ * description that names goods came from somewhere other than this purchase.
+ */
+function hasGoodsEvidence(item: ProposalInput): boolean {
+  if (item.retailOrderItems && item.retailOrderItems.length > 0) return true
+  if (item.extraEmailContext?.length || item.extraSlipContext?.length) return true
+  if (item.paymentSlipDescription?.trim()) return true
+  // An email receipt of any kind describes its own purchase.
+  return !!item.emailTransactionId
+}
+
+/** Comparison that ignores casing, punctuation and spacing differences. */
+function normalizeForReuseCheck(description: string): string {
+  return description.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+/**
+ * What to say when the only thing known is where the money went.
+ */
+function neutralVendorDescription(vendorName: string, item: ProposalInput): string {
+  return isRetailOrder({
+    parserKey: item.parserKey,
+    fromAddress: item.fromAddress,
+    fromName: item.fromName,
+    statementDescription: item.statementDescription ?? item.description,
+  })
+    ? `${vendorName} Order`
+    : vendorName
 }
 
 /**
@@ -300,7 +357,7 @@ function buildPrompt(
     parts.push('')
     parts.push(`## How the User Describes ${vendorStyle.vendorName} Purchases`)
     parts.push(`These are descriptions the user wrote themselves for this vendor, newest first. Match this VOICE — length, capitalization, level of detail, and any prefixes they use.`)
-    parts.push(`Do NOT copy one verbatim unless this transaction really is the same purchase. The amounts are given so you can judge that: a description written on a 3,500 THB charge must not be reused on a 400 THB one.`)
+    parts.push(`Copy the WORDING, never the CONTENT. The amounts below exist only to rule a past description OUT (one written on a 3,500 THB charge cannot apply to a 400 THB one). They can never rule one IN: two charges at the same merchant for the same amount are a coincidence, not the same purchase — marketplaces bill round numbers and repeat totals constantly. Reuse a past description only when THIS item's own sources name the same goods.`)
     for (const s of vendorStyle.samples) {
       const amountCtx = s.currency ? ` (${s.amount} ${s.currency})` : ''
       parts.push(`- "${s.description}"${amountCtx}`)
@@ -417,7 +474,8 @@ function buildPrompt(
   parts.push(`- If the raw description is a stand-in like "Amazon order (2 sub-orders)" or "Multiple orders: ...", it carries no information — describe the itemized list instead. If there is no item list either, write the neutral "[Vendor] Order" rather than inventing goods.`)
   parts.push('')
   parts.push(`### Never describe more than the evidence supports`)
-  parts.push(`- When the ONLY source is a statement merchant descriptor — no email receipt, no item list — you do not know what was bought. Say what is known and stop: "Amazon Order", "Wawa", "Lazada Order". Borrowing a description from a different purchase at the same vendor is a fabrication, no matter how close the amounts are.`)
+  parts.push(`- When the ONLY source is a statement merchant descriptor — no email receipt, no item list — you do not know what was bought. Say what is known and stop: "Amazon Order", "Wawa", "Lazada Order".`)
+  parts.push(`- Borrowing a description from a different purchase at the same vendor is a fabrication. A matching amount does not license it — not even an EXACT match. Naming goods that no source in front of you mentions is the single worst thing you can do here; a vague description is trivially corrected, a confidently wrong one gets accepted.`)
   parts.push(`- Never return a cleaned-up merchant descriptor as the description. "AMAZON MKTPL BJ3IM3GE1 Amzn.com/bill WA", "WAWA# 5216 VENICE FL", "TST* FOXTAIL COFFEE" are processor strings — strip the store numbers, reference codes, city and state and use the merchant name, or the convention that fits it ("Coffee: Foxtail Coffee").`)
   parts.push(`- A vendor's past descriptions show you their VOICE. They are not evidence about this transaction.`)
   parts.push('')

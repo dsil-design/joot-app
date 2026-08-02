@@ -322,6 +322,78 @@ export type Database = {
           },
         ]
       }
+      auto_tag_rules: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          last_used_at: string | null
+          match_count: number
+          match_type: string
+          pattern: string | null
+          priority: number
+          source_types: string[] | null
+          tag_ids: string[]
+          transaction_type:
+            | Database["public"]["Enums"]["transaction_type"]
+            | null
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_used_at?: string | null
+          match_count?: number
+          match_type: string
+          pattern?: string | null
+          priority?: number
+          source_types?: string[] | null
+          tag_ids?: string[]
+          transaction_type?:
+            | Database["public"]["Enums"]["transaction_type"]
+            | null
+          updated_at?: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_used_at?: string | null
+          match_count?: number
+          match_type?: string
+          pattern?: string | null
+          priority?: number
+          source_types?: string[] | null
+          tag_ids?: string[]
+          transaction_type?:
+            | Database["public"]["Enums"]["transaction_type"]
+            | null
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_tag_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_tag_rules_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       currency_configuration: {
         Row: {
           created_at: string | null
@@ -2610,6 +2682,10 @@ export type Database = {
           suggested_match_id: string
           transaction_id: string
         }[]
+      }
+      increment_auto_tag_rule_usage: {
+        Args: { rule_ids: string[] }
+        Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
       update_sync_configuration: {

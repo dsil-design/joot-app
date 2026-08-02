@@ -23,7 +23,15 @@ export type { RetailOrderItem }
  *
  * Optional so proposals persisted before this field existed still parse.
  */
-export type ConfidenceSource = 'arithmetic' | 'inferred' | 'default'
+/**
+ * Where a field's value came from.
+ *
+ * 'arithmetic' and 'user_rule' are both protected from LLM override in
+ * hybrid-engine's mergeResults: the first is ground truth read off the source
+ * document, the second is an explicit instruction from the user. Everything
+ * else is a guess the LLM is allowed to improve on.
+ */
+export type ConfidenceSource = 'arithmetic' | 'user_rule' | 'inferred' | 'default'
 
 export interface FieldConfidence {
   score: number    // 0-100
@@ -95,6 +103,11 @@ export interface ProposedFields {
   vendorNameSuggestion?: string
   paymentMethodId?: string
   tagIds?: string[]
+  /**
+   * IDs of the auto-tag rules that contributed tags. Not persisted on the
+   * proposal — used only to bump each rule's usage counter after generation.
+   */
+  autoTagRuleIds?: string[]
 }
 
 export interface ProposalEngineResult {
@@ -294,6 +307,23 @@ export interface VendorDescriptionSample {
   date: string
 }
 
+/**
+ * A user-authored auto-tagging rule. Unlike VendorTagFrequency (inferred from
+ * history) this is explicit intent and fires on the first matching item.
+ */
+export interface AutoTagRuleRecord {
+  id: string
+  matchType: 'vendor' | 'counterparty_pattern'
+  vendorId: string | null
+  pattern: string | null
+  /** Narrowing filter; null means the rule applies to any transaction type. */
+  transactionType: 'expense' | 'income' | 'transfer' | null
+  /** Narrowing filter; null/empty means the rule applies to any source. */
+  sourceTypes: string[] | null
+  tagIds: string[]
+  priority: number
+}
+
 export interface RuleEngineContext {
   vendors: VendorRecord[]
   paymentMethods: PaymentMethodRecord[]
@@ -309,6 +339,7 @@ export interface RuleEngineContext {
   pastCorrections: PastCorrection[]
   vendorRecipientMappings: VendorRecipientMappingRecord[]
   statementDescriptionMappings: StatementDescriptionMappingRecord[]
+  autoTagRules: AutoTagRuleRecord[]
   statementPaymentMethodId?: string
   statementPaymentMethodName?: string
 }
