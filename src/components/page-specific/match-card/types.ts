@@ -190,6 +190,12 @@ export interface MatchCardCallbacks {
    * clicks the reject icon on a specific source section within a merged item.
    */
   onRejectSource?: (id: string, source: 'email' | 'statement' | 'slip') => void
+  /**
+   * Reject only the claim that this card is the given Joot transaction. The
+   * card and its cross-source pairing survive; it returns to the queue as a
+   * new transaction. Distinct from onReject, which discards the card itself.
+   */
+  onRejectTransactionMatch?: (id: string) => void
   onLinkManually?: (id: string) => void
   onImport?: (id: string) => void
   onCreateAsNew?: (id: string) => void
