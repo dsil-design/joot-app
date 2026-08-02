@@ -252,7 +252,7 @@ function buildDescription(emailType: LazadaEmailType, body: string): string {
 /**
  * Lazada Email Parser implementation
  */
-export const lazadaParser: EmailParser = {
+export const lazadaParser = {
   key: 'lazada',
   name: 'Lazada Order Parser',
 
@@ -373,7 +373,7 @@ export const lazadaParser: EmailParser = {
       errors: errors.length > 0 ? errors : undefined,
     };
   },
-};
+} satisfies EmailParser;
 
 // Export helper functions for testing
 export {

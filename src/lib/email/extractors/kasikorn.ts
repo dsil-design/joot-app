@@ -455,7 +455,7 @@ function isSelfTransfer(body: string, recipientName: string | null): boolean {
 /**
  * Kasikorn Bank Email Parser implementation
  */
-export const kasikornParser: EmailParser = {
+export const kasikornParser = {
   key: 'kasikorn',
   name: 'Kasikorn Bank (K PLUS) Parser',
 
@@ -598,7 +598,7 @@ export const kasikornParser: EmailParser = {
       errors: errors.length > 0 ? errors : undefined,
     };
   },
-};
+} satisfies EmailParser;
 
 // Export helper functions for testing
 export {

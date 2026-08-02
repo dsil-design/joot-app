@@ -387,7 +387,7 @@ function isSelfTransfer(body: string, recipientName: string | null): boolean {
 /**
  * Bangkok Bank Email Parser implementation
  */
-export const bangkokBankParser: EmailParser = {
+export const bangkokBankParser = {
   key: 'bangkok-bank',
   name: 'Bangkok Bank (Bualuang) Parser',
 
@@ -530,7 +530,7 @@ export const bangkokBankParser: EmailParser = {
       errors: errors.length > 0 ? errors : undefined,
     };
   },
-};
+} satisfies EmailParser;
 
 // Export helper functions for testing
 export {
