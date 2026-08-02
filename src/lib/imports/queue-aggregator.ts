@@ -803,9 +803,25 @@ export async function aggregateQueueItems(
       const slipItem = group.find(i => i.source === 'payment_slip')
       const base = stmtItem ?? emailItem ?? group[0]
 
-      // Build a merged ID from whatever sources we have
+      // Build a merged ID from whatever sources we have.
+      // The 3-way case must be checked first: a slip+email+stmt group also
+      // satisfies `emailItem && stmtItem`, and taking that branch would encode
+      // a 2-way email+statement ID that drops the slip UUID entirely. The card
+      // still renders a "From Payment Slip" section (mergedPaymentSlipData is
+      // set below), but parseImportId returns type 'merged', so the slip's
+      // preview/link guards no-op and approve/reject never resolve the slip.
       let mergedId: string
-      if (emailItem && stmtItem) {
+      if (slipItem && emailItem && stmtItem) {
+        const slipId = slipItem.id.replace(/^slip:/, '')
+        const emailId = emailItem.id.replace(/^email:/, '')
+        const stmtParts = stmtItem.id.replace(/^stmt:/, '').split(':')
+        mergedId = makeMergedSlipEmailStmtId(
+          slipId,
+          emailId,
+          stmtParts[0],
+          parseInt(stmtParts[1], 10)
+        )
+      } else if (emailItem && stmtItem) {
         const emailId = emailItem.id.replace(/^email:/, '')
         const stmtParts = stmtItem.id.replace(/^stmt:/, '').split(':')
         mergedId = makeMergedId(emailId, stmtParts[0], parseInt(stmtParts[1], 10))
