@@ -40,6 +40,7 @@ import { parseImportId } from "@/lib/utils/import-id"
 import { getSlipLink, getEmailLink, getStatementLink } from "@/lib/utils/import-source-links"
 import { formatLocalDate } from "@/lib/utils/date-helpers"
 import { PARSER_PAYMENT_METHOD_MAP } from "@/lib/proposals/payment-method-mapper"
+import { matchVendor } from "@/lib/proposals/vendor-matcher"
 import { getConfidenceLevel } from "@/components/ui/confidence-indicator"
 import Link from "next/link"
 import type { MatchCardData } from "./match-card/types"
@@ -891,32 +892,62 @@ export function ReviewFocusModal({
       return
     }
 
-    // Smart hints from email metadata (priority 2)
+    // Smart hints from the parsed sources (priority 2) — what the card can
+    // fill in on its own when no proposal has been generated yet.
     const meta = item.emailMetadata || item.mergedEmailData?.metadata
-    if (meta) {
-      const resolve = async () => {
-        const prefilledFields = new Set<string>()
 
-        if (meta.vendorId) {
+    // Description: the email receipt / slip memo says what was actually bought;
+    // the statement line is the processor's descriptor ("WWW.2C2P.COM*LAZADA
+    // PAY BANGKOK"). Prefer the source description whenever we have one — the
+    // parser that produced it doesn't matter, its confidence does.
+    const emailDescription = item.mergedEmailData?.description?.trim()
+    const slipDescription = item.mergedPaymentSlipData?.description?.trim()
+    // A description only exists when extraction succeeded, so it's used unless
+    // the parser explicitly reported low confidence in it.
+    const emailDescriptionIsTrusted = (meta?.extractionConfidence ?? 100) >= 50
+    const sourceDescription =
+      (emailDescription && emailDescriptionIsTrusted ? emailDescription : "") || slipDescription
+
+    const hintFields = new Set<string>()
+    if (sourceDescription) {
+      setDescription(sourceDescription)
+      hintFields.add("description")
+    }
+
+    if (meta || hintFields.size > 0) {
+      const resolve = async () => {
+        const prefilledFields = new Set<string>(hintFields)
+
+        if (meta?.vendorId) {
           const vendorData = await getVendorById(meta.vendorId)
           if (vendorData) {
             setVendor(vendorData.id)
             setVendorLabel(vendorData.name)
             prefilledFields.add("vendor")
           }
-        } else if (meta.vendorNameRaw) {
-          const results = await searchVendors(meta.vendorNameRaw, 5)
-          const exactMatch = results.find(
-            (v) => v.name.toLowerCase() === meta.vendorNameRaw!.toLowerCase()
-          )
-          if (exactMatch) {
-            setVendor(exactMatch.id)
-            setVendorLabel(exactMatch.name)
+        } else if (meta?.vendorNameRaw) {
+          // The extracted name is rarely the exact vendor record ("Lazada
+          // Thailand" vs the vendor "Lazada"), so search on the whole name and
+          // on its leading tokens, then score the candidates the same way the
+          // proposal engine does.
+          const raw = meta.vendorNameRaw
+          const queries = [raw, ...raw.split(/\s+/).filter((t) => t.length >= 3).slice(0, 2)]
+          const candidates = new Map<string, { id: string; name: string; transactionCount: number }>()
+          for (const q of Array.from(new Set(queries))) {
+            const results = await searchVendors(q, 10)
+            for (const v of results) {
+              candidates.set(v.id, { id: v.id, name: v.name, transactionCount: 0 })
+            }
+          }
+          const match = matchVendor(raw, Array.from(candidates.values()), [])
+          if (match && match.confidence >= 70) {
+            setVendor(match.vendorId)
+            setVendorLabel(match.vendorName)
             prefilledFields.add("vendor")
           }
         }
 
-        if (meta.parserKey && PARSER_PAYMENT_METHOD_MAP[meta.parserKey]) {
+        if (meta?.parserKey && PARSER_PAYMENT_METHOD_MAP[meta.parserKey]) {
           const patterns = PARSER_PAYMENT_METHOD_MAP[meta.parserKey]
           const matched = paymentOptionsRef.current.find((opt) =>
             patterns.some((p) => opt.label.toLowerCase().includes(p))
@@ -925,15 +956,6 @@ export function ReviewFocusModal({
             setPaymentMethod(matched.value)
             prefilledFields.add("paymentMethod")
           }
-        }
-
-        if (
-          meta.parserKey &&
-          meta.parserKey !== "ai-fallback" &&
-          (meta.extractionConfidence ?? 0) >= 75
-        ) {
-          // Use email-derived description if high confidence parser
-          prefilledFields.add("description")
         }
 
         if (prefilledFields.size > 0) {
