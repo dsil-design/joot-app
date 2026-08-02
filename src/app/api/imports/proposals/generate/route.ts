@@ -6,12 +6,21 @@ import { generateAndStoreProposals } from '@/lib/proposals/proposal-service'
 import { fetchStatementQueueItems } from '@/lib/imports/statement-queue-builder'
 import { fetchEmailQueueItems } from '@/lib/imports/email-queue-builder'
 import { fetchPaymentSlipQueueItems } from '@/lib/imports/payment-slip-queue-builder'
+import { aggregateQueueItems } from '@/lib/imports/queue-aggregator'
+import { buildProposalInputFromQueueItem, attachExtraSourceContext } from '@/lib/proposals/queue-input'
+import { parseImportId } from '@/lib/utils/import-id'
+import type { QueueFilters } from '@/lib/imports/queue-types'
 import type { ProposalInput } from '@/lib/proposals/types'
 
 /**
  * POST /api/imports/proposals/generate
  *
  * Trigger batch proposal generation for import queue items.
+ *
+ * Runs the same fetch → aggregate pipeline as GET /api/imports/queue, so the
+ * proposals are keyed by the composite id the review queue actually renders.
+ * Generating from the unaggregated builder items instead writes `stmt:…` /
+ * `email:…` proposals that no cross-source (`merged:…`) card can ever load.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -47,55 +56,65 @@ export async function POST(request: NextRequest) {
       force?: boolean
     }
 
-    // Determine which sources to fetch based on filters
-    const shouldFetchStatements = !source || source === 'statement' || source === 'merged'
-    const shouldFetchEmails = !statementUploadId && (!source || source === 'email' || source === 'merged')
-    const shouldFetchSlips = !statementUploadId && (!source || source === 'payment_slip')
-
-    const fetchOpts = {
-      statementUploadId: statementUploadId || undefined,
-      currencyFilter: currency,
+    const filters: QueueFilters = {
+      statusFilter: status || 'all',
+      currencyFilter: currency || 'all',
+      confidenceFilter: confidence || 'all',
+      sourceFilter: source || 'all',
+      searchQuery: '',
       fromDate,
       toDate,
+      statementUploadId: statementUploadId || undefined,
     }
 
-    // Fetch queue items to generate proposals for
+    // Determine which sources to fetch based on filters
+    const shouldFetchStatements = filters.sourceFilter === 'all' || filters.sourceFilter === 'statement' || filters.sourceFilter === 'merged'
+    const shouldFetchEmails = !filters.statementUploadId && (filters.sourceFilter === 'all' || filters.sourceFilter === 'email' || filters.sourceFilter === 'merged')
+    const shouldFetchSlips = !filters.statementUploadId && (filters.sourceFilter === 'all' || filters.sourceFilter === 'payment_slip' || filters.sourceFilter === 'merged')
+
     const [statementItems, emailItems, slipItems] = await Promise.all([
       shouldFetchStatements
-        ? fetchStatementQueueItems(supabase, user.id, fetchOpts)
+        ? fetchStatementQueueItems(supabase, user.id, {
+            statementUploadId: filters.statementUploadId,
+            currencyFilter: filters.currencyFilter,
+            searchQuery: filters.searchQuery,
+            fromDate: filters.fromDate,
+            toDate: filters.toDate,
+          })
         : Promise.resolve([]),
       shouldFetchEmails
         ? fetchEmailQueueItems(supabase, user.id, {
-            currencyFilter: currency,
-            fromDate,
-            toDate,
+            currencyFilter: filters.currencyFilter,
+            searchQuery: filters.searchQuery,
+            fromDate: filters.fromDate,
+            toDate: filters.toDate,
           })
         : Promise.resolve([]),
       shouldFetchSlips
         ? fetchPaymentSlipQueueItems(supabase, user.id, {
-            currencyFilter: currency,
-            fromDate,
-            toDate,
+            currencyFilter: filters.currencyFilter,
+            searchQuery: filters.searchQuery,
+            fromDate: filters.fromDate,
+            toDate: filters.toDate,
           })
         : Promise.resolve([]),
     ])
 
-    // Combine all items
-    const allItems = [...statementItems, ...emailItems, ...slipItems]
+    // Pair and filter exactly as the review queue does — merged cards only
+    // exist after this pass.
+    const aggregated = await aggregateQueueItems(
+      supabase,
+      statementItems,
+      emailItems,
+      filters,
+      slipItems
+    )
 
-    // Filter to only new (unmatched) items
-    let targetItems = allItems.filter((item) => item.isNew)
+    // Only unmatched ("new transaction") cards get proposals.
+    let targetItems = aggregated.items.filter((item) => item.isNew)
 
-    // Honor the same status/confidence filters the review queue UI applies, so
-    // bulk generate only targets the items currently visible to the user.
-    if (status && status !== 'all') {
-      targetItems = targetItems.filter((item) => item.status === status)
-    }
-    if (confidence && confidence !== 'all') {
-      targetItems = targetItems.filter((item) => item.confidenceLevel === confidence)
-    }
-
-    // Apply filters
+    // Apply explicit id filters (the retry pass posts failed composite ids
+    // with no date window).
     if (compositeIds && compositeIds.length > 0) {
       const idSet = new Set(compositeIds)
       targetItems = targetItems.filter((item) => idSet.has(item.id))
@@ -103,127 +122,23 @@ export async function POST(request: NextRequest) {
     if (emailTransactionIds && emailTransactionIds.length > 0) {
       const emailIdSet = new Set(emailTransactionIds)
       targetItems = targetItems.filter((item) => {
-        if (item.source === 'email') {
-          const parts = item.id.split(':')
-          return emailIdSet.has(parts[1])
-        }
-        return true
+        const parsed = parseImportId(item.id)
+        const owned = [
+          parsed && 'emailId' in parsed ? parsed.emailId : undefined,
+          ...(item.extraEmailIds ?? []),
+        ].filter((id): id is string => !!id)
+        // Statement/slip-only cards carry no email — leave them in, matching
+        // the previous behaviour of this filter.
+        if (owned.length === 0) return true
+        return owned.some((id) => emailIdSet.has(id))
       })
     }
 
-    // Convert queue items to ProposalInput format
-    const proposalInputs: ProposalInput[] = targetItems.map((item) => {
-      const parts = item.id.split(':')
-      const emailMeta = item.emailMetadata
-      const mergedEmail = item.mergedEmailData
-      const slipMeta = item.paymentSlipMetadata
-      const isMerged = item.source === 'merged'
-      const isSlip = item.source === 'payment_slip'
-
-      return {
-        compositeId: item.id,
-        sourceType: item.source || 'statement',
-        statementUploadId: item.statementUploadId || (parts[0] === 'stmt' ? parts[1] : undefined),
-        suggestionIndex: parts[0] === 'stmt' ? parseInt(parts[2], 10) : undefined,
-        emailTransactionId: parts[0] === 'email' ? parts[1] : undefined,
-        // For merged items, prefer the email's parsed description over the raw statement description
-        description: (isMerged && mergedEmail?.description)
-          ? mergedEmail.description
-          : (isMerged && item.mergedPaymentSlipData?.description)
-            ? item.mergedPaymentSlipData.description
-            : item.statementTransaction.description,
-        amount: item.statementTransaction.amount,
-        currency: item.statementTransaction.currency,
-        date: item.statementTransaction.date,
-        paymentMethodId: item.paymentMethod?.id,
-        paymentMethodName: item.paymentMethod?.name,
-        // Email-specific fields for proposal engine
-        subject: emailMeta?.subject,
-        fromAddress: emailMeta?.fromAddress,
-        fromName: emailMeta?.fromName,
-        vendorId: emailMeta?.vendorId,
-        vendorNameRaw: emailMeta?.vendorNameRaw,
-        parserKey: emailMeta?.parserKey,
-        classification: emailMeta?.classification,
-        extractionConfidence: emailMeta?.extractionConfidence,
-        paymentCardLastFour: emailMeta?.paymentCardLastFour,
-        paymentCardType: emailMeta?.paymentCardType,
-        // Payment slip description (available on slip-only or merged slip+statement items)
-        ...((isSlip || item.mergedPaymentSlipData) && {
-          paymentSlipDescription: isSlip
-            ? item.statementTransaction.description
-            : item.mergedPaymentSlipData?.description,
-        }),
-        // Payment slip-specific fields (for slip-only or merged slip+statement items)
-        ...((isSlip || isMerged) && slipMeta && {
-          paymentSlipUploadId: slipMeta.slipUploadId,
-          senderName: slipMeta.senderName,
-          recipientName: slipMeta.recipientName,
-          bankDetected: slipMeta.bankDetected,
-          detectedDirection: slipMeta.detectedDirection ?? undefined,
-        }),
-      }
-    })
+    const proposalInputs: ProposalInput[] = targetItems.map(buildProposalInputFromQueueItem)
 
     // Multi-source enrichment: bulk-load extra email/slip context for any
-    // items that have manually-attached extras, then attach to their inputs.
-    const allExtraEmailIds = Array.from(
-      new Set(targetItems.flatMap((i) => i.extraEmailIds ?? []))
-    )
-    const allExtraSlipIds = Array.from(
-      new Set(targetItems.flatMap((i) => i.extraSlipIds ?? []))
-    )
-    if (allExtraEmailIds.length > 0 || allExtraSlipIds.length > 0) {
-      const [emailRes, slipRes] = await Promise.all([
-        allExtraEmailIds.length > 0
-          ? supabase
-              .from('email_transactions')
-              .select('id, subject, from_name, from_address, description, amount, currency, transaction_date')
-              .in('id', allExtraEmailIds)
-              .eq('user_id', user.id)
-          : Promise.resolve({ data: [] as any[] }),
-        allExtraSlipIds.length > 0
-          ? supabase
-              .from('payment_slip_uploads')
-              .select('id, sender_name, recipient_name, memo, amount, currency, transaction_date')
-              .in('id', allExtraSlipIds)
-              .eq('user_id', user.id)
-          : Promise.resolve({ data: [] as any[] }),
-      ])
-      const emailById = new Map((emailRes.data || []).map((e) => [e.id, e]))
-      const slipById = new Map((slipRes.data || []).map((s) => [s.id, s]))
-
-      proposalInputs.forEach((input, i) => {
-        const item = targetItems[i]
-        if (item.extraEmailIds && item.extraEmailIds.length > 0) {
-          input.extraEmailContext = item.extraEmailIds
-            .map((id) => emailById.get(id))
-            .filter((e): e is NonNullable<typeof e> => !!e)
-            .map((e) => ({
-              subject: e.subject ?? undefined,
-              fromName: e.from_name ?? undefined,
-              fromAddress: e.from_address ?? undefined,
-              description: e.description ?? undefined,
-              amount: e.amount != null ? Number(e.amount) : undefined,
-              currency: e.currency ?? undefined,
-              date: e.transaction_date ?? undefined,
-            }))
-        }
-        if (item.extraSlipIds && item.extraSlipIds.length > 0) {
-          input.extraSlipContext = item.extraSlipIds
-            .map((id) => slipById.get(id))
-            .filter((s): s is NonNullable<typeof s> => !!s)
-            .map((s) => ({
-              senderName: s.sender_name ?? undefined,
-              recipientName: s.recipient_name ?? undefined,
-              memo: s.memo ?? undefined,
-              amount: s.amount != null ? Number(s.amount) : undefined,
-              currency: s.currency ?? undefined,
-              date: s.transaction_date ?? undefined,
-            }))
-        }
-      })
-    }
+    // items that have manually-attached extras.
+    await attachExtraSourceContext(supabase, user.id, proposalInputs, targetItems)
 
     const result = await generateAndStoreProposals(supabase, user.id, proposalInputs, { force })
 
