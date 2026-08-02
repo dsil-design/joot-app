@@ -13,6 +13,7 @@ import { fetchStatementQueueItems } from '@/lib/imports/statement-queue-builder'
 import { fetchEmailQueueItems } from '@/lib/imports/email-queue-builder'
 import { fetchPaymentSlipQueueItems } from '@/lib/imports/payment-slip-queue-builder'
 import { aggregateQueueItems } from '@/lib/imports/queue-aggregator'
+import { buildProposalInputFromQueueItem, attachExtraSourceContext } from '@/lib/proposals/queue-input'
 import { parseImportId } from '@/lib/utils/import-id'
 import type { ProposalInput, RuleEngineContext } from '@/lib/proposals/types'
 import type { Json } from '@/lib/supabase/types'
@@ -70,98 +71,13 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // Build proposal input
-    // For merged items, prefer the email's parsed description over the raw statement description
-    const emailMeta = targetItem.emailMetadata
-    const mergedEmail = targetItem.mergedEmailData
-    const slipMeta = targetItem.paymentSlipMetadata
-    const isMerged = targetItem.source === 'merged'
-    const isSlip = targetItem.source === 'payment_slip'
-    const hasSlipData = isSlip || (isMerged && !!targetItem.paymentSlipMetadata)
-
-    const hasStatementId = parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt' || parsed.type === 'merged_slip_email_stmt'
-    const hasIndex = parsed.type === 'statement' || parsed.type === 'merged' || parsed.type === 'merged_slip_stmt' || parsed.type === 'merged_slip_email_stmt'
-    const hasEmailId = parsed.type === 'email' || parsed.type === 'merged' || parsed.type === 'merged_slip_email' || parsed.type === 'merged_slip_email_stmt'
-    const hasSlipId = parsed.type === 'payment_slip' || parsed.type === 'merged_slip_email' || parsed.type === 'merged_slip_stmt' || parsed.type === 'merged_slip_email_stmt'
-
-    const proposalInput: ProposalInput = {
-      compositeId,
-      sourceType: targetItem.source || 'statement',
-      statementUploadId: hasStatementId ? parsed.statementId : undefined,
-      suggestionIndex: hasIndex ? parsed.index : undefined,
-      emailTransactionId: hasEmailId ? parsed.emailId : undefined,
-      description: (isMerged && mergedEmail?.description) ? mergedEmail.description : targetItem.statementTransaction.description,
-      amount: targetItem.statementTransaction.amount,
-      currency: targetItem.statementTransaction.currency,
-      date: targetItem.statementTransaction.date,
-      paymentMethodId: targetItem.paymentMethod?.id,
-      paymentMethodName: targetItem.paymentMethod?.name,
-      // Email-specific fields for proposal engine
-      subject: emailMeta?.subject,
-      fromAddress: emailMeta?.fromAddress,
-      fromName: emailMeta?.fromName,
-      vendorId: emailMeta?.vendorId,
-      vendorNameRaw: emailMeta?.vendorNameRaw,
-      parserKey: emailMeta?.parserKey,
-      classification: emailMeta?.classification,
-      extractionConfidence: emailMeta?.extractionConfidence,
-      paymentCardLastFour: emailMeta?.paymentCardLastFour,
-      paymentCardType: emailMeta?.paymentCardType,
-      // Payment slip description — the sender's manually typed memo for this transaction.
-      // For standalone slips it lives on statementTransaction.description; for merged items
-      // (slip+statement, slip+email, slip+email+stmt) it's carried on mergedPaymentSlipData.
-      ...(hasSlipData && {
-        paymentSlipDescription: isSlip
-          ? targetItem.statementTransaction.description
-          : targetItem.mergedPaymentSlipData?.description,
-      }),
-      // Payment slip-specific fields (present for both standalone slips and merged items containing a slip)
-      ...(hasSlipData && slipMeta && {
-        paymentSlipUploadId: slipMeta.slipUploadId,
-        senderName: slipMeta.senderName,
-        recipientName: slipMeta.recipientName,
-        bankDetected: slipMeta.bankDetected,
-        detectedDirection: slipMeta.detectedDirection ?? undefined,
-      }),
-    }
+    // Build proposal input — shared with the batch route so both write the
+    // same shape under the same composite id.
+    const proposalInput: ProposalInput = buildProposalInputFromQueueItem(targetItem)
 
     // Multi-source enrichment: load any extra emails / slips the user has
     // manually attached to this queue item so the LLM gets full context.
-    if (targetItem.extraEmailIds && targetItem.extraEmailIds.length > 0) {
-      const { data: extras } = await supabase
-        .from('email_transactions')
-        .select('subject, from_name, from_address, description, amount, currency, transaction_date')
-        .in('id', targetItem.extraEmailIds)
-        .eq('user_id', user.id)
-      if (extras && extras.length > 0) {
-        proposalInput.extraEmailContext = extras.map((e) => ({
-          subject: e.subject ?? undefined,
-          fromName: e.from_name ?? undefined,
-          fromAddress: e.from_address ?? undefined,
-          description: e.description ?? undefined,
-          amount: e.amount != null ? Number(e.amount) : undefined,
-          currency: e.currency ?? undefined,
-          date: e.transaction_date ?? undefined,
-        }))
-      }
-    }
-    if (targetItem.extraSlipIds && targetItem.extraSlipIds.length > 0) {
-      const { data: extras } = await supabase
-        .from('payment_slip_uploads')
-        .select('sender_name, recipient_name, memo, amount, currency, transaction_date')
-        .in('id', targetItem.extraSlipIds)
-        .eq('user_id', user.id)
-      if (extras && extras.length > 0) {
-        proposalInput.extraSlipContext = extras.map((s) => ({
-          senderName: s.sender_name ?? undefined,
-          recipientName: s.recipient_name ?? undefined,
-          memo: s.memo ?? undefined,
-          amount: s.amount != null ? Number(s.amount) : undefined,
-          currency: s.currency ?? undefined,
-          date: s.transaction_date ?? undefined,
-        }))
-      }
-    }
+    await attachExtraSourceContext(supabase, user.id, [proposalInput], [targetItem])
 
     // Fetch prior rejection feedback for this item (stored in ai_feedback with compositeId in email_subject)
     const { data: priorFeedback } = await supabase
@@ -189,14 +105,6 @@ export async function POST(request: NextRequest) {
       if (dateOverride) {
         proposalInput.correctedDate = dateOverride
       }
-    }
-
-    // Populate secondary source dates for per-bank date preference learning
-    if (isMerged && mergedEmail?.date) {
-      proposalInput.emailDate = mergedEmail.date
-    }
-    if (isMerged && targetItem.mergedPaymentSlipData?.date) {
-      proposalInput.slipDate = targetItem.mergedPaymentSlipData.date
     }
 
     // Generate proposal directly (not through batch function, for better error reporting)

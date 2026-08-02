@@ -642,3 +642,97 @@ describe('Integration with realistic emails', () => {
     expect(result.data!.order_id).toBe('4444555566667');
   });
 });
+
+/**
+ * The live Thai order-confirmation template, as it actually arrives: sent from
+ * a subdomain via iCloud Private Relay, itemized per parcel, with the charged
+ * total printed as "Total (VAT included)" and an advertising block after it.
+ */
+describe('live order-confirmation template', () => {
+  const REAL_BODY =
+    '96 Click to see more details Topup & Estore Lazmall Vouchers Global Collection ' +
+    'Thank you for your purchase! Hi Dennis Siller, Your Order #1109651822208824 placed on ' +
+    'July 28, 2026 at 20:36 via Credit or Debit Card has been confirmed. ' +
+    'Delivery Details Name: Dennis Siller Phone: 0649506185 ' +
+    'Parcel 1 Sold by: Singha Estimated Delivery Dates: July 29 - July 31, 2026 ' +
+    '[Send to Bangkok] Prachylap, Ayutthaya, Chiang Mai, Lampun] ' +
+    'Singha Sparkling Water, Lemon Scent THB 320.00 Quantity: 4 ' +
+    'Subtotal: THB 1,280.00 Shipping fee: THB 60.00 Discount: THB 188.00 ' +
+    'Service fee: THB 0.00 Total (VAT included): THB 1,152.00 ' +
+    'Shipping Option: SELLER_OWN_FLEET Paid by: Credit or Debit Card ' +
+    "Don't Forget to Buy These พัดลมโน๊ตบุ๊ค ฿499 SHOP NOW! มูจิ ไส้ผ้านวม ฿1490 SHOP NOW!";
+
+  function liveEmail(overrides: Partial<RawEmailData> = {}): RawEmailData {
+    return createMockEmail({
+      // Already normalized out of iCloud Private Relay by the extraction service
+      from_address: 'noreply@support.lazada.co.th',
+      from_name: 'Lazada Thailand',
+      subject: 'We have received your order No 1109651822208824',
+      text_body: REAL_BODY,
+      ...overrides,
+    });
+  }
+
+  it('matches senders on Lazada subdomains, not just bare lazada.co.th', () => {
+    expect(lazadaParser.canParse(liveEmail())).toBe(true);
+    expect(lazadaParser.canParse(liveEmail({ from_address: 'noreply@mail.lazada.com' }))).toBe(true);
+    expect(lazadaParser.canParse(liveEmail({ from_address: 'noreply@notlazada.co.th.example.com' }))).toBe(false);
+  });
+
+  it('takes the charged total, not the subtotal or a promo price', async () => {
+    const result = await lazadaParser.extract(liveEmail());
+
+    expect(result.success).toBe(true);
+    // 1,152.00 is the charged total; 1,280.00 is the subtotal and 1490 a promo
+    expect(result.data!.amount).toBe(1152);
+    expect(result.data!.currency).toBe('THB');
+    expect(result.notes).not.toContain('estimated');
+  });
+
+  it('describes the products ordered instead of "Online Order"', async () => {
+    const result = await lazadaParser.extract(liveEmail());
+
+    expect(result.data!.description).toBe('Singha Sparkling Water, Lemon Scent ×4');
+    expect(result.data!.order_id).toBe('1109651822208824');
+    expect(result.data!.vendor_name_raw).toBe('Lazada');
+    expect(result.confidence).toBeGreaterThanOrEqual(90);
+  });
+
+  it('names every distinct product when a parcel holds more than one', async () => {
+    const result = await lazadaParser.extract(liveEmail({
+      text_body: REAL_BODY.replace(
+        'Subtotal: THB 1,280.00',
+        'Pickleball paddle tape THB 70.03 Quantity: 2 Subtotal: THB 1,420.06'
+      ),
+    }));
+
+    expect(result.data!.description).toBe('Singha Sparkling Water, Lemon Scent ×6 +1 more');
+  });
+
+  it('hands refunds, cancellations and coupons back to AI extraction', async () => {
+    const nonPurchase = [
+      'เราได้เริ่มดำเนินการคืนเงินให้กับคุณแล้ว (คำสั่งซื้อหมายเลข 1109651822208824)',
+      '[Cancellation] ขออภัย คำสั่งซื้อ 1109651822208824 ถูกยกเลิก',
+      'Order Cancellation Notification',
+      "You've received a coupon",
+      'Lazada: Thank you for contacting us',
+    ];
+
+    for (const subject of nonPurchase) {
+      const result = await lazadaParser.extract(liveEmail({ subject }));
+      expect(result.success).toBe(false);
+      expect(result.errors![0]).toContain('Not a purchase confirmation');
+    }
+  });
+
+  it('still books shipping and e-invoice notices for a real purchase', async () => {
+    for (const subject of [
+      'Order number 1109651822208824 has been successfully shipped',
+      'E-invoice for order 1109651822208824',
+    ]) {
+      const result = await lazadaParser.extract(liveEmail({ subject }));
+      expect(result.success).toBe(true);
+      expect(result.data!.amount).toBe(1152);
+    }
+  });
+});
