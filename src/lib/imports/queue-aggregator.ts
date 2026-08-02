@@ -782,8 +782,39 @@ export async function aggregateQueueItems(
     const dedupedIds = new Set<string>()
     const mergedDedup: QueueItem[] = []
 
-    for (const [, group] of byMatchedTxn) {
-      if (group.length < 2) continue
+    // Consolidation asserts that every member documents the SAME payment.
+    // Sharing a matched_transaction_id is not that assertion: upstream matchers
+    // write that field on amount and date alone, so a group can hold genuinely
+    // distinct payments — four ฿135 charges on four dates at two merchants, or a
+    // $100 USD subscription beside an incoming −฿100 transfer. Merging those
+    // emitted one card and dropped the rest from the queue entirely, where they
+    // could never be seen, reviewed or rejected. Admit only members that could
+    // plausibly be the same payment; eject the rest so they stay reviewable.
+    //
+    // Cross-currency members skip the amount test on purpose — a THB receipt
+    // email legitimately accompanies a USD statement row for one Grab order.
+    // Same-currency members must agree on magnitude, which is what separates
+    // four distinct ฿135 charges from four records of one.
+    const DEDUP_MAX_DAYS = 3
+    const isSamePaymentCandidate = (a: QueueItem, b: QueueItem): boolean => {
+      const da = Date.parse(String(a.statementTransaction.date).slice(0, 10) + 'T00:00:00Z')
+      const db = Date.parse(String(b.statementTransaction.date).slice(0, 10) + 'T00:00:00Z')
+      if (Number.isFinite(da) && Number.isFinite(db)) {
+        if (Math.abs(da - db) > DEDUP_MAX_DAYS * 86_400_000) return false
+      }
+      const ca = a.statementTransaction.currency
+      const cb = b.statementTransaction.currency
+      if (ca && cb && ca === cb) {
+        const aa = Math.abs(Number(a.statementTransaction.amount) || 0)
+        const ab = Math.abs(Number(b.statementTransaction.amount) || 0)
+        const scale = Math.max(aa, ab)
+        if (scale > 0 && Math.abs(aa - ab) / scale > 0.01) return false
+      }
+      return true
+    }
+
+    for (const [, fullGroup] of byMatchedTxn) {
+      if (fullGroup.length < 2) continue
 
       // Safety: this pass only understands bare statement/email/slip items.
       // When the group contains an already-merged item (built by Phase 0 or
@@ -795,7 +826,17 @@ export async function aggregateQueueItems(
       // user's deliberately-built merged card vanishes with no replacement.
       // Leaving the group untouched is strictly safer; worst case the user
       // sees two cards for the same txn instead of zero.
-      if (group.some(i => i.source === 'merged')) continue
+      if (fullGroup.some(i => i.source === 'merged')) continue
+
+      // Restrict the group to members that could be the same payment as the
+      // base. Ejected members are deliberately NOT added to dedupedIds, so they
+      // survive as their own cards instead of disappearing.
+      const groupBase =
+        fullGroup.find(i => i.source === 'statement') ??
+        fullGroup.find(i => i.source === 'email') ??
+        fullGroup[0]
+      const group = fullGroup.filter(i => i === groupBase || isSamePaymentCandidate(groupBase, i))
+      if (group.length < 2) continue
 
       // Pick the best item as the base (prefer statement, then email, then others)
       const stmtItem = group.find(i => i.source === 'statement')
