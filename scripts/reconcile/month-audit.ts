@@ -138,7 +138,7 @@ async function main() {
 
   const { data: slips } = await sb
     .from('payment_slip_uploads')
-    .select('id, filename, transaction_date, amount, fee, recipient_name, status, review_status, matched_transaction_id, extraction_error, uploaded_at')
+    .select('id, filename, transaction_date, amount, fee, recipient_name, detected_direction, status, review_status, matched_transaction_id, extraction_error, uploaded_at')
     .eq('user_id', userId)
   const monthSlips = (slips || []).filter((s) => s.transaction_date?.startsWith(month))
   const failedSlips = (slips || []).filter((s) => s.status === 'failed')
