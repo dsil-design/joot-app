@@ -26,6 +26,19 @@ export interface PairCandidate {
   /** For email candidates: statement-suggestion composite keys (`${statementId}:${index}`) this email has been rejected from pairing with */
   rejectedPairKeys?: string[]
   /**
+   * Sub-order fields, set when an order email settles as several card charges
+   * (Amazon bills per shipment). The email contributes one candidate per
+   * shipment, each carrying its own amount, so ordinary 1:1 assignment pairs
+   * each shipment with its own statement row. `emailId` is shared across the
+   * siblings — that is deliberate, and how one email ends up as evidence on
+   * several cards.
+   */
+  subOrderId?: string
+  subOrderPosition?: number
+  subOrderCount?: number
+  subOrderDescription?: string
+  subOrderOrderId?: string
+  /**
    * For statement candidates only: the original foreign-currency amount the
    * merchant billed, when the statement settled in a different currency.
    * Currently populated by the Chase parser, which prints the original

@@ -329,32 +329,181 @@ function getFoodType(emailDate: Date, restaurant: string): string {
   return 'Meal';
 }
 
+/**
+ * Collapse an HTML body down to the text a human would actually read.
+ *
+ * The amount patterns below measure distance between a label and its figure.
+ * Run against raw HTML that distance is meaningless — a single
+ * `<td style="...">` between "Total Paid" and "฿ 205" burns the whole
+ * 200-character window, the labeled-total pass silently finds nothing, and
+ * extraction falls through to "largest currency figure in the document". On a
+ * ride receipt with a promo that largest figure is the *pre-discount fare*:
+ * a 23 May 2026 GrabTaxi receipt reading "Total Paid ฿205 … Fare ฿227 …
+ * Promo ฿-48" extracted ฿227, which then mismatched against an unrelated
+ * ฿226 lunch and left the real ฿205 statement row orphaned.
+ *
+ * Bodies with no tags are returned untouched.
+ */
+function toVisibleText(body: string): string {
+  if (!/<[a-z!/]/i.test(body)) return body;
+
+  return body
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#(\d{1,7});/g, (whole, dec: string) => {
+      const code = Number(dec);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole;
+    })
+    .replace(/&#x([0-9a-f]{1,6});/gi, (whole, hex: string) => {
+      const code = parseInt(hex, 16);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole;
+    })
+    // Zero-width joiners/spaces: Grab's templates sprinkle these between
+    // digits and currency symbols, which breaks the amount patterns.
+    .replace(/[​‌‍﻿]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Total line label (Thai "รวม" — standalone, not part of longer words like
 // "รวมมูลค่า" — and English "Total" / "Grand Total"). The currency-specific
 // symbol is appended at runtime.
-const TOTAL_LABEL = '(?:รวม(?!มูลค่า|ภาษี)|Grand\\s*Total|(?<!\\w)Total(?!\\s*(?:VAT|Tax)))';
+//
+// "Total amount of goods and service that subject to VAT" is a VAT subtotal,
+// not the amount charged, and every Grab tax invoice prints it *after* the
+// real total. Since we take the last labeled match, letting it through means
+// always returning the VAT portion — ฿26 instead of ฿205. `Amount\s+of` is
+// deliberately narrow so a receipt that genuinely says "Total Amount ฿500"
+// still matches.
+//
+// "ทั้งหมด" is GrabMart's total label where GrabFood uses "รวม". Without it a
+// GrabMart receipt has no labeled total at all and falls through to the
+// largest-figure heuristic, which returns the pre-discount order subtotal —
+// ฿533 instead of the ฿521 actually charged on 27 May 2026.
+//
+// Vietnamese receipts label the total "Tổng cộng" and repeat it as "BẠN TRẢ"
+// ("you pay"). Note "Tổng tạm tính" is the *subtotal* and must not match,
+// which is why the Vietnamese branch is the full phrase rather than "Tổng".
+const TOTAL_LABEL =
+  '(?:รวม(?!มูลค่า|ภาษี)|ทั้งหมด|Tổng\\s*cộng|BẠN\\s*TRẢ|Grand\\s*Total|(?<!\\w)Total(?!\\s*(?:VAT|Tax|Amount\\s+of)))';
 
-function buildTotalPattern(symbolRegex: string): RegExp {
-  // Tempered greedy: match up to 200 chars between the label and the
-  // symbol+amount, but stop at the first occurrence of this currency's symbol
-  // so we don't skip past a closer match.
+// "Total Paid" is unambiguous where a bare "Total" is not: on a ride receipt
+// it names the settled amount, sitting alongside a Fare line that does not.
+const TOTAL_PAID_LABEL = '(?:Total\\s*Paid|ยอดชำระ(?:ทั้งหมด)?)';
+
+// A tabular receipt may declare its currency once, in a column header
+// ("Description | Amount (THB)"), and then print bare figures under it. The
+// "We're sorry for the late delivery" apology mail is the case that matters:
+// its only ฿-prefixed number is the ฿15 goodwill voucher, while the real
+// order total sits in that table as a bare "Total 410.00".
+const AMOUNT_COLUMN_HEADER = /Amount\s*\(\s*(฿|THB|₫|VND|S\$|SGD|RM|MYR|Rp|IDR|₱|PHP)\s*\)/i;
+
+// A number as printed on a receipt, separators included and undecided:
+// "273.00", "1,283", "99.840". Interpretation is `parseAmountToken`'s job.
+const AMOUNT_TOKEN = '\\d[\\d.,]*\\d|\\d';
+
+// Currencies with no minor unit. Grab prints Vietnamese dong as "99.840 ₫" —
+// dot as a *thousands* separator. Read as a decimal point that is ₫99.84, a
+// 1000× understatement, and the old `[\d,]+(?:\.\d{2})?` capture did exactly
+// that: it took ".84" as cents and dropped the trailing digit entirely.
+const CURRENCIES_WITHOUT_MINOR_UNITS = new Set(['VND', 'IDR']);
+
+/**
+ * Read a printed amount into a number, deciding what its separators mean.
+ *
+ * Grab receipts mix conventions across the markets it serves, so neither
+ * "strip commas" nor "strip dots" is safe on its own:
+ *   - THB/SGD/MYR/PHP: "1,283.50" — comma groups, dot decimal
+ *   - VND/IDR: "99.840" / "1.500.000" — dot groups, no decimal at all
+ *
+ * Rules, in order:
+ *   1. A currency with no minor unit has no decimal point; every separator
+ *      groups thousands.
+ *   2. Both separator types present → the rightmost one is the decimal.
+ *   3. A single separator followed by exactly three digits is a thousands
+ *      group ("1,283" is one thousand, not one and a bit).
+ *   4. Otherwise the separator is a decimal point.
+ */
+function parseAmountToken(token: string, currency: string): number | null {
+  const cleaned = token.trim();
+  if (!/^\d[\d.,]*$/.test(cleaned)) return null;
+
+  const digitsOnly = () => Number(cleaned.replace(/[.,]/g, ''));
+
+  if (CURRENCIES_WITHOUT_MINOR_UNITS.has(currency.toUpperCase())) {
+    const value = digitsOnly();
+    return Number.isNaN(value) ? null : value;
+  }
+
+  const lastComma = cleaned.lastIndexOf(',');
+  const lastDot = cleaned.lastIndexOf('.');
+  const separator = Math.max(lastComma, lastDot);
+  if (separator === -1) {
+    const value = Number(cleaned);
+    return Number.isNaN(value) ? null : value;
+  }
+
+  const tail = cleaned.length - separator - 1;
+  const mixedSeparators = lastComma !== -1 && lastDot !== -1;
+  if (!mixedSeparators && tail === 3) {
+    const value = digitsOnly();
+    return Number.isNaN(value) ? null : value;
+  }
+
+  const whole = cleaned.slice(0, separator).replace(/[.,]/g, '');
+  const fraction = cleaned.slice(separator + 1);
+  const value = Number(`${whole || '0'}.${fraction}`);
+  return Number.isNaN(value) ? null : value;
+}
+
+// Lines that only exist as part of a breakdown. Their presence means the
+// figures in this body are components, so "take the largest" cannot be
+// trusted — better to extract nothing and let the review queue flag a
+// missing amount than to book the wrong money.
+const BREAKDOWN_MARKERS =
+  /(?:\bFare\b|\bPromo\b|\bPlatform\s*Fee\b|\bService\s*Fee\b|\bDelivery\s*Fee\b|\bvoucher\b|ค่าอาหาร|ค่าจัดส่ง|ค่าธุรกรรม)/i;
+
+/**
+ * Amount with its currency marker, on whichever side the locale puts it.
+ * Thai and English receipts prefix the symbol ("฿ 205", "VND 99.840");
+ * Vietnamese ones suffix it ("501280₫"). Matching only the prefix form left
+ * the suffix receipts to the fallback, which then picked up the "₫ 3x" of the
+ * *next* line item and reported a ₫501,280 meal as ₫3.
+ */
+function buildAmountPattern(symbolRegex: string): RegExp {
   return new RegExp(
-    `${TOTAL_LABEL}(?:(?!${symbolRegex})[\\s\\S]){0,200}${symbolRegex}\\s*([\\d,]+(?:\\.\\d{2})?)`,
+    `(?:${symbolRegex}\\s*(${AMOUNT_TOKEN})|(${AMOUNT_TOKEN})\\s*${symbolRegex})`,
     'gi'
   );
 }
 
-function buildAmountPattern(symbolRegex: string): RegExp {
-  return new RegExp(`${symbolRegex}\\s*([\\d,]+(?:\\.\\d{2})?)`, 'gi');
+function buildTotalPattern(symbolRegex: string, label: string = TOTAL_LABEL): RegExp {
+  // Skip as little as possible between the label and its amount — the nearest
+  // amount after "Total" is the one that belongs to it.
+  //
+  // The quantifier must be lazy. Greedy, it swallows the digits too and then
+  // backtracks the minimum needed to complete the match, which on a
+  // suffix-symbol receipt means matching only the final digit: "Tổng cộng
+  // 501280₫" yielded 0, every labeled match was discarded as non-positive,
+  // and the whole receipt fell through to the fallback.
+  return new RegExp(
+    `${label}(?:(?!${symbolRegex})[\\s\\S]){0,200}?${buildAmountPattern(symbolRegex).source}`,
+    'gi'
+  );
 }
 
-function collectMatches(body: string, pattern: RegExp): number[] {
+function collectMatches(body: string, pattern: RegExp, currency = 'THB'): number[] {
   pattern.lastIndex = 0;
   const out: number[] = [];
   let m;
   while ((m = pattern.exec(body)) !== null) {
-    const v = parseFloat(m[1].replace(/,/g, ''));
-    if (!isNaN(v) && v > 0) out.push(v);
+    // Whichever side the symbol was on, exactly one group captured.
+    const token = m.slice(1).find(g => g !== undefined);
+    if (token === undefined) continue;
+    const v = parseAmountToken(token, currency);
+    if (v !== null && v > 0) out.push(v);
   }
   return out;
 }
@@ -362,11 +511,14 @@ function collectMatches(body: string, pattern: RegExp): number[] {
 /**
  * Extract amount AND currency from a Grab email body.
  *
- * Priority:
- * 1. Pick the currency that has a labeled total (รวม / Total / Grand Total
- *    followed by symbol+amount) — that's the actual charged amount.
- * 2. If no labeled total in any currency, pick the currency that has the most
- *    bare symbol+amount occurrences and return its largest value.
+ * Priority, strongest signal first:
+ * 1. A "Total Paid" line with symbol+amount — names the settled amount even
+ *    when a larger pre-discount Fare sits next to it.
+ * 2. Any labeled total (รวม / Total / Grand Total) with symbol+amount.
+ * 3. A bare total under an "Amount (THB)" column header — tabular receipts
+ *    declare the currency once and print figures without symbols.
+ * 4. Bare symbol+amount, largest value. Only safe on receipts that carry no
+ *    breakdown; otherwise the largest figure is a component, not the total.
  *
  * Ties are broken by `GRAB_CURRENCIES` order (THB first), since the user's
  * primary market is Thailand and a stray non-THB symbol shouldn't override
@@ -375,9 +527,21 @@ function collectMatches(body: string, pattern: RegExp): number[] {
 function extractAmountAndCurrency(
   body: string
 ): { amount: number; currency: string; confidence: number } | null {
-  // Pass 1: labeled totals
+  // Every pattern below assumes reading order, so measure it on the text a
+  // human sees rather than on the markup carrying it.
+  const text = toVisibleText(body);
+
+  // Pass 1: "Total Paid"
   for (const cfg of GRAB_CURRENCIES) {
-    const labeled = collectMatches(body, buildTotalPattern(cfg.symbolRegex));
+    const paid = collectMatches(text, buildTotalPattern(cfg.symbolRegex, TOTAL_PAID_LABEL), cfg.code);
+    if (paid.length > 0) {
+      return { amount: paid[paid.length - 1], currency: cfg.code, confidence: 98 };
+    }
+  }
+
+  // Pass 2: any labeled total
+  for (const cfg of GRAB_CURRENCIES) {
+    const labeled = collectMatches(text, buildTotalPattern(cfg.symbolRegex), cfg.code);
     if (labeled.length > 0) {
       // Receipts often repeat the total at the bottom — take the last one.
       return {
@@ -388,10 +552,29 @@ function extractAmountAndCurrency(
     }
   }
 
-  // Pass 2: bare symbol+amount. Pick the currency with the most matches.
+  // Pass 3: bare total under a currency-bearing column header
+  const header = text.match(AMOUNT_COLUMN_HEADER);
+  if (header) {
+    const symbol = header[1].toUpperCase();
+    const cfg =
+      GRAB_CURRENCIES.find(c => c.code === symbol) ??
+      GRAB_CURRENCIES.find(c => new RegExp(`^${c.symbolRegex}$`, 'i').test(header[1]));
+    if (cfg) {
+      const bare = collectMatches(
+        text,
+        new RegExp(`${TOTAL_LABEL}[\\s:]*(${AMOUNT_TOKEN})`, 'gi'),
+        cfg.code
+      );
+      if (bare.length > 0) {
+        return { amount: bare[bare.length - 1], currency: cfg.code, confidence: 90 };
+      }
+    }
+  }
+
+  // Pass 4: bare symbol+amount. Pick the currency with the most matches.
   let best: { code: string; matches: number[] } | null = null;
   for (const cfg of GRAB_CURRENCIES) {
-    const matches = collectMatches(body, buildAmountPattern(cfg.symbolRegex));
+    const matches = collectMatches(text, buildAmountPattern(cfg.symbolRegex), cfg.code);
     if (matches.length === 0) continue;
     if (!best || matches.length > best.matches.length) {
       best = { code: cfg.code, matches };
@@ -399,6 +582,12 @@ function extractAmountAndCurrency(
   }
 
   if (!best) return null;
+
+  // On a receipt that itemises a fare, promo or fee, the largest figure is a
+  // component of the total, not the total. Refusing to guess surfaces the
+  // email as "no amount extracted" — visible and fixable — instead of booking
+  // a confidently wrong number.
+  if (best.matches.length > 1 && BREAKDOWN_MARKERS.test(text)) return null;
 
   return {
     amount: Math.max(...best.matches),

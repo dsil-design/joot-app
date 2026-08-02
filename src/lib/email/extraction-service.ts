@@ -50,7 +50,16 @@ import {
 } from './classifier';
 import { normalizeICloudRelay } from './icloud-relay';
 import { rankMatches } from '../matching/match-ranker';
-import type { SourceTransaction, TargetTransaction } from '../matching/match-scorer';
+import type { SourceTransaction, TargetTransaction, MatchResult } from '../matching/match-scorer';
+import { CONFIDENCE_THRESHOLDS } from '../matching/match-scorer';
+
+/**
+ * Amount tolerance for an automatic link, in percent. Matches the tolerance
+ * the cross-source pairer uses, so the two layers agree on what "the same
+ * money" means. Cross-currency pairs are compared after conversion, which is
+ * where the slack is actually needed.
+ */
+const AUTO_LINK_MAX_PERCENT_DIFF = 2;
 import { classifyEmail as aiClassifyEmail, classifyAndExtractEmail } from './ai-classifier';
 import { consolidateEmail } from './email-consolidation';
 import { persistSubOrders, autoMatchSubOrders, loadSubOrders } from './sub-order-matcher';
@@ -453,22 +462,73 @@ export class EmailExtractionService {
 
       const ranked = await rankMatches(source, targets, { supabase });
 
-      // Auto-approval intentionally disabled: every match (including HIGH
-      // confidence) now requires manual review. Store the suggestion as a
-      // hint on the email so the user can review and approve in the queue.
-      if (ranked.bestMatch && ranked.bestMatch.score >= 55) {
-        await supabase
-          .from('email_transactions')
-          .update({
-            matched_transaction_id: ranked.bestMatch.targetId,
-            match_confidence: ranked.bestMatch.score,
-          })
-          .eq('id', emailTransactionId);
-      }
+      await this.persistAutoMatch(supabase, emailTransactionId, userId, ranked.bestMatch);
     } catch (error) {
       // Never let matching failures break the extraction pipeline
       console.error(`Auto-match failed for email transaction ${emailTransactionId}:`, error);
     }
+  }
+
+  /**
+   * Persist an auto-match — but only one strong enough to survive being read
+   * as a decision.
+   *
+   * Writing `matched_transaction_id` was introduced as an inert "hint" for the
+   * reviewer, on the assumption that auto-approval was disabled. It is not
+   * inert. `saveExtractionResults` promotes any linked email to
+   * `status: 'matched'`; `email-queue-builder` maps that status to queue state
+   * `approved`; and `queue-aggregator` only offers `pending` items to
+   * cross-source pairing. So the hint silently retires the email — and the
+   * statement row that genuinely belonged to it is left with no evidence,
+   * sitting alone in the review queue.
+   *
+   * With the old floor of 55 — the ranker's *low*-confidence boundary — vendor
+   * (30) plus date (30) cleared the bar with no amount agreement whatsoever. A
+   * ฿41 GrabExpress receipt was linked to a ฿58 delivery the day before; a ฿306
+   * Grab receipt to an identical ฿306 charge seven days earlier. Across the
+   * mailbox, 35 auto-links pointed at a transaction on a different day.
+   *
+   * Three conditions now apply:
+   *  - the composite score reaches the ranker's own HIGH threshold;
+   *  - the amounts actually agree, cross-currency conversion included, rather
+   *    than vendor and date carrying the match alone;
+   *  - no other email already claims that transaction. Genuine many-to-one
+   *    evidence (two Lazada orders settling as one charge) still exists, but it
+   *    is a call for the reviewer to make, not one to infer.
+   *
+   * Anything short of that stays out of the column and reaches the reviewer as
+   * an unmatched email, which is the outcome the "hint" was meant to produce.
+   */
+  private async persistAutoMatch(
+    supabase: SupabaseClient,
+    emailTransactionId: string,
+    userId: string,
+    bestMatch: MatchResult | null
+  ): Promise<void> {
+    if (!bestMatch) return;
+    if (bestMatch.score < CONFIDENCE_THRESHOLDS.HIGH) return;
+    if (!bestMatch.details.amount.isMatch) return;
+    if (bestMatch.details.amount.percentDiff > AUTO_LINK_MAX_PERCENT_DIFF) return;
+
+    const { data: alreadyClaimed, error: claimError } = await supabase
+      .from('email_transactions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('matched_transaction_id', bestMatch.targetId)
+      .neq('id', emailTransactionId)
+      .limit(1);
+
+    // A failed guard query is not permission to skip the guard.
+    if (claimError) return;
+    if (alreadyClaimed && alreadyClaimed.length > 0) return;
+
+    await supabase
+      .from('email_transactions')
+      .update({
+        matched_transaction_id: bestMatch.targetId,
+        match_confidence: bestMatch.score,
+      })
+      .eq('id', emailTransactionId);
   }
 
   /**
