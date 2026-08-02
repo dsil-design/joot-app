@@ -33,6 +33,7 @@ function context(vendorTagFrequency: VendorTagFrequency[]): RuleEngineContext {
     pastCorrections: [],
     vendorRecipientMappings: [],
     statementDescriptionMappings: [],
+    autoTagRules: [],
   }
 }
 
