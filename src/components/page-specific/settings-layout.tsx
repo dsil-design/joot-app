@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname } from 'next/navigation'
-import { CreditCard, Tag, Store, Mail } from 'lucide-react'
+import { CreditCard, Tag, Store, Mail, Zap } from 'lucide-react'
 import { SidebarNavigation } from '@/components/page-specific/sidebar-navigation'
 import { PageHeader } from '@/components/page-specific/page-header'
 import { SubNavigation, type SubNavItem } from '@/components/page-specific/sub-navigation'
@@ -25,6 +25,11 @@ const navigationItems: SubNavItem[] = [
     name: 'Transaction Tags',
     href: '/settings/tags',
     icon: Tag,
+  },
+  {
+    name: 'Auto-Tagging',
+    href: '/settings/auto-tags',
+    icon: Zap,
   },
   {
     name: 'Vendors',

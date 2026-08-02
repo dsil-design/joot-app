@@ -108,6 +108,7 @@ describe('description reuse gated on amount plausibility', () => {
       pastCorrections: [],
       vendorRecipientMappings: [],
       statementDescriptionMappings: [],
+      autoTagRules: [],
     }
   }
 

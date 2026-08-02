@@ -157,6 +157,7 @@ describe('parity with the server-side rule engine', () => {
       pastCorrections: [],
       vendorRecipientMappings: [],
       statementDescriptionMappings: [],
+      autoTagRules: [],
     }
   }
 
