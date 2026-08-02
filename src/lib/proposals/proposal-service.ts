@@ -16,6 +16,7 @@ import type {
   TagRecord,
   VendorTagFrequency,
   VendorDescriptionPattern,
+  VendorDescriptionSample,
   RecentTransaction,
   TransactionProposalRow,
   ProposalGenerateResponse,
@@ -60,7 +61,7 @@ export async function prefetchRuleEngineContext(
   userId: string,
   dateRange?: { from: string; to: string }
 ): Promise<RuleEngineContext> {
-  const [vendors, paymentMethods, tags, recentTxns, vendorTagFreqs, pastCorrections, vendorRecipientMappings, statementDescriptionMappings] = await Promise.all([
+  const [vendors, paymentMethods, tags, recentTxns, vendorTagFreqs, pastCorrections, vendorRecipientMappings, statementDescriptionMappings, vendorDescriptionSamples] = await Promise.all([
     fetchVendors(supabase, userId),
     fetchPaymentMethods(supabase, userId),
     fetchTags(supabase, userId),
@@ -69,6 +70,7 @@ export async function prefetchRuleEngineContext(
     fetchPastCorrections(supabase, userId),
     fetchVendorRecipientMappings(supabase, userId),
     fetchStatementDescriptionMappingsForContext(supabase, userId),
+    fetchVendorDescriptionSamples(supabase, userId),
   ])
 
   // Build vendor description patterns from recent transactions
@@ -81,9 +83,69 @@ export async function prefetchRuleEngineContext(
     recentTransactions: recentTxns,
     vendorTagFrequency: vendorTagFreqs,
     vendorDescriptionPatterns,
+    vendorDescriptionSamples,
     pastCorrections,
     vendorRecipientMappings,
     statementDescriptionMappings,
+  }
+}
+
+/** How many past descriptions per vendor are worth showing as house style. */
+const DESCRIPTION_SAMPLES_PER_VENDOR = 25
+/** Transactions scanned to build those samples, newest first. */
+const DESCRIPTION_SAMPLE_SCAN_LIMIT = 1500
+
+/**
+ * Recent descriptions grouped by vendor.
+ *
+ * `recentTransactions` is capped at 200 rows across all vendors, which for a
+ * vendor the user buys from weekly leaves nothing to imitate — and
+ * `vendorDescriptionPatterns` only surfaces descriptions that *repeat*, so a
+ * vendor like Amazon (every description unique) contributes nothing at all.
+ * This is a deliberately wide, cheap scan of just the columns needed.
+ */
+async function fetchVendorDescriptionSamples(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Map<string, VendorDescriptionSample[]>> {
+  const { data } = await supabase
+    .from('transactions')
+    .select('description, amount, original_currency, transaction_date, vendor_id')
+    .eq('user_id', userId)
+    .not('vendor_id', 'is', null)
+    .not('description', 'is', null)
+    .order('transaction_date', { ascending: false })
+    .limit(DESCRIPTION_SAMPLE_SCAN_LIMIT)
+
+  const byVendor = new Map<string, VendorDescriptionSample[]>()
+  if (!data) return byVendor
+
+  for (const row of data) {
+    const vendorId = row.vendor_id as string | null
+    const description = (row.description as string | null)?.trim()
+    if (!vendorId || !description) continue
+
+    const existing = byVendor.get(vendorId)
+    if (existing) {
+      if (existing.length >= DESCRIPTION_SAMPLES_PER_VENDOR) continue
+      existing.push(toSample(row, description))
+    } else {
+      byVendor.set(vendorId, [toSample(row, description)])
+    }
+  }
+
+  return byVendor
+}
+
+function toSample(
+  row: { amount: number | string | null; original_currency: string | null; transaction_date: string | null },
+  description: string
+): VendorDescriptionSample {
+  return {
+    description,
+    amount: Math.abs(Number(row.amount ?? 0)),
+    currency: row.original_currency || '',
+    date: row.transaction_date || '',
   }
 }
 

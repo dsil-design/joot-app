@@ -43,7 +43,7 @@ import {
   paymentMethodSignalsFromItem,
   resolvePaymentMethodFromSignals,
 } from "@/lib/proposals/payment-method-mapper"
-import { matchVendor } from "@/lib/proposals/vendor-matcher"
+import { resolveVendorFromSignals } from "@/lib/proposals/vendor-prefill"
 import { getConfidenceLevel } from "@/components/ui/confidence-indicator"
 import Link from "next/link"
 import type { MatchCardData } from "./match-card/types"
@@ -940,7 +940,9 @@ export function ReviewFocusModal({
       pmResolvedForItemRef.current = item.id
     }
 
-    if (meta || hintFields.size > 0) {
+    // Runs unconditionally: a statement-only row carries no email metadata but
+    // its own merchant descriptor still names a vendor ("AMAZON MKTPL*… WA").
+    {
       const resolve = async () => {
         const prefilledFields = new Set<string>(hintFields)
 
@@ -951,25 +953,24 @@ export function ReviewFocusModal({
             setVendorLabel(vendorData.name)
             prefilledFields.add("vendor")
           }
-        } else if (meta?.vendorNameRaw) {
-          // The extracted name is rarely the exact vendor record ("Lazada
-          // Thailand" vs the vendor "Lazada"), so search on the whole name and
-          // on its leading tokens, then score the candidates the same way the
-          // proposal engine does.
-          const raw = meta.vendorNameRaw
-          const queries = [raw, ...raw.split(/\s+/).filter((t) => t.length >= 3).slice(0, 2)]
-          const candidates = new Map<string, { id: string; name: string; transactionCount: number }>()
-          for (const q of Array.from(new Set(queries))) {
-            const results = await searchVendors(q, 10)
-            for (const v of results) {
-              candidates.set(v.id, { id: v.id, name: v.name, transactionCount: 0 })
-            }
-          }
-          const match = matchVendor(raw, Array.from(candidates.values()), [])
-          if (match && match.confidence >= 70) {
-            setVendor(match.vendorId)
-            setVendorLabel(match.vendorName)
+        } else {
+          // The extracted name is rarely the exact vendor record ("Amazon.com"
+          // vs the vendor "Amazon", "Lazada Thailand" vs "Lazada"), so the
+          // shared resolver derives several search queries per signal and
+          // scores the pooled candidates the way the proposal engine does.
+          const match = await resolveVendorFromSignals(
+            {
+              vendorNameRaw: meta?.vendorNameRaw,
+              fromName: meta?.fromName,
+              statementDescription: item.statementTransaction.description,
+            },
+            searchVendors
+          )
+          if (match) {
+            setVendor(match.id)
+            setVendorLabel(match.name)
             prefilledFields.add("vendor")
+            setFieldReasoning((prev) => ({ ...prev, vendor: match.reasoning }))
           }
         }
 

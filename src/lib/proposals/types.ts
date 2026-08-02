@@ -2,6 +2,10 @@
  * Smart Transaction Proposals — Type Definitions
  */
 
+import type { RetailOrderItem } from './retail-descriptions'
+
+export type { RetailOrderItem }
+
 // ── Per-field confidence ─────────────────────────────────────────────────
 
 /**
@@ -276,6 +280,20 @@ export interface StatementDescriptionMappingRecord {
   matchCount: number
 }
 
+/**
+ * One description the user actually wrote for a vendor, with the amount it
+ * was written for. Unlike `VendorDescriptionPattern` these are not aggregated
+ * by repetition — for a vendor like Amazon every description is unique, so a
+ * frequency table is empty and says nothing, while the raw list is exactly the
+ * house style a proposal should imitate.
+ */
+export interface VendorDescriptionSample {
+  description: string
+  amount: number
+  currency: string
+  date: string
+}
+
 export interface RuleEngineContext {
   vendors: VendorRecord[]
   paymentMethods: PaymentMethodRecord[]
@@ -283,6 +301,11 @@ export interface RuleEngineContext {
   recentTransactions: RecentTransaction[]
   vendorTagFrequency: VendorTagFrequency[]
   vendorDescriptionPatterns: VendorDescriptionPattern[]
+  /**
+   * Recent descriptions per vendor id, newest first. Optional so callers that
+   * build a context by hand (tests) don't have to supply it.
+   */
+  vendorDescriptionSamples?: Map<string, VendorDescriptionSample[]>
   pastCorrections: PastCorrection[]
   vendorRecipientMappings: VendorRecipientMappingRecord[]
   statementDescriptionMappings: StatementDescriptionMappingRecord[]
@@ -320,6 +343,13 @@ export interface ProposalInput {
   // Statement-specific
   paymentMethodId?: string
   paymentMethodName?: string
+  /**
+   * The statement line's own merchant descriptor ("AMAZON MKTPL*BV3AR0KY1
+   * Amzn.com/bill WA"). On a merged card `description` holds the email's
+   * account of the purchase, which is the better description but loses the
+   * one signal that names where the money actually went.
+   */
+  statementDescription?: string
 
   // Payment slip-specific
   paymentSlipUploadId?: string
@@ -360,4 +390,13 @@ export interface ProposalInput {
     currency?: string
     date?: string
   }>
+
+  /**
+   * Line items behind an online-retail order (Amazon, Lazada), recovered from
+   * the stored email body by `attachRetailOrderContext`. The parser only keeps
+   * the first product name, which is not enough to say what a shipment
+   * contained. Scoped to this charge's own shipment when the email covers
+   * several.
+   */
+  retailOrderItems?: RetailOrderItem[]
 }

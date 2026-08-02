@@ -19,6 +19,15 @@ import type {
 const LLM_CONFIDENCE_THRESHOLD = 70
 
 /**
+ * A field this weak is a placeholder, not an answer. When the rule engine
+ * admits it can't describe something (an online-retail listing title it can
+ * only truncate, an order it couldn't itemize), a strong vendor and tag score
+ * must not average that admission away — the whole point of the LLM layer is
+ * the field the rules couldn't do.
+ */
+const FIELD_ESCALATION_THRESHOLD = 60
+
+/**
  * Generate a proposal using both rule engine and LLM when needed.
  */
 export async function generateHybridProposal(
@@ -33,15 +42,21 @@ export async function generateHybridProposal(
   // Step 2: Check if LLM is needed
   const avgKeyConfidence = calculateKeyFieldAverage(ruleResult.fieldConfidence)
   const hasRejectionFeedback = item.rejectionFeedback && item.rejectionFeedback.length > 0
+  const hasWeakKeyField = hasWeakEnrichmentField(ruleResult.fieldConfidence)
 
   // Force LLM when the user rejected a previous proposal — the rule engine alone wasn't good enough
-  if (avgKeyConfidence >= LLM_CONFIDENCE_THRESHOLD && !hasRejectionFeedback || !isAiAvailable()) {
+  const confidentEnough =
+    avgKeyConfidence >= LLM_CONFIDENCE_THRESHOLD && !hasRejectionFeedback && !hasWeakKeyField
+  if (confidentEnough || !isAiAvailable()) {
     return ruleResult
   }
 
   // Step 3: Call LLM for enhancement
   try {
-    const llmResult = await generateLLMProposal(item, context)
+    const llmResult = await generateLLMProposal(item, context, {
+      vendorId: ruleResult.fields.vendorId ?? undefined,
+      vendorNameSuggestion: ruleResult.fields.vendorNameSuggestion,
+    })
 
     // Step 4: Merge — LLM upgrades low-confidence fields only
     const merged = mergeResults(ruleResult, llmResult)
@@ -71,6 +86,17 @@ function calculateKeyFieldAverage(fc: FieldConfidenceMap): number {
   }
 
   return count > 0 ? total / count : 0
+}
+
+/**
+ * Whether any enrichment field the rule engine actually attempted came back
+ * below the escalation threshold. A field it never scored (no tags for an
+ * unmatched vendor) is absent, not weak — those already pull the average down.
+ */
+function hasWeakEnrichmentField(fc: FieldConfidenceMap): boolean {
+  return ['vendor_id', 'description'].some(
+    (field) => fc[field] && fc[field].score < FIELD_ESCALATION_THRESHOLD
+  )
 }
 
 /**

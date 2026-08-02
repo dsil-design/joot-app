@@ -16,6 +16,7 @@ import type {
   RecentTransaction,
   PastCorrection,
   VendorDescriptionPattern,
+  VendorDescriptionSample,
 } from './types'
 
 interface LLMProposalResponse {
@@ -44,9 +45,17 @@ interface LLMProposalResponse {
 /**
  * Call Claude Haiku to enhance a proposal with AI.
  */
+export interface LLMProposalHints {
+  /** Vendor the rule engine already resolved, if any. */
+  vendorId?: string
+  /** Name it suggested when no existing vendor matched. */
+  vendorNameSuggestion?: string
+}
+
 export async function generateLLMProposal(
   item: ProposalInput,
-  context: RuleEngineContext
+  context: RuleEngineContext,
+  hints?: LLMProposalHints
 ): Promise<ProposalEngineResult> {
   const startTime = Date.now()
 
@@ -66,7 +75,24 @@ export async function generateLLMProposal(
   // convention explicitly so the model can't invert it.
   const accountType = context.paymentMethods.find((pm) => pm.id === item.paymentMethodId)?.type
 
-  const prompt = buildPrompt(item, similarTxns, topVendors, context.paymentMethods, topTags, context.vendorDescriptionPatterns, relevantCorrections, item.rejectionFeedback, accountType)
+  // The user's own descriptions for the vendor this item most likely belongs
+  // to. For vendors where every purchase is different (Amazon, Lazada) this is
+  // the only place the house style is visible — the frequency-based pattern
+  // table is empty for them by construction.
+  const vendorStyle = findVendorStyleExamples(context, hints?.vendorId)
+
+  const prompt = buildPrompt(
+    item,
+    similarTxns,
+    topVendors,
+    context.paymentMethods,
+    topTags,
+    context.vendorDescriptionPatterns,
+    relevantCorrections,
+    item.rejectionFeedback,
+    accountType,
+    vendorStyle
+  )
 
   const { data, tokenUsage } = await callAi<LLMProposalResponse>(prompt)
 
@@ -168,6 +194,24 @@ export async function generateLLMProposal(
   }
 }
 
+/**
+ * The vendor's own recent descriptions, newest first.
+ *
+ * Returns null rather than an empty array so the prompt builder can leave the
+ * section out entirely — an empty "here is the style" heading reads as "this
+ * vendor has no style", which is not what an absent sample set means.
+ */
+function findVendorStyleExamples(
+  context: RuleEngineContext,
+  vendorId?: string
+): { vendorName: string; samples: VendorDescriptionSample[] } | null {
+  if (!vendorId) return null
+  const samples = context.vendorDescriptionSamples?.get(vendorId)
+  if (!samples || samples.length === 0) return null
+  const vendorName = context.vendors.find((v) => v.id === vendorId)?.name || 'this vendor'
+  return { vendorName, samples: samples.slice(0, 20) }
+}
+
 function buildPrompt(
   item: ProposalInput,
   similarTxns: RecentTransaction[],
@@ -177,7 +221,8 @@ function buildPrompt(
   vendorDescriptionPatterns?: VendorDescriptionPattern[],
   pastCorrections?: PastCorrection[],
   rejectionFeedback?: string[],
-  accountType?: string
+  accountType?: string,
+  vendorStyle?: { vendorName: string; samples: VendorDescriptionSample[] } | null
 ): string {
   const parts: string[] = []
 
@@ -186,6 +231,9 @@ function buildPrompt(
   parts.push('')
   parts.push(`## Import Item`)
   parts.push(`- Description: "${item.description}"`)
+  if (item.statementDescription && item.statementDescription !== item.description) {
+    parts.push(`- Statement merchant descriptor: "${item.statementDescription}" (names where the money went; never use it as the description)`)
+  }
   if (item.subject) parts.push(`- Email Subject: "${item.subject}"`)
   if (item.fromName) parts.push(`- From: ${item.fromName}${item.fromAddress ? ` (${item.fromAddress})` : ''}`)
   parts.push(`- Amount: ${item.amount} ${item.currency}`)
@@ -230,6 +278,32 @@ function buildPrompt(
       if (s.amount != null && s.currency) bits.push(`amount: ${s.amount} ${s.currency}`)
       if (s.date) bits.push(`date: ${s.date}`)
       parts.push(`- ${bits.join(' | ')}`)
+    }
+  }
+
+  // Online-retail orders: the raw description is one product-listing title,
+  // which is neither complete (a shipment usually holds several items) nor
+  // readable. The recovered item list is what the description must summarize.
+  if (item.retailOrderItems && item.retailOrderItems.length > 0) {
+    parts.push('')
+    parts.push(`## Items in This Order (${item.retailOrderItems.length})`)
+    parts.push(`These are the products on THIS charge, read from the order email. The "Description" field above is only the first product's raw listing title — describe the whole list below instead.`)
+    for (const line of item.retailOrderItems) {
+      const bits = [`"${line.name}"`]
+      if (line.quantity > 1) bits.push(`qty ${line.quantity}`)
+      if (line.amount != null) bits.push(`${line.amount} ${line.currency || item.currency}`)
+      parts.push(`- ${bits.join(' | ')}`)
+    }
+  }
+
+  if (vendorStyle) {
+    parts.push('')
+    parts.push(`## How the User Describes ${vendorStyle.vendorName} Purchases`)
+    parts.push(`These are descriptions the user wrote themselves for this vendor, newest first. Match this VOICE — length, capitalization, level of detail, and any prefixes they use.`)
+    parts.push(`Do NOT copy one verbatim unless this transaction really is the same purchase. The amounts are given so you can judge that: a description written on a 3,500 THB charge must not be reused on a 400 THB one.`)
+    for (const s of vendorStyle.samples) {
+      const amountCtx = s.currency ? ` (${s.amount} ${s.currency})` : ''
+      parts.push(`- "${s.description}"${amountCtx}`)
     }
   }
 
@@ -331,9 +405,25 @@ function buildPrompt(
   parts.push(`- Weekly meal plans: "Weekly Meal Plan"`)
   parts.push(`- If the vendor has an established description pattern (see above), use it unless the raw description clearly indicates something different`)
   parts.push('')
+  parts.push(`### Online retail & marketplace orders (Amazon, Lazada, and similar)`)
+  parts.push(`The raw description for these is the SELLER'S product-listing title — keyword soup written to win search results, not to describe anything. NEVER pass it through, and never merely truncate it. Say what the thing IS, the way the user would:`)
+  parts.push(`- Name the product in 2-6 words. "Wine Saver with Bottle Stoppers", not "Vacu Vin Original Wine Saver with 2 Vacuum Bottle Stoppers – Wine Preserver Pump for Red or White Wine – Manual Air Remo".`)
+  parts.push(`- Keep the brand only when it identifies the product ("Anker Power Bank", "Philips Norelco Shaving Heads SH60/72", "ZUGU Case for iPad Pro 11"). Drop no-name seller brands: "TACVASEN Workout Shirts for Men Muscle Tank Top … Mulled Teal XL" is just "Workout Tank Tops".`)
+  parts.push(`- Several DIFFERENT items on one charge: comma-separated, most expensive or most significant first — "Magnesium, Tote Bag", "Command Strips, Command Mini Clips", "Golf Balls, Loofa".`)
+  parts.push(`- Several of the SAME item: collapse to one name with a count — "Workout Tank Tops (4)".`)
+  parts.push(`- Drop sizes, colours, model variants, pack counts, and marketing adjectives unless the variant IS the point of the purchase.`)
+  parts.push(`- Use the user's prefixes when they apply: "Gift for [Name]: ...", "Refund: ...", "Book: ...", "Game: ...", "Annual Subscription: ...".`)
+  parts.push(`- Title Case, no trailing punctuation, at most ~60 characters.`)
+  parts.push(`- If the raw description is a stand-in like "Amazon order (2 sub-orders)" or "Multiple orders: ...", it carries no information — describe the itemized list instead. If there is no item list either, write the neutral "[Vendor] Order" rather than inventing goods.`)
+  parts.push('')
+  parts.push(`### Never describe more than the evidence supports`)
+  parts.push(`- When the ONLY source is a statement merchant descriptor — no email receipt, no item list — you do not know what was bought. Say what is known and stop: "Amazon Order", "Wawa", "Lazada Order". Borrowing a description from a different purchase at the same vendor is a fabrication, no matter how close the amounts are.`)
+  parts.push(`- Never return a cleaned-up merchant descriptor as the description. "AMAZON MKTPL BJ3IM3GE1 Amzn.com/bill WA", "WAWA# 5216 VENICE FL", "TST* FOXTAIL COFFEE" are processor strings — strip the store numbers, reference codes, city and state and use the merchant name, or the convention that fits it ("Coffee: Foxtail Coffee").`)
+  parts.push(`- A vendor's past descriptions show you their VOICE. They are not evidence about this transaction.`)
+  parts.push('')
   parts.push(`## Instructions`)
   parts.push(`1. Match the description to an existing vendor if possible (use the vendor ID). If no match, suggest a clean vendor name.`)
-  parts.push(`2. Write a clean, human-readable description following the Description Conventions above. If similar historical transactions exist, follow their description style.`)
+  parts.push(`2. Write a clean, human-readable description following the Description Conventions above. When this vendor's own past descriptions are listed, they outrank the generic conventions — imitate them. Never echo a raw import description back unchanged when it reads as machine output.`)
   parts.push(`3. Classify as "expense", "income", or "transfer". The amount's SIGN is ground truth — never reinterpret it:`)
   parts.push(`   - Bank/debit accounts: POSITIVE = money leaving the account (expense); NEGATIVE = money arriving (income).`)
   parts.push(`   - Credit cards: POSITIVE = a charge (expense); NEGATIVE = a refund/credit or a payment toward the card balance — NEVER income.`)
