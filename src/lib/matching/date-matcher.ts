@@ -70,10 +70,30 @@ export function calculateDaysDiff(
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
+/** A bare calendar date, optionally followed by a time part we ignore. */
+const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})(?:[T\s]|$)/;
+
 /**
- * Normalize a date to midnight UTC for consistent comparison
+ * Normalize a date to midnight UTC for consistent comparison.
+ *
+ * Transaction dates arrive here as 'YYYY-MM-DD' strings — Postgres DATE
+ * columns and the statement/email parsers both produce them — and they name a
+ * calendar day, not an instant. `new Date('2024-01-15')` resolves to UTC
+ * midnight per spec, so reading local calendar components back off it yields
+ * 2024-01-14 anywhere west of UTC, shifting every date comparison by a day.
+ * Read the fields off the string instead, which is timezone-independent.
+ *
+ * A Date object has no such ambiguity of intent: whoever built it chose a
+ * moment, so its local calendar day is the one they meant.
  */
 function normalizeToMidnight(date: Date | string): Date {
+  if (typeof date === 'string') {
+    const match = CALENDAR_DATE_PATTERN.exec(date.trim());
+    if (match) {
+      return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    }
+  }
+
   const d = typeof date === 'string' ? new Date(date) : new Date(date);
   return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
 }

@@ -29,3 +29,10 @@ jobs:
       # each here once it passes, rather than leaving a red check standing.
       - name: Run tests
         run: npm test -- --ci
+
+      # The main suite pins TZ=UTC, which is where date bugs hide: a
+      # 'YYYY-MM-DD' string parses to UTC midnight, so reading local calendar
+      # components back off it only misbehaves away from UTC. Re-run from a
+      # zone west of UTC to catch that class of mistake.
+      - name: Run tests from a non-UTC timezone
+        run: npm run test:tz -- --ci
