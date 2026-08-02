@@ -37,6 +37,7 @@ import {
 import { cleanStatementDescription } from "@/lib/utils/statement-description"
 import { getParserTag } from "@/lib/utils/parser-tags"
 import { parseImportId } from "@/lib/utils/import-id"
+import { getSlipLink, getEmailLink, getStatementLink } from "@/lib/utils/import-source-links"
 import { formatLocalDate } from "@/lib/utils/date-helpers"
 import { PARSER_PAYMENT_METHOD_MAP } from "@/lib/proposals/payment-method-mapper"
 import { getConfidenceLevel } from "@/components/ui/confidence-indicator"
@@ -127,25 +128,6 @@ function ReasoningZap({ reasoning }: { reasoning?: string }) {
   )
 }
 
-function getSourceLink(id: string): string | null {
-  const parsed = parseImportId(id)
-  if (!parsed) return null
-  if (parsed.type === "statement") return `/imports/statements/${parsed.statementId}/results`
-  if (parsed.type === "email") return `/imports/emails/${parsed.emailId}`
-  if (parsed.type === "merged") return `/imports/statements/${parsed.statementId}/results`
-  if (parsed.type === "payment_slip") return `/imports/payment-slips/${parsed.slipId}`
-  if (parsed.type === "merged_slip_email") return `/imports/payment-slips/${parsed.slipId}`
-  if (parsed.type === "merged_slip_stmt") return `/imports/payment-slips/${parsed.slipId}`
-  if (parsed.type === "merged_slip_email_stmt") return `/imports/payment-slips/${parsed.slipId}`
-  return null
-}
-
-function getMergedEmailLink(id: string): string | null {
-  const parsed = parseImportId(id)
-  if (parsed?.type === "merged" || parsed?.type === "merged_slip_email_stmt") return `/imports/emails/${parsed.emailId}`
-  return null
-}
-
 // ── Source Info Panel (Left Side) ────────────────────────────────────────
 
 function SourceInfoPanel({ data }: { data: MatchCardData }) {
@@ -199,7 +181,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
             <SourceCard>
               <SourceSectionLabel
                 label="From Payment Slip"
-                href={getSourceLink(data.id)}
+                href={getSlipLink(data.id)}
                 onPreview={openSlipPreview}
               />
               <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
@@ -229,7 +211,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
           <SourceCard>
             <SourceSectionLabel
               label="From Email"
-              href={getMergedEmailLink(data.id)}
+              href={getEmailLink(data.id)}
               onPreview={openEmailPreview}
             />
             {(meta.fromName || meta.fromAddress) && (
@@ -277,7 +259,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
           <SourceCard>
             <SourceSectionLabel
               label="From Statement"
-              href={getSourceLink(data.id)}
+              href={getStatementLink(data.id)}
               onPreview={openStatementPreview}
             />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
@@ -350,7 +332,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
           <SourceCard>
             <SourceSectionLabel
               label="From Payment Slip"
-              href={getSourceLink(data.id)}
+              href={getSlipLink(data.id)}
               onPreview={openSlipPreview}
             />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
@@ -382,7 +364,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
           <SourceCard>
             <SourceSectionLabel
               label="From Statement"
-              href={getSourceLink(data.id)}
+              href={getStatementLink(data.id)}
               onPreview={openStatementPreview}
             />
             <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
@@ -431,7 +413,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
       <div className="space-y-2">
         <SourceSectionLabel
           label="From Email"
-          href={getSourceLink(data.id)}
+          href={getEmailLink(data.id)}
           onPreview={openEmailPreview}
         />
         {(meta.fromName || meta.fromAddress) && (
@@ -509,7 +491,7 @@ function SourceInfoPanel({ data }: { data: MatchCardData }) {
     <div className="space-y-2">
       <SourceSectionLabel
         label="From Statement"
-        href={getSourceLink(data.id)}
+        href={getStatementLink(data.id)}
         onPreview={openStatementPreview}
       />
       <TransactionDetailRow icon={<Calendar className="h-3.5 w-3.5" />}>
