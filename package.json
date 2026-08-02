@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
+    "test:tz": "jest --config jest.config.timezone.js",
     "test:unit": "jest --testPathPattern='__tests__/lib'",
     "test:coverage": "jest --coverage",
     "db:test": "node scripts/db/test-supabase-connection.js",

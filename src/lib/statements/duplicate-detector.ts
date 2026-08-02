@@ -196,9 +196,18 @@ export function getDuplicateMessage(result: DuplicateCheckResult): string | null
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'Unknown date'
   const date = new Date(dateStr)
+
+  // Two kinds of value reach this. `uploaded_at` is a timestamp — a real
+  // instant, correctly rendered in the reader's local time. The statement
+  // period bounds are Postgres DATE values naming a calendar day; those parse
+  // to UTC midnight, so rendering them locally prints the day before anywhere
+  // west of UTC. Format those in UTC to keep the day as recorded.
+  const isCalendarDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())
+
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    ...(isCalendarDate ? { timeZone: 'UTC' } : {}),
   })
 }
