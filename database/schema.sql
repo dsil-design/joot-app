@@ -1238,7 +1238,14 @@ CREATE TRIGGER update_payment_slip_uploads_updated_at BEFORE UPDATE ON public.pa
 CREATE OR REPLACE FUNCTION public.reset_payment_slip_on_unlink()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF OLD.matched_transaction_id IS NOT NULL AND NEW.matched_transaction_id IS NULL THEN
+  IF OLD.matched_transaction_id IS NOT NULL
+     AND NEW.matched_transaction_id IS NULL
+     -- Only when the caller is not stating a review outcome of its own.
+     -- Rejecting a slip clears the link and sets review_status in one
+     -- statement; without this guard the BEFORE trigger overwrote the
+     -- rejection and the slip returned to the queue.
+     AND NEW.review_status IS NOT DISTINCT FROM OLD.review_status
+  THEN
     NEW.review_status := 'pending';
     NEW.status := 'ready_for_review';
     NEW.match_confidence := NULL;
