@@ -8,7 +8,15 @@
  * exactly what production would.
  *
  * Usage:
- *   npx tsx scripts/reconcile/drain-slips.ts <user-email> [--dry-run]
+ *   npx tsx scripts/reconcile/drain-slips.ts <user-email> [--scope=<scope>] [--dry-run]
+ *
+ * Scopes:
+ *   pending          (default) slips awaiting extraction, plus rows orphaned
+ *                    at `processing`
+ *   failed-retryable slips killed by a transient error (rate limit / overload
+ *                    / timeout) — e.g. the 2026-04-13 bulk drop that outran
+ *                    the Anthropic rate limit and left 45 dead rows
+ *   stale            what the hourly sweeper claims: abandoned work only
  */
 import { createClient } from '@supabase/supabase-js'
 import * as dotenv from 'dotenv'
@@ -17,16 +25,26 @@ import * as path from 'path'
 dotenv.config({ path: path.join(process.cwd(), '.env.local') })
 
 import { drainSlips, DEFAULT_BATCH_SIZE, DEFAULT_CONCURRENCY } from '../../src/lib/payment-slips/drain'
-import { buildDrainDeps } from '../../src/lib/payment-slips/drain-queries'
+import { buildDrainDeps, type DrainScope } from '../../src/lib/payment-slips/drain-queries'
 import { processPaymentSlip } from '../../src/lib/payment-slips/slip-processor'
+
+const SCOPES: DrainScope[] = ['pending', 'failed-retryable', 'stale']
 
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const email = process.argv[2]
 const dryRun = process.argv.includes('--dry-run')
+const scopeArg = process.argv.find((a) => a.startsWith('--scope='))?.split('=')[1]
+const scope = (scopeArg || 'pending') as DrainScope
 
 async function main() {
   if (!email) {
-    console.error('Usage: npx tsx scripts/reconcile/drain-slips.ts <user-email> [--dry-run]')
+    console.error(
+      'Usage: npx tsx scripts/reconcile/drain-slips.ts <user-email> [--scope=<scope>] [--dry-run]'
+    )
+    process.exit(1)
+  }
+  if (!SCOPES.includes(scope)) {
+    console.error(`Unknown scope "${scope}". Expected one of: ${SCOPES.join(', ')}`)
     process.exit(1)
   }
 
@@ -36,19 +54,22 @@ async function main() {
     process.exit(1)
   }
 
-  const deps = buildDrainDeps(sb, user.id, { scope: 'pending', processSlip: processPaymentSlip })
+  const deps = buildDrainDeps(sb, user.id, { scope, processSlip: processPaymentSlip })
   const queued = await deps.countRemaining(new Set())
-  console.log(`${user.email}: ${queued} slip(s) awaiting extraction`)
+  console.log(`${user.email} [scope=${scope}]: ${queued} slip(s) to extract`)
 
   if (queued === 0) return
   if (dryRun) {
     const preview = await deps.claimCandidates(queued, new Set())
     const { data } = await sb
       .from('payment_slip_uploads')
-      .select('filename, status, uploaded_at')
+      .select('filename, status, uploaded_at, extraction_error')
       .in('id', preview)
       .order('uploaded_at', { ascending: true })
-    for (const s of data || []) console.log(`  ${s.status.padEnd(11)} ${s.filename}`)
+    for (const s of data || []) {
+      const err = s.extraction_error ? ` :: ${s.extraction_error.slice(0, 60)}` : ''
+      console.log(`  ${s.status.padEnd(11)} ${s.uploaded_at.slice(0, 10)} ${s.filename}${err}`)
+    }
     console.log('\n--dry-run: nothing processed')
     return
   }
