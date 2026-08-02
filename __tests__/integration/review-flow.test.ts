@@ -21,7 +21,8 @@ describe('Review Flow Integration', () => {
         '@/components/page-specific/review-queue-filter-bar'
       )
 
-      expect(defaultFilters.status).toBe('all')
+      // The queue opens on what still needs attention, not everything.
+      expect(defaultFilters.status).toBe('pending')
       expect(defaultFilters.currency).toBe('all')
       expect(defaultFilters.confidence).toBe('all')
       expect(defaultFilters.search).toBe('')

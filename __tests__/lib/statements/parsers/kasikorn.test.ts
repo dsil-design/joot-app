@@ -18,7 +18,8 @@ import {
   cleanDescription,
   detectCategory,
   calculateConfidence,
-  KASIKORN_IDENTIFIERS,
+  KASIKORN_SIMPLE_IDENTIFIERS,
+  KASIKORN_REGEX_IDENTIFIERS,
   TYPE_KEYWORDS,
 } from '@/lib/statements/parsers/kasikorn';
 import type { StatementParseResult } from '@/lib/statements/parsers/types';
@@ -654,15 +655,25 @@ Issued by K PLUS
   });
 });
 
-describe('KASIKORN_IDENTIFIERS', () => {
-  it('should include key identifiers', () => {
-    expect(KASIKORN_IDENTIFIERS).toContain('kasikornbank');
-    expect(KASIKORN_IDENTIFIERS).toContain('kbank');
-    expect(KASIKORN_IDENTIFIERS).toContain('k plus');
-    expect(KASIKORN_IDENTIFIERS).toContain('k biz');
-    expect(KASIKORN_IDENTIFIERS).toContain('kbpdf');
-    expect(KASIKORN_IDENTIFIERS).toContain('ธนาคารกสิกรไทย');
-    expect(KASIKORN_IDENTIFIERS).toContain('the wisdom');
+describe('Kasikorn identifiers', () => {
+  it('should include key substring identifiers', () => {
+    expect(KASIKORN_SIMPLE_IDENTIFIERS).toContain('kasikornbank');
+    expect(KASIKORN_SIMPLE_IDENTIFIERS).toContain('kbank');
+    expect(KASIKORN_SIMPLE_IDENTIFIERS).toContain('kbpdf');
+    expect(KASIKORN_SIMPLE_IDENTIFIERS).toContain('ธนาคารกสิกรไทย');
+  });
+
+  // These are word-boundary matched rather than plain substrings, so that
+  // "k plus" doesn't fire on "bank plus" and "k biz" doesn't fire on "work biz".
+  it.each(['k plus', 'k biz', 'the wisdom', 'k credit card'])(
+    'should match %s on a word boundary',
+    (phrase) => {
+      expect(KASIKORN_REGEX_IDENTIFIERS.some((re) => re.test(phrase))).toBe(true);
+    }
+  );
+
+  it('should not match a boundary identifier mid-word', () => {
+    expect(KASIKORN_REGEX_IDENTIFIERS.some((re) => re.test('checkbiz'))).toBe(false);
   });
 });
 

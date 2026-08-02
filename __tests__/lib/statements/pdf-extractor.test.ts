@@ -12,41 +12,73 @@ import {
   getAllParsersInfo,
 } from '@/lib/statements/pdf-extractor';
 
-// Mock pdf-parse
-jest.mock('pdf-parse', () => {
-  return jest.fn().mockImplementation(async (buffer: Buffer, options?: { max?: number }) => {
-    // Check if buffer is a valid mock PDF
-    const text = buffer.toString('utf-8');
+// The extractor loads pdfjs-dist lazily via dynamic import, and pre-loads the
+// worker onto globalThis. Both are mocked virtually so the suite never touches
+// the real ESM build. The document below has THREE pages so that `maxPages`
+// truncation is observable.
+jest.mock('pdfjs-dist/legacy/build/pdf.worker.mjs', () => ({ WorkerMessageHandler: {} }), {
+  virtual: true,
+});
 
-    if (text.includes('MOCK_ERROR')) {
-      throw new Error('Mock PDF parsing error');
+const PAGE_TEXT: Record<string, string[]> = {
+  CHASE: [
+    'Chase Sapphire Reserve',
+    'Statement Period: 01/01/2024 - 01/31/2024',
+    'Purchases',
+  ],
+  KASIKORNBANK: [
+    'KASIKORNBANK',
+    'Statement Period: 01/12/2024 - 31/12/2024',
+    '05/12/2024  MERCHANT 100.00  -',
+  ],
+  AMEX: ['American Express', 'Statement Period: 01/01/2024 - 01/31/2024', 'Transactions'],
+  DEFAULT: ['Unknown content', 'for testing', 'page three'],
+};
+
+function pageFor(marker: string, pageNumber: number) {
+  const lines = PAGE_TEXT[marker] ?? PAGE_TEXT.DEFAULT;
+  const line = lines[pageNumber - 1] ?? `page ${pageNumber}`;
+  return {
+    // One item per line; the extractor starts a new line whenever the y
+    // coordinate in transform[5] changes, so give each its own y.
+    getTextContent: async () => ({
+      items: [{ str: line, transform: [1, 0, 0, 1, 0, 700 - pageNumber * 10] }],
+    }),
+    cleanup: () => {},
+  };
+}
+
+const pdfjsMock = {
+  getDocument: ({ data }: { data: Uint8Array }) => {
+    const content = Buffer.from(data).toString('utf-8');
+
+    if (content.includes('MOCK_ERROR')) {
+      return { promise: Promise.reject(new Error('Mock PDF parsing error')) };
     }
 
-    // Simulate extraction based on content
-    const mockText = text.includes('CHASE')
-      ? 'Chase Sapphire Reserve\nStatement Period: 01/01/2024 - 01/31/2024\nPurchases\n01/15/24 STARBUCKS 5.50'
-      : text.includes('KASIKORNBANK')
-      ? 'KASIKORNBANK\nStatement Period: 01/12/2024 - 31/12/2024\n05/12/2024  MERCHANT 100.00  -'
-      : text.includes('AMEX')
-      ? 'American Express\nStatement Period: 01/01/2024 - 01/31/2024\nTransactions\n01/15 STARBUCKS 5.50'
-      : text.includes('Bangkok Bank')
-      ? 'Bangkok Bank\nStatement Period: 01/12/2024 - 31/12/2024\n05/12/2024  MERCHANT 100.00  -'
-      : 'Unknown content for testing';
+    const marker = ['CHASE', 'KASIKORNBANK', 'AMEX'].find((m) => content.includes(m)) ?? 'DEFAULT';
 
     return {
-      text: mockText,
-      numpages: options?.max || 2,
-      info: {
-        Title: 'Test Statement',
-        Author: 'Test Author',
-        Creator: 'Test Creator',
-        Producer: 'Test Producer',
-        CreationDate: '2024-01-01',
-        ModDate: '2024-01-15',
-      },
+      promise: Promise.resolve({
+        numPages: 3,
+        getPage: async (n: number) => pageFor(marker, n),
+        getMetadata: async () => ({
+          info: {
+            Title: 'Test Statement',
+            Author: 'Test Author',
+            Creator: 'Test Creator',
+            Producer: 'Test Producer',
+            CreationDate: '2024-01-01',
+            ModDate: '2024-01-15',
+          },
+        }),
+        destroy: async () => {},
+      }),
     };
-  });
-});
+  },
+};
+
+jest.mock('pdfjs-dist/legacy/build/pdf.mjs', () => pdfjsMock, { virtual: true });
 
 describe('PDF Text Extraction Service', () => {
   describe('extractPDFText', () => {
@@ -56,7 +88,7 @@ describe('PDF Text Extraction Service', () => {
 
       expect(result.success).toBe(true);
       expect(result.text).toContain('Chase');
-      expect(result.pageCount).toBe(2);
+      expect(result.pageCount).toBe(3);
       expect(result.errors).toHaveLength(0);
     });
 
@@ -84,10 +116,21 @@ describe('PDF Text Extraction Service', () => {
 
     it('should respect maxPages option', async () => {
       const mockBuffer = Buffer.from('CHASE statement content');
-      const result = await extractPDFText(mockBuffer, { maxPages: 5 });
+      const result = await extractPDFText(mockBuffer, { maxPages: 2 });
 
       expect(result.success).toBe(true);
-      expect(result.pageCount).toBe(5);
+      // maxPages caps how much text is read, not what the document reports.
+      expect(result.pageCount).toBe(3);
+      expect(result.text).toContain('Chase Sapphire Reserve');
+      expect(result.text).toContain('Statement Period');
+      expect(result.text).not.toContain('Purchases');
+    });
+
+    it('should extract every page when maxPages is not set', async () => {
+      const mockBuffer = Buffer.from('CHASE statement content');
+      const result = await extractPDFText(mockBuffer);
+
+      expect(result.text).toContain('Purchases');
     });
 
     it('should handle PDF parsing errors', async () => {
@@ -302,7 +345,8 @@ describe('PDF Text Extraction Service', () => {
       const mockBuffer = Buffer.from('CHASE statement content');
       const result = await processPDF(mockBuffer, { maxPages: 5 });
 
-      expect(result.parseResult?.pageCount).toBe(5);
+      // The document's real page count, not the requested cap.
+      expect(result.parseResult?.pageCount).toBe(3);
     });
   });
 });

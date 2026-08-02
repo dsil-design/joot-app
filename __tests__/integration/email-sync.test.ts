@@ -20,11 +20,18 @@ const mockSupabaseUpsert = jest.fn();
 const mockSupabaseEq = jest.fn();
 const mockSupabaseSingle = jest.fn();
 
+const mockSupabaseOrder = jest.fn();
+const mockSupabaseLimit = jest.fn();
+
+// `single` is the only terminal; everything else chains. `order`/`limit` are
+// needed by getEarliestTransactionDate, which syncFolder calls on initial sync.
 const mockSupabaseFrom = jest.fn().mockImplementation(() => ({
   select: mockSupabaseSelect.mockReturnThis(),
   insert: mockSupabaseInsert.mockReturnThis(),
   upsert: mockSupabaseUpsert.mockReturnThis(),
   eq: mockSupabaseEq.mockReturnThis(),
+  order: mockSupabaseOrder.mockReturnThis(),
+  limit: mockSupabaseLimit.mockReturnThis(),
   single: mockSupabaseSingle,
 }));
 
@@ -213,7 +220,10 @@ describe('EmailSyncService Integration', () => {
       // Mock successful insert
       mockSupabaseUpsert.mockReturnValue({
         select: jest.fn().mockResolvedValue({
-          data: [{ id: 'email-1' }, { id: 'email-2' }],
+          data: [
+            { id: 'email-1', message_id: '<message-101@test.com>' },
+            { id: 'email-2', message_id: '<message-102@test.com>' },
+          ],
           error: null,
         }),
       });
@@ -224,6 +234,8 @@ describe('EmailSyncService Integration', () => {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
             single: mockSupabaseSingle,
             upsert: jest.fn().mockResolvedValue({ error: null }),
           };
@@ -232,11 +244,16 @@ describe('EmailSyncService Integration', () => {
           select: jest.fn().mockReturnThis(),
           upsert: mockSupabaseUpsert.mockReturnValue({
             select: jest.fn().mockResolvedValue({
-              data: [{ id: 'email-1' }, { id: 'email-2' }],
+              data: [
+            { id: 'email-1', message_id: '<message-101@test.com>' },
+            { id: 'email-2', message_id: '<message-102@test.com>' },
+          ],
               error: null,
             }),
           }),
           eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
           single: mockSupabaseSingle,
         };
       });
@@ -309,6 +326,8 @@ describe('EmailSyncService Integration', () => {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
             single: mockSupabaseSingle,
             upsert: jest.fn().mockResolvedValue({ error: null }),
           };
@@ -317,11 +336,13 @@ describe('EmailSyncService Integration', () => {
           select: jest.fn().mockReturnThis(),
           upsert: mockSupabaseUpsert.mockReturnValue({
             select: jest.fn().mockResolvedValue({
-              data: [{ id: 'email-1' }],
+              data: [{ id: 'email-1', message_id: '<message-102@test.com>' }],
               error: null,
             }),
           }),
           eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
           single: mockSupabaseSingle,
         };
       });
@@ -375,6 +396,8 @@ describe('EmailSyncService Integration', () => {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
             single: mockSupabaseSingle,
             upsert: jest.fn().mockResolvedValue({ error: null }),
           };
@@ -383,11 +406,13 @@ describe('EmailSyncService Integration', () => {
           select: jest.fn().mockReturnThis(),
           upsert: mockSupabaseUpsert.mockReturnValue({
             select: jest.fn().mockResolvedValue({
-              data: mockMessages.map((_, i) => ({ id: `email-${i}` })),
+              data: mockMessages.map((m, i) => ({ id: `email-${i}`, message_id: m.envelope.messageId })),
               error: null,
             }),
           }),
           eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
           single: mockSupabaseSingle,
         };
       });
@@ -431,6 +456,30 @@ describe('EmailSyncService Integration', () => {
   describe('Fetch Email Content', () => {
     beforeEach(async () => {
       await syncService.connect();
+
+      // fetchEmailContent checks the `emails` table for stored bodies before
+      // going to IMAP. Default to a miss so these exercise the IMAP path.
+      mockSupabaseSingle.mockResolvedValue({ data: null, error: { code: 'PGRST116' } });
+    });
+
+    it('should return stored bodies without hitting IMAP when the email is cached', async () => {
+      mockSupabaseSingle.mockResolvedValue({
+        data: {
+          subject: 'Cached Receipt',
+          from_address: 'cached@example.com',
+          from_name: 'Cached Sender',
+          date: '2025-01-10T10:00:00Z',
+          text_body: 'Plain text body',
+          html_body: '<p>HTML body</p>',
+        },
+        error: null,
+      });
+
+      const content = await syncService.fetchEmailContent(testFolder, 101);
+
+      expect(content?.subject).toBe('Cached Receipt');
+      expect(content?.text).toBe('Plain text body');
+      expect(mockFetchOne).not.toHaveBeenCalled();
     });
 
     it('should fetch full email content', async () => {
@@ -578,6 +627,8 @@ describe('EmailSyncService Integration', () => {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
             single: mockSupabaseSingle,
             upsert: jest.fn().mockResolvedValue({ error: null }),
           };
@@ -594,6 +645,8 @@ describe('EmailSyncService Integration', () => {
             };
           }),
           eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
           single: mockSupabaseSingle,
         };
       });
@@ -725,6 +778,8 @@ describe('Database Operations', () => {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
           single: mockSupabaseSingle,
           upsert: jest.fn().mockResolvedValue({ error: null }),
         };
@@ -738,6 +793,8 @@ describe('Database Operations', () => {
           }),
         }),
         eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
         single: mockSupabaseSingle,
       };
     });
@@ -791,6 +848,8 @@ describe('Database Operations', () => {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
           single: mockSupabaseSingle,
           upsert: jest.fn().mockResolvedValue({
             error: { message: 'Sync state update failed' },
@@ -806,6 +865,8 @@ describe('Database Operations', () => {
           }),
         }),
         eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
         single: mockSupabaseSingle,
       };
     });
@@ -859,6 +920,8 @@ describe('Database Operations', () => {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
           single: mockSupabaseSingle,
           upsert: jest.fn().mockResolvedValue({ error: null }),
         };
@@ -875,6 +938,8 @@ describe('Database Operations', () => {
           };
         }),
         eq: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
         single: mockSupabaseSingle,
       };
     });

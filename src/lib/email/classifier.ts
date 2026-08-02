@@ -343,8 +343,18 @@ const DEFAULT_CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 ];
 
-// Active rules (can be modified at runtime)
-let classificationRules: ClassificationRule[] = [...DEFAULT_CLASSIFICATION_RULES];
+// Active rules (can be modified at runtime).
+//
+// Each rule is cloned, not aliased. A spread of the array alone copies the
+// array but shares the rule objects, so setRuleEnabled() would write through
+// to DEFAULT_CLASSIFICATION_RULES and permanently corrupt the defaults for the
+// life of the process — resetClassificationRules() would then "reset" to the
+// mutated values and never restore the original.
+function cloneDefaultRules(): ClassificationRule[] {
+  return DEFAULT_CLASSIFICATION_RULES.map((rule) => ({ ...rule }));
+}
+
+let classificationRules: ClassificationRule[] = cloneDefaultRules();
 
 // ============================================================================
 // PAYMENT CONTEXT DETECTION
@@ -542,7 +552,7 @@ export function setClassificationRules(rules: ClassificationRule[]): void {
  * Reset to default rules
  */
 export function resetClassificationRules(): void {
-  classificationRules = [...DEFAULT_CLASSIFICATION_RULES];
+  classificationRules = cloneDefaultRules();
 }
 
 /**
